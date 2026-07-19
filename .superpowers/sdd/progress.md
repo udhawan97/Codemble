@@ -15,3 +15,9 @@ Task 1: complete (commits 08be8da..17d0709, review clean; Important test-rigor f
 Task 2: complete (commits d65ec40..58474d7, re-review clean; 1 Critical + 3 Important + 2 Minor fixed)
 Task 3: complete (commit f11d4af, review clean; 2 Minor noted - explain() partial adds cached:False; no_key end-to-end coverage returns in Task 4)
 Task 4: complete (commits e8df8ef..ed3699a, review clean; 2 Important coverage gaps closed + shadowing mutation-verified)
+Task 5: complete (in squash e7b54d5; Critical comprehension accuracy bug + Important JS/TS coverage gap fixed)
+PHASE 1 MERGED to main as e7b54d5 (tasks 1-5). Branch reset to origin/main. Main is now v0.3.1 with picker landed.
+Task 6: complete (commits d469772..1b13689; 2 Important fixed - easy wording dropped 'directly' making transitive answers defensible; Check unhashable)
+Task 7: complete (commits a72ab05..3e0deee; cache-key mode fix + style/contract bridge sentence)
+Task 8: complete (commits 8cabf2a..ca781117; mark_understood payload-clobber bug found+fixed; vacuous re-dim test strengthened + mutation-verified)
+PHASE 2 COMPLETE (tasks 5-8). 99 tests passing.
