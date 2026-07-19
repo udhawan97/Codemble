@@ -14,6 +14,7 @@ from codemble.llm.study import StudyService
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 CONCEPT_FIXTURE = Path(__file__).parent / "fixtures" / "concepts_sample.py"
 POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
+REPEATED_CALLS_FIXTURE = Path(__file__).parent / "fixtures" / "repeated_calls.py"
 
 
 class FakeProvider:
@@ -250,6 +251,62 @@ def test_neighbors_record_edge_direction(tmp_path: Path) -> None:
     assert directions <= {"inbound", "outbound"}
     assert any(neighbor["direction"] == "outbound" for neighbor in neighbors)
     assert any(neighbor["direction"] == "inbound" for neighbor in neighbors)
+
+
+def test_repeated_calls_to_the_same_helper_count_as_one_neighbor(tmp_path: Path) -> None:
+    """A function calling one helper three times has ONE outbound neighbour.
+
+    Tier 0 has no model to catch a miscount, so this path must be exactly
+    right: _neighbors used to key observations by (neighbor, kind, lineno),
+    one entry per call SITE, so three calls to the same helper rendered as
+    "Outbound 3" / "three other parts of your code" instead of one.
+    """
+
+    graph = PythonAstAdapter().parse(REPEATED_CALLS_FIXTURE)
+
+    class RecordingProvider:
+        name = "fake"
+        model = "grounded-test"
+
+        def __init__(self) -> None:
+            self.prompts: list[str] = []
+
+        def complete(self, prompt: str) -> str:
+            self.prompts.append(prompt)
+            return json.dumps(
+                {
+                    "summary": "This function calls one helper multiple times.",
+                    "walkthrough": [
+                        {"line": 6, "explanation": "Calls the helper function."},
+                    ],
+                    "relationships": [
+                        {
+                            "node_id": "repeated_calls.helper",
+                            "explanation": "Calls this parser-proven helper.",
+                        }
+                    ],
+                }
+            )
+
+    provider = RecordingProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / "cache")
+
+    result = service.study("repeated_calls.caller")
+    neighbors = result["neighbors"]  # type: ignore[index]
+    outbound = [item for item in neighbors if item["direction"] == "outbound"]
+
+    assert len(outbound) == 1, "three call sites to one helper must count as one neighbour"
+    assert outbound[0]["node_id"] == "repeated_calls.helper"
+
+    structural = result["structural"]  # type: ignore[index]
+    assert "It uses one other part of your code." in structural["easy"]
+    assert "three" not in structural["easy"].lower()
+    assert "Outbound 1" in structural["expert"]
+
+    explanation = service.explain("repeated_calls.caller")
+    assert explanation["status"] == "ready"
+    prompt = provider.prompts[0]
+    assert prompt.count("repeated_calls.helper") == 1, "the neighbour must be cited once, not per call site"
 
 
 def test_study_never_calls_the_provider(tmp_path: Path) -> None:
