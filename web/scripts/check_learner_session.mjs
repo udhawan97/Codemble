@@ -232,6 +232,74 @@ assert.equal(
 );
 raceModeSession.dispose();
 
+// Narration: opening a node fetches its explanation as its own request.
+{
+  const explanationSession = createLearnerSession({
+    adapter: createInMemoryLearnerSessionAdapter({
+      graph,
+      studies: { "python:app.py:run": study },
+      explanations: { "python:app.py:run:easy": { status: "ready", summary: { text: "E" } } },
+    }),
+  });
+  await explanationSession.start();
+  await explanationSession.dispatch({ type: "SELECT_STUDY_NODE", nodeId: "python:app.py:run" });
+  assert.equal(
+    explanationSession.getSnapshot().explanation.status,
+    "ready",
+    "opening a node fetches its narration",
+  );
+  explanationSession.dispose();
+}
+
+// Narration: SET_MODE refetches narration for the open node but must not
+// re-request the study payload or checks, which already carry both voices.
+{
+  let studyCalls = 0;
+  let checksCalls = 0;
+  const explanationBaseAdapter = createInMemoryLearnerSessionAdapter({
+    graph,
+    studies: { "python:app.py:run": study },
+    checks: { "app.py": firstChecks },
+    explanations: {
+      "python:app.py:run:easy": { status: "ready", summary: { text: "Easy voice" } },
+      "python:app.py:run:expert": { status: "ready", summary: { text: "Expert voice" } },
+    },
+  });
+  const modeRefetchSession = createLearnerSession({
+    adapter: {
+      ...explanationBaseAdapter,
+      loadStudy(...args) {
+        studyCalls += 1;
+        return explanationBaseAdapter.loadStudy(...args);
+      },
+      loadChecks(...args) {
+        checksCalls += 1;
+        return explanationBaseAdapter.loadChecks(...args);
+      },
+    },
+  });
+  await modeRefetchSession.start();
+  await modeRefetchSession.dispatch({ type: "SELECT_STUDY_NODE", nodeId: "python:app.py:run" });
+  await modeRefetchSession.dispatch({ type: "OPEN_CHECKS" });
+  assert.equal(
+    modeRefetchSession.getSnapshot().explanation.summary.text,
+    "Easy voice",
+    "narration starts in the hydrated easy mode",
+  );
+  assert.equal(studyCalls, 1);
+  assert.equal(checksCalls, 1);
+
+  await modeRefetchSession.dispatch({ type: "SET_MODE", mode: "expert" });
+  assert.equal(
+    modeRefetchSession.getSnapshot().explanation.summary.text,
+    "Expert voice",
+    "SET_MODE refetches narration for the open node",
+  );
+  assert.equal(studyCalls, 1, "SET_MODE must not refetch the study payload");
+  assert.equal(checksCalls, 1, "SET_MODE must not refetch checks");
+  modeRefetchSession.dispose();
+}
+
 let resolveLateStudy;
 const lateStudy = new Promise((resolve) => {
   resolveLateStudy = resolve;
@@ -260,6 +328,44 @@ assert.equal(
   "a late response cannot replace the learner's current study selection",
 );
 sequencingSession.dispose();
+
+// Narration: navigating to a second node while the first node's narration is
+// still in flight must cancel it, so a late response never lands in the
+// wrong node's panel.
+let resolveLateExplanation;
+const lateExplanation = new Promise((resolve) => {
+  resolveLateExplanation = resolve;
+});
+const explanationRaceSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({
+    graph,
+    studies: {
+      "python:app.py:run": study,
+      "typescript:main.ts:main": { ...study, node: graph.nodes[1] },
+    },
+    explanations: {
+      "python:app.py:run:easy": lateExplanation,
+      "typescript:main.ts:main:easy": { status: "ready", summary: { text: "Second node" } },
+    },
+  }),
+});
+await explanationRaceSession.start();
+const staleExplanationRequest = explanationRaceSession.dispatch({
+  type: "SELECT_STUDY_NODE",
+  nodeId: "python:app.py:run",
+});
+await explanationRaceSession.dispatch({
+  type: "SELECT_STUDY_NODE",
+  nodeId: "typescript:main.ts:main",
+});
+resolveLateExplanation({ status: "ready", summary: { text: "Stale first node" } });
+await staleExplanationRequest;
+assert.equal(
+  explanationRaceSession.getSnapshot().explanation.summary.text,
+  "Second node",
+  "a late narration response cannot replace the learner's current node",
+);
+explanationRaceSession.dispose();
 
 let rejectStaleChecks;
 const staleChecks = new Promise((_resolve, reject) => {

@@ -29,6 +29,8 @@ export function createLearnerSession({
     selectedNode: null,
     studyData: null,
     studyError: "",
+    explanation: null,
+    explanationError: "",
     showChart: false,
     studiedNodeIds: new Set(),
     showChecks: false,
@@ -46,6 +48,7 @@ export function createLearnerSession({
   let modeLifecycle = 0;
   let graphController = null;
   let studyController = null;
+  let explanationController = null;
   let checksController = null;
   let submissionController = null;
   let entrypointController = null;
@@ -276,6 +279,8 @@ export function createLearnerSession({
         level: LEVELS.SYSTEM,
         studyData: null,
         studyError: "",
+        explanation: null,
+        explanationError: "",
       });
       return;
     }
@@ -295,6 +300,8 @@ export function createLearnerSession({
         level: LEVELS.SYSTEM,
         studyData: null,
         studyError: "",
+        explanation: null,
+        explanationError: "",
       });
     } else if (snapshot.level === LEVELS.SYSTEM) {
       commit({ level: LEVELS.GALAXY });
@@ -324,7 +331,7 @@ export function createLearnerSession({
     commit({ languageFocus: language });
     if (previousNodeId && snapshot.selectedNode?.id !== previousNodeId) {
       cancelStudy();
-      commit({ studyData: null, studyError: "" });
+      commit({ studyData: null, studyError: "", explanation: null, explanationError: "" });
     }
   }
 
@@ -335,6 +342,12 @@ export function createLearnerSession({
     // notices this explicit choice and skips its own commit on resolution.
     modeLifecycle += 1;
     commit({ mode, modeChosen: true });
+    // Lens, checks, and the Tier 0 summary already carry both voices and
+    // switch locally from the existing payload — only narration is generated
+    // per mode, so only narration is worth a refetch here.
+    if (snapshot.level === LEVELS.STUDY && snapshot.selectedNode) {
+      await loadExplanation(snapshot.selectedNode.id);
+    }
     try {
       await adapter.saveMode(mode, {});
     } catch {
@@ -360,6 +373,9 @@ export function createLearnerSession({
         studyData,
         studiedNodeIds: new Set(snapshot.studiedNodeIds).add(studyData.node.id),
       });
+      // A separate, deliberately unguarded request: slow or absent narration
+      // must never delay the source, lens, and structural summary above.
+      await loadExplanation(nodeId);
     } catch (requestError) {
       if (
         studyController === controller &&
@@ -375,6 +391,36 @@ export function createLearnerSession({
   function cancelStudy() {
     abortController(studyController);
     studyController = null;
+    abortController(explanationController);
+    explanationController = null;
+  }
+
+  async function loadExplanation(nodeId) {
+    abortController(explanationController);
+    explanationController = new AbortController();
+    const controller = explanationController;
+    commit({ explanation: null, explanationError: "" });
+    try {
+      const explanation = await adapter.loadExplanation(nodeId, snapshot.mode, {
+        signal: controller.signal,
+      });
+      if (
+        !controller.signal.aborted &&
+        snapshot.level === LEVELS.STUDY &&
+        snapshot.selectedNode?.id === nodeId
+      ) {
+        commit({ explanation });
+      }
+    } catch (requestError) {
+      if (
+        explanationController === controller &&
+        !controller.signal.aborted &&
+        !isAbortError(requestError) &&
+        snapshot.selectedNode?.id === nodeId
+      ) {
+        commit({ explanationError: errorMessage(requestError) });
+      }
+    }
   }
 
   async function openChecks() {
@@ -484,6 +530,7 @@ export function createLearnerSession({
     for (const controller of [
       graphController,
       studyController,
+      explanationController,
       checksController,
       submissionController,
       entrypointController,
@@ -493,6 +540,7 @@ export function createLearnerSession({
     }
     graphController = null;
     studyController = null;
+    explanationController = null;
     checksController = null;
     submissionController = null;
     entrypointController = null;
@@ -525,6 +573,13 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
       return request(
         `/api/node/${encodeURIComponent(nodeId)}/study`,
         "Study request",
+        options,
+      );
+    },
+    loadExplanation(nodeId, mode, options = {}) {
+      return request(
+        `/api/node/${encodeURIComponent(nodeId)}/explanation?mode=${encodeURIComponent(mode)}`,
+        "Explanation request",
         options,
       );
     },
@@ -603,6 +658,7 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
 export function createInMemoryLearnerSessionAdapter({
   graph,
   studies = {},
+  explanations = {},
   checks = {},
   submissions = {},
   entrypoints = {},
@@ -623,6 +679,10 @@ export function createInMemoryLearnerSessionAdapter({
     async loadStudy(nodeId, options = {}) {
       throwIfAborted(options.signal);
       return requiredFixture(studies, nodeId, "study");
+    },
+    async loadExplanation(nodeId, mode, options = {}) {
+      throwIfAborted(options.signal);
+      return requiredFixture(explanations, `${nodeId}:${mode}`, "explanation");
     },
     async loadChecks(regionId, options = {}) {
       throwIfAborted(options.signal);

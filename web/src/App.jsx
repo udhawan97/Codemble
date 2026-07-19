@@ -33,6 +33,8 @@ export function App() {
     entrypointDismissed,
     entrypointError,
     error,
+    explanation,
+    explanationError,
     focusedGraph,
     focusedStudiedCount,
     graph,
@@ -40,6 +42,7 @@ export function App() {
     languageOptions,
     level,
     litRegionId,
+    mode,
     picker,
     projectName,
     region,
@@ -220,6 +223,9 @@ export function App() {
             node={selectedNode}
             study={studyData}
             error={studyError}
+            explanation={explanation}
+            explanationError={explanationError}
+            mode={mode}
             onSelectNode={(nodeId) =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
             }
@@ -492,8 +498,7 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
   );
 }
 
-function StudyPanel({ node, study, error, onSelectNode }) {
-  const explanation = study?.explanation;
+function StudyPanel({ node, study, error, explanation, explanationError, mode, onSelectNode }) {
   return (
     <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
       <header className="study-preview__header">
@@ -524,10 +529,32 @@ function StudyPanel({ node, study, error, onSelectNode }) {
           ) : null}
           <SourceExcerpt source={study.source} />
           <LensNotes lens={study.lens} language={node.language} />
-          <Explanation explanation={explanation} node={node} onSelectNode={onSelectNode} />
+          <StructuralSummary structural={study.structural} mode={mode} />
+          <Explanation
+            explanation={explanation}
+            explanationError={explanationError}
+            node={node}
+            onSelectNode={onSelectNode}
+          />
         </div>
       ) : null}
     </aside>
+  );
+}
+
+function StructuralSummary({ structural, mode }) {
+  // The Tier 0 floor: graph facts through fixed templates, no model involved.
+  // It ships in the same /study response as the source and lens above, so it
+  // is never subject to narration's own loading/error/no-key states below it.
+  if (!structural) return null;
+  return (
+    <section className="structural-summary" aria-labelledby="structural-heading">
+      <div className="study-section-heading">
+        <h2 id="structural-heading">Structural summary</h2>
+        <span>No model required</span>
+      </div>
+      <p>{structural[mode]}</p>
+    </section>
   );
 }
 
@@ -612,8 +639,18 @@ function SourceExcerpt({ source }) {
   );
 }
 
-function Explanation({ explanation, node, onSelectNode }) {
-  if (!explanation) return null;
+function Explanation({ explanation, explanationError, node, onSelectNode }) {
+  if (!explanation) {
+    if (explanationError) {
+      return (
+        <section className="study-notice" role="alert" aria-labelledby="explanation-heading">
+          <h2 id="explanation-heading">Narration did not load.</h2>
+          <p>{explanationError} The source and parser evidence above remain available.</p>
+        </section>
+      );
+    }
+    return <p className="study-loading">Fetching narration…</p>;
+  }
   if (explanation.status === "no_key") {
     return (
       <section className="study-notice" aria-labelledby="explanation-heading">
