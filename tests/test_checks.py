@@ -53,6 +53,33 @@ def test_only_the_complete_exact_suite_lights_a_region(tmp_path: Path) -> None:
     assert restarted.for_region("app")["region_understood"] is True
 
 
+def test_every_check_offers_at_least_one_wrong_option(tmp_path: Path) -> None:
+    """A check whose options are all correct lights a region without understanding."""
+
+    project = tmp_path / "manyimporters"
+    project.mkdir()
+    (project / "core.py").write_text("def run() -> None:\n    pass\n", encoding="utf-8")
+    for name in ("alpha", "beta", "gamma", "delta", "epsilon"):
+        (project / f"{name}.py").write_text(
+            "import core\n\n\ndef go() -> None:\n    core.run()\n", encoding="utf-8"
+        )
+    graph = PythonAstAdapter().parse(project)
+
+    core = generate_checks(graph, "core")
+    assert core, "the fixture must produce checks for the many-importer region"
+    assert any(len(check.answer_ids) >= 4 for check in core), (
+        "the fixture must exercise a check with four or more correct answers"
+    )
+
+    for region in graph.regions:
+        for check in generate_checks(graph, region.id):
+            distractors = {option.id for option in check.options} - set(check.answer_ids)
+            assert distractors, (
+                f"{region.id}/{check.kind} offers no wrong option, so selecting "
+                f"every option passes it ({len(check.options)} options, all correct)"
+            )
+
+
 def test_editing_one_file_redims_only_its_region(tmp_path: Path) -> None:
     project = tmp_path / "project"
     shutil.copytree(FIXTURE, project)
