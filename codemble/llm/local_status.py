@@ -8,10 +8,7 @@ from typing import Callable
 from urllib import request
 
 from codemble import __version__
-from codemble.llm.providers import _LOOPBACK_OPENER
-
-RECOMMENDED_MODEL = "gemma4:12b"
-FALLBACK_MODEL = "qwen3:8b"
+from codemble.llm.providers import FALLBACK_MODEL, RECOMMENDED_MODEL, _LOOPBACK_OPENER
 
 GetJson = Callable[[str], dict]
 

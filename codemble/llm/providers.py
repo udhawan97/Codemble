@@ -125,11 +125,18 @@ class _NoRedirectHandler(request.HTTPRedirectHandler):
 _LOOPBACK_OPENER = request.build_opener(_NoRedirectHandler)
 
 
+# The canonical Ollama model names: defined once here and imported everywhere
+# else (study.py's from_environment default, local_status.py's setup-guide
+# payload) so the three no longer drift as independent literals.
+RECOMMENDED_MODEL = "gemma4:12b"
+FALLBACK_MODEL = "qwen3:8b"
+
+
 @dataclass(slots=True, frozen=True)
 class OllamaProvider:
     """Local narration adapter; loopback only and never sends a credential."""
 
-    model: str = "gemma4:12b"
+    model: str = RECOMMENDED_MODEL
     host: str = "http://127.0.0.1:11434"
     post_json: PostJson = field(default_factory=lambda: _post_local_json, repr=False)
     name: str = field(default="ollama", init=False)
@@ -211,8 +218,10 @@ def _post_local_json(url: str, headers: dict[str, str], payload: JsonObject) -> 
 
 __all__ = [
     "AnthropicProvider",
+    "FALLBACK_MODEL",
     "NarrationProvider",
     "OllamaProvider",
     "OpenAIProvider",
     "ProviderError",
+    "RECOMMENDED_MODEL",
 ]

@@ -19,6 +19,7 @@ from codemble.llm.providers import (
     OllamaProvider,
     OpenAIProvider,
     ProviderError,
+    RECOMMENDED_MODEL,
 )
 from codemble.llm.structural import structural_summary
 
@@ -114,7 +115,7 @@ class StudyService:
                 provider = OllamaProvider(
                     model=values.get("CODEMBLE_OLLAMA_MODEL")
                     or config.get("ollama_model")
-                    or "gemma4:12b",
+                    or RECOMMENDED_MODEL,
                     host=values.get("CODEMBLE_OLLAMA_HOST")
                     or config.get("ollama_host")
                     or "http://127.0.0.1:11434",
