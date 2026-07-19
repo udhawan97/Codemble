@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -27,24 +28,65 @@ class EntrypointSelection(BaseModel):
     node_id: str
 
 
+@dataclass(frozen=True)
+class PickerConfig:
+    """Filesystem scope and parse settings for the in-app project picker."""
+
+    browse_root: Path
+    entrypoint: str | None = None
+
+
+class _ProjectState:
+    """One-shot binding from picker selection to live project services."""
+
+    def __init__(self) -> None:
+        self.checks: CheckService | None = None
+        self.studies: StudyService | None = None
+
+    @property
+    def bound(self) -> bool:
+        return self.checks is not None
+
+    def bind(self, graph: Graph) -> None:
+        self.studies = StudyService.from_environment(graph)
+        self.checks = CheckService(graph)
+
+
 def create_app(
-    graph: Graph,
+    graph: Graph | None = None,
     web_dist: Path | None = None,
     study_service: StudyService | None = None,
     check_service: CheckService | None = None,
+    *,
+    picker: PickerConfig | None = None,
 ) -> FastAPI:
-    """Create an API and optional SPA server for one parsed project."""
+    """Create an API and optional SPA server for one local project."""
 
+    if graph is None and picker is None:
+        raise ValueError("create_app needs a parsed graph or a PickerConfig")
     app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
-    studies = study_service or StudyService.from_environment(graph)
-    checks = check_service or CheckService(graph)
+    state = _ProjectState()
+    if graph is not None:
+        state.studies = study_service or StudyService.from_environment(graph)
+        state.checks = check_service or CheckService(graph)
+
+    def _services() -> tuple[CheckService, StudyService]:
+        if state.checks is None or state.studies is None:
+            raise HTTPException(status_code=409, detail="No project selected yet.")
+        return state.checks, state.studies
+
+    @app.get("/api/picker/state")
+    def get_picker_state() -> dict[str, str]:
+        return {"state": "ready" if state.bound else "unpicked"}
 
     @app.get("/api/graph")
     def get_graph() -> dict[str, object]:
+        checks, _ = _services()
         return checks.graph().to_dict()
 
     @app.post("/api/entrypoint")
     def select_entrypoint(selection: EntrypointSelection) -> dict[str, object]:
+        checks, _ = _services()
         try:
             selected = checks.select_entrypoint(selection.node_id)
         except ValueError as error:
@@ -56,6 +98,7 @@ def create_app(
 
     @app.get("/api/regions/{region_id:path}/checks")
     def get_region_checks(region_id: str) -> dict[str, object]:
+        checks, _ = _services()
         try:
             return checks.for_region(region_id)
         except UnknownCheckError as error:
@@ -67,6 +110,7 @@ def create_app(
     def submit_region_check(
         region_id: str, check_id: str, submission: CheckSubmission
     ) -> dict[str, object]:
+        checks, _ = _services()
         try:
             return checks.submit(region_id, check_id, submission.selected_ids)
         except UnknownCheckError as error:
@@ -78,6 +122,7 @@ def create_app(
 
     @app.get("/api/node/{node_id:path}/study")
     def get_node_study(node_id: str) -> dict[str, object]:
+        _, studies = _services()
         try:
             return studies.study(node_id)
         except UnknownNodeError as error:
@@ -122,4 +167,4 @@ def _default_web_dist() -> Path:
     return Path(__file__).resolve().parents[1] / "web_dist"
 
 
-__all__ = ["create_app"]
+__all__ = ["create_app", "PickerConfig"]

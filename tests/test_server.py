@@ -125,3 +125,32 @@ def test_js_ts_node_and_region_ids_with_paths_round_trip_through_the_api(
     )
     assert submission.status_code == 200
     assert submission.json()["correct"] is True
+
+
+def test_unpicked_app_reports_state_and_guards_project_api(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    assert client.get("/api/picker/state").json() == {"state": "unpicked"}
+    assert client.get("/api/graph").status_code == 409
+    assert client.get("/api/regions/pkg/checks").status_code == 409
+    assert client.get("/api/node/pkg.x/study").status_code == 409
+    assert client.post("/api/entrypoint", json={"node_id": "x"}).status_code == 409
+
+
+def test_bound_app_reports_ready_picker_state(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/picker/state").json() == {"state": "ready"}
+    assert client.get("/api/graph").status_code == 200
+
+
+def test_create_app_requires_a_graph_or_picker(tmp_path: Path) -> None:
+    import pytest
+
+    with pytest.raises(ValueError):
+        create_app(web_dist=tmp_path / "missing")
