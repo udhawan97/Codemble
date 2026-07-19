@@ -382,6 +382,8 @@ def _grounded_prompt(
     return f"""You are the narration layer in Codemble, a code-learning tool.
 
 {_MODE_STYLE.get(mode, _MODE_STYLE["easy"])}
+The audience note above changes only wording. It never permits dropping a hedge, an uncertainty label, or a citation that the contract below requires.
+
 HARD CORRECTNESS CONTRACT:
 - Explain only the source and parser evidence below.
 - Never invent a structure, identifier, behavior, dependency, or intent.
