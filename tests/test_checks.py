@@ -101,3 +101,29 @@ def test_editing_one_file_redims_only_its_region(tmp_path: Path) -> None:
     hydrated = restarted.hydrated_graph()
     assert not next(region for region in hydrated.regions if region.id == "app").understood
     assert next(region for region in hydrated.regions if region.id == "pkg.util").understood
+
+
+def test_check_prompts_carry_both_voices() -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+
+    for region in graph.regions:
+        for check in generate_checks(graph, region.id):
+            assert set(check.prompt) == {"easy", "expert"}
+            assert check.prompt["easy"].strip()
+            assert check.prompt["expert"].strip()
+
+
+def test_the_two_voices_ask_the_same_question_of_the_same_answer() -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+
+    for region in graph.regions:
+        for check in generate_checks(graph, region.id):
+            public = check.public(passed=False)
+            assert public["prompt_voices"] == check.prompt
+            assert public["prompt"] == check.prompt["easy"], (
+                "the legacy string keeps the shipped SPA rendering until phase 4"
+            )
+            assert public["multiple"] == (len(check.answer_ids) > 1)
+            offered = {option["id"] for option in public["options"]}
+            assert set(check.answer_ids) <= offered
+            assert offered - set(check.answer_ids), "every check keeps a wrong option"
