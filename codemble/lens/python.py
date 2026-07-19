@@ -8,14 +8,14 @@ _PYTHON_NOTES = {
     "decorator": (
         "Decorator",
         {
-            "easy": "The @ line above wraps this in extra behaviour before it runs. Think of it as a sticker that adds a rule.",
+            "easy": "The @ line above wraps this in extra behavior before it runs. Think of it as a sticker that adds a rule.",
             "expert": "Python evaluates this decorator while defining the structure and binds the returned object to its name.",
         },
     ),
     "comprehension": (
         "Comprehension",
         {
-            "easy": "This is a short way to build a list by looping in one line, instead of writing a longer loop.",
+            "easy": "This is a short way to build a list, set, or dictionary by looping in one line, instead of writing a longer loop.",
             "expert": "This expression builds a collection through inline iteration and optional filtering.",
         },
     ),

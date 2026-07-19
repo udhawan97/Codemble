@@ -135,6 +135,13 @@ def test_typescript_lens_notes_equal_language_tagged_parser_annotations(
         note["citation"] == f"src/widget.tsx:{note['line']}"
         for note in result["lens"]  # type: ignore[union-attr]
     )
+    for note in result["lens"]:  # type: ignore[union-attr]
+        assert set(note["note_voices"]) == {"easy", "expert"}
+        assert note["note_voices"]["easy"].strip()
+        assert note["note_voices"]["expert"].strip()
+        assert note["note"] == note["note_voices"]["easy"], (
+            "the legacy string keeps the shipped SPA rendering until phase 4"
+        )
 
 
 def test_every_lens_note_carries_both_voices(tmp_path: Path) -> None:
