@@ -155,10 +155,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M3** · Last updated: 2026-07-19 · Session note: M2 local
-galaxy complete — 11 source-module systems in the fixture, deterministic
-semantic zoom, no free flight, responsive browser QA clean, and 1,001-node
-direct-render throughput measured at 595 FPS; all gates green.
+**Current milestone: M4** · Last updated: 2026-07-19 · Session note: M3 study
+complete — exact source lines, evidence-validated Anthropic/OpenAI narration,
+file-hash disk cache, honest no-key/error states, and desktop/320 px browser QA;
+all gates green.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -192,12 +192,12 @@ edges correct; unresolved calls flagged, never dropped or invented.
 nodes on a mid-range laptop; transitions scripted, no free flight anywhere.
 
 ### M3 — Study panel + grounded explanations (weeks 4–5)
-- [ ] Study panel: click planet → source with line numbers
-- [ ] Provider abstraction (Anthropic + OpenAI), BYO key config
-- [ ] Grounded prompt template (source + neighbors + annotations; contract embedded)
-- [ ] `file:line` links in every explanation
-- [ ] Disk cache by node + file hash
-- [ ] Graceful no-key state (galaxy + checks still work)
+- [x] Study panel: click planet → source with line numbers
+- [x] Provider abstraction (Anthropic + OpenAI), BYO key config
+- [x] Grounded prompt template (source + neighbors + annotations; contract embedded)
+- [x] `file:line` links in every explanation
+- [x] Disk cache by node + file hash
+- [x] Graceful no-key state (galaxy + checks still work)
 
 **Acceptance:** explanations cite only real identifiers; cache hit on re-open;
 pulling the key degrades gracefully.
@@ -249,6 +249,8 @@ and lights up at least one system.
 | 2026-07-19 | M1 graph adds `Edge.external`, `Node.partial`, and `Graph.partial_files` | The playbook requires external and failed parses to stay explicit; these fields prevent consumers from inferring or inventing that state |
 | 2026-07-19 | One source module is one region; layout coordinates and import routes are computed in the graph layer | Progress invalidation is module-scoped and the renderer must remain a deterministic pure consumer |
 | 2026-07-19 | Semantic zoom is input-driven and scripted; 3D navigation controls remain disabled | Preserves the locked no-free-flight learning contract while keeping the map keyboard-accessible |
+| 2026-07-19 | `StudyService.study(node_id)` is the study seam; provider adapters expose only `complete(prompt)` | Source loading, prompt construction, validation, and caching stay local while the two true external transports remain replaceable |
+| 2026-07-19 | `~/.codemble/config` accepts TOML (or JSON) and validated explanations cache by prompt/provider/model/node/file hash | Keeps BYO configuration readable and prevents stale prose after source or model changes |
 
 ## Non-Goals — do NOT build (point here when asked)
 

@@ -35,6 +35,12 @@ Structure comes from parsers. Check answers come from the graph. The model's
 job is prose: explaining code it is shown, teaching idioms the parser found.
 Every explanation links to real `file:line` so you can verify it yourself.
 
+The server exposes one deep study interface. It loads the selected source span,
+collects parser-proven neighbors, builds the correctness-contract prompt, calls
+the configured provider, validates every returned line and relationship, and
+only then writes a local cache entry keyed by provider, model, node, and file
+hash. Invalid provider output is withheld rather than softened into a guess.
+
 ## Stack
 
 Python 3.11+ · FastAPI · Vite + React · `3d-force-graph` (three.js) ·

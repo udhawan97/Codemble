@@ -28,6 +28,7 @@ or create `~/.codemble/config`:
 ```toml
 provider = "anthropic"   # or "openai"
 api_key  = "sk-..."
+model    = "claude-sonnet-5"   # optional; provider default shown
 ```
 
 Your code is parsed **locally**. The only network calls are the LLM requests
@@ -35,5 +36,5 @@ you configured, sent directly from your machine to your provider.
 
 ## No key? Still useful
 
-Without a key you still get the full galaxy, structure, and checks — only the
-prose explanations and language lens need the model.
+Without a key you still get the full galaxy, source, parser relationships,
+language lens, and checks — only the prose explanations need the model.

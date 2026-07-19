@@ -9,6 +9,8 @@ export function App() {
   const [level, setLevel] = useState(LEVELS.GALAXY);
   const [region, setRegion] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [studyData, setStudyData] = useState(null);
+  const [studyError, setStudyError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -26,6 +28,29 @@ export function App() {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (level !== LEVELS.STUDY || !selectedNode) {
+      setStudyData(null);
+      setStudyError("");
+      return undefined;
+    }
+    const controller = new AbortController();
+    setStudyData(null);
+    setStudyError("");
+    fetch(`/api/node/${encodeURIComponent(selectedNode.id)}/study`, {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Study request returned ${response.status}.`);
+        return response.json();
+      })
+      .then(setStudyData)
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setStudyError(requestError.message);
+      });
+    return () => controller.abort();
+  }, [level, selectedNode]);
 
   const advance = useCallback(
     (node) => {
@@ -50,6 +75,14 @@ export function App() {
       setLevel(LEVELS.GALAXY);
     }
   }, [level]);
+
+  const selectStudyNode = useCallback(
+    (nodeId) => {
+      const nextNode = graph?.nodes.find((candidate) => candidate.id === nodeId);
+      if (nextNode) setSelectedNode(nextNode);
+    },
+    [graph],
+  );
 
   const projectName = useMemo(() => {
     if (!graph) return "Loading local project";
@@ -123,17 +156,12 @@ export function App() {
           </section>
         ) : null}
         {level === LEVELS.STUDY && selectedNode ? (
-          <aside className="study-preview" aria-label="Selected source structure">
-            <p className="study-preview__path">{selectedNode.file}:{selectedNode.lineno}</p>
-            <h1>{selectedNode.name}</h1>
-            <dl>
-              <div><dt>Kind</dt><dd>{selectedNode.kind}</dd></div>
-              <div><dt>Span</dt><dd>{selectedNode.loc} lines</dd></div>
-              <div><dt>Calls in</dt><dd>{selectedNode.centrality}</dd></div>
-              <div><dt>Resolution</dt><dd>{selectedNode.partial ? "Partial parse" : "Parser-proven"}</dd></div>
-            </dl>
-            <p>Source and grounded explanations arrive in the next study wave.</p>
-          </aside>
+          <StudyPanel
+            node={selectedNode}
+            study={studyData}
+            error={studyError}
+            onSelectNode={selectStudyNode}
+          />
         ) : null}
       </section>
 
@@ -144,4 +172,122 @@ export function App() {
       </footer>
     </main>
   );
+}
+
+function StudyPanel({ node, study, error, onSelectNode }) {
+  const explanation = study?.explanation;
+  return (
+    <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
+      <header className="study-preview__header">
+        <p className="study-preview__path">{node.file}:{node.lineno}</p>
+        <h1>{node.name}</h1>
+        <dl>
+          <div><dt>Kind</dt><dd>{node.kind}</dd></div>
+          <div><dt>Span</dt><dd>{node.loc} lines</dd></div>
+          <div><dt>Calls in</dt><dd>{node.centrality}</dd></div>
+          <div><dt>Resolution</dt><dd>{node.partial ? "Partial parse" : "Parser-proven"}</dd></div>
+        </dl>
+      </header>
+
+      {error ? (
+        <section className="study-notice" role="alert">
+          <h2>Study data did not load.</h2>
+          <p>{error} The parser map is still available.</p>
+        </section>
+      ) : null}
+      {!study && !error ? <p className="study-loading">Reading parser evidence…</p> : null}
+      {study ? (
+        <div className="study-content">
+          <SourceExcerpt source={study.source} />
+          <Explanation explanation={explanation} node={node} onSelectNode={onSelectNode} />
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+
+function SourceExcerpt({ source }) {
+  return (
+    <section className="source-study" aria-labelledby="source-heading">
+      <div className="study-section-heading">
+        <h2 id="source-heading">Real source</h2>
+        <span>{source.file}:{source.start_line}–{source.end_line}</span>
+      </div>
+      <ol className="source-code" start={source.start_line} aria-label={`Source excerpt from ${source.file}`}>
+        {source.lines.map((line) => (
+          <li key={line.number} id={`source-L${line.number}`} data-line={line.number}>
+            <code>{line.text || " "}</code>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function Explanation({ explanation, node, onSelectNode }) {
+  if (!explanation) return null;
+  if (explanation.status === "no_key") {
+    return (
+      <section className="study-notice" aria-labelledby="explanation-heading">
+        <h2 id="explanation-heading">Structure works without a model.</h2>
+        <p>{explanation.message}</p>
+        <p>Only explanation prose is unavailable; the source and parser evidence above remain authoritative.</p>
+      </section>
+    );
+  }
+  if (explanation.status === "error") {
+    return (
+      <section className="study-notice" role="alert" aria-labelledby="explanation-heading">
+        <h2 id="explanation-heading">The explanation was withheld.</h2>
+        <p>{explanation.message}</p>
+        <p>Codemble will not display provider output that falls outside parser evidence.</p>
+      </section>
+    );
+  }
+  return (
+    <section className="grounded-explanation" aria-labelledby="explanation-heading">
+      <div className="study-section-heading">
+        <h2 id="explanation-heading">Grounded explanation</h2>
+        <span>{explanation.cached ? "Local cache" : explanation.provider}</span>
+      </div>
+      <p>
+        {explanation.summary.text}{" "}
+        <Citation citation={explanation.summary.citation} fallbackLine={node.lineno} />
+      </p>
+      <h3>Walkthrough</h3>
+      <ul className="evidence-list">
+        {explanation.walkthrough.map((item) => (
+          <li key={`${item.citation}-${item.text}`}>
+            <p>{item.text}</p>
+            <Citation citation={item.citation} fallbackLine={item.line} />
+          </li>
+        ))}
+      </ul>
+      {explanation.relationships.length ? (
+        <>
+          <h3>Parser relationships</h3>
+          <ul className="evidence-list">
+            {explanation.relationships.map((item) => (
+              <li key={`${item.node_id}-${item.text}`}>
+                <strong>{item.certain ? item.node_id : `Possible: ${item.node_id}`}</strong>
+                <p>{item.text}</p>
+                <button
+                  className="source-citation source-citation--button"
+                  type="button"
+                  onClick={() => onSelectNode(item.node_id)}
+                >
+                  Study {item.citation}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function Citation({ citation, fallbackLine }) {
+  const parsedLine = Number(citation.split(":").at(-1)) || fallbackLine;
+  return <a className="source-citation" href={`#source-L${parsedLine}`}>{citation}</a>;
 }

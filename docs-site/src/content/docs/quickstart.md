@@ -31,7 +31,11 @@ The camera moves on rails through three levels:
 | --- | --- | --- |
 | **Galaxy** | Source modules as star systems, imports as routes | Orientation |
 | **System** | Functions and classes as planets in tidy orbits, call edges | Structure |
-| **Study** | Real source, grounded explanation, language lens, checks | Learning |
+| **Study** | Real source with line numbers and a validated, cached explanation | Learning |
+
+No API key is required to inspect source and parser relationships. With a key,
+Codemble sends only the selected source context directly to your configured
+provider when you open Study; it does not run narration in the background.
 
 ## 4. Light it up
 

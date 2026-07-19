@@ -19,3 +19,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   serving, scripted three-level semantic zoom, keyboard navigation, responsive
   observatory UI, WebGL failure handling, and a 1,000-node renderer probe.
 - Web build gate in CI and `scripts/dev.sh` for the backend/Vite development loop.
+- Study payloads with exact source lines, parser-proven neighbor evidence, and
+  clickable `file:line` citations in the responsive study panel.
+- Deep narration module with direct Anthropic Messages and OpenAI Responses
+  adapters, environment/TOML BYO-key configuration, file-hash disk caching,
+  response grounding validation, and explicit no-key/error states.
