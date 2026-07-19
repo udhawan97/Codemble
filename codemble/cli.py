@@ -117,16 +117,8 @@ def choose_project_scope(
         intake = error.intake
         scale_cap = error.scale_cap
 
-    counts: dict[str, int] = {}
-    for file in intake.files:
-        relative = file.relative_to(intake.root)
-        directory = relative.parts[0] if len(relative.parts) > 1 else "."
-        counts[directory] = counts.get(directory, 0) + 1
     suggestions = ", ".join(
-        f"{directory} ({count})"
-        for directory, count in sorted(
-            counts.items(), key=lambda item: (-item[1], item[0])
-        )[:6]
+        f"{directory} ({count})" for directory, count in intake.scope_counts()[:6]
     )
     output_fn(
         f"Codemble found {len(intake.files)} supported source files; "

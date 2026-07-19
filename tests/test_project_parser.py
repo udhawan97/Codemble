@@ -180,3 +180,16 @@ def test_project_parser_rejects_cross_adapter_node_id_collisions(tmp_path: Path)
 
     with pytest.raises(ProjectParseError, match="same node ID"):
         parser.parse(tmp_path)
+
+
+def test_intake_scope_counts_orders_busiest_directories_first(tmp_path: Path) -> None:
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "one.py").write_text("A = 1\n", encoding="utf-8")
+    (tmp_path / "api" / "two.py").write_text("B = 2\n", encoding="utf-8")
+    (tmp_path / "web").mkdir()
+    (tmp_path / "web" / "app.py").write_text("C = 3\n", encoding="utf-8")
+    (tmp_path / "main.py").write_text("D = 4\n", encoding="utf-8")
+
+    intake = ProjectParser().intake(tmp_path)
+
+    assert intake.scope_counts() == (("api", 2), (".", 1), ("web", 1))
