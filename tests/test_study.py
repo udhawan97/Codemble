@@ -62,9 +62,10 @@ def test_study_without_key_keeps_real_source_available(tmp_path: Path) -> None:
         "number": 8,
         "text": "def main() -> None:",
     }
-    assert result["explanation"]["status"] == "no_key"  # type: ignore[index]
+    assert "explanation" not in result
     assert result["lens"][0]["concept"] == "type-hint"  # type: ignore[index]
     assert result["lens"][0]["citation"] == "app.py:8"  # type: ignore[index]
+    assert service.explain("app.main")["status"] == "no_key"
     assert not (tmp_path / "cache").exists()
 
 
@@ -144,8 +145,9 @@ def test_partial_source_stays_visible_without_model_narration(tmp_path: Path) ->
     result = service.study("broken")
 
     assert result["source"]["file"] == "broken.py"  # type: ignore[index]
-    assert result["explanation"]["status"] == "partial"  # type: ignore[index]
+    assert "explanation" not in result
     assert result["lens"] == []
+    assert service.explain("broken")["status"] == "partial"
     assert provider.calls == 0
 
 
@@ -154,10 +156,10 @@ def test_validated_explanation_is_cached_by_node_and_file_hash(tmp_path: Path) -
     provider = FakeProvider()
     service = StudyService(graph, provider=provider, cache_root=tmp_path)
 
-    first = service.study("app.main")["explanation"]
+    first = service.explain("app.main")
     reopened_provider = FakeProvider()
     reopened = StudyService(graph, provider=reopened_provider, cache_root=tmp_path)
-    second = reopened.study("app.main")["explanation"]
+    second = reopened.explain("app.main")
 
     assert first["status"] == "ready"  # type: ignore[index]
     assert first["summary"]["citation"] == "app.py:8"  # type: ignore[index]
@@ -178,7 +180,7 @@ def test_validated_explanation_is_cached_by_node_and_file_hash(tmp_path: Path) -
         provider=changed_provider,
         cache_root=tmp_path,
     )
-    assert changed_service.study("app.main")["explanation"]["cached"] is False  # type: ignore[index]
+    assert changed_service.explain("app.main")["cached"] is False  # type: ignore[index]
     assert changed_provider.calls == 1
 
 
@@ -187,7 +189,7 @@ def test_provider_output_cannot_reference_an_unobserved_node(tmp_path: Path) -> 
     provider = FakeProvider("invented.module")
     service = StudyService(graph, provider=provider, cache_root=tmp_path)
 
-    explanation = service.study("app.main")["explanation"]
+    explanation = service.explain("app.main")
 
     assert explanation["status"] == "error"  # type: ignore[index]
     assert "outside the parser graph" in explanation["message"]  # type: ignore[index]
@@ -209,6 +211,40 @@ def test_neighbors_record_edge_direction(tmp_path: Path) -> None:
     assert directions <= {"inbound", "outbound"}
     assert any(neighbor["direction"] == "outbound" for neighbor in neighbors)
     assert any(neighbor["direction"] == "inbound" for neighbor in neighbors)
+
+
+def test_study_never_calls_the_provider(tmp_path: Path) -> None:
+    class RefusingProvider:
+        name = "refusing"
+        model = "test"
+
+        def complete(self, prompt: str) -> str:
+            raise AssertionError("study() must not reach the provider")
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService(
+        graph, provider=RefusingProvider(), cache_root=tmp_path / "cache"
+    )
+
+    payload = service.study("app.main")
+
+    assert payload["structural"]["easy"]  # type: ignore[index]
+    assert payload["structural"]["expert"]  # type: ignore[index]
+    assert "explanation" not in payload, (
+        "the shipped SPA crashes on an unknown explanation status; omitting the "
+        "key makes App.jsx:523 render nothing instead"
+    )
+
+
+def test_explain_reaches_the_provider(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    provider = FakeProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / "cache")
+
+    result = service.explain("app.main", "easy")
+
+    assert result["status"] == "ready"
+    assert provider.calls == 1
 
 
 def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> None:

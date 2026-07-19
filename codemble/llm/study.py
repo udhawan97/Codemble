@@ -19,6 +19,7 @@ from codemble.llm.providers import (
     OpenAIProvider,
     ProviderError,
 )
+from codemble.llm.structural import structural_summary
 
 PROMPT_VERSION = "study-v2"
 _CACHE_SCHEMA = 1
@@ -125,11 +126,51 @@ class StudyService:
         )
 
     def study(self, node_id: str) -> dict[str, object]:
-        """Return real source, parser neighbors, and a bounded narration state."""
+        """Return real source, parser neighbors, and the local structural summary.
+
+        Never calls the narration provider — this stays fast and fully local so
+        opening a node in the study panel cannot block on a network round trip.
+        """
 
         node = self._nodes.get(node_id)
         if node is None:
             raise UnknownNodeError(node_id)
+        source, neighbors, lens = self._prepare(node)
+        return {
+            "node": asdict(node),
+            "source": source,
+            "neighbors": neighbors,
+            "lens": lens,
+            "structural": structural_summary(node, neighbors, lens),
+        }
+
+    def explain(self, node_id: str, mode: str = "easy") -> dict[str, object]:
+        """Return only the narration state for one node in one audience voice."""
+
+        node = self._nodes.get(node_id)
+        if node is None:
+            raise UnknownNodeError(node_id)
+        if node.partial:
+            return {
+                "status": "partial",
+                "message": (
+                    "Narration is unavailable because the language parser reported "
+                    "syntax errors in this file. The raw source remains visible."
+                ),
+                "cached": False,
+            }
+        source, neighbors, lens = self._prepare(node)
+        return self._explain(node, source, neighbors, lens, mode)
+
+    def _prepare(
+        self, node: Node
+    ) -> tuple[dict[str, object], list[dict[str, object]], list[dict[str, object]]]:
+        """Return the source, neighbors, and citation-anchored lens notes.
+
+        Shared by ``study`` and ``explain`` so the lens-citation loop and
+        neighbor/annotation lookup exist in exactly one place.
+        """
+
         source = self._read_source(node)
         neighbors = self._neighbors(node)
         annotations = sorted(
@@ -143,25 +184,7 @@ class StudyService:
         lens = lens_notes(node.language, annotations)
         for note in lens:
             note["citation"] = f"{node.file}:{note['line']}"
-        explanation = (
-            {
-                "status": "partial",
-                "message": (
-                    "Narration is unavailable because the language parser reported "
-                    "syntax errors in this file. "
-                    "The raw source remains visible."
-                ),
-            }
-            if node.partial
-            else self._explain(node, source, neighbors, lens)
-        )
-        return {
-            "node": asdict(node),
-            "source": source,
-            "neighbors": neighbors,
-            "lens": lens,
-            "explanation": explanation,
-        }
+        return source, neighbors, lens
 
     def _read_source(self, node: Node) -> dict[str, object]:
         source_path = (self._project_root / node.file).resolve()
@@ -219,6 +242,7 @@ class StudyService:
         source: dict[str, object],
         neighbors: list[dict[str, object]],
         lens: list[dict[str, object]],
+        mode: str,
     ) -> dict[str, object]:
         if self._provider is None:
             return {

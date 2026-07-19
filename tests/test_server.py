@@ -31,7 +31,8 @@ def test_graph_and_source_endpoints_are_grounded(tmp_path: Path) -> None:
     assert study_response.status_code == 200
     assert study_response.json()["source"]["file"] == "pkg/service.py"
     assert study_response.json()["source"]["lines"][0]["text"].startswith("    def run")
-    assert study_response.json()["explanation"]["status"] == "no_key"
+    assert "structural" in study_response.json()
+    assert "explanation" not in study_response.json()
     assert client.get("/api/node/not-real/study").status_code == 404
     assert "Codemble" in client.get("/").text
     assert "Codemble" in client.get("/galaxy/system/pkg").text
