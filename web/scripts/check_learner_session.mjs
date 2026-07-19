@@ -252,6 +252,35 @@ assert.equal(
   "/home/u/big",
 );
 
+// In-memory picker adapter: fixture-driven browse/recents/select and state flip.
+const rootListing = {
+  path: "/home/u",
+  parent: null,
+  entries: [{ name: "big", path: "/home/u/big", is_dir: true }],
+};
+const bigListing = { path: "/home/u/big", parent: "/home/u", entries: [] };
+const memoryPicker = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: { "": rootListing, "/home/u/big": bigListing },
+    recents: [{ project_root: "/home/u/big", understood_count: 2 }],
+    selections: { "/home/u/big": { state: "ready" } },
+  },
+});
+assert.deepEqual(await memoryPicker.loadPickerState(), { state: "unpicked" });
+assert.equal(await memoryPicker.browsePicker(null), rootListing);
+assert.equal(await memoryPicker.browsePicker("/home/u/big"), bigListing);
+assert.deepEqual(await memoryPicker.loadRecents(), {
+  recents: [{ project_root: "/home/u/big", understood_count: 2 }],
+});
+assert.deepEqual(await memoryPicker.selectProject("/home/u/big"), { state: "ready" });
+assert.deepEqual(await memoryPicker.loadPickerState(), { state: "ready" });
+assert.deepEqual(
+  await createInMemoryLearnerSessionAdapter({ graph }).loadPickerState(),
+  { state: "ready" },
+  "adapters without a picker fixture stay ready for existing callers",
+);
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",
