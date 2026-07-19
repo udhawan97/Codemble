@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Build Astro site
         run: |
           cd docs-site
