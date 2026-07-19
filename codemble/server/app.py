@@ -20,6 +20,7 @@ from codemble.adapters.project import (
     ProjectScaleError,
 )
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
+from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
 from codemble.progress import list_recent_projects
 
@@ -100,6 +101,18 @@ def create_app(
     @app.get("/api/picker/state")
     def get_picker_state() -> dict[str, str]:
         return {"state": "ready" if state.bound else "unpicked"}
+
+    @app.get("/api/llm/status")
+    def get_llm_status() -> dict[str, object]:
+        # Deliberately bypasses _services(): this reports LLM configuration,
+        # not project data, and the setup guide it feeds is most useful
+        # before a project is bound -- it must not 409 like /api/graph does.
+        provider = state.studies.provider if state.studies is not None else None
+        return {
+            "configured_provider": getattr(provider, "name", None),
+            "configured_model": getattr(provider, "model", None),
+            "ollama": ollama_status(),
+        }
 
     @app.get("/api/picker/browse")
     def browse_picker(path: str | None = None) -> dict[str, object]:

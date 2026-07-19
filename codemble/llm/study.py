@@ -16,8 +16,10 @@ from codemble.lens import lens_notes
 from codemble.llm.providers import (
     AnthropicProvider,
     NarrationProvider,
+    OllamaProvider,
     OpenAIProvider,
     ProviderError,
+    RECOMMENDED_MODEL,
 )
 from codemble.llm.structural import structural_summary
 
@@ -108,9 +110,24 @@ class StudyService:
                 or config.get("model")
                 or "gpt-5.4-mini",
             )
-        elif provider_name and provider_name not in {"anthropic", "openai"}:
+        elif provider_name == "ollama":
+            try:
+                provider = OllamaProvider(
+                    model=values.get("CODEMBLE_OLLAMA_MODEL")
+                    or config.get("ollama_model")
+                    or RECOMMENDED_MODEL,
+                    host=values.get("CODEMBLE_OLLAMA_HOST")
+                    or config.get("ollama_host")
+                    or "http://127.0.0.1:11434",
+                )
+            except ValueError as host_error:
+                setup_message = (
+                    f"{host_error} Fix CODEMBLE_OLLAMA_HOST or {path}, then restart Codemble."
+                )
+        elif provider_name and provider_name not in {"anthropic", "openai", "ollama"}:
             setup_message = (
-                "CODEMBLE_PROVIDER must be 'anthropic' or 'openai'; structure remains available."
+                "CODEMBLE_PROVIDER must be 'anthropic', 'openai', or 'ollama'; "
+                "structure remains available."
             )
         elif provider_name:
             setup_message = (
@@ -124,6 +141,12 @@ class StudyService:
             cache_root=cache_root,
             setup_message=setup_message,
         )
+
+    @property
+    def provider(self) -> NarrationProvider | None:
+        """The narration provider this project is configured to use, if any."""
+
+        return self._provider
 
     def study(self, node_id: str) -> dict[str, object]:
         """Return real source, parser neighbors, and the local structural summary.
@@ -212,7 +235,11 @@ class StudyService:
         }
 
     def _neighbors(self, node: Node) -> list[dict[str, object]]:
-        observations: dict[tuple[str, str, int], dict[str, object]] = {}
+        # Keyed by (neighbor, direction), not per call site: three calls from
+        # this node to the same helper are one relationship, not three. Ties
+        # keep the earliest observed line so identical input keeps producing
+        # identical output.
+        observations: dict[tuple[str, str], dict[str, object]] = {}
         for edge in self._graph.edges:
             resolved = _neighbor_id(edge, node.id)
             if resolved is None:
@@ -221,7 +248,10 @@ class StudyService:
             neighbor = self._nodes.get(neighbor_id)
             if neighbor is None:
                 continue
-            key = (neighbor.id, edge.kind, edge.lineno)
+            key = (neighbor.id, direction)
+            existing = observations.get(key)
+            if existing is not None and edge.lineno >= existing["observed_line"]:
+                continue
             observations[key] = {
                 "node_id": neighbor.id,
                 "name": neighbor.name,

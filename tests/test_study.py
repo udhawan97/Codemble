@@ -8,12 +8,13 @@ from pathlib import Path
 
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
-from codemble.llm.providers import AnthropicProvider, OpenAIProvider
+from codemble.llm.providers import AnthropicProvider, OllamaProvider, OpenAIProvider
 from codemble.llm.study import StudyService
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 CONCEPT_FIXTURE = Path(__file__).parent / "fixtures" / "concepts_sample.py"
 POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
+REPEATED_CALLS_FIXTURE = Path(__file__).parent / "fixtures" / "repeated_calls.py"
 
 
 class FakeProvider:
@@ -252,6 +253,62 @@ def test_neighbors_record_edge_direction(tmp_path: Path) -> None:
     assert any(neighbor["direction"] == "inbound" for neighbor in neighbors)
 
 
+def test_repeated_calls_to_the_same_helper_count_as_one_neighbor(tmp_path: Path) -> None:
+    """A function calling one helper three times has ONE outbound neighbour.
+
+    Tier 0 has no model to catch a miscount, so this path must be exactly
+    right: _neighbors used to key observations by (neighbor, kind, lineno),
+    one entry per call SITE, so three calls to the same helper rendered as
+    "Outbound 3" / "three other parts of your code" instead of one.
+    """
+
+    graph = PythonAstAdapter().parse(REPEATED_CALLS_FIXTURE)
+
+    class RecordingProvider:
+        name = "fake"
+        model = "grounded-test"
+
+        def __init__(self) -> None:
+            self.prompts: list[str] = []
+
+        def complete(self, prompt: str) -> str:
+            self.prompts.append(prompt)
+            return json.dumps(
+                {
+                    "summary": "This function calls one helper multiple times.",
+                    "walkthrough": [
+                        {"line": 6, "explanation": "Calls the helper function."},
+                    ],
+                    "relationships": [
+                        {
+                            "node_id": "repeated_calls.helper",
+                            "explanation": "Calls this parser-proven helper.",
+                        }
+                    ],
+                }
+            )
+
+    provider = RecordingProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / "cache")
+
+    result = service.study("repeated_calls.caller")
+    neighbors = result["neighbors"]  # type: ignore[index]
+    outbound = [item for item in neighbors if item["direction"] == "outbound"]
+
+    assert len(outbound) == 1, "three call sites to one helper must count as one neighbour"
+    assert outbound[0]["node_id"] == "repeated_calls.helper"
+
+    structural = result["structural"]  # type: ignore[index]
+    assert "It uses one other part of your code." in structural["easy"]
+    assert "three" not in structural["easy"].lower()
+    assert "Outbound 1" in structural["expert"]
+
+    explanation = service.explain("repeated_calls.caller")
+    assert explanation["status"] == "ready"
+    prompt = provider.prompts[0]
+    assert prompt.count("repeated_calls.helper") == 1, "the neighbour must be cited once, not per call site"
+
+
 def test_study_never_calls_the_provider(tmp_path: Path) -> None:
     class RefusingProvider:
         name = "refusing"
@@ -386,3 +443,95 @@ def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> 
     assert openai_requests[0][0].endswith("/v1/responses")
     assert openai_requests[0][1]["authorization"] == "Bearer secret-o"
     assert openai_requests[0][2]["store"] is False
+
+
+def test_ollama_is_selected_only_when_asked_for(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={"CODEMBLE_PROVIDER": "ollama"},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    assert isinstance(service.provider, OllamaProvider)
+    assert service.provider.model == "gemma4:12b"
+
+    # Swap in a fake transport (same seam test_providers.py exercises
+    # directly) so explain() proves the ollama path plumbs provider/model
+    # through the result without ever opening a real socket to 11434.
+    stub_provider = replace(
+        service.provider,
+        post_json=lambda url, headers, body: {"response": "local narration"},
+    )
+    stub_service = StudyService(graph, provider=stub_provider, cache_root=tmp_path / "cache")
+
+    result = stub_service.explain("app.main", "easy")
+
+    assert result["provider"] == "ollama"
+    assert result["model"] == "gemma4:12b"
+
+
+def test_no_configuration_never_silently_picks_a_local_model(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    assert service.explain("app.main", "easy")["status"] == "no_key"
+
+
+def test_remote_ollama_host_degrades_gracefully_instead_of_crashing(tmp_path: Path) -> None:
+    """A non-loopback CODEMBLE_OLLAMA_HOST must not raise out of from_environment.
+
+    OllamaProvider.__post_init__ raises ValueError for a non-loopback host, to
+    stop Codemble posting a learner's source to a remote endpoint. from_environment
+    must catch it, leave the service keyless, and explain what to fix, same as
+    every other misconfigured provider already does.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={
+            "CODEMBLE_PROVIDER": "ollama",
+            "CODEMBLE_OLLAMA_HOST": "http://example.com:11434",
+        },
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    result = service.explain("app.main", "easy")
+
+    assert result["status"] == "no_key"
+    assert "loopback" in result["message"]
+
+
+def test_file_scheme_ollama_host_is_refused_through_from_environment(tmp_path: Path) -> None:
+    """The guard's scheme check must still fire when host arrives via config.
+
+    file:// passes the hostname allowlist (localhost is a valid hostname) but
+    must still be refused, or urlopen would silently return a local file's
+    bytes instead of posting to Ollama. This is the same bypass Task 9's
+    report flagged, now pinned through the configuration path instead of a
+    direct OllamaProvider(...) construction.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={
+            "CODEMBLE_PROVIDER": "ollama",
+            "CODEMBLE_OLLAMA_HOST": "file://localhost/etc/passwd",
+        },
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    result = service.explain("app.main", "easy")
+
+    assert result["status"] == "no_key"
+    assert "loopback" in result["message"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from typing import Callable, Protocol
-from urllib import error, request
+from urllib import error, parse, request
 
 from codemble import __version__
 
@@ -107,6 +107,62 @@ class OpenAIProvider:
         return text
 
 
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+class _NoRedirectHandler(request.HTTPRedirectHandler):
+    """Refuse every redirect instead of following it."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102 - urllib override signature
+        return None
+
+
+# urlopen() follows redirects by default. A listener on the configured
+# loopback port could answer "302 -> http://other-host/" and send the
+# request (and its response) off loopback. Every local-only request shares
+# this opener so a redirect always fails closed as an HTTPError instead of
+# silently leaving loopback.
+_LOOPBACK_OPENER = request.build_opener(_NoRedirectHandler)
+
+
+# The canonical Ollama model names: defined once here and imported everywhere
+# else (study.py's from_environment default, local_status.py's setup-guide
+# payload) so the three no longer drift as independent literals.
+RECOMMENDED_MODEL = "gemma4:12b"
+FALLBACK_MODEL = "qwen3:8b"
+
+
+@dataclass(slots=True, frozen=True)
+class OllamaProvider:
+    """Local narration adapter; loopback only and never sends a credential."""
+
+    model: str = RECOMMENDED_MODEL
+    host: str = "http://127.0.0.1:11434"
+    post_json: PostJson = field(default_factory=lambda: _post_local_json, repr=False)
+    name: str = field(default="ollama", init=False)
+
+    def __post_init__(self) -> None:
+        parsed = parse.urlsplit(self.host)
+        # Scheme matters as much as hostname: a hostname match on a non-"http"
+        # scheme (e.g. "file://localhost") still passes urlsplit, but
+        # urlopen() on "file://" silently ignores method="POST"/data= and
+        # returns a local file's bytes instead — loopback Ollama only ever
+        # speaks plain HTTP, so anything else is refused here, at construction.
+        if parsed.scheme != "http" or parsed.hostname not in _LOOPBACK_HOSTS:
+            raise ValueError("Codemble only talks to a local Ollama on loopback.")
+
+    def complete(self, prompt: str) -> str:
+        payload = self.post_json(
+            f"{self.host}/api/generate",
+            {"content-type": "application/json"},
+            {"model": self.model, "prompt": prompt, "stream": False},
+        )
+        response = payload.get("response")
+        if not isinstance(response, str) or not response.strip():
+            raise ProviderError("Ollama returned an empty text response.")
+        return response.strip()
+
+
 def _post_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonObject:
     encoded = json.dumps(payload).encode("utf-8")
     outbound = request.Request(
@@ -129,9 +185,43 @@ def _post_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonOb
     return decoded
 
 
+def _post_local_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonObject:
+    """POST to a loopback Ollama.
+
+    Separate from ``_post_json`` because that helper is documented as
+    HTTPS-only, and because local generation needs a longer ceiling than a
+    cloud round trip.
+    """
+
+    encoded = json.dumps(payload).encode("utf-8")
+    outbound = request.Request(
+        url,
+        data=encoded,
+        headers={**headers, "user-agent": f"Codemble/{__version__}"},
+        method="POST",
+    )
+    try:
+        with _LOOPBACK_OPENER.open(outbound, timeout=120) as response:  # noqa: S310 - loopback only, redirects refused
+            decoded = json.loads(response.read().decode("utf-8"))
+    except error.HTTPError as provider_error:
+        raise ProviderError(
+            f"The local model rejected the request with HTTP {provider_error.code}."
+        ) from provider_error
+    except (error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProviderError(
+            "Codemble could not reach a local Ollama server on loopback."
+        ) from exc
+    if not isinstance(decoded, dict):
+        raise ProviderError("The local model returned an unexpected response shape.")
+    return decoded
+
+
 __all__ = [
     "AnthropicProvider",
+    "FALLBACK_MODEL",
     "NarrationProvider",
+    "OllamaProvider",
     "OpenAIProvider",
     "ProviderError",
+    "RECOMMENDED_MODEL",
 ]

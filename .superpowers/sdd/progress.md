@@ -21,3 +21,7 @@ Task 6: complete (commits d469772..1b13689; 2 Important fixed - easy wording dro
 Task 7: complete (commits a72ab05..3e0deee; cache-key mode fix + style/contract bridge sentence)
 Task 8: complete (commits 8cabf2a..ca781117; mark_understood payload-clobber bug found+fixed; vacuous re-dim test strengthened + mutation-verified)
 PHASE 2 COMPLETE (tasks 5-8). 99 tests passing.
+Task 9: complete (commits c1d6004..4ff29b3; SECURITY: brief's guard checked hostname not scheme, file://localhost passed -> local file disclosure; fixed + frozen dataclass)
+Task 10: complete (commit 5c8d988, review clean; try/except ValueError containment verified across 8 failure combos)
+Task 11: complete (commits d3d082f..48bf394; Critical never-raise hole - http.client.HTTPException not caught; pre-existing network-touching test fixed)
+PHASE 3 COMPLETE (tasks 9-11). 128 tests passing. ALL 11 TASKS DONE.

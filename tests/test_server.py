@@ -411,6 +411,81 @@ def test_picker_select_rejects_unparseable_and_escaping_paths(tmp_path: Path) ->
     ).status_code == 404
 
 
+def test_llm_status_endpoint_reports_provider_and_local_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Fake the transport, not just the value: a real ollama_status() call
+    # would otherwise reach out to 127.0.0.1:11434 for real, making this test
+    # depend on whether Ollama happens to be running on the machine that
+    # executes it.
+    monkeypatch.setattr(
+        "codemble.llm.local_status._get_json",
+        lambda url: {"models": [{"name": "gemma4:12b"}]},
+    )
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    payload = client.get("/api/llm/status").json()
+
+    assert "configured_provider" in payload
+    assert payload["ollama"]["recommended"] == "gemma4:12b"
+    assert payload["ollama"]["fallback"] == "qwen3:8b"
+    assert payload["ollama"]["running"] is True
+    assert payload["ollama"]["installed_models"] == ["gemma4:12b"]
+
+
+def test_llm_status_endpoint_reports_a_configured_providers_name_and_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Pins the provider.name / provider.model lookups in the route to real
+    # values from a bound project. Without this, the getattr(..., None)
+    # defaults used to survive an unbound project would also silently mask a
+    # typo'd attribute name as None, and no other test here would notice.
+    monkeypatch.setattr(
+        "codemble.llm.local_status._get_json",
+        lambda url: {"models": []},
+    )
+
+    class FakeProvider:
+        name = "fake"
+        model = "grounded-test"
+
+        def complete(self, prompt: str) -> str:
+            raise NotImplementedError
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    studies = StudyService(graph, provider=FakeProvider(), cache_root=tmp_path / "cache")
+    client = TestClient(create_app(graph, tmp_path / "missing", studies))
+
+    payload = client.get("/api/llm/status").json()
+
+    assert payload["configured_provider"] == "fake"
+    assert payload["configured_model"] == "grounded-test"
+
+
+def test_llm_status_endpoint_works_before_a_project_is_selected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The in-app setup guide this endpoint feeds is most useful *before* a
+    # learner has picked a project, so this must not 409 like /api/graph does.
+    from codemble.server.app import PickerConfig
+
+    def refused(url: str):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr("codemble.llm.local_status._get_json", refused)
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    response = client.get("/api/llm/status")
+
+    assert response.status_code == 200
+    assert response.json()["configured_provider"] is None
+    assert response.json()["configured_model"] is None
+    assert response.json()["ollama"]["running"] is False
+
+
 def test_foreign_host_headers_are_rejected(tmp_path: Path) -> None:
     graph = PythonAstAdapter().parse(FIXTURE)
     client = TestClient(create_app(graph, tmp_path / "missing"))
