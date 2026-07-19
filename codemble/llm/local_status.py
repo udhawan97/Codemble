@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 from typing import Callable
 from urllib import request
@@ -22,9 +23,10 @@ def ollama_status(
 
     A missing Ollama is the normal case for most learners, so every failure
     mode here -- connection refused, a timeout, a non-dict body, garbage
-    model entries -- resolves to ``running: False`` rather than propagating.
-    The setup guide this feeds polls it, so it must fail fast, never hang or
-    crash the panel it is meant to help populate.
+    model entries, or a listener that speaks broken/non-HTTP -- resolves to
+    ``running: False`` rather than propagating. The setup guide this feeds
+    polls it, so it must fail fast, never hang or crash the panel it is meant
+    to help populate.
     """
 
     fetch = get_json or _get_json
@@ -42,7 +44,7 @@ def ollama_status(
                 if isinstance(entry, dict) and isinstance(entry.get("name"), str)
             ]
         running = True
-    except (OSError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):
         running = False
     return {
         "running": running,

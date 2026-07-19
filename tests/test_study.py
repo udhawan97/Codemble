@@ -8,7 +8,7 @@ from pathlib import Path
 
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
-from codemble.llm.providers import AnthropicProvider, OpenAIProvider
+from codemble.llm.providers import AnthropicProvider, OllamaProvider, OpenAIProvider
 from codemble.llm.study import StudyService
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
@@ -397,7 +397,19 @@ def test_ollama_is_selected_only_when_asked_for(tmp_path: Path) -> None:
         cache_root=tmp_path / "cache",
     )
 
-    result = service.explain("app.main", "easy")
+    assert isinstance(service.provider, OllamaProvider)
+    assert service.provider.model == "gemma4:12b"
+
+    # Swap in a fake transport (same seam test_providers.py exercises
+    # directly) so explain() proves the ollama path plumbs provider/model
+    # through the result without ever opening a real socket to 11434.
+    stub_provider = replace(
+        service.provider,
+        post_json=lambda url, headers, body: {"response": "local narration"},
+    )
+    stub_service = StudyService(graph, provider=stub_provider, cache_root=tmp_path / "cache")
+
+    result = stub_service.explain("app.main", "easy")
 
     assert result["provider"] == "ollama"
     assert result["model"] == "gemma4:12b"
