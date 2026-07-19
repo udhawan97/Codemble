@@ -18,6 +18,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 class _FixtureAdapter:
     language = "typescript"
     file_extensions = frozenset({".ts"})
+    ignored_directories = frozenset()
 
     def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
         discovery = discover_source_files(path, self.file_extensions)

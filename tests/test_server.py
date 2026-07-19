@@ -5,12 +5,14 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
 from codemble.checks import CheckService, generate_checks
 from codemble.llm.study import StudyService
 from codemble.progress import ProgressStore
 from codemble.server.app import create_app
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
 
 
 def test_graph_and_source_endpoints_are_grounded(tmp_path: Path) -> None:
@@ -98,3 +100,28 @@ def test_entrypoint_api_accepts_only_parser_ranked_candidates(tmp_path: Path) ->
     assert "selected as Home" in beta_checks[0]["prompt"]
     assert client.get("/api/regions/alpha/checks").json()["checks"] == []
     assert client.post("/api/entrypoint", json={"node_id": "missing"}).status_code == 422
+
+
+def test_js_ts_node_and_region_ids_with_paths_round_trip_through_the_api(
+    tmp_path: Path,
+) -> None:
+    graph = JavaScriptTypeScriptAdapter().parse(POLYGLOT_FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+    node_id = "typescript:src/util.ts::helper"
+    region_id = "javascript:src/legacy.js"
+
+    study = client.get(f"/api/node/{node_id}/study")
+    suite = client.get(f"/api/regions/{region_id}/checks")
+
+    assert study.status_code == 200
+    assert study.json()["source"]["file"] == "src/util.ts"
+    assert study.json()["source"]["lines"][0]["text"].startswith("export function")
+    assert suite.status_code == 200
+    check = suite.json()["checks"][0]
+    generated = generate_checks(graph, region_id)[0]
+    submission = client.post(
+        f"/api/regions/{region_id}/checks/{check['id']}",
+        json={"selected_ids": list(generated.answer_ids)},
+    )
+    assert submission.status_code == 200
+    assert submission.json()["correct"] is True

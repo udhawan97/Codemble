@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- Language-neutral `ProjectParser` discovery and graph composition with global
+  Home selection, adapter collision checks, and Python graph-byte compatibility.
+- Official tree-sitter JavaScript/TypeScript adapter for JS, JSX, MJS, CJS, TS,
+  TSX, MTS, and CTS modules, definitions, imports, calls, entrypoint ranking,
+  exact source spans, file hashes, and honest partial-parse recovery.
+
 ## [0.1.0] - 2026-07-19
 
 ### Added

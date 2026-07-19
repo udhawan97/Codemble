@@ -171,6 +171,7 @@ class LanguageAdapter(Protocol):
 
     language: str
     file_extensions: frozenset[str]
+    ignored_directories: frozenset[str]
 
     def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
         """Return the exact root and supported files this adapter will parse."""

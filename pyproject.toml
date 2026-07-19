@@ -12,6 +12,9 @@ authors = [{ name = "Umang Dhawan", email = "umangdhawan97@gmail.com" }]
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115",
+  "tree-sitter>=0.25,<0.27",
+  "tree-sitter-javascript>=0.25,<0.26",
+  "tree-sitter-typescript>=0.23.2,<0.24",
   "uvicorn>=0.30",
 ]
 

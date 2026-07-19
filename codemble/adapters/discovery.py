@@ -25,6 +25,8 @@ class SourceDiscovery:
 def discover_source_files(
     requested: Path,
     extensions: frozenset[str],
+    *,
+    ignored_directories: frozenset[str] = frozenset(),
 ) -> SourceDiscovery:
     """Discover matching files while honoring the project's root ``.gitignore``."""
 
@@ -45,7 +47,9 @@ def discover_source_files(
             directory_name
             for directory_name in directory_names
             if not _ignore_directory(
-                (current_path / directory_name).relative_to(normalized), ignore_rules
+                (current_path / directory_name).relative_to(normalized),
+                ignore_rules,
+                ignored_directories,
             )
         )
         for file_name in sorted(file_names):
@@ -74,10 +78,17 @@ def _load_gitignore(root: Path) -> tuple[tuple[str, bool], ...]:
     return tuple(rules)
 
 
-def _ignore_directory(relative: Path, rules: tuple[tuple[str, bool], ...]) -> bool:
+def _ignore_directory(
+    relative: Path,
+    rules: tuple[tuple[str, bool], ...],
+    ignored_directories: frozenset[str],
+) -> bool:
     if any(part.startswith(".") for part in relative.parts):
         return True
-    if any(part in _IGNORED_DIRECTORIES for part in relative.parts):
+    if any(
+        part in _IGNORED_DIRECTORIES or part in ignored_directories
+        for part in relative.parts
+    ):
         return True
     return _matches_gitignore(relative, True, rules)
 

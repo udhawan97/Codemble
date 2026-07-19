@@ -21,8 +21,11 @@ class ProjectParser:
     def __init__(self, adapters: Iterable[LanguageAdapter] | None = None) -> None:
         if adapters is None:
             from codemble.adapters.python_ast import PythonAstAdapter
+            from codemble.adapters.typescript_tree_sitter import (
+                JavaScriptTypeScriptAdapter,
+            )
 
-            adapters = (PythonAstAdapter(),)
+            adapters = (PythonAstAdapter(), JavaScriptTypeScriptAdapter())
         self._adapters = tuple(adapters)
         if not self._adapters:
             raise ValueError("ProjectParser requires at least one language adapter")
@@ -39,20 +42,26 @@ class ProjectParser:
     def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
         """Return all files accepted by the registered language adapters."""
 
-        extensions = frozenset().union(
-            *(adapter.file_extensions for adapter in self._adapters)
-        )
+        extensions = frozenset().union(*(adapter.file_extensions for adapter in self._adapters))
         try:
-            discovery = discover_source_files(path, extensions)
+            discoveries = tuple(
+                discover_source_files(
+                    path,
+                    adapter.file_extensions,
+                    ignored_directories=adapter.ignored_directories,
+                )
+                for adapter in self._adapters
+            )
         except SourceDiscoveryError as error:
             raise ProjectParseError(str(error)) from error
-        if not discovery.files:
+        files = tuple(sorted({file for discovery in discoveries for file in discovery.files}))
+        if not files:
             expected = ", ".join(sorted(extensions))
             raise ProjectParseError(
                 f"no supported source files found under: {path.expanduser().resolve()} "
                 f"(expected {expected})"
             )
-        return discovery.root, discovery.files
+        return discoveries[0].root, files
 
     def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
         """Parse every detected language and return one deterministic graph."""
