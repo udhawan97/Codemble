@@ -21,7 +21,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   the star chart. It filters a view of the graph without changing coordinates,
   progress, source truth, uncertainty, or cross-language navigation.
 - Phase 1 mixed-project fixtures, pure frontend focus/chart contracts, packaged
-  production SPA, public documentation, and a reproducible `v0.2.0` wheel.
+  production SPA, public documentation, and a versioned `v0.2.0` wheel.
 
 ## [0.1.0] - 2026-07-19
 
