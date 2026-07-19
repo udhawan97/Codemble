@@ -9,7 +9,7 @@ from pathlib import Path
 
 import uvicorn
 
-from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.adapters.project import ProjectParser
 from codemble.server.app import create_app
 
 
@@ -31,7 +31,7 @@ def serve_project(
 ) -> None:
     """Parse ``path`` and block while serving its local Codemble app."""
 
-    graph = PythonAstAdapter().parse(path, entrypoint=entrypoint)
+    graph = ProjectParser().parse(path, entrypoint=entrypoint)
     selected_port = port or available_port(host)
     url = f"http://{host}:{selected_port}"
     app = create_app(graph)

@@ -143,12 +143,13 @@ The audience cannot detect when the tool is wrong. Therefore:
 
 ## Roadmap — NOW / NEXT / LATER
 
-**NOW — Phase 0 acceptance, Python only.** v0.1.0 implements the M1–M6
-technical loop; 3–5 unaided learner runs remain before Phase 1 is promoted.
+**NOW — Phase 1 TS/JS delivery.** Build the tree-sitter JavaScript/TypeScript
+adapter, parser-anchored language lens, and polyglot language focus in M7–M10.
+The v0.1.0 Python learner-acceptance issue stays open in parallel; promotion
+does not retroactively claim those external runs passed.
 
-**NEXT — Phases 1–2 (months ~3–6).** Phase 1: TS/JS tree-sitter adapter,
-language filter/switch, TS/JS idiom lens. Phase 2: Go/Rust/Java adapters, LOD
-culling + clustering for larger repos.
+**NEXT — Phase 2 (months ~3–6).** Go/Rust/Java adapters, LOD culling +
+clustering for larger repos.
 
 **LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
 cloud touch). Extra quest types: trace-a-request, fix-the-failing-test.
@@ -156,11 +157,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M6 human acceptance** · Last updated: 2026-07-19 · Session
-note: M6 technical scope and v0.1.0 release candidate complete — ambiguous Home,
-300-file scoping, Unchartable partial source, packaged SPA, isolated-wheel run,
-real demo GIF, desktop/320 px QA, and all automated gates are green. The 3–5
-external learner runs remain open; Phase 1 is not promoted.
+**Current milestone: M7 language orchestration** · Last updated: 2026-07-18 ·
+Session note: the owner explicitly promoted Phase 1 implementation while M6
+external learner evidence continues in issue #13. The language-neutral project
+parser is the first wave; no Phase 0 acceptance evidence is being inferred.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -230,6 +230,49 @@ restart; editing one file re-dims only that region.
 **Acceptance:** a stranger runs it on their own AI-built project without help
 and lights up at least one system.
 
+### M7 — Language orchestration (Phase 1 wave 1)
+- [x] Make `LanguageAdapter` discovery and file ownership explicit
+- [x] Add one language-neutral `ProjectParser` interface for discovery, scale
+      guarding, graph composition, Home selection, and collision rejection
+- [x] Route CLI and local server through `ProjectParser` without changing the
+      Python-only graph bytes
+
+**Acceptance:** the existing Python fixture is byte-identical through the new
+interface; injected second-adapter tests prove deterministic mixed graph merge,
+global Home ambiguity, and fail-closed node-ID collision handling.
+
+### M8 — JavaScript/TypeScript structure (Phase 1 wave 2)
+- [ ] Add official tree-sitter runtime + JS/TS/TSX grammar wheels
+- [ ] Parse JS/JSX/MJS/CJS/TS/TSX/MTS/CTS modules, functions, classes, methods,
+      imports/exports, calls, source spans, file hashes, and partial syntax
+- [ ] Resolve same-project JS/TS imports and statically provable calls; label
+      all approximate relationships as possible
+- [ ] Rank parser-proven JS/TS entrypoints and compose mixed Python+TS projects
+
+**Acceptance:** fixture assertions hand-check exact structures/edges/spans;
+syntax errors remain visible and partial; repeated mixed parses are byte-identical.
+
+### M9 — JavaScript/TypeScript language lens (Phase 1 wave 3)
+- [ ] Detect JS/TS idioms only from tree-sitter nodes at exact source spans
+- [ ] Add learner-facing notes for async/await, arrow functions, destructuring,
+      optional chaining, nullish coalescing, modules, types/interfaces, generics,
+      and JSX where parser evidence exists
+- [ ] Keep star-chart concepts language-tagged and collision-free
+
+**Acceptance:** every TS/JS Lens note maps to a parser annotation and real
+`file:line`; malformed source yields no invented concepts.
+
+### M10 — Polyglot focus + Phase 1 tester release (Phase 1 wave 4)
+- [ ] Add an accessible language focus control for mixed galaxies without
+      changing graph truth, deterministic coordinates, or progress
+- [ ] Verify focus behavior at galaxy/system/study levels and at 320 px
+- [ ] Update README, public docs, packaged SPA, changelog, and release evidence
+- [ ] Publish and verify the Phase 1 tester release from the exact `main` tag
+
+**Acceptance:** Python-only behavior remains intact; a mixed fixture can focus
+Python, JavaScript, or TypeScript without hiding uncertainty; source install,
+wheel install, web build, docs build, and downloaded release asset all pass.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
@@ -259,6 +302,8 @@ and lights up at least one system.
 | 2026-07-19 | Graph schema 3 separates ranked entrypoint candidates from selected Home; ambiguous rank-zero candidates require the learner or `--entrypoint` | Parser rank is evidence, but choosing between equal candidates is a user decision and must not be guessed |
 | 2026-07-19 | Commit the production SPA under `codemble/web_dist` and bundle it in the wheel | `pipx`/`uvx` Git installs must run without Node or a source checkout; the Vite build and isolated wheel smoke test keep the bundle honest |
 | 2026-07-19 | v0.1.0 is a tester release; keep Phase 1 out of NOW until 3–5 unaided learner runs pass | Technical completion cannot substitute for the human first-run acceptance criterion |
+| 2026-07-18 | Owner explicitly promoted Phase 1 implementation while v0.1.0 learner acceptance continues in issue #13 | Build authorization is explicit; keeping the issue open prevents the promotion from fabricating human evidence |
+| 2026-07-18 | `ProjectParser` is the one project-level interface; language adapters own file syntax and node IDs, while composition owns global Home and collision checks | The second adapter makes the seam real without leaking registry or language rules into CLI, server, graph, checks, or UI |
 
 ## Non-Goals — do NOT build (point here when asked)
 
