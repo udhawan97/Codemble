@@ -757,6 +757,67 @@ img {
   font-size: var(--cm-text-sm);
 }
 
+/* Setup is a real sequence, so it is numbered like the contract plate.
+   Ruri throughout: these are actions, never a claim of understanding. */
+
+.steps {
+  list-style: none;
+  margin: var(--cm-space-md) 0 0;
+  padding: 0;
+  counter-reset: step;
+  display: grid;
+  gap: var(--cm-space-sm);
+}
+
+.steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--cm-space-sm);
+  padding-top: var(--cm-space-sm);
+  border-top: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.steps li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.step-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--cm-orbit);
+}
+
+.step-body {
+  min-width: 0;
+}
+
+.step-title {
+  margin: 0;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-base);
+  color: var(--cm-ink);
+}
+
+.step-title::before {
+  content: counter(step, decimal-leading-zero) " · ";
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  color: var(--cm-orbit);
+}
+
+.step-note {
+  margin: var(--cm-space-2xs) 0 0;
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.steps .cmd-block {
+  margin-top: var(--cm-space-xs);
+}
+
 /* --- Ft5 statement footer ------------------------------------------------ */
 
 .foot {

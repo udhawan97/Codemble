@@ -201,3 +201,73 @@ pre {
     transition-duration: 0.01ms;
   }
 }
+
+/* --- Ordered setup steps (install → run) --------------------------------- */
+/* A real sequence, so it is numbered; ruri marks it because it is an action. */
+
+.cm-steps {
+  list-style: none;
+  margin: var(--cm-space-lg) 0;
+  padding: 0;
+  counter-reset: cm-step;
+  display: grid;
+  gap: var(--cm-space-sm);
+}
+
+.cm-steps > li {
+  counter-increment: cm-step;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+}
+
+.cm-step-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--cm-orbit);
+  flex: none;
+}
+
+.cm-step-title {
+  margin: 0;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  line-height: 1.25;
+}
+
+.cm-step-title::before {
+  content: counter(cm-step, decimal-leading-zero) " · ";
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: 0.8em;
+}
+
+.cm-step-note {
+  margin: var(--cm-space-2xs) 0 0;
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.cm-steps pre.cm-step-cmd {
+  margin: var(--cm-space-xs) 0 0;
+  padding: var(--cm-space-2xs) var(--cm-space-xs);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground);
+  overflow-x: auto;
+}
+
+.cm-steps pre.cm-step-cmd code {
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+  color: var(--cm-ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  white-space: pre;
+}

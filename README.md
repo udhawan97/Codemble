@@ -45,9 +45,31 @@
 
 ## Quick start
 
+Two steps. The first is once per machine; the second is how you run Codemble
+from then on.
+
+| | Step | Command |
+| :---: | --- | --- |
+| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/install.svg" width="22" height="22" alt=""> | **1 · Install uv** — the runner that fetches Codemble on demand | `brew install uv` |
+| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/asterism.svg" width="22" height="22" alt=""> | **2 · Chart your project** — nothing to install, nothing left behind | `uvx codemble` |
+
+<details>
+<summary><strong>Installing uv without Homebrew</strong></summary>
+
 ```bash
-uvx codemble            # or: pipx install codemble && codemble
+# macOS · Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
+
+Already have `pipx`? You can skip uv entirely: `pipx install codemble`, then run
+`codemble`. Plain `pip install codemble` works too. uv is the recommended path
+because `uvx` runs the current release without adding anything to your system
+Python.
+
+</details>
 
 Codemble opens your browser — pick your project folder there. To skip the
 picker, pass a path: `codemble ./your-ai-built-project`.

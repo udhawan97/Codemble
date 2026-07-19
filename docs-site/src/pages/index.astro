@@ -63,6 +63,22 @@ const contract = [
 
 const langs = ["Python", "JavaScript", "TypeScript", "Mixed projects"];
 const install = "uvx codemble";
+
+// A real sequence: uv comes first, and the atlas follows.
+const steps = [
+  {
+    title: "Install uv",
+    note: "Once per machine. It fetches Codemble on demand.",
+    cmd: "brew install uv",
+    icon: `<path d="M12 3.5v9.5"/><path d="M8.25 9.5 12 13.25 15.75 9.5"/><path d="M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>`,
+  },
+  {
+    title: "Chart your project",
+    note: "Every time. Nothing is left behind.",
+    cmd: install,
+    icon: `<path d="M5 17.25 11 8.25l7.5 2.75"/><circle cx="5" cy="17.25" r="1.6"/><circle cx="11" cy="8.25" r="1.6"/><circle cx="18.5" cy="11" r="1.6"/>`,
+  },
+];
 ---
 
 <!doctype html>
@@ -182,7 +198,9 @@ const install = "uvx codemble";
             </button>
           </div>
           <p class="hero-note">
-            Python 3.11+ · opens your browser to pick a project
+            Needs <a href="https://docs.astral.sh/uv/">uv</a> — <code
+              >brew install uv</code
+            > · Python 3.11+ · opens your browser to pick a project
           </p>
         </div>
       </section>
@@ -310,15 +328,44 @@ const install = "uvx codemble";
 
         <div class="install" data-reveal>
           <h3>Run it on your own project</h3>
-          <div class="cmd cmd-block">
-            <code>{install}</code>
-            <button type="button" data-copy={install} class="cmd-copy">
-              <span data-copy-label>Copy</span>
-            </button>
-          </div>
+          <ol class="steps">
+            {
+              steps.map((step) => (
+                <li>
+                  <svg
+                    class="step-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <Fragment set:html={step.icon} />
+                  </svg>
+                  <div class="step-body">
+                    <p class="step-title">{step.title}</p>
+                    <p class="step-note">{step.note}</p>
+                    <div class="cmd cmd-block">
+                      <code>{step.cmd}</code>
+                      <button type="button" data-copy={step.cmd} class="cmd-copy">
+                        <span data-copy-label>Copy</span>
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))
+            }
+          </ol>
           <p class="install-note">
             Codemble opens your browser — pick your project folder there, or
-            skip the picker with <code>codemble ./your-project</code>.
+            skip the picker with <code>codemble ./your-project</code>. No
+            Homebrew? Use the
+            <a href="https://docs.astral.sh/uv/getting-started/installation/">
+              uv installer
+            </a>. Prefer a permanent install? <code>pipx install codemble</code>
+            needs no uv.
           </p>
           <p class="install-note">
             Your code is parsed locally. The only network calls are the LLM

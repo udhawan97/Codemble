@@ -12,15 +12,44 @@ projects. Human first-run evidence is still being collected separately.
 
 - **Python 3.11+**
 - A modern browser with WebGL (the galaxy is rendered locally in your browser)
-- `pipx` for a persistent install, or `uv` for an isolated one-off run
+- **[uv](https://docs.astral.sh/uv/)** — install it first; it fetches and runs
+  Codemble without touching your system Python
 
 An Anthropic or OpenAI key is optional and enables only explanation prose.
 
 ## Install and run
 
+<ol class="cm-steps">
+  <li>
+    <svg class="cm-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"/><path d="M8.25 9.5 12 13.25 15.75 9.5"/><path d="M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/></svg>
+    <div class="cm-step-body">
+      <p class="cm-step-title">Install uv</p>
+      <p class="cm-step-note">Once per machine.</p>
+      <pre class="cm-step-cmd"><code>brew install uv</code></pre>
+    </div>
+  </li>
+  <li>
+    <svg class="cm-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17.25 11 8.25l7.5 2.75"/><circle cx="5" cy="17.25" r="1.6"/><circle cx="11" cy="8.25" r="1.6"/><circle cx="18.5" cy="11" r="1.6"/></svg>
+    <div class="cm-step-body">
+      <p class="cm-step-title">Chart your project</p>
+      <p class="cm-step-note">Every time you want the atlas. Nothing is left behind.</p>
+      <pre class="cm-step-cmd"><code>uvx codemble</code></pre>
+    </div>
+  </li>
+</ol>
+
+### Installing uv without Homebrew
+
 ```bash
-uvx codemble            # or: pipx install codemble && codemble
+# macOS · Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
+
+Prefer a permanent install? `pipx install codemble` (then run `codemble`) and
+plain `pip install codemble` both work and need no uv.
 
 Codemble opens your browser to an in-app picker — browse your
 home folders or reopen a recent project, no path typing required. To skip the

@@ -9,9 +9,15 @@ without maintainer help, light one system and confirm it stays lit after restart
 
 ## Install
 
+Install [uv](https://docs.astral.sh/uv/) once, then run Codemble through it:
+
 ```bash
-uvx codemble            # or: pipx install codemble && codemble
+brew install uv         # once per machine; or the installer at docs.astral.sh/uv
+uvx codemble
 ```
+
+Prefer a permanent install? `pipx install codemble`, then run `codemble` — no
+uv needed.
 
 Codemble opens your browser to an in-app picker — pick your project folder
 there, or pass one directly: `codemble ./path-to-your-project`.
