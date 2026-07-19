@@ -158,9 +158,9 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-19 ·
-Session note: M7–M10 are merged and v0.2.0 is published from exact-main commit
-`b6b7776`; CI, live docs, checksums, downloaded wheel install/parse, and isolated
-tag installs pass while issue #13 remains open for human evidence.
+Session note: architecture-deepening maintenance is in progress after the verified
+v0.2.0 release; graph finalization is centralized while issue #13 remains open
+for human tester evidence.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -273,6 +273,17 @@ syntax errors remain visible and partial; repeated mixed parses are byte-identic
 Python, JavaScript, or TypeScript without hiding uncertainty; source install,
 wheel install, web build, docs build, and downloaded release asset all pass.
 
+### M11 — Architecture deepening maintenance
+- [x] Centralize canonical graph finalization across language adapters and project composition
+- [ ] Deepen `ProjectParser` project intake and reuse discovered file evidence
+- [ ] Move learner-session transitions behind one testable frontend interface
+- [ ] Reuse one internal JS/TS syntax-evidence index across parser passes
+
+**Acceptance:** existing Python and mixed graph bytes stay deterministic; project
+intake avoids repeated discovery; learner transitions are tested above local HTTP;
+JS/TS certainty and concept evidence remain parser-proven through the unchanged
+`LanguageAdapter` interface.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
@@ -308,6 +319,7 @@ wheel install, web build, docs build, and downloaded release asset all pass.
 | 2026-07-18 | Graph schema 4 adds an explicit language to every concept annotation; the star chart keys concepts by language plus concept ID | Python and JS/TS may share names such as async/await, but their evidence and learning progress must never collide silently |
 | 2026-07-19 | Language focus is a frontend projection over the immutable mixed graph, not a parser mode or saved preference | Filtering must never mutate coordinates, progress, uncertainty, or parser truth; cross-language navigation remains available |
 | 2026-07-19 | v0.2.0 is tagged from exact-main commit `b6b7776` with a wheel and SHA256SUMS release asset | A release is complete only after CI, live docs, fresh download, checksum, isolated install, and mixed parse all pass |
+| 2026-07-19 | Canonical graph finalization is one graph interface shared by adapters and project composition | Home selection, edge deduplication, centrality, annotation ordering, and layout are language-neutral truth and must not drift per adapter |
 
 ## Non-Goals — do NOT build (point here when asked)
 

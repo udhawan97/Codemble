@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Iterable
@@ -20,7 +20,7 @@ from codemble.adapters.base import (
     Node,
 )
 from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
-from codemble.graph.layout import layout_graph
+from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 _JAVASCRIPT_EXTENSIONS = frozenset({".js", ".jsx", ".mjs", ".cjs"})
 _TYPESCRIPT_EXTENSIONS = frozenset({".ts", ".tsx", ".mts", ".cts"})
@@ -163,66 +163,26 @@ class JavaScriptTypeScriptAdapter:
             bindings_by_module,
         )
         all_edges = [*import_edges, *call_edges]
-        indegree = Counter(
-            edge.dst
-            for edge in all_edges
-            if edge.kind == "call" and not edge.external and edge.dst in node_by_id
-        )
-        nodes = [replace(node, centrality=indegree[node.id]) for node in nodes]
-        node_by_id = {node.id: node for node in nodes}
         annotations = _concept_annotations(parsed_files, definitions, node_by_id)
-
-        candidates = tuple(
-            node.id
-            for node in sorted(
-                (node for node in nodes if node.entrypoint_rank is not None),
-                key=lambda node: (node.entrypoint_rank, node.id),  # type: ignore[arg-type]
-            )
+        draft = Graph(
+            nodes=tuple(nodes),
+            edges=tuple(all_edges),
+            entrypoint_candidates=(),
+            project_root=str(project_root),
+            file_hashes={
+                parsed.relative_path: parsed.digest for parsed in parsed_files
+            },
+            concept_annotations=annotations,
+            partial_files=tuple(
+                parsed.relative_path
+                for parsed in parsed_files
+                if parsed.tree.root_node.has_error
+            ),
         )
-        if entrypoint is not None and entrypoint not in candidates:
-            choices = ", ".join(candidates) or "none"
-            raise JavaScriptTypeScriptParseError(
-                f"entrypoint is not parser-ranked: {entrypoint} (candidates: {choices})"
-            )
-        rank_zero = [
-            candidate
-            for candidate in candidates
-            if node_by_id[candidate].entrypoint_rank == 0
-        ]
-        selected_entrypoint = entrypoint or (
-            rank_zero[0] if len(rank_zero) == 1 else None
-        )
-
-        return layout_graph(
-            Graph(
-                nodes=tuple(sorted(nodes, key=lambda node: node.id)),
-                edges=tuple(
-                    sorted(
-                        set(all_edges),
-                        key=lambda edge: (
-                            edge.src,
-                            edge.dst,
-                            edge.kind,
-                            edge.lineno,
-                            edge.certain,
-                            edge.external,
-                        ),
-                    )
-                ),
-                entrypoint_candidates=candidates,
-                project_root=str(project_root),
-                file_hashes={
-                    parsed.relative_path: parsed.digest for parsed in parsed_files
-                },
-                selected_entrypoint=selected_entrypoint,
-                concept_annotations=annotations,
-                partial_files=tuple(
-                    parsed.relative_path
-                    for parsed in parsed_files
-                    if parsed.tree.root_node.has_error
-                ),
-            )
-        )
+        try:
+            return finalize_graph(draft, entrypoint=entrypoint)
+        except GraphFinalizationError as error:
+            raise JavaScriptTypeScriptParseError(str(error)) from error
 
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""

@@ -6,13 +6,13 @@ import ast
 import builtins
 import hashlib
 import tokenize
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 
 from codemble.adapters.base import AdapterParseError, ConceptAnnotation, Edge, Graph, Node
 from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
-from codemble.graph.layout import layout_graph
+from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 _APP_FACTORIES = {"FastAPI", "Flask", "Typer"}
 _BUILTIN_NAMES = frozenset(dir(builtins))
@@ -391,13 +391,6 @@ class PythonAstAdapter:
                 )
 
         all_edges = [*import_edges, *call_edges]
-        indegree = Counter(
-            edge.dst
-            for edge in all_edges
-            if edge.kind == "call" and not edge.external and edge.dst in node_by_id
-        )
-        nodes = [replace(node, centrality=indegree[node.id]) for node in nodes]
-        node_by_id = {node.id: node for node in nodes}
         annotations: list[ConceptAnnotation] = []
         for parsed in parsed_files:
             if parsed.tree is None:
@@ -415,53 +408,21 @@ class PythonAstAdapter:
                     ].source,
                 )
             )
-        candidates = tuple(
-            node.id
-            for node in sorted(
-                (node for node in nodes if node.entrypoint_rank is not None),
-                key=lambda node: (node.entrypoint_rank, node.id),  # type: ignore[arg-type]
-            )
-        )
-        if entrypoint is not None and entrypoint not in candidates:
-            choices = ", ".join(candidates) or "none"
-            raise PythonParseError(
-                f"entrypoint is not parser-ranked: {entrypoint} (candidates: {choices})"
-            )
-        rank_zero = [
-            candidate
-            for candidate in candidates
-            if node_by_id[candidate].entrypoint_rank == 0
-        ]
-        selected_entrypoint = entrypoint or (rank_zero[0] if len(rank_zero) == 1 else None)
-        return layout_graph(Graph(
-            nodes=tuple(sorted(nodes, key=lambda node: node.id)),
-            edges=tuple(
-                sorted(
-                    all_edges,
-                    key=lambda edge: (
-                        edge.src,
-                        edge.dst,
-                        edge.kind,
-                        edge.lineno,
-                        edge.certain,
-                        edge.external,
-                    ),
-                )
-            ),
-            entrypoint_candidates=candidates,
+        draft = Graph(
+            nodes=tuple(nodes),
+            edges=tuple(all_edges),
+            entrypoint_candidates=(),
             project_root=str(project_root),
             file_hashes={parsed.relative_path: parsed.digest for parsed in parsed_files},
-            selected_entrypoint=selected_entrypoint,
-            concept_annotations=tuple(
-                sorted(
-                    set(annotations),
-                    key=lambda item: (item.node_id, item.lineno, item.concept, item.end_lineno),
-                )
-            ),
+            concept_annotations=tuple(annotations),
             partial_files=tuple(
                 parsed.relative_path for parsed in parsed_files if parsed.tree is None
             ),
-        ))
+        )
+        try:
+            return finalize_graph(draft, entrypoint=entrypoint)
+        except GraphFinalizationError as error:
+            raise PythonParseError(str(error)) from error
 
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only AST-proven concepts owned by ``node``."""
