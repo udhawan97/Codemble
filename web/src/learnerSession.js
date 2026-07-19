@@ -411,6 +411,37 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ node_id: nodeId }),
       });
     },
+    loadPickerState(options = {}) {
+      return request("/api/picker/state", "Picker state", options);
+    },
+    browsePicker(path, options = {}) {
+      const query = path ? `?path=${encodeURIComponent(path)}` : "";
+      return request(`/api/picker/browse${query}`, "Folder listing", options);
+    },
+    loadRecents(options = {}) {
+      return request("/api/picker/recents", "Recent projects", options);
+    },
+    async selectProject(path, options = {}) {
+      const response = await fetchImplementation("/api/picker/select", {
+        ...options,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (response.ok) return { state: "ready" };
+      const detail = payload?.detail;
+      if (detail && typeof detail === "object" && detail.reason === "scale") {
+        return { state: "scale", ...detail };
+      }
+      return {
+        state: "error",
+        detail:
+          typeof detail === "string"
+            ? detail
+            : `Project selection returned ${response.status}.`,
+      };
+    },
   });
 }
 
@@ -420,9 +451,11 @@ export function createInMemoryLearnerSessionAdapter({
   checks = {},
   submissions = {},
   entrypoints = {},
+  picker = null,
 }) {
   let currentGraph = graph;
   const currentChecks = new Map(Object.entries(checks));
+  const pickerPhase = picker ? { ...picker, selected: false } : null;
   return Object.freeze({
     async loadGraph(options = {}) {
       throwIfAborted(options.signal);
@@ -454,6 +487,26 @@ export function createInMemoryLearnerSessionAdapter({
       throwIfAborted(options.signal);
       currentGraph = requiredFixture(entrypoints, nodeId, "entrypoint graph");
       return currentGraph;
+    },
+    async loadPickerState(options = {}) {
+      throwIfAborted(options.signal);
+      return pickerPhase && !pickerPhase.selected
+        ? { state: "unpicked" }
+        : { state: "ready" };
+    },
+    async browsePicker(path, options = {}) {
+      throwIfAborted(options.signal);
+      return requiredFixture(pickerPhase.browse, path ?? "", "picker listing");
+    },
+    async loadRecents(options = {}) {
+      throwIfAborted(options.signal);
+      return { recents: pickerPhase.recents ?? [] };
+    },
+    async selectProject(path, options = {}) {
+      throwIfAborted(options.signal);
+      const result = requiredFixture(pickerPhase.selections, path, "picker selection");
+      if (result.state === "ready") pickerPhase.selected = true;
+      return result;
     },
   });
 }

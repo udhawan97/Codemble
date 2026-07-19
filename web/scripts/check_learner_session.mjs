@@ -218,6 +218,40 @@ assert.equal(httpCalls[4][1].body, JSON.stringify({ node_id: "node/id" }));
 
 console.log("learner-session contracts passed");
 
+// HTTP picker adapter: URLs, payloads, and non-throwing select results.
+const pickerHttpCalls = [];
+const pickerFetch = async (url, options = {}) => {
+  pickerHttpCalls.push({ url, options });
+  if (url === "/api/picker/state") {
+    return { ok: true, status: 200, json: async () => ({ state: "unpicked" }) };
+  }
+  if (url === "/api/picker/select") {
+    return {
+      ok: false,
+      status: 409,
+      json: async () => ({
+        detail: {
+          reason: "scale",
+          file_count: 420,
+          scale_cap: 300,
+          root: "/home/u/big",
+          suggestions: [{ path: "api", file_count: 300 }],
+        },
+      }),
+    };
+  }
+  throw new Error(`Unexpected picker URL: ${url}`);
+};
+const httpPicker = createHttpLearnerSessionAdapter(pickerFetch);
+assert.deepEqual(await httpPicker.loadPickerState(), { state: "unpicked" });
+const scaleResult = await httpPicker.selectProject("/home/u/big");
+assert.equal(scaleResult.state, "scale");
+assert.equal(scaleResult.file_count, 420);
+assert.equal(
+  JSON.parse(pickerHttpCalls.at(-1).options.body).path,
+  "/home/u/big",
+);
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",
