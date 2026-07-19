@@ -139,6 +139,24 @@ assert.equal(modeSession.getSnapshot().mode, "easy", "SET_MODE updates the snaps
 assert.equal(modeSession.getSnapshot().modeChosen, true, "choosing a mode records the choice");
 modeSession.dispose();
 
+// A backend returning garbage must never poison the snapshot with a mode
+// the renderer doesn't understand — design contract says silently keep easy.
+const garbageModeSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph }),
+    async loadMode() {
+      return { mode: "not-a-real-mode" };
+    },
+  },
+});
+await garbageModeSession.start();
+assert.equal(
+  garbageModeSession.getSnapshot().mode,
+  "easy",
+  "garbage mode from the backend is ignored, not stored",
+);
+garbageModeSession.dispose();
+
 let resolveLateStudy;
 const lateStudy = new Promise((resolve) => {
   resolveLateStudy = resolve;

@@ -120,7 +120,8 @@ export function createLearnerSession({
     // and a failure here must never block the galaxy that just loaded above.
     try {
       const stored = await adapter.loadMode({ signal: controller.signal });
-      if (requestLifecycle === lifecycle && stored?.mode) {
+      const validMode = stored?.mode === "easy" || stored?.mode === "expert";
+      if (requestLifecycle === lifecycle && validMode) {
         commit({ mode: stored.mode, modeChosen: stored.chosen === true });
       }
     } catch {
@@ -541,10 +542,10 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ node_id: nodeId }),
       });
     },
-    async loadMode(options = {}) {
+    loadMode(options = {}) {
       return request("/api/mode", "Mode request", options);
     },
-    async saveMode(mode, options = {}) {
+    saveMode(mode, options = {}) {
       return request("/api/mode", "Mode update", {
         ...options,
         method: "PUT",
