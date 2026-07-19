@@ -1303,3 +1303,109 @@ button:focus-visible,
   50% { opacity: 1; }
   to { opacity: 0; }
 }
+
+.picker-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cm-space-lg);
+  padding: var(--cm-space-2xl) var(--cm-space-xl);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.picker-wordmark {
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-sm);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--cm-ink-3);
+}
+
+.picker-subtitle {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.picker-recents ul,
+.picker-browser ul {
+  list-style: none;
+  margin: var(--cm-space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cm-space-2xs);
+}
+
+.picker-recents button,
+.picker-browser ul button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-xs) var(--cm-space-sm);
+  background: var(--cm-ground-2);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-recents button:hover,
+.picker-recents button:focus-visible,
+.picker-browser ul button:hover,
+.picker-browser ul button:focus-visible {
+  border-color: var(--cm-orbit);
+}
+
+.picker-recents button {
+  flex-wrap: wrap;
+}
+
+.picker-recent-path {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.picker-recent-lit {
+  color: var(--cm-star);
+  white-space: nowrap;
+}
+
+.picker-path {
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+  color: var(--cm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.picker-scale,
+.picker-error {
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  padding: var(--cm-space-sm);
+  font-size: var(--cm-text-sm);
+}
+
+.picker-error {
+  color: var(--cm-error);
+}
+
+.picker-select {
+  align-self: flex-start;
+  padding: var(--cm-space-xs) var(--cm-space-lg);
+  background: var(--cm-orbit-low);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink);
+  font-size: var(--cm-text-base);
+  cursor: pointer;
+}
+
+.picker-select:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

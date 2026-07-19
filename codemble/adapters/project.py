@@ -48,6 +48,18 @@ class ProjectIntake:
             (),
         )
 
+    def scope_counts(self) -> tuple[tuple[str, int], ...]:
+        """Count supported files per top-level directory, busiest first."""
+
+        counts: dict[str, int] = {}
+        for file in self.files:
+            relative = file.relative_to(self.root)
+            directory = relative.parts[0] if len(relative.parts) > 1 else "."
+            counts[directory] = counts.get(directory, 0) + 1
+        return tuple(
+            sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        )
+
 
 class ProjectParser:
     """Discover supported languages and compose their graphs behind one interface."""

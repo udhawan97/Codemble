@@ -10,7 +10,7 @@ from pathlib import Path
 import uvicorn
 
 from codemble.adapters.project import ProjectIntake, ProjectParser
-from codemble.server.app import create_app
+from codemble.server.app import PickerConfig, create_app
 
 
 def available_port(host: str = "127.0.0.1") -> int:
@@ -34,7 +34,7 @@ def serve_project(
     graph = ProjectParser().parse(path, entrypoint=entrypoint)
     selected_port = port or available_port(host)
     url = f"http://{host}:{selected_port}"
-    app = create_app(graph)
+    app = create_app(graph, allowed_hosts=("127.0.0.1", "localhost", "testserver", host))
     print(
         f"Codemble mapped {len(graph.nodes)} nodes across {len(graph.regions)} systems.\n"
         f"Open {url}"
@@ -44,4 +44,25 @@ def serve_project(
     uvicorn.run(app, host=host, port=selected_port, log_level="warning")
 
 
-__all__ = ["available_port", "serve_project"]
+def serve_picker(
+    *,
+    host: str = "127.0.0.1",
+    port: int = 0,
+    open_browser: bool = True,
+    entrypoint: str | None = None,
+) -> None:
+    """Serve the picker-first app so the learner selects a project in the UI."""
+
+    selected_port = port or available_port(host)
+    url = f"http://{host}:{selected_port}"
+    app = create_app(
+        picker=PickerConfig(browse_root=Path.home(), entrypoint=entrypoint),
+        allowed_hosts=("127.0.0.1", "localhost", "testserver", host),
+    )
+    print(f"Codemble is ready — pick your project folder in the browser.\nOpen {url}")
+    if open_browser:
+        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    uvicorn.run(app, host=host, port=selected_port, log_level="warning")
+
+
+__all__ = ["available_port", "serve_picker", "serve_project"]

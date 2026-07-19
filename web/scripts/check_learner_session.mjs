@@ -218,6 +218,169 @@ assert.equal(httpCalls[4][1].body, JSON.stringify({ node_id: "node/id" }));
 
 console.log("learner-session contracts passed");
 
+// HTTP picker adapter: URLs, payloads, and non-throwing select results.
+const pickerHttpCalls = [];
+const pickerFetch = async (url, options = {}) => {
+  pickerHttpCalls.push({ url, options });
+  if (url === "/api/picker/state") {
+    return { ok: true, status: 200, json: async () => ({ state: "unpicked" }) };
+  }
+  if (url === "/api/picker/select") {
+    return {
+      ok: false,
+      status: 409,
+      json: async () => ({
+        detail: {
+          reason: "scale",
+          file_count: 420,
+          scale_cap: 300,
+          root: "/home/u/big",
+          suggestions: [{ path: "api", file_count: 300 }],
+        },
+      }),
+    };
+  }
+  throw new Error(`Unexpected picker URL: ${url}`);
+};
+const httpPicker = createHttpLearnerSessionAdapter(pickerFetch);
+assert.deepEqual(await httpPicker.loadPickerState(), { state: "unpicked" });
+const scaleResult = await httpPicker.selectProject("/home/u/big");
+assert.equal(scaleResult.state, "scale");
+assert.equal(scaleResult.file_count, 420);
+assert.equal(
+  JSON.parse(pickerHttpCalls.at(-1).options.body).path,
+  "/home/u/big",
+);
+
+// In-memory picker adapter: fixture-driven browse/recents/select and state flip.
+const rootListing = {
+  path: "/home/u",
+  parent: null,
+  entries: [{ name: "big", path: "/home/u/big", is_dir: true }],
+};
+const bigListing = { path: "/home/u/big", parent: "/home/u", entries: [] };
+const memoryPicker = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: { "": rootListing, "/home/u/big": bigListing },
+    recents: [{ project_root: "/home/u/big", understood_count: 2 }],
+    selections: { "/home/u/big": { state: "ready" } },
+  },
+});
+assert.deepEqual(await memoryPicker.loadPickerState(), { state: "unpicked" });
+assert.equal(await memoryPicker.browsePicker(null), rootListing);
+assert.equal(await memoryPicker.browsePicker("/home/u/big"), bigListing);
+assert.deepEqual(await memoryPicker.loadRecents(), {
+  recents: [{ project_root: "/home/u/big", understood_count: 2 }],
+});
+assert.deepEqual(await memoryPicker.selectProject("/home/u/big"), { state: "ready" });
+assert.deepEqual(await memoryPicker.loadPickerState(), { state: "ready" });
+assert.deepEqual(
+  await createInMemoryLearnerSessionAdapter({ graph }).loadPickerState(),
+  { state: "ready" },
+  "adapters without a picker fixture stay ready for existing callers",
+);
+
+// Picker phase: unpicked server → recents → scale rescope → select → ready.
+const pickerAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [
+          { name: "big", path: "/home/u/big" },
+          { name: "demo", path: "/home/u/demo" },
+        ],
+      },
+      "/home/u/big": {
+        path: "/home/u/big",
+        parent: "/home/u",
+        entries: [{ name: "api", path: "/home/u/big/api" }],
+      },
+    },
+    recents: [{ project_root: "/home/u/demo", understood_count: 2 }],
+    selections: {
+      "/home/u/big": {
+        state: "scale",
+        file_count: 420,
+        scale_cap: 300,
+        root: "/home/u/big",
+        suggestions: [{ path: "api", file_count: 300 }],
+      },
+      "/home/u/demo": { state: "ready" },
+    },
+  },
+});
+const pickerSession = createLearnerSession({ adapter: pickerAdapter, clock });
+await pickerSession.start();
+let pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "picking");
+assert.equal(pickerSnapshot.picker.path, "/home/u");
+assert.equal(pickerSnapshot.picker.recents[0].understood_count, 2);
+
+await pickerSession.dispatch({ type: "BROWSE_PICKER", path: "/home/u/big" });
+assert.equal(pickerSession.getSnapshot().picker.path, "/home/u/big");
+
+await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/big" });
+pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "picking");
+assert.equal(pickerSnapshot.picker.scale.file_count, 420);
+assert.equal(pickerSnapshot.picker.path, "/home/u/big");
+assert.equal(pickerSnapshot.picker.busy, false);
+
+await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "ready");
+assert.equal(pickerSnapshot.picker, null);
+assert.equal(pickerSnapshot.graph, graph);
+pickerSession.dispose();
+
+// Regression: a browse during an in-flight selection must not wedge picker.busy.
+let resolveRaceSelect;
+const raceSelect = new Promise((resolve) => {
+  resolveRaceSelect = resolve;
+});
+const raceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+      "/home/u/demo": { path: "/home/u/demo", parent: "/home/u", entries: [] },
+    },
+    recents: [],
+    selections: {},
+  },
+});
+const raceSession = createLearnerSession({
+  adapter: { ...raceBaseAdapter, selectProject: () => raceSelect },
+  clock,
+});
+await raceSession.start();
+const raceSelectRequest = raceSession.dispatch({
+  type: "SELECT_PROJECT",
+  path: "/home/u/demo",
+});
+await raceSession.dispatch({ type: "BROWSE_PICKER", path: "/home/u/demo" });
+let raceSnapshot = raceSession.getSnapshot();
+assert.equal(
+  raceSnapshot.picker.path,
+  "/home/u",
+  "a browse is refused while a selection is in flight",
+);
+assert.equal(raceSnapshot.picker.busy, true);
+resolveRaceSelect({ state: "ready" });
+await raceSelectRequest;
+raceSnapshot = raceSession.getSnapshot();
+assert.equal(raceSnapshot.status, "ready");
+assert.equal(raceSnapshot.picker, null);
+raceSession.dispose();
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",

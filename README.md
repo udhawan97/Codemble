@@ -45,22 +45,22 @@
 
 ## Quick start
 
-Install the tagged release in an isolated environment. The wheel already
-contains the web app, so Node.js is not required.
-
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
-codemble ./your-ai-built-project
+uvx codemble            # or: pipx install codemble && codemble
 ```
 
-Or run it without keeping an installation:
+Codemble opens your browser — pick your project folder there. To skip the
+picker, pass a path: `codemble ./your-ai-built-project`.
 
-```bash
-uvx --from git+https://github.com/udhawan97/Codemble.git@v0.2.0 \
-  codemble ./your-ai-built-project
-```
+> Until the first PyPI release (v0.3.0) lands, install from the tag instead —
+> v0.2.0 has no picker yet, so pass your project path:
+>
+> ```bash
+> pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
+> codemble ./your-ai-built-project
+> ```
 
-Codemble opens a local browser session. No API key is needed for the galaxy,
+The wheel already contains the web app, so Node.js is not required. No API key is needed for the galaxy,
 source viewer, language Lens, checks, lighting, or saved progress. Add your own
 Anthropic or OpenAI key only if you want grounded prose explanations:
 
@@ -132,8 +132,9 @@ the optional prose narration is unavailable.
 
 - **Supported source:** Python 3.11+, JavaScript/JSX, TypeScript/TSX, and mixed
   projects. Unsupported languages stay outside the graph rather than being guessed.
-- **Scale:** above roughly 300 supported source files, choose a subdirectory
-  interactively or pass `codemble --path ./project/subdirectory`.
+- **Scale:** above roughly 300 supported source files, choose a subdirectory —
+  the in-app picker prompts for the scope, or pass
+  `codemble --path ./project/subdirectory`.
 - **Ambiguous Home:** choose a parser-ranked entrypoint in the app or pass
   `--entrypoint NODE_ID`.
 - **Broken source:** syntax errors remain visible; Codemble maps safe partial
