@@ -79,6 +79,41 @@ def create_app(
     def get_picker_state() -> dict[str, str]:
         return {"state": "ready" if state.bound else "unpicked"}
 
+    @app.get("/api/picker/browse")
+    def browse_picker(path: str | None = None) -> dict[str, object]:
+        if state.bound or picker is None:
+            raise HTTPException(status_code=409, detail="A project is already selected.")
+        jail = picker.browse_root.expanduser().resolve()
+        target = Path(path).expanduser() if path else jail
+        try:
+            resolved = target.resolve(strict=True)
+        except OSError as error:
+            raise HTTPException(
+                status_code=404, detail="That folder does not exist."
+            ) from error
+        if not resolved.is_dir():
+            raise HTTPException(status_code=404, detail="That folder does not exist.")
+        if not resolved.is_relative_to(jail):
+            raise HTTPException(
+                status_code=403, detail="Choose a folder inside your home directory."
+            )
+        try:
+            children = [
+                child
+                for child in resolved.iterdir()
+                if child.is_dir() and not child.name.startswith(".")
+            ]
+        except OSError as error:
+            raise HTTPException(
+                status_code=403, detail="Codemble cannot read that folder."
+            ) from error
+        entries = sorted(
+            ({"name": child.name, "path": str(child)} for child in children),
+            key=lambda entry: str(entry["name"]).lower(),
+        )
+        parent = str(resolved.parent) if resolved != jail else None
+        return {"path": str(resolved), "parent": parent, "entries": entries}
+
     @app.get("/api/graph")
     def get_graph() -> dict[str, object]:
         checks, _ = _services()

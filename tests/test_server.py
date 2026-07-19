@@ -154,3 +154,51 @@ def test_create_app_requires_a_graph_or_picker(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         create_app(web_dist=tmp_path / "missing")
+
+
+def test_picker_browse_lists_directories_inside_the_jail(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    (tmp_path / "beta").mkdir()
+    (tmp_path / "Alpha").mkdir()
+    (tmp_path / ".hidden").mkdir()
+    (tmp_path / "loose.py").write_text("A = 1\n", encoding="utf-8")
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    root_listing = client.get("/api/picker/browse")
+    child_listing = client.get(
+        "/api/picker/browse", params={"path": str(tmp_path / "beta")}
+    )
+
+    assert root_listing.status_code == 200
+    assert root_listing.json()["parent"] is None
+    assert [entry["name"] for entry in root_listing.json()["entries"]] == [
+        "Alpha",
+        "beta",
+    ]
+    assert child_listing.json()["parent"] == str(tmp_path.resolve())
+    assert client.get(
+        "/api/picker/browse", params={"path": str(tmp_path / "missing-dir")}
+    ).status_code == 404
+    assert client.get(
+        "/api/picker/browse", params={"path": str(tmp_path.parent)}
+    ).status_code == 403
+
+
+def test_picker_browse_refuses_symlink_escape(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    jail = tmp_path / "jail"
+    outside = tmp_path / "outside"
+    jail.mkdir()
+    outside.mkdir()
+    (jail / "escape").symlink_to(outside)
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=jail))
+    )
+
+    assert client.get(
+        "/api/picker/browse", params={"path": str(jail / "escape")}
+    ).status_code == 403
