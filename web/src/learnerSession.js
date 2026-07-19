@@ -39,6 +39,8 @@ export function createLearnerSession({
     litRegionId: null,
     languageFocus: "all",
     picker: null,
+    mode: "easy",
+    modeChosen: false,
   });
   let lifecycle = 0;
   let graphController = null;
@@ -112,6 +114,17 @@ export function createLearnerSession({
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
         commit({ status: "error", error: errorMessage(requestError) });
       }
+    }
+    // Mode is a per-project preference the backend can only serve once a
+    // project is bound, so it hydrates here rather than earlier in start() —
+    // and a failure here must never block the galaxy that just loaded above.
+    try {
+      const stored = await adapter.loadMode({ signal: controller.signal });
+      if (requestLifecycle === lifecycle && stored?.mode) {
+        commit({ mode: stored.mode, modeChosen: stored.chosen === true });
+      }
+    } catch {
+      // Mode is a preference; a failure here must never block the galaxy.
     }
     return snapshot;
   }
@@ -233,6 +246,8 @@ export function createLearnerSession({
         return browsePickerFolder(event.path);
       case "SELECT_PROJECT":
         return selectProject(event.path);
+      case "SET_MODE":
+        return setMode(event.mode);
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
@@ -299,6 +314,17 @@ export function createLearnerSession({
     if (previousNodeId && snapshot.selectedNode?.id !== previousNodeId) {
       cancelStudy();
       commit({ studyData: null, studyError: "" });
+    }
+  }
+
+  async function setMode(mode) {
+    if (mode !== "easy" && mode !== "expert") return;
+    if (snapshot.mode === mode && snapshot.modeChosen) return;
+    commit({ mode, modeChosen: true });
+    try {
+      await adapter.saveMode(mode, {});
+    } catch {
+      // The snapshot already reflects the choice; a failed write is not fatal.
     }
   }
 
@@ -515,6 +541,17 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ node_id: nodeId }),
       });
     },
+    async loadMode(options = {}) {
+      return request("/api/mode", "Mode request", options);
+    },
+    async saveMode(mode, options = {}) {
+      return request("/api/mode", "Mode update", {
+        ...options,
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+    },
     loadPickerState(options = {}) {
       return request("/api/picker/state", "Picker state", options);
     },
@@ -556,8 +593,11 @@ export function createInMemoryLearnerSessionAdapter({
   submissions = {},
   entrypoints = {},
   picker = null,
+  mode,
 }) {
   let currentGraph = graph;
+  let currentMode = mode ?? "easy";
+  let modeChosen = false;
   const currentChecks = new Map(Object.entries(checks));
   const pickerPhase = picker ? { ...picker, selected: false } : null;
   return Object.freeze({
@@ -591,6 +631,16 @@ export function createInMemoryLearnerSessionAdapter({
       throwIfAborted(options.signal);
       currentGraph = requiredFixture(entrypoints, nodeId, "entrypoint graph");
       return currentGraph;
+    },
+    async loadMode(options = {}) {
+      throwIfAborted(options.signal);
+      return { mode: currentMode, chosen: modeChosen };
+    },
+    async saveMode(nextMode, options = {}) {
+      throwIfAborted(options.signal);
+      currentMode = nextMode;
+      modeChosen = true;
+      return { mode: nextMode };
     },
     async loadPickerState(options = {}) {
       throwIfAborted(options.signal);

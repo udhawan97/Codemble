@@ -124,6 +124,21 @@ assert(notifications > 0);
 unsubscribe();
 session.dispose();
 
+// Audience mode: hydrates from the adapter, and SET_MODE persists the choice.
+const modeSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({
+    graph,
+    mode: "expert",
+  }),
+});
+await modeSession.start();
+assert.equal(modeSession.getSnapshot().mode, "expert", "mode hydrates from the adapter");
+
+await modeSession.dispatch({ type: "SET_MODE", mode: "easy" });
+assert.equal(modeSession.getSnapshot().mode, "easy", "SET_MODE updates the snapshot");
+assert.equal(modeSession.getSnapshot().modeChosen, true, "choosing a mode records the choice");
+modeSession.dispose();
+
 let resolveLateStudy;
 const lateStudy = new Promise((resolve) => {
   resolveLateStudy = resolve;
@@ -187,7 +202,15 @@ assert.equal(
 staleErrorSession.dispose();
 
 const httpCalls = [];
-const responsePayloads = [{ graph: true }, { study: true }, { checks: true }, { score: true }, { home: true }];
+const responsePayloads = [
+  { graph: true },
+  { study: true },
+  { checks: true },
+  { score: true },
+  { home: true },
+  { mode: "easy" },
+  { mode: "expert" },
+];
 const http = createHttpLearnerSessionAdapter(async (url, options = {}) => {
   httpCalls.push([url, options]);
   return {
@@ -202,6 +225,8 @@ assert.deepEqual(await http.loadStudy("node/id"), { study: true });
 assert.deepEqual(await http.loadChecks("region/id"), { checks: true });
 assert.deepEqual(await http.submitCheck("region/id", "check/id", ["answer"]), { score: true });
 assert.deepEqual(await http.selectEntrypoint("node/id"), { home: true });
+assert.deepEqual(await http.loadMode(), { mode: "easy" });
+assert.deepEqual(await http.saveMode("expert"), { mode: "expert" });
 assert.deepEqual(
   httpCalls.map(([url]) => url),
   [
@@ -210,11 +235,16 @@ assert.deepEqual(
     "/api/regions/region%2Fid/checks",
     "/api/regions/region%2Fid/checks/check%2Fid",
     "/api/entrypoint",
+    "/api/mode",
+    "/api/mode",
   ],
 );
 assert.equal(httpCalls[3][1].method, "POST");
 assert.equal(httpCalls[3][1].body, JSON.stringify({ selected_ids: ["answer"] }));
 assert.equal(httpCalls[4][1].body, JSON.stringify({ node_id: "node/id" }));
+assert.equal(httpCalls[6][1].method, "PUT");
+assert.equal(httpCalls[6][1].headers["Content-Type"], "application/json");
+assert.equal(httpCalls[6][1].body, JSON.stringify({ mode: "expert" }));
 
 console.log("learner-session contracts passed");
 
