@@ -12,6 +12,11 @@ from pydantic import BaseModel
 
 from codemble import __version__
 from codemble.adapters.base import Graph
+from codemble.adapters.project import (
+    ProjectParseError,
+    ProjectParser,
+    ProjectScaleError,
+)
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
 from codemble.progress import list_recent_projects
@@ -27,6 +32,12 @@ class EntrypointSelection(BaseModel):
     """One parser-ranked candidate chosen as Home."""
 
     node_id: str
+
+
+class ProjectSelection(BaseModel):
+    """One learner-chosen folder to parse into the session's project."""
+
+    path: str
 
 
 @dataclass(frozen=True)
@@ -120,6 +131,47 @@ def create_app(
         if state.bound or picker is None:
             raise HTTPException(status_code=409, detail="A project is already selected.")
         return {"recents": list_recent_projects()}
+
+    @app.post("/api/picker/select")
+    def select_project(selection: ProjectSelection) -> dict[str, object]:
+        if state.bound or picker is None:
+            raise HTTPException(status_code=409, detail="A project is already selected.")
+        jail = picker.browse_root.expanduser().resolve()
+        try:
+            resolved = Path(selection.path).expanduser().resolve(strict=True)
+        except OSError as error:
+            raise HTTPException(
+                status_code=404, detail="That folder does not exist."
+            ) from error
+        if not resolved.is_relative_to(jail):
+            raise HTTPException(
+                status_code=403, detail="Choose a folder inside your home directory."
+            )
+        parser = ProjectParser()
+        try:
+            intake = parser.intake(resolved)
+        except ProjectScaleError as error:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "reason": "scale",
+                    "file_count": len(error.intake.files),
+                    "scale_cap": error.scale_cap,
+                    "root": str(error.intake.root),
+                    "suggestions": [
+                        {"path": directory, "file_count": count}
+                        for directory, count in error.intake.scope_counts()[:6]
+                    ],
+                },
+            ) from error
+        except ProjectParseError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        try:
+            bound_graph = parser.parse(intake, entrypoint=picker.entrypoint)
+        except ProjectParseError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        state.bind(bound_graph)
+        return {"state": "ready"}
 
     @app.get("/api/graph")
     def get_graph() -> dict[str, object]:

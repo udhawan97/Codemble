@@ -233,3 +233,67 @@ def test_picker_recents_come_from_the_progress_store(
     assert client.get("/api/picker/recents").json() == {
         "recents": [{"project_root": str(project), "understood_count": 1}]
     }
+
+
+def test_picker_select_binds_a_project_exactly_once(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+
+    first = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    second = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+
+    assert first.status_code == 200
+    assert first.json() == {"state": "ready"}
+    assert client.get("/api/picker/state").json() == {"state": "ready"}
+    assert client.get("/api/graph").status_code == 200
+    assert second.status_code == 409
+    assert second.json()["detail"] == "A project is already selected."
+    assert client.get("/api/picker/browse").status_code == 409
+
+
+def test_picker_select_reports_scale_with_suggestions(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    big = tmp_path / "big"
+    (big / "api").mkdir(parents=True)
+    for index in range(301):
+        (big / "api" / f"module_{index}.py").write_text("A = 1\n", encoding="utf-8")
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    response = client.post("/api/picker/select", json={"path": str(big)})
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["reason"] == "scale"
+    assert detail["file_count"] == 301
+    assert detail["scale_cap"] == 300
+    assert detail["root"] == str(big.resolve())
+    assert detail["suggestions"][0] == {"path": "api", "file_count": 301}
+
+
+def test_picker_select_rejects_unparseable_and_escaping_paths(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    assert client.post(
+        "/api/picker/select", json={"path": str(empty)}
+    ).status_code == 422
+    assert client.post(
+        "/api/picker/select", json={"path": str(tmp_path.parent)}
+    ).status_code == 403
+    assert client.post(
+        "/api/picker/select", json={"path": str(tmp_path / "nope")}
+    ).status_code == 404
