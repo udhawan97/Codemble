@@ -360,6 +360,7 @@ JS/TS certainty and concept evidence remain parser-proven through the unchanged
 | 2026-07-19 | The root README uses a self-contained animated ensō mark; app icons and favicons remain static | GitHub strips page-level scripting, so motion belongs inside the referenced SVG. The loop is restrained to illumination, transforms, and opacity, and reduced-motion users receive the finished lit state |
 | 2026-07-19 | Bare `codemble` serves a one-shot in-app project picker (browse + recents) on a single two-phase server; binding is one-shot and the API is home-jailed with a Host-header allowlist | Approved by UD this session: easiest possible run flow for learners without a second server, without free filesystem enumeration, and without changing the one-graph app model |
 | 2026-07-19 | Codemble publishes to PyPI from the next tagged release; install collapses to `uvx codemble` | Approved by UD this session: the git+tag install was the biggest onboarding hurdle for the target learner |
+| 2026-07-19 | Local models (Ollama) are now allowed, reversing the 2026-07-18 Non-Goal; guardrails: loopback-and-`http`-only enforced at construction, explicit opt-in with no auto-detection, the same grounding validation applied to every provider, and the deterministic Tier 0 summary always available as a floor | Approved by UD this session. Residual risk stated honestly: grounding validation catches an invented identifier, not a wrong claim about a real one, and small local models make that second kind of error more often |
 
 ## Non-Goals — do NOT build (point here when asked)
 
@@ -367,7 +368,6 @@ JS/TS certainty and concept evidence remain parser-proven through the unchanged
 - ❌ XP, streaks, levels, leaderboards
 - ❌ A second 2D renderer/toggle in v1 (render-ready graph keeps one possible later)
 - ❌ Accounts, cloud hosting, multi-user; share link waits for Phase 3
-- ❌ Local models (Ollama)
 - ❌ Extra quest types before Phase 3
 - ❌ GitHub-URL ingestion in v1
 - ❌ Elaborate game art before the loop teaches well
