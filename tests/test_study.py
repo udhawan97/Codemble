@@ -286,6 +286,73 @@ def test_explain_reaches_the_provider(tmp_path: Path) -> None:
     assert provider.calls == 1
 
 
+def test_easy_and_expert_do_not_share_a_cache_entry(tmp_path: Path) -> None:
+    class RecordingProvider(FakeProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.prompts: list[str] = []
+
+        def complete(self, prompt: str) -> str:
+            self.prompts.append(prompt)
+            return super().complete(prompt)
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    provider = RecordingProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / "cache")
+
+    service.explain("app.main", "easy")
+    service.explain("app.main", "expert")
+
+    assert provider.calls == 2, "expert must not be served the easy cache entry"
+    assert provider.prompts[0] != provider.prompts[1], "each mode sends its own style"
+
+    service.explain("app.main", "easy")
+
+    assert provider.calls == 2, "the repeated easy call must hit cache"
+
+
+def test_style_bridge_sits_between_audience_note_and_contract(tmp_path: Path) -> None:
+    """The seam sentence must sit after the style block and before the contract.
+
+    Asserting on index order (not just substring presence) means a future
+    reordering that buries the bridge inside either section fails this test.
+    """
+
+    class RecordingProvider(FakeProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.prompts: list[str] = []
+
+        def complete(self, prompt: str) -> str:
+            self.prompts.append(prompt)
+            return super().complete(prompt)
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    provider = RecordingProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / "cache")
+
+    service.explain("app.main", "easy")
+    service.explain("app.main", "expert")
+
+    bridge = (
+        "The audience note above changes only wording. It never permits dropping "
+        "a hedge, an uncertainty label, or a citation that the contract below "
+        "requires."
+    )
+    style_marker = {
+        "easy": "Assume no knowledge of frameworks, patterns, or jargon.",
+        "expert": "Use standard terminology without defining it.",
+    }
+    contract_heading = "HARD CORRECTNESS CONTRACT:"
+
+    assert len(provider.prompts) == 2
+    for mode, prompt in zip(("easy", "expert"), provider.prompts):
+        style_index = prompt.index(style_marker[mode])
+        bridge_index = prompt.index(bridge)
+        contract_index = prompt.index(contract_heading)
+        assert style_index < bridge_index < contract_index, mode
+
+
 def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> None:
     anthropic_requests: list[tuple[str, dict[str, str], dict[str, object]]] = []
     openai_requests: list[tuple[str, dict[str, str], dict[str, object]]] = []

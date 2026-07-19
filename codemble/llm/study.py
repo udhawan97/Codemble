@@ -21,7 +21,7 @@ from codemble.llm.providers import (
 )
 from codemble.llm.structural import structural_summary
 
-PROMPT_VERSION = "study-v2"
+PROMPT_VERSION = "study-v3"
 _CACHE_SCHEMA = 1
 
 
@@ -252,12 +252,12 @@ class StudyService:
             }
 
         file_hash = self._graph.file_hashes.get(node.file, "")
-        cache_key = _cache_key(self._provider, node, file_hash)
+        cache_key = _cache_key(self._provider, node, file_hash, mode)
         cached = self._read_cache(cache_key)
         if cached is not None:
             return {**cached, "cached": True}
 
-        prompt = _grounded_prompt(node, source, neighbors, lens)
+        prompt = _grounded_prompt(node, source, neighbors, lens, mode)
         try:
             raw = self._provider.complete(prompt)
             validated = _validate_explanation(raw, node, neighbors)
@@ -332,11 +332,29 @@ def _neighbor_id(edge: Edge, node_id: str) -> tuple[str, str] | None:
     return None
 
 
-def _cache_key(provider: NarrationProvider, node: Node, file_hash: str) -> str:
+def _cache_key(
+    provider: NarrationProvider, node: Node, file_hash: str, mode: str
+) -> str:
     material = "\0".join(
-        (PROMPT_VERSION, provider.name, provider.model, node.id, file_hash)
+        (PROMPT_VERSION, provider.name, provider.model, node.id, file_hash, mode)
     ).encode()
     return hashlib.sha256(material).hexdigest()
+
+
+_MODE_STYLE = {
+    "easy": (
+        "AUDIENCE: someone new to programming.\n"
+        "- Use short sentences and everyday words.\n"
+        "- Explain any technical term in the same sentence you use it.\n"
+        "- Assume no knowledge of frameworks, patterns, or jargon.\n"
+    ),
+    "expert": (
+        "AUDIENCE: an experienced developer onboarding onto this codebase.\n"
+        "- Be concise and precise; assume language fluency.\n"
+        "- Lead with this structure's role in the wider project.\n"
+        "- Use standard terminology without defining it.\n"
+    ),
+}
 
 
 def _grounded_prompt(
@@ -344,6 +362,7 @@ def _grounded_prompt(
     source: dict[str, object],
     neighbors: list[dict[str, object]],
     lens: list[dict[str, object]],
+    mode: str,
 ) -> str:
     source_lines = source.get("lines", [])
     numbered_source = "\n".join(
@@ -361,6 +380,9 @@ def _grounded_prompt(
         for note in lens
     ) or "- none"
     return f"""You are the narration layer in Codemble, a code-learning tool.
+
+{_MODE_STYLE.get(mode, _MODE_STYLE["easy"])}
+The audience note above changes only wording. It never permits dropping a hedge, an uncertainty label, or a citation that the contract below requires.
 
 HARD CORRECTNESS CONTRACT:
 - Explain only the source and parser evidence below.

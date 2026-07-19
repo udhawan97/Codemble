@@ -54,13 +54,26 @@ class ProgressStore:
         saved = payload.get("regions")
         regions = saved if isinstance(saved, dict) else {}
         regions[region_id] = {"signature": signature}
-        self._write(
-            {
-                "schema_version": _SCHEMA_VERSION,
-                "project_root": self._graph.project_root,
-                "regions": dict(sorted(regions.items())),
-            }
-        )
+        payload["schema_version"] = _SCHEMA_VERSION
+        payload["project_root"] = self._graph.project_root
+        payload["regions"] = dict(sorted(regions.items()))
+        self._write(payload)
+
+    def mode(self) -> str:
+        """Return the learner's audience mode; this never affects progress."""
+
+        payload = self._read()
+        value = payload.get("mode")
+        return value if value in {"easy", "expert"} else "easy"
+
+    def set_mode(self, mode: str) -> None:
+        """Persist the audience mode beside progress without touching signatures."""
+
+        if mode not in {"easy", "expert"}:
+            raise ValueError("Mode must be 'easy' or 'expert'.")
+        payload = self._read()
+        payload["mode"] = mode
+        self._write(payload)
 
     def hydrated_graph(self) -> Graph:
         """Project valid progress onto immutable render data."""

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from codemble.adapters.base import Edge, Graph, Node
@@ -35,7 +35,7 @@ class Check:
     id: str
     region_id: str
     kind: CheckKind
-    prompt: str
+    prompt: dict[str, str] = field(hash=False)
     options: tuple[CheckOption, ...]
     answer_ids: tuple[str, ...]
     evidence: tuple[str, ...]
@@ -46,7 +46,8 @@ class Check:
         return {
             "id": self.id,
             "kind": self.kind,
-            "prompt": self.prompt,
+            "prompt": self.prompt["easy"],
+            "prompt_voices": self.prompt,
             "multiple": len(self.answer_ids) > 1,
             "options": [
                 {"id": option.id, "label": option.label} for option in self.options
@@ -65,6 +66,12 @@ class CheckService:
             region.id: generate_checks(graph, region.id) for region in graph.regions
         }
         self._passed: dict[str, set[str]] = {}
+
+    @property
+    def progress(self) -> ProgressStore:
+        """Expose the local progress store for preference reads and writes."""
+
+        return self._progress
 
     def graph(self) -> Graph:
         """Return render data hydrated from currently valid local progress."""
@@ -199,7 +206,10 @@ def _first_call_check(
         region_id,
         "first-call",
         source_id,
-        f"Which structure does {source_id} call first?",
+        {
+            "easy": f"Which piece of code does {source_id} call first?",
+            "expert": f"Which structure does {source_id} call first?",
+        },
         answers,
         _node_options(nodes, answers, kind="function"),
         (f"{nodes[source_id].file}:{edge.lineno}",),
@@ -228,7 +238,10 @@ def _importer_check(
             region_id,
             "direct-importer",
             region_id,
-            f"Which project module imports {region_id} directly?",
+            {
+                "easy": f"Which of your files brings in {region_id} directly?",
+                "expert": f"Which project module imports {region_id} directly?",
+            },
             answers,
             _node_options(nodes, answers, kind="module"),
             tuple(f"{nodes[edge.src].file}:{edge.lineno}" for edge in incoming),
@@ -255,7 +268,10 @@ def _importer_check(
         region_id,
         "direct-importer",
         region_id,
-        f"Which project module does {region_id} import first?",
+        {
+            "easy": f"Which of your files does {region_id} bring in first?",
+            "expert": f"Which project module does {region_id} import first?",
+        },
         answers,
         _node_options(nodes, answers, kind="module"),
         (f"{nodes[region_id].file}:{first.lineno}",),
@@ -290,7 +306,13 @@ def _impact_check(
         region_id,
         "removal-impact",
         target_id,
-        f"Which structure directly depends on {target_id} and could break if it disappeared?",
+        {
+            "easy": f"Which piece of code uses {target_id} directly and would break if it disappeared?",
+            "expert": (
+                f"Which structure directly depends on {target_id} "
+                "and could break if it disappeared?"
+            ),
+        },
         answers,
         _node_options(nodes, answers, kind="function"),
         tuple(f"{nodes[edge.src].file}:{edge.lineno}" for edge in callers),
@@ -311,7 +333,10 @@ def _entrypoint_check(
         region_id,
         "entrypoint",
         selected,
-        "Which parser-ranked structure is selected as Home for this run?",
+        {
+            "easy": "Which part of your code does the program start from?",
+            "expert": "Which parser-ranked structure is selected as Home for this run?",
+        },
         answers,
         _options(nodes, answers, pool),
         (f"{nodes[selected].file}:{nodes[selected].lineno}",),
@@ -351,7 +376,7 @@ def _check(
     region_id: str,
     kind: CheckKind,
     subject: str,
-    prompt: str,
+    prompt: dict[str, str],
     answers: tuple[str, ...],
     options: tuple[CheckOption, ...],
     evidence: tuple[str, ...],
