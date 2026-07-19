@@ -59,9 +59,7 @@ def _easy_voice(
     sentences = [
         f"This is {node.name}, a {kind}.",
         f"It lives in {node.file}, starting on line {node.lineno}.",
-        f"It is {node.loc} line long."
-        if node.loc == 1
-        else f"It is {node.loc} lines long.",
+        f"It is {_line_count(node.loc)} long.",
     ]
     sentences.append(
         f"{_count_word(len(inbound))} other "
@@ -101,7 +99,7 @@ def _expert_voice(
 ) -> str:
     fields = [
         f"{node.name} · {node.kind} · {node.file}:{node.lineno}-{node.end_lineno}"
-        f" ({node.loc} lines)",
+        f" ({_line_count(node.loc)})",
         f"Inbound {len(inbound)} · Outbound {len(outbound)}"
         + (f" · {len(possible)} possible" if possible else ""),
     ]
@@ -114,6 +112,10 @@ def _expert_voice(
 
 def _count_word(count: int) -> str:
     return _COUNT_WORDS[count] if count < len(_COUNT_WORDS) else str(count)
+
+
+def _line_count(count: int) -> str:
+    return f"{count} line" if count == 1 else f"{count} lines"
 
 
 def _join_words(values: list[str]) -> str:

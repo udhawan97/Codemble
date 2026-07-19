@@ -96,7 +96,8 @@ def test_both_voices_state_the_structures_length():
 
     single_line = structural_summary(_node(lineno=41, end_lineno=41, loc=1), [], [])
     assert "It is 1 line long." in single_line["easy"]
-    assert "(1 lines)" in single_line["expert"]
+    assert "(1 line)" in single_line["expert"]
+    assert "(1 lines)" not in single_line["expert"]
 
 
 def test_more_than_ten_neighbours_render_as_digits_not_words():
