@@ -137,6 +137,38 @@ def test_typescript_lens_notes_equal_language_tagged_parser_annotations(
     )
 
 
+def test_every_lens_note_carries_both_voices(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(CONCEPT_FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    notes = service.study("concepts_sample.collect")["lens"]  # type: ignore[index]
+
+    assert notes, "the concept fixture must produce at least one lens note"
+    for note in notes:
+        assert set(note["note_voices"]) == {"easy", "expert"}
+        assert note["note_voices"]["easy"].strip()
+        assert note["note_voices"]["expert"].strip()
+        assert note["note"] == note["note_voices"]["easy"], (
+            "the legacy string keeps the shipped SPA rendering until phase 4"
+        )
+
+
+def test_no_concept_is_missing_a_voice():
+    from codemble.lens.javascript_typescript import _NOTES
+    from codemble.lens.python import _PYTHON_NOTES
+
+    for table in (_PYTHON_NOTES, _NOTES):
+        for concept, (title, voices) in table.items():
+            assert title.strip(), concept
+            assert voices["easy"].strip(), concept
+            assert voices["expert"].strip(), concept
+
+
 def test_partial_source_stays_visible_without_model_narration(tmp_path: Path) -> None:
     graph = PythonAstAdapter().parse(FIXTURE)
     provider = FakeProvider()
