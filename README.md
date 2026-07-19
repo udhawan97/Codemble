@@ -104,8 +104,8 @@ export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY=sk-...
 
 Or put it in `~/.codemble/config`. Your code is parsed locally; the only
 network calls are the LLM requests you configure, sent straight to your
-provider. No key? The galaxy, structure, and checks still work — only the
-prose explanations need the model.
+provider when you open Study. No key? The galaxy, source, language lens, and
+checks still work — only the prose explanations need the model.
 
 </details>
 

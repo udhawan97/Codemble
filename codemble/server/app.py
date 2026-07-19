@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tokenize
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -10,42 +9,36 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from codemble.adapters.base import Graph
+from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
 
 
-def create_app(graph: Graph, web_dist: Path | None = None) -> FastAPI:
+def create_app(
+    graph: Graph,
+    web_dist: Path | None = None,
+    study_service: StudyService | None = None,
+) -> FastAPI:
     """Create an API and optional SPA server for one parsed project."""
 
     app = FastAPI(title="Codemble", version="0.0.1", docs_url=None, redoc_url=None)
-    node_by_id = {node.id: node for node in graph.nodes}
-    project_root = Path(graph.project_root).resolve()
+    studies = study_service or StudyService.from_environment(graph)
 
     @app.get("/api/graph")
     def get_graph() -> dict[str, object]:
         return graph.to_dict()
 
-    @app.get("/api/node/{node_id:path}/source")
-    def get_node_source(node_id: str) -> dict[str, object]:
-        node = node_by_id.get(node_id)
-        if node is None:
-            raise HTTPException(status_code=404, detail="That source node is not in this graph.")
-        source_path = (project_root / node.file).resolve()
-        if not source_path.is_relative_to(project_root) or not source_path.is_file():
-            raise HTTPException(status_code=404, detail="The source file is no longer available.")
+    @app.get("/api/node/{node_id:path}/study")
+    def get_node_study(node_id: str) -> dict[str, object]:
         try:
-            with tokenize.open(source_path) as source_file:
-                source = source_file.read()
-        except (OSError, SyntaxError, UnicodeDecodeError) as error:
+            return studies.study(node_id)
+        except UnknownNodeError as error:
+            raise HTTPException(
+                status_code=404, detail="That source node is not in this graph."
+            ) from error
+        except StudySourceError as error:
             raise HTTPException(
                 status_code=422,
-                detail="The source file exists but could not be decoded safely.",
+                detail=str(error),
             ) from error
-        return {
-            "id": node.id,
-            "file": node.file,
-            "lineno": node.lineno,
-            "end_lineno": node.end_lineno,
-            "source": source,
-        }
 
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():
