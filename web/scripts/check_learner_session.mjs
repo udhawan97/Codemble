@@ -367,6 +367,43 @@ assert.equal(
 );
 explanationRaceSession.dispose();
 
+// Narration: leaving the study level must actually abort the in-flight
+// request, not merely ignore its eventual result — an un-cancelled fetch
+// still runs the provider call (and its cost) to completion for nothing.
+// This is checked on the AbortSignal directly, isolated from the
+// snapshot-guard behaviour already proven above.
+{
+  let capturedSignal;
+  let signalReceived;
+  const signalCaptured = new Promise((resolve) => {
+    signalReceived = resolve;
+  });
+  const abortSession = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter({
+        graph,
+        studies: { "python:app.py:run": study },
+      }),
+      loadExplanation(nodeId, mode, options = {}) {
+        capturedSignal = options.signal;
+        signalReceived();
+        return new Promise(() => {}); // never settles; only the signal matters
+      },
+    },
+  });
+  await abortSession.start();
+  abortSession.dispatch({ type: "SELECT_STUDY_NODE", nodeId: "python:app.py:run" });
+  await signalCaptured;
+  assert.equal(capturedSignal.aborted, false, "narration starts uncancelled");
+  abortSession.dispatch({ type: "RETREAT" });
+  assert.equal(
+    capturedSignal.aborted,
+    true,
+    "leaving the study level aborts in-flight narration, not just its stale result",
+  );
+  abortSession.dispose();
+}
+
 let rejectStaleChecks;
 const staleChecks = new Promise((_resolve, reject) => {
   rejectStaleChecks = reject;
