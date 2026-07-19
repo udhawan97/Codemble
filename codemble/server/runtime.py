@@ -34,7 +34,7 @@ def serve_project(
     graph = ProjectParser().parse(path, entrypoint=entrypoint)
     selected_port = port or available_port(host)
     url = f"http://{host}:{selected_port}"
-    app = create_app(graph)
+    app = create_app(graph, allowed_hosts=("127.0.0.1", "localhost", "testserver", host))
     print(
         f"Codemble mapped {len(graph.nodes)} nodes across {len(graph.regions)} systems.\n"
         f"Open {url}"

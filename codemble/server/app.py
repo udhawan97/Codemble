@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from codemble import __version__
 from codemble.adapters.base import Graph
@@ -71,12 +72,14 @@ def create_app(
     check_service: CheckService | None = None,
     *,
     picker: PickerConfig | None = None,
+    allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "testserver"),
 ) -> FastAPI:
     """Create an API and optional SPA server for one local project."""
 
     if graph is None and picker is None:
         raise ValueError("create_app needs a parsed graph or a PickerConfig")
     app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
     state = _ProjectState()
     if graph is not None:
         state.studies = study_service or StudyService.from_environment(graph)

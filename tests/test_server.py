@@ -297,3 +297,13 @@ def test_picker_select_rejects_unparseable_and_escaping_paths(tmp_path: Path) ->
     assert client.post(
         "/api/picker/select", json={"path": str(tmp_path / "nope")}
     ).status_code == 404
+
+
+def test_foreign_host_headers_are_rejected(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    rebinding = client.get("/api/graph", headers={"Host": "evil.example"})
+
+    assert rebinding.status_code == 400
+    assert client.get("/api/graph").status_code == 200
