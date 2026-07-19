@@ -1,5 +1,8 @@
 """Provider transports are exercised through injection; no test touches a network."""
 
+import socket
+import threading
+
 import pytest
 
 from codemble.llm.local_status import ollama_status
@@ -12,6 +15,29 @@ def _transport(payload: dict[str, object]):
         return payload
 
     return post_json
+
+
+def _raw_server(response: bytes) -> str:
+    """Start a one-shot raw TCP listener bound to an OS-assigned loopback port.
+
+    Sends ``response`` verbatim to the first connection, then closes. Used to
+    drive ``ollama_status``'s *real* ``_get_json`` transport (not an injected
+    fetcher) against byte sequences a real HTTP client chokes on, without ever
+    touching port 11434 or a real Ollama.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(1)
+    port = sock.getsockname()[1]
+
+    def serve() -> None:
+        conn, _ = sock.accept()
+        with conn:
+            conn.recv(65536)
+            conn.sendall(response)
+
+    threading.Thread(target=serve, daemon=True).start()
+    return f"http://127.0.0.1:{port}"
 
 
 def test_ollama_returns_the_response_text():
@@ -150,3 +176,35 @@ def test_status_skips_malformed_model_entries_without_raising():
     status = ollama_status(get_json=get_json)
     assert status["running"] is True
     assert status["installed_models"] == ["gemma4:12b"]
+
+
+def test_status_survives_a_truncated_response_body():
+    # No injected get_json here: this drives the real _get_json transport.
+    # A Content-Length that promises more bytes than arrive before the
+    # socket closes makes http.client raise IncompleteRead, which is
+    # neither an OSError nor a ValueError.
+    host = _raw_server(
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: 100\r\n"
+        b"\r\n"
+        b'{"trunc'
+    )
+
+    status = ollama_status(host=host)
+
+    assert status["running"] is False
+    assert status["installed_models"] == []
+
+
+def test_status_survives_a_non_http_listener():
+    # A learner could have some other, non-Ollama process listening on the
+    # configured port. A raw byte string that isn't a valid HTTP status line
+    # makes http.client raise BadStatusLine, also neither an OSError nor a
+    # ValueError.
+    host = _raw_server(b"not an http response at all\r\n\r\n")
+
+    status = ollama_status(host=host)
+
+    assert status["running"] is False
+    assert status["installed_models"] == []
