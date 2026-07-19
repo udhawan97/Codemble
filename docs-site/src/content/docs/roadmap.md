@@ -7,10 +7,12 @@ The authoritative roadmap lives in the repo's
 [CLAUDE.md](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md) and moves
 only when milestones actually complete. The shape:
 
-## NOW — Phase 0: complete v1, Python only
+## NOW — Phase 0 acceptance, Python only
 
 Parser → galaxy (semantic zoom) → grounded explanations → Python language lens
-→ checks → illumination + star chart. Everything, one language, end-to-end.
+→ checks → illumination + star chart is implemented in v0.1.0. The remaining
+gate is evidence from 3–5 learners running it unaided on their own AI-built
+projects. Phase 1 does not begin until that human acceptance is real.
 
 ## NEXT — more languages
 

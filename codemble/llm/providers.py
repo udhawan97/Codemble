@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from typing import Callable, Protocol
 from urllib import error, request
 
+from codemble import __version__
+
 JsonObject = dict[str, object]
 PostJson = Callable[[str, dict[str, str], JsonObject], JsonObject]
 
@@ -110,7 +112,7 @@ def _post_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonOb
     outbound = request.Request(
         url,
         data=encoded,
-        headers={**headers, "user-agent": "Codemble/0.0.1"},
+        headers={**headers, "user-agent": f"Codemble/{__version__}"},
         method="POST",
     )
     try:

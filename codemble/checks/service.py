@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from codemble.adapters.base import Edge, Graph, Node
+from codemble.graph.layout import with_entrypoint
 from codemble.progress import ProgressStore
 
 CheckKind = Literal["first-call", "direct-importer", "removal-impact", "entrypoint"]
@@ -65,7 +66,22 @@ class CheckService:
     def graph(self) -> Graph:
         """Return render data hydrated from currently valid local progress."""
 
-        return self._progress.hydrated_graph()
+        hydrated = self._progress.hydrated_graph()
+        return (
+            with_entrypoint(hydrated, self._graph.selected_entrypoint)
+            if self._graph.selected_entrypoint
+            else hydrated
+        )
+
+    def select_entrypoint(self, node_id: str) -> Graph:
+        """Apply an explicit parser-ranked Home choice to graph and check suites."""
+
+        self._graph = with_entrypoint(self._graph, node_id)
+        self._checks = {
+            region.id: generate_checks(self._graph, region.id)
+            for region in self._graph.regions
+        }
+        return self.graph()
 
     def for_region(self, region_id: str) -> dict[str, object]:
         """Return a region suite with answer values withheld."""
@@ -276,19 +292,20 @@ def _entrypoint_check(
     graph: Graph, region_id: str, nodes: dict[str, Node]
 ) -> Check | None:
     ranked = [candidate for candidate in graph.entrypoint_candidates if candidate in nodes]
-    if not ranked or nodes[ranked[0]].region != region_id:
+    selected = graph.selected_entrypoint
+    if not ranked or selected is None or nodes[selected].region != region_id:
         return None
-    answers = (ranked[0],)
+    answers = (selected,)
     pool = ranked + [node.id for node in graph.nodes if node.id not in ranked]
     return _check(
         graph,
         region_id,
         "entrypoint",
-        ranked[0],
-        "Where does the parser rank execution as starting?",
+        selected,
+        "Which parser-ranked structure is selected as Home for this run?",
         answers,
         _options(nodes, answers, pool),
-        (f"{nodes[ranked[0]].file}:{nodes[ranked[0]].lineno}",),
+        (f"{nodes[selected].file}:{nodes[selected].lineno}",),
     )
 
 

@@ -93,6 +93,19 @@ def test_lens_notes_are_anchored_to_parser_detected_constructs(tmp_path: Path) -
     )
 
 
+def test_partial_source_stays_visible_without_model_narration(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    provider = FakeProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path)
+
+    result = service.study("broken")
+
+    assert result["source"]["file"] == "broken.py"  # type: ignore[index]
+    assert result["explanation"]["status"] == "partial"  # type: ignore[index]
+    assert result["lens"] == []
+    assert provider.calls == 0
+
+
 def test_validated_explanation_is_cached_by_node_and_file_hash(tmp_path: Path) -> None:
     graph = PythonAstAdapter().parse(FIXTURE)
     provider = FakeProvider()

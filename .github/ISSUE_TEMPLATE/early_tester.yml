@@ -1,0 +1,54 @@
+name: v0.1.0 early-tester report
+description: Report your first unaided run without sharing private code.
+labels: ["feedback", "v0.1.0"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Do not paste source, private project names, credentials, or API keys.
+        Quote your confusion in your own words—the rough edges are the evidence we need.
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install route
+      options:
+        - pipx from v0.1.0 Git tag
+        - uvx from v0.1.0 Git tag
+        - source checkout
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS / Linux / Windows, Python version, browser
+    validations:
+      required: true
+  - type: textarea
+    id: confusion
+    attributes:
+      label: First confusing moment, verbatim
+      description: What did you expect, and what did you see instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: lit
+    attributes:
+      label: Did you light one system without help?
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+  - type: textarea
+    id: correctness
+    attributes:
+      label: Anything structurally or educationally wrong?
+      description: Describe identifiers and line numbers only when safe; never paste private source.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed private code, project names, credentials, and API keys.
+          required: true

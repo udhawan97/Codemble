@@ -15,7 +15,8 @@ Thanks for helping people actually understand the code AI wrote for them.
 | Path | What |
 | --- | --- |
 | `codemble/` | Python package: adapters, graph, lens, checks, llm, server, progress, CLI |
-| `web/` | Galaxy renderer (Vite + React + 3d-force-graph) — arrives in M2 |
+| `web/` | Galaxy renderer source (Vite + React + 3d-force-graph) |
+| `codemble/web_dist/` | Built production SPA bundled in the Python wheel |
 | `tests/` | Pytest suite |
 | `docs/` | Internal docs: ADRs, plans, research |
 | `docs-site/` | Public docs & website (Astro + Starlight → GitHub Pages) |
@@ -29,6 +30,7 @@ cd Codemble
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest && ruff check .
+cd web && npm install && npm run build && cd ..
 ```
 
 Docs site:

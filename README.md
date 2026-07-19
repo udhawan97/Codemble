@@ -19,7 +19,7 @@
 <p align="center"><strong>Local-first · Your key, your machine · Zero invented facts</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-phase_0_·_building_in_public-facc15?style=flat-square" alt="Status">
+  <img src="https://img.shields.io/badge/status-v0.1.0_·_tester_release-facc15?style=flat-square" alt="Status">
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/runs-100%25_locally-2ea44f?style=flat-square" alt="Local-first">
   <img src="https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square" alt="Apache 2.0">
@@ -37,9 +37,12 @@
 ---
 
 > [!NOTE]
-> **Codemble is in Phase 0 — the first end-to-end slice is being built in public.**
-> Star the repo to follow along; the [roadmap](https://udhawan97.github.io/Codemble/roadmap/)
-> moves only when milestones actually land.
+> **v0.1.0 is the Phase 0 tester release.** The complete Python loop works;
+> human onboarding evidence is still being collected before Phase 1 begins.
+
+<p align="center">
+  <img src="assets/demo.gif" alt="Codemble maps a Python fixture, enters Home, runs graph-derived checks, and lights the system" width="960">
+</p>
 
 ## What it does
 
@@ -74,8 +77,19 @@ No XP. No streaks. One score that matters: how much of your sky is lit.
 
 ## Setup
 
-> [!WARNING]
-> Pre-release: install from source until the first tagged release.
+Install the tagged package in an isolated environment—Node is not required:
+
+```bash
+pipx install git+https://github.com/udhawan97/Codemble.git@v0.1.0
+codemble ./your-ai-built-project
+```
+
+Or run it without a persistent install:
+
+```bash
+uvx --from git+https://github.com/udhawan97/Codemble.git@v0.1.0 \
+  codemble ./your-ai-built-project
+```
 
 <details>
 <summary><strong>Run from source</strong></summary>
@@ -85,13 +99,15 @@ git clone https://github.com/udhawan97/Codemble.git
 cd Codemble
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cd web && npm install && npm run build && cd ..
+cd web && npm install && npm run build && cd ..  # refreshes packaged SPA assets
 codemble ./your-ai-built-project
 ```
 
-The command parses locally, serves the production web build on a free localhost
+The command parses locally, serves the packaged web app on a free localhost
 port, and opens the deterministic galaxy. Pass `--no-open` to print the URL
-without launching a browser.
+without launching a browser. Projects above 300 Python files must choose an
+explicit scope with `codemble --path ./project/subdirectory`; use
+`--entrypoint module.qualname` to choose one parser-ranked Home from the CLI.
 
 </details>
 
@@ -122,8 +138,8 @@ edges are labeled uncertain. A wrong explanation is our highest-severity bug —
 
 ## What's brewing
 
-**NOW** — Phase 0: the complete v1 loop for Python (parser → galaxy → grounded
-explanations → language lens → checks → illumination).
+**NOW** — Phase 0 v0.1.0: collect first-run evidence from 3–5 Python learners
+on the complete parser → galaxy → study → checks → illumination loop.
 **NEXT** — TypeScript/JavaScript adapter, language switching for polyglot
 projects, more languages.
 **LATER** — shareable read-only galaxy links, new quest types, the loud launch.
@@ -153,7 +169,9 @@ traffic is the LLM calls you configure with your own key.
 
 Issues, PRs, and screenshots of your galaxy are all welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md). Especially valuable early: run Codemble on
-your own AI-built project and report anything it explains wrong.
+your own AI-built project and report anything it explains wrong. The focused
+[early-tester guide](TESTING.md) takes about ten minutes and asks for confusion
+verbatim—never paste private source or API keys.
 
 ## License
 

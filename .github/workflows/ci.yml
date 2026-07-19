@@ -43,3 +43,14 @@ jobs:
           cd web
           npm install
           npm run check
+  package-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build wheel and verify packaged SPA
+        run: |
+          python -m pip wheel . --no-deps --wheel-dir /tmp/codemble-wheel
+          python -c 'import pathlib, zipfile; wheel = next(pathlib.Path("/tmp/codemble-wheel").glob("*.whl")); names = zipfile.ZipFile(wheel).namelist(); assert "codemble/web_dist/index.html" in names; assert any(name.startswith("codemble/web_dist/assets/") for name in names)'

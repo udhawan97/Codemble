@@ -36,7 +36,8 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
   <Card title="Explanations you can verify" icon="open-book">
     Click any planet: real source, a grounded explanation, and the language
     idiom it demonstrates — every claim linked to a real `file:line`. Bring
-    your own Claude or OpenAI key; your code never leaves your machine.
+    your own Claude or OpenAI key; only selected study context goes directly
+    to that provider.
   </Card>
   <Card title="Prove it, then it lights" icon="approve-check">
     Short checks generated from your code's actual structure — answers come
@@ -49,9 +50,9 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
   </Card>
 </CardGrid>
 
-:::note[Built in public]
-Codemble is in early development. The
-[roadmap](/Codemble/roadmap/) is public and the
+:::note[v0.1.0 tester release]
+The complete Python loop is ready for early testers. The
+[roadmap](/Codemble/roadmap/) stays public and the
 [correctness contract](/Codemble/correctness/) is non-negotiable — a wrong
 explanation is our highest-severity bug.
 :::

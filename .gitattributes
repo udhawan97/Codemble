@@ -1,0 +1,3 @@
+# Generated Vite bundles embed shader/source strings whose intentional spaces
+# should not make repository-wide `git diff --check` fail.
+codemble/web_dist/** -whitespace

@@ -113,6 +113,7 @@ def test_entrypoints_centrality_and_render_metadata(graph) -> None:  # type: ign
     assert nodes["app.main"].entrypoint_rank == 1
     assert nodes["api"].entrypoint_rank == 2
     assert nodes["runner.__main__"].entrypoint_rank == 3
+    assert graph.selected_entrypoint == "app"
     assert nodes["pkg.util.normalize"].centrality == 3
     assert nodes["shared.duplicate"].centrality == 3
     assert nodes["app.main"].centrality == 1
@@ -124,7 +125,7 @@ def test_serialization_is_byte_deterministic(graph) -> None:  # type: ignore[no-
 
     assert graph.to_json().encode() == second.to_json().encode()
     payload = json.loads(graph.to_json())
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert payload["nodes"] == sorted(payload["nodes"], key=lambda node: node["id"])
     assert list(payload["file_hashes"]) == sorted(payload["file_hashes"])
     assert payload["concept_annotations"] == sorted(
@@ -182,6 +183,27 @@ def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignor
     assert any(route.src == "cli" and route.dst == "app" for route in graph.region_edges)
 
 
+def test_ambiguous_rank_zero_entrypoints_require_an_explicit_choice(
+    tmp_path: Path,
+) -> None:
+    for module in ("alpha", "beta"):
+        (tmp_path / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n',
+            encoding="utf-8",
+        )
+
+    graph = PythonAstAdapter().parse(tmp_path)
+    assert graph.entrypoint_candidates == ("alpha", "beta")
+    assert graph.selected_entrypoint is None
+    assert not any(region.home for region in graph.regions)
+
+    selected = PythonAstAdapter().parse(tmp_path, entrypoint="beta")
+    assert selected.selected_entrypoint == "beta"
+    assert next(region for region in selected.regions if region.id == "beta").home
+    with pytest.raises(PythonParseError, match="not parser-ranked"):
+        PythonAstAdapter().parse(tmp_path, entrypoint="missing")
+
+
 def test_invalid_target_fails_honestly(tmp_path: Path) -> None:
     with pytest.raises(PythonParseError, match="no Python files"):
         PythonAstAdapter().parse(tmp_path)
@@ -192,5 +214,5 @@ def test_parse_cli_writes_graph_json(tmp_path: Path, capsys) -> None:  # type: i
 
     assert main(["parse", str(FIXTURE), "--out", str(destination)]) == 0
     payload = json.loads(destination.read_text(encoding="utf-8"))
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert "Wrote" in capsys.readouterr().out

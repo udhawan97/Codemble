@@ -22,7 +22,11 @@ class ProgressStore:
 
     def __init__(self, graph: Graph, root: Path | None = None) -> None:
         self._graph = graph
-        self._root = root or Path.home() / ".codemble" / "progress"
+        data_root = os.environ.get("CODEMBLE_DATA_DIR")
+        self._root = root or (
+            (Path(data_root).expanduser() if data_root else Path.home() / ".codemble")
+            / "progress"
+        )
         project_key = hashlib.sha256(graph.project_root.encode()).hexdigest()[:20]
         self.path = self._root / f"{project_key}.json"
         self._signatures = _region_signatures(graph)

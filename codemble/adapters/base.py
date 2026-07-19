@@ -105,11 +105,12 @@ class Graph:
     entrypoint_candidates: tuple[str, ...]
     project_root: str
     file_hashes: dict[str, str]
+    selected_entrypoint: str | None = None
     concept_annotations: tuple[ConceptAnnotation, ...] = ()
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
-    schema_version: int = field(default=2, init=False)
+    schema_version: int = field(default=3, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""
@@ -131,6 +132,7 @@ class Graph:
             "nodes": [asdict(node) for node in nodes],
             "edges": [asdict(edge) for edge in edges],
             "entrypoint_candidates": list(self.entrypoint_candidates),
+            "selected_entrypoint": self.selected_entrypoint,
             "project_root": self.project_root,
             "file_hashes": dict(sorted(self.file_hashes.items())),
             "concept_annotations": [
@@ -163,7 +165,7 @@ class Graph:
 class LanguageAdapter(Protocol):
     """The seam every supported language implements."""
 
-    def parse(self, path: Path) -> Graph:
+    def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
         """Parse ``path`` into a graph without inventing source structure."""
 
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:

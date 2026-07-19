@@ -32,6 +32,7 @@ own it. You bring your own Claude or OpenAI API key; everything else runs
 locally on your machine.
 
 :::note[Status]
-Codemble is in early development (Phase 0). Follow along on
-[GitHub](https://github.com/udhawan97/Codemble) — the roadmap is public.
+v0.1.0 is the Phase 0 tester release. The complete Python loop runs end to end;
+3–5 unaided learner runs are still required before Phase 1 begins. Follow on
+[GitHub](https://github.com/udhawan97/Codemble) — the roadmap stays public.
 :::

@@ -14,7 +14,11 @@ export function galaxyData(graph, palette) {
       fy: region.y,
       fz: region.z,
       val: sizeFromLoc(region.loc, 5, 24),
-      color: region.understood ? palette.star : brightness(region.centrality, palette),
+      color: region.understood
+        ? palette.star
+        : graph.nodes.some((node) => node.region === region.id && node.partial)
+          ? palette.routePossible
+          : brightness(region.centrality, palette),
     })),
     links: graph.region_edges.map((edge) => ({
       ...edge,
@@ -35,7 +39,11 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
       fy: node.system_y,
       fz: node.system_z,
       val: sizeFromLoc(node.loc, 2.8, 11),
-      color: node.understood ? palette.star : brightness(node.centrality, palette),
+      color: node.understood
+        ? palette.star
+        : node.partial
+          ? palette.routePossible
+          : brightness(node.centrality, palette),
       selected: node.id === selectedId,
     })),
     links: graph.edges
@@ -61,7 +69,7 @@ export function defaultRegion(graph) {
 
 export function nodeLabel(node) {
   const role = node.kind === "region" ? "star system" : node.kind;
-  const uncertainty = node.partial ? " · partial parse" : "";
+  const uncertainty = node.partial ? " · unchartable · syntax error" : "";
   const home = node.home ? " · Home" : "";
   return `${node.name} · ${role} · ${node.loc} LOC${home}${uncertainty}`;
 }

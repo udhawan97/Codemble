@@ -16,6 +16,9 @@ export function App() {
   const [showChecks, setShowChecks] = useState(false);
   const [checkData, setCheckData] = useState(null);
   const [checkError, setCheckError] = useState("");
+  const [entrypointDismissed, setEntrypointDismissed] = useState(false);
+  const [entrypointError, setEntrypointError] = useState("");
+  const [litRegionId, setLitRegionId] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,6 +42,12 @@ export function App() {
     setCheckData(null);
     setCheckError("");
   }, [level, region?.id]);
+
+  useEffect(() => {
+    if (!litRegionId) return undefined;
+    const timeout = window.setTimeout(() => setLitRegionId(null), 520);
+    return () => window.clearTimeout(timeout);
+  }, [litRegionId]);
 
   useEffect(() => {
     if (level !== LEVELS.STUDY || !selectedNode) {
@@ -139,11 +148,29 @@ export function App() {
         setRegion((current) =>
           payload.regions.find((candidate) => candidate.id === current.id) ?? defaultRegion(payload),
         );
+        setLitRegionId(region.id);
       }
       return result;
     },
     [loadChecks, region],
   );
+
+  const selectEntrypoint = useCallback(async (nodeId) => {
+    setEntrypointError("");
+    try {
+      const response = await fetch("/api/entrypoint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ node_id: nodeId }),
+      });
+      if (!response.ok) throw new Error(`Home selection returned ${response.status}.`);
+      const payload = await response.json();
+      setGraph(payload);
+      setRegion(defaultRegion(payload));
+    } catch (requestError) {
+      setEntrypointError(requestError.message);
+    }
+  }, []);
 
   const projectName = useMemo(() => {
     if (!graph) return "Loading local project";
@@ -183,7 +210,11 @@ export function App() {
           </div>
         </div>
         <p className="location" aria-live="polite">
-          {showChart ? "Star chart" : level === LEVELS.GALAXY ? `Galaxy · Home ${defaultRegion(graph)?.id ?? "unresolved"}` : region.id}
+          {showChart
+            ? "Star chart"
+            : level === LEVELS.GALAXY
+              ? `Galaxy · Home ${graph.selected_entrypoint ? (defaultRegion(graph)?.id ?? "unresolved") : "unselected"}`
+              : region.id}
           {!showChart && level === LEVELS.STUDY && selectedNode ? ` / ${selectedNode.name}` : ""}
         </p>
         {showChart ? (
@@ -216,20 +247,34 @@ export function App() {
         <aside className="map-legend" aria-label="Galaxy legend">
           <span><i className="legend-dot legend-dot--dim" /> Not studied</span>
           <span><i className="legend-dot legend-dot--lit" /> Understood</span>
+          <span><i className="legend-dot legend-dot--partial" /> Unchartable</span>
           <span><i className="legend-route" /> Parser edge</span>
         </aside>
         {level === LEVELS.GALAXY ? (
           <section className="orientation-copy">
             <h1>{graph.regions.length} systems from real source.</h1>
             <p>Choose a system. Size follows lines of code; brightness follows call centrality.</p>
+            {graph.partial_files.length ? (
+              <p className="partial-summary">
+                {graph.partial_files.length} {graph.partial_files.length === 1 ? "file is" : "files are"} unchartable because Python reported a syntax error.
+              </p>
+            ) : null}
           </section>
         ) : null}
         {level === LEVELS.SYSTEM ? (
           <section className="orientation-copy orientation-copy--system">
             <h1>{region.id}</h1>
-            <p>{region.node_count} parser-proven structures · {region.loc} lines in this system.</p>
+            <p>
+              {graph.nodes.some((node) => node.region === region.id && node.partial)
+                ? `${region.node_count} source file remains visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
+                : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
+            </p>
             <button className="check-launch" type="button" onClick={openChecks}>
-              {region.understood ? "Review understanding" : "Prove understanding"}
+              {graph.nodes.some((node) => node.region === region.id && node.partial)
+                ? "Check availability"
+                : region.understood
+                  ? "Review understanding"
+                  : "Prove understanding"}
             </button>
           </section>
         ) : null}
@@ -240,6 +285,21 @@ export function App() {
             onClose={() => setShowChecks(false)}
             onSubmit={submitCheck}
           />
+        ) : null}
+        {!graph.selected_entrypoint && !entrypointDismissed && level === LEVELS.GALAXY ? (
+          <EntrypointPicker
+            candidates={graph.entrypoint_candidates}
+            nodes={graph.nodes}
+            error={entrypointError}
+            onSelect={selectEntrypoint}
+            onContinue={() => setEntrypointDismissed(true)}
+          />
+        ) : null}
+        {litRegionId ? (
+          <output className="illumination-pulse" aria-live="polite">
+            <span aria-hidden="true">✦</span>
+            <strong>{litRegionId} understood</strong>
+          </output>
         ) : null}
         {level === LEVELS.STUDY && selectedNode ? (
           <StudyPanel
@@ -258,6 +318,40 @@ export function App() {
         <span>Local only</span>
       </footer>
     </main>
+  );
+}
+
+function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  return (
+    <aside className="entrypoint-picker" aria-labelledby="entrypoint-heading">
+      <p>Home calibration</p>
+      <h1 id="entrypoint-heading">
+        {candidates.length ? "Where does your project start?" : "No clear entrypoint found."}
+      </h1>
+      <p>
+        {candidates.length
+          ? "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
+          : "Explore the parsed map without Home, or restart with an explicit --entrypoint after adding a recognized startup structure."}
+      </p>
+      {candidates.length ? (
+        <div className="entrypoint-candidates">
+          {candidates.map((candidate) => {
+            const node = nodeById.get(candidate);
+            return (
+              <button type="button" key={candidate} onClick={() => onSelect(candidate)}>
+                <span>{candidate}</span>
+                <small>{node?.file}:{node?.lineno} · parser rank {node?.entrypoint_rank}</small>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {error ? <p className="entrypoint-error" role="alert">{error}</p> : null}
+      <button className="entrypoint-continue" type="button" onClick={onContinue}>
+        Explore without Home
+      </button>
+    </aside>
   );
 }
 
@@ -395,6 +489,12 @@ function StudyPanel({ node, study, error, onSelectNode }) {
       {!study && !error ? <p className="study-loading">Reading parser evidence…</p> : null}
       {study ? (
         <div className="study-content">
+          {node.partial ? (
+            <section className="partial-study" role="status">
+              <h2>Unchartable beyond this source.</h2>
+              <p>Python reported a syntax error, so Codemble kept the file visible but did not invent structures or relationships inside it.</p>
+            </section>
+          ) : null}
           <SourceExcerpt source={study.source} />
           <LensNotes lens={study.lens} language={node.language} />
           <Explanation explanation={explanation} node={node} onSelectNode={onSelectNode} />
@@ -537,6 +637,14 @@ function Explanation({ explanation, node, onSelectNode }) {
         <h2 id="explanation-heading">The explanation was withheld.</h2>
         <p>{explanation.message}</p>
         <p>Codemble will not display provider output that falls outside parser evidence.</p>
+      </section>
+    );
+  }
+  if (explanation.status === "partial") {
+    return (
+      <section className="study-notice" aria-labelledby="explanation-heading">
+        <h2 id="explanation-heading">Narration stays off for partial source.</h2>
+        <p>{explanation.message}</p>
       </section>
     );
   }

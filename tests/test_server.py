@@ -74,3 +74,27 @@ def test_check_api_withholds_answers_then_persists_graph_lighting(tmp_path: Path
     app_region = next(region for region in graph_payload["regions"] if region["id"] == "app")
     assert app_region["understood"] is True
     assert client.get("/api/regions/not-real/checks").status_code == 404
+
+
+def test_entrypoint_api_accepts_only_parser_ranked_candidates(tmp_path: Path) -> None:
+    for module in ("alpha", "beta"):
+        (tmp_path / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n',
+            encoding="utf-8",
+        )
+    graph = PythonAstAdapter().parse(tmp_path)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/graph").json()["selected_entrypoint"] is None
+    response = client.post("/api/entrypoint", json={"node_id": "beta"})
+    assert response.status_code == 200
+    assert response.json()["selected_entrypoint"] == "beta"
+    assert next(
+        region for region in response.json()["regions"] if region["id"] == "beta"
+    )["home"]
+    beta_checks = client.get("/api/regions/beta/checks").json()["checks"]
+    assert len(beta_checks) == 1
+    assert beta_checks[0]["kind"] == "entrypoint"
+    assert "selected as Home" in beta_checks[0]["prompt"]
+    assert client.get("/api/regions/alpha/checks").json()["checks"] == []
+    assert client.post("/api/entrypoint", json={"node_id": "missing"}).status_code == 422

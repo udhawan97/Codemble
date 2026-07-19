@@ -36,7 +36,8 @@ npm run build                   # what the Pages workflow runs
 | `codemble/llm/` | Anthropic + OpenAI providers, BYO key, disk cache; narration only |
 | `codemble/server/` | FastAPI: serves SPA + graph/checks JSON API |
 | `codemble/progress/` | Local persistence: illumination + star chart (`~/.codemble/`) |
-| `web/` | Galaxy renderer (Vite + React + 3d-force-graph) — arrives in M2 |
+| `web/` | Galaxy renderer source (Vite + React + 3d-force-graph) |
+| `codemble/web_dist/` | Versioned production SPA bundled in the Python wheel |
 | `tests/` | Pytest suite |
 | `docs/` | Internal: `adr/`, `plans/`, `research/` |
 | `docs-site/` | Public site (Astro + Starlight → GitHub Pages) |
@@ -142,8 +143,8 @@ The audience cannot detect when the tool is wrong. Therefore:
 
 ## Roadmap — NOW / NEXT / LATER
 
-**NOW — Phase 0: complete v1, Python only (~weeks 1–8).** Milestones M1–M6
-below. Everything, one language, end-to-end.
+**NOW — Phase 0 acceptance, Python only.** v0.1.0 implements the M1–M6
+technical loop; 3–5 unaided learner runs remain before Phase 1 is promoted.
 
 **NEXT — Phases 1–2 (months ~3–6).** Phase 1: TS/JS tree-sitter adapter,
 language filter/switch, TS/JS idiom lens. Phase 2: Go/Rust/Java adapters, LOD
@@ -155,10 +156,11 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M6** · Last updated: 2026-07-19 · Session note: M5 checks,
-illumination, and persistence complete — four check families are generated and
-scored only from the graph, file-scoped progress survives restart, and the real
-desktop/320 px active-recall flow is clean; all gates green.
+**Current milestone: M6 human acceptance** · Last updated: 2026-07-19 · Session
+note: M6 technical scope and v0.1.0 release candidate complete — ambiguous Home,
+300-file scoping, Unchartable partial source, packaged SPA, isolated-wheel run,
+real demo GIF, desktop/320 px QA, and all automated gates are green. The 3–5
+external learner runs remain open; Phase 1 is not promoted.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -220,9 +222,9 @@ location; chart updates as concepts are studied.
 restart; editing one file re-dims only that region.
 
 ### M6 — Polish + first testers (weeks 7–8)
-- [ ] Entrypoint picker when ambiguous; scale-cap prompt (>~300 files → subdir)
-- [ ] Partial-parse handling (syntax errors flagged; galaxy never crashes)
-- [ ] README demo GIF; `pipx`/`uvx` install path
+- [x] Entrypoint picker when ambiguous; scale-cap prompt (>~300 files → subdir)
+- [x] Partial-parse handling (syntax errors flagged; galaxy never crashes)
+- [x] README demo GIF; `pipx`/`uvx` install path
 - [ ] 3–5 early testers onboarded from learner communities
 
 **Acceptance:** a stranger runs it on their own AI-built project without help
@@ -253,6 +255,10 @@ and lights up at least one system.
 | 2026-07-19 | `~/.codemble/config` accepts TOML (or JSON) and validated explanations cache by prompt/provider/model/node/file hash | Keeps BYO configuration readable and prevents stale prose after source or model changes |
 | 2026-07-19 | Graph schema 2 carries parser-owned concept annotations; star-chart studied state is session-local while understood state comes only from checks | The Lens can teach exact syntax without guessing, and viewing a structure cannot masquerade as mastery |
 | 2026-07-19 | `CheckService` owns four deterministic graph-only check families; `ProgressStore` owns atomic region signatures separately from the graph parser | No model can decide correctness, and changed source invalidates only the region whose file evidence changed |
+| 2026-07-19 | A region with zero safe graph checks stays dim and says why instead of auto-lighting on visit | Auto-light would claim understanding without evidence and violate the Correctness Contract, so this intentionally overrides the Phase 0 playbook fallback |
+| 2026-07-19 | Graph schema 3 separates ranked entrypoint candidates from selected Home; ambiguous rank-zero candidates require the learner or `--entrypoint` | Parser rank is evidence, but choosing between equal candidates is a user decision and must not be guessed |
+| 2026-07-19 | Commit the production SPA under `codemble/web_dist` and bundle it in the wheel | `pipx`/`uvx` Git installs must run without Node or a source checkout; the Vite build and isolated wheel smoke test keep the bundle honest |
+| 2026-07-19 | v0.1.0 is a tester release; keep Phase 1 out of NOW until 3–5 unaided learner runs pass | Technical completion cannot substitute for the human first-run acceptance criterion |
 
 ## Non-Goals — do NOT build (point here when asked)
 

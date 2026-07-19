@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-19
+
 ### Added
 - Repository scaffold: README, CLAUDE.md agent brief, docs, docs-site (Astro + Starlight), CI, community files.
 - Deterministic Python AST parser with language-neutral graph models, source spans,
@@ -36,3 +38,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   per-region file signatures so editing one file re-dims only its own system.
 - Responsive System check flow with explicit wrong-answer evidence, suite
   progress, restart-safe completion, and star-chart understanding updates.
+- Honest Home calibration when top-ranked entrypoints are ambiguous, plus a
+  parser-validated `--entrypoint` override.
+- A 300-file Phase 0 guard with interactive subdirectory selection and an
+  explicit non-interactive `--path` route.
+- Unchartable syntax-error nodes, raw-source access, and model narration
+  suppression for partial parses.
+- Production SPA assets inside the Python wheel, versioned `pipx`/`uvx` Git
+  install routes, an automated real-app demo recorder, and the v0.1.0 GIF.

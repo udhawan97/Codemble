@@ -297,9 +297,13 @@ class PythonAstAdapter:
 
     language = "python"
 
-    def parse(self, path: Path) -> Graph:
-        requested = path.expanduser().resolve()
-        project_root, files = _discover_python_files(requested)
+    def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
+        """Return the parser's exact project root and accepted Python files."""
+
+        return _discover_python_files(path.expanduser().resolve())
+
+    def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
+        project_root, files = self.discover(path)
         parsed_files = tuple(_parse_file(file, project_root) for file in files)
 
         nodes: list[Node] = []
@@ -416,6 +420,17 @@ class PythonAstAdapter:
                 key=lambda node: (node.entrypoint_rank, node.id),  # type: ignore[arg-type]
             )
         )
+        if entrypoint is not None and entrypoint not in candidates:
+            choices = ", ".join(candidates) or "none"
+            raise PythonParseError(
+                f"entrypoint is not parser-ranked: {entrypoint} (candidates: {choices})"
+            )
+        rank_zero = [
+            candidate
+            for candidate in candidates
+            if node_by_id[candidate].entrypoint_rank == 0
+        ]
+        selected_entrypoint = entrypoint or (rank_zero[0] if len(rank_zero) == 1 else None)
         return layout_graph(Graph(
             nodes=tuple(sorted(nodes, key=lambda node: node.id)),
             edges=tuple(
@@ -434,6 +449,7 @@ class PythonAstAdapter:
             entrypoint_candidates=candidates,
             project_root=str(project_root),
             file_hashes={parsed.relative_path: parsed.digest for parsed in parsed_files},
+            selected_entrypoint=selected_entrypoint,
             concept_annotations=tuple(
                 sorted(
                     set(annotations),
