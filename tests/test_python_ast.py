@@ -12,6 +12,7 @@ from codemble.adapters.python_ast import PythonAstAdapter, PythonParseError
 from codemble.cli import main
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+CONCEPT_FIXTURE = Path(__file__).parent / "fixtures" / "concepts_sample.py"
 
 
 @pytest.fixture(scope="module")
@@ -123,9 +124,44 @@ def test_serialization_is_byte_deterministic(graph) -> None:  # type: ignore[no-
 
     assert graph.to_json().encode() == second.to_json().encode()
     payload = json.loads(graph.to_json())
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["nodes"] == sorted(payload["nodes"], key=lambda node: node["id"])
     assert list(payload["file_hashes"]) == sorted(payload["file_hashes"])
+    assert payload["concept_annotations"] == sorted(
+        payload["concept_annotations"],
+        key=lambda item: (item["node_id"], item["lineno"], item["concept"], item["end_lineno"]),
+    )
+
+
+def test_python_lens_annotations_are_ast_proven_and_lexically_owned() -> None:
+    graph = PythonAstAdapter().parse(CONCEPT_FIXTURE)
+    concepts_by_node: dict[str, set[tuple[str, int]]] = {}
+    for annotation in graph.concept_annotations:
+        concepts_by_node.setdefault(annotation.node_id, set()).add(
+            (annotation.concept, annotation.lineno)
+        )
+
+    assert concepts_by_node.get("concepts_sample", set()) == set()
+    assert {
+        ("decorator", 8),
+        ("async-await", 9),
+        ("type-hint", 9),
+        ("comprehension", 10),
+        ("comprehension", 11),
+        ("async-await", 12),
+        ("async-await", 13),
+        ("context-manager", 14),
+        ("exception-handling", 16),
+        ("exception-handling", 19),
+    } <= concepts_by_node["concepts_sample.collect"]
+    assert ("generator", 23) in concepts_by_node["concepts_sample.stream"]
+    assert ("generator", 27) in concepts_by_node["concepts_sample.expression"]
+    assert ("type-hint", 31) in concepts_by_node["concepts_sample.Example"]
+    assert {
+        ("dunder-method", 33),
+        ("type-hint", 33),
+    } <= concepts_by_node["concepts_sample.Example.__len__"]
+    assert all(annotation.snippet for annotation in graph.concept_annotations)
 
 
 def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignore[no-untyped-def]
@@ -156,5 +192,5 @@ def test_parse_cli_writes_graph_json(tmp_path: Path, capsys) -> None:  # type: i
 
     assert main(["parse", str(FIXTURE), "--out", str(destination)]) == 0
     payload = json.loads(destination.read_text(encoding="utf-8"))
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert "Wrote" in capsys.readouterr().out

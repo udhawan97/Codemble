@@ -12,8 +12,21 @@ teaches them right there, anchored to the line where they live.
 
 ## The chart
 
-The star chart is your second progress screen: every language concept you've
-encountered, and whether you've understood it in context. It only ever claims a
-concept exists where the parser actually detected it — the lens never guesses.
+The star chart is your second progress screen. Its three measures deliberately
+mean different things:
+
+- **Encountered** comes from syntax the parser found in the current project.
+- **Studied** counts structures you opened during this session.
+- **Understood** stays dark until a graph-derived check passes.
+
+Opening a Study view can move Studied, but it cannot claim you understand the
+concept. It only ever claims a concept exists where the parser actually detected
+it — the lens never guesses.
+
+The Python Lens currently recognizes decorators, comprehensions, generators,
+context managers, async/await, dunder methods, exception handling, and type
+hints. Each note carries its real source snippet and a clickable `file:line`
+anchor. Nested functions and classes own their own annotations, so a parent does
+not absorb concepts found only inside a child structure.
 
 Python concepts ship first; each new language adapter brings its own concept set.

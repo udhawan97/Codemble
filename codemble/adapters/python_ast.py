@@ -163,6 +163,135 @@ class _ScopeFacts(ast.NodeVisitor):
         return self
 
 
+class _ConceptCollector(ast.NodeVisitor):
+    """Collect concepts inside one lexical owner without crossing into children."""
+
+    def __init__(self, node_id: str, source: str) -> None:
+        self.node_id = node_id
+        self.source_lines = source.splitlines()
+        self.annotations: set[ConceptAnnotation] = set()
+
+    def add(self, concept: str, syntax: ast.AST) -> None:
+        lineno = getattr(syntax, "lineno", None)
+        if not isinstance(lineno, int):
+            return
+        end_lineno = getattr(syntax, "end_lineno", lineno)
+        if not isinstance(end_lineno, int):
+            end_lineno = lineno
+        snippet = self.source_lines[lineno - 1].strip() if lineno <= len(self.source_lines) else ""
+        self.annotations.add(
+            ConceptAnnotation(
+                node_id=self.node_id,
+                concept=concept,
+                lineno=lineno,
+                end_lineno=end_lineno,
+                snippet=snippet[:240],
+            )
+        )
+
+    def visit_FunctionDef(self, syntax: ast.FunctionDef) -> None:
+        return
+
+    def visit_AsyncFunctionDef(self, syntax: ast.AsyncFunctionDef) -> None:
+        return
+
+    def visit_ClassDef(self, syntax: ast.ClassDef) -> None:
+        return
+
+    def visit_ListComp(self, syntax: ast.ListComp) -> None:
+        self.add("comprehension", syntax)
+        self.generic_visit(syntax)
+
+    def visit_SetComp(self, syntax: ast.SetComp) -> None:
+        self.add("comprehension", syntax)
+        self.generic_visit(syntax)
+
+    def visit_DictComp(self, syntax: ast.DictComp) -> None:
+        self.add("comprehension", syntax)
+        self.generic_visit(syntax)
+
+    def visit_GeneratorExp(self, syntax: ast.GeneratorExp) -> None:
+        self.add("generator", syntax)
+        self.generic_visit(syntax)
+
+    def visit_Yield(self, syntax: ast.Yield) -> None:
+        self.add("generator", syntax)
+        self.generic_visit(syntax)
+
+    def visit_YieldFrom(self, syntax: ast.YieldFrom) -> None:
+        self.add("generator", syntax)
+        self.generic_visit(syntax)
+
+    def visit_With(self, syntax: ast.With) -> None:
+        self.add("context-manager", syntax)
+        self.generic_visit(syntax)
+
+    def visit_AsyncWith(self, syntax: ast.AsyncWith) -> None:
+        self.add("context-manager", syntax)
+        self.add("async-await", syntax)
+        self.generic_visit(syntax)
+
+    def visit_Await(self, syntax: ast.Await) -> None:
+        self.add("async-await", syntax)
+        self.generic_visit(syntax)
+
+    def visit_AsyncFor(self, syntax: ast.AsyncFor) -> None:
+        self.add("async-await", syntax)
+        self.generic_visit(syntax)
+
+    def visit_Try(self, syntax: ast.Try) -> None:
+        self.add("exception-handling", syntax)
+        self.generic_visit(syntax)
+
+    def visit_TryStar(self, syntax: ast.TryStar) -> None:
+        self.add("exception-handling", syntax)
+        self.generic_visit(syntax)
+
+    def visit_Raise(self, syntax: ast.Raise) -> None:
+        self.add("exception-handling", syntax)
+        self.generic_visit(syntax)
+
+    def visit_AnnAssign(self, syntax: ast.AnnAssign) -> None:
+        self.add("type-hint", syntax.annotation)
+        self.generic_visit(syntax)
+
+
+def _concepts_for_target(
+    node: Node,
+    target: ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+    source: str,
+) -> list[ConceptAnnotation]:
+    collector = _ConceptCollector(node.id, source)
+    if isinstance(target, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+        for decorator in target.decorator_list:
+            collector.add("decorator", decorator)
+    if isinstance(target, ast.AsyncFunctionDef):
+        collector.add("async-await", target)
+    if isinstance(target, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if target.name.startswith("__") and target.name.endswith("__"):
+            collector.add("dunder-method", target)
+        arguments = [
+            *target.args.posonlyargs,
+            *target.args.args,
+            *target.args.kwonlyargs,
+        ]
+        if target.args.vararg is not None:
+            arguments.append(target.args.vararg)
+        if target.args.kwarg is not None:
+            arguments.append(target.args.kwarg)
+        for argument in arguments:
+            if argument.annotation is not None:
+                collector.add("type-hint", argument.annotation)
+        if target.returns is not None:
+            collector.add("type-hint", target.returns)
+    for statement in target.body:
+        collector.visit(statement)
+    return sorted(
+        collector.annotations,
+        key=lambda item: (item.lineno, item.concept, item.end_lineno, item.snippet),
+    )
+
+
 class PythonAstAdapter:
     """Parse Python source into deterministic, render-ready graph data."""
 
@@ -262,6 +391,24 @@ class PythonAstAdapter:
             if edge.kind == "call" and not edge.external and edge.dst in node_by_id
         )
         nodes = [replace(node, centrality=indegree[node.id]) for node in nodes]
+        node_by_id = {node.id: node for node in nodes}
+        annotations: list[ConceptAnnotation] = []
+        for parsed in parsed_files:
+            if parsed.tree is None:
+                continue
+            annotations.extend(
+                _concepts_for_target(node_by_id[parsed.module], parsed.tree, parsed.source)
+            )
+        for definition in definitions:
+            annotations.extend(
+                _concepts_for_target(
+                    node_by_id[definition.node_id],
+                    definition.syntax,
+                    parsed_by_module[
+                        _module_from_node_id(definition.node_id, modules)
+                    ].source,
+                )
+            )
         candidates = tuple(
             node.id
             for node in sorted(
@@ -287,15 +434,44 @@ class PythonAstAdapter:
             entrypoint_candidates=candidates,
             project_root=str(project_root),
             file_hashes={parsed.relative_path: parsed.digest for parsed in parsed_files},
+            concept_annotations=tuple(
+                sorted(
+                    set(annotations),
+                    key=lambda item: (item.node_id, item.lineno, item.concept, item.end_lineno),
+                )
+            ),
             partial_files=tuple(
                 parsed.relative_path for parsed in parsed_files if parsed.tree is None
             ),
         ))
 
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
-        """Concept extraction arrives in M4; returning none invents nothing."""
+        """Return only AST-proven concepts owned by ``node``."""
 
-        return []
+        if node.partial:
+            return []
+        try:
+            tree = ast.parse(source, filename=node.file)
+        except (SyntaxError, ValueError):
+            return []
+        target: ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef | None
+        target = tree if node.kind == "module" else None
+        if target is None:
+            expected_types = {
+                "class": (ast.ClassDef,),
+                "function": (ast.FunctionDef, ast.AsyncFunctionDef),
+            }[node.kind]
+            target = next(
+                (
+                    candidate
+                    for candidate in ast.walk(tree)
+                    if isinstance(candidate, expected_types)
+                    and candidate.name == node.name
+                    and candidate.lineno == node.lineno
+                ),
+                None,
+            )
+        return _concepts_for_target(node, target, source) if target is not None else []
 
 
 def _discover_python_files(requested: Path) -> tuple[Path, tuple[Path, ...]]:

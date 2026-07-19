@@ -90,6 +90,7 @@ export default defineConfig({
             { label: "Build log: M1 parser", slug: "progress/m1-parser" },
             { label: "Build log: M2 galaxy", slug: "progress/m2-galaxy" },
             { label: "Build log: M3 study", slug: "progress/m3-study" },
+            { label: "Build log: M4 lens", slug: "progress/m4-lens" },
           ],
         },
       ],

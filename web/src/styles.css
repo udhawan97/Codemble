@@ -480,6 +480,168 @@ button:focus-visible,
   font-size: var(--cm-text-sm);
 }
 
+.lens-notes {
+  display: grid;
+  margin-block-start: var(--cm-space-sm);
+}
+
+.lens-note {
+  display: grid;
+  min-width: 0;
+  gap: var(--cm-space-sm);
+  padding-block: var(--cm-space-md);
+  border-block-end: 1px solid var(--cm-hairline);
+}
+
+.lens-note h3 {
+  margin: 0 0 var(--cm-space-xs);
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-base);
+  font-style: normal;
+}
+
+.lens-note p {
+  max-width: 65ch;
+  margin: 0 0 var(--cm-space-sm);
+  color: var(--cm-ink-2);
+}
+
+.lens-note code {
+  display: block;
+  min-width: 0;
+  overflow-x: auto;
+  padding: var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground);
+  color: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  white-space: pre;
+}
+
+/* Hallmark · secondary macrostructure: Progress Ledger · variation: syntax inventory */
+.star-chart-screen {
+  min-width: 0;
+  overflow: auto;
+  padding: var(--cm-space-lg) max(var(--cm-space-md), env(safe-area-inset-right))
+    var(--cm-space-xl) max(var(--cm-space-md), env(safe-area-inset-left));
+  background: var(--cm-ground);
+}
+
+.star-chart-intro {
+  display: block;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-block-end: var(--cm-space-xl);
+}
+
+.star-chart-intro > p:first-child {
+  margin: 0 0 var(--cm-space-sm);
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.star-chart-intro h1 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-display);
+  font-style: normal;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.star-chart-intro > p:not(:first-child) {
+  max-width: 65ch;
+  margin: var(--cm-space-md) 0 0;
+  color: var(--cm-ink-2);
+}
+
+.star-chart-intro dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--cm-space-md);
+  margin: var(--cm-space-xl) 0 0;
+  padding-block: var(--cm-space-md);
+  border-block: 1px solid var(--cm-hairline);
+}
+
+.star-chart-intro dt,
+.concept-row dt {
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.star-chart-intro dd {
+  margin: var(--cm-space-xs) 0 0;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.concept-ledger {
+  max-width: 72rem;
+  margin-inline: auto;
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.concept-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.7fr) minmax(8rem, 1.2fr) auto;
+  align-items: center;
+  gap: var(--cm-space-lg);
+  min-width: 0;
+  padding-block: var(--cm-space-lg);
+  border-block-end: 1px solid var(--cm-hairline);
+}
+
+.concept-row h2 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  font-style: normal;
+}
+
+.concept-row > div:first-child > span {
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.concept-meter {
+  height: 2px;
+  overflow: hidden;
+  background: var(--cm-hairline);
+}
+
+.concept-meter span {
+  display: block;
+  height: 100%;
+  background: var(--cm-star);
+}
+
+.concept-row dl {
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-lg);
+  margin: 0;
+}
+
+.concept-row dl div {
+  min-width: 5rem;
+}
+
+.concept-row dd {
+  margin: var(--cm-space-xs) 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
 .status-line {
   position: relative;
   z-index: var(--cm-z-sticky);
@@ -553,6 +715,11 @@ button:focus-visible,
     white-space: nowrap;
   }
 
+  .lens-note {
+    grid-template-columns: minmax(8rem, 0.35fr) minmax(0, 1fr);
+    gap: var(--cm-space-lg);
+  }
+
   .study-preview {
     inset-inline-start: auto;
     inset-block: 0;
@@ -560,6 +727,21 @@ button:focus-visible,
     max-height: none;
     border-block-start: 0;
     border-inline-start: 1px solid var(--cm-hairline);
+  }
+}
+
+@media (max-width: 48rem) {
+  .star-chart-intro dl {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-row {
+    grid-template-columns: 1fr;
+    gap: var(--cm-space-md);
+  }
+
+  .concept-row dl {
+    justify-content: space-between;
   }
 }
 

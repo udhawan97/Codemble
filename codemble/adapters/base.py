@@ -105,10 +105,11 @@ class Graph:
     entrypoint_candidates: tuple[str, ...]
     project_root: str
     file_hashes: dict[str, str]
+    concept_annotations: tuple[ConceptAnnotation, ...] = ()
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
-    schema_version: int = field(default=1, init=False)
+    schema_version: int = field(default=2, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""
@@ -132,6 +133,13 @@ class Graph:
             "entrypoint_candidates": list(self.entrypoint_candidates),
             "project_root": self.project_root,
             "file_hashes": dict(sorted(self.file_hashes.items())),
+            "concept_annotations": [
+                asdict(annotation)
+                for annotation in sorted(
+                    self.concept_annotations,
+                    key=lambda item: (item.node_id, item.lineno, item.concept, item.end_lineno),
+                )
+            ],
             "regions": [asdict(region) for region in sorted(self.regions, key=lambda item: item.id)],
             "region_edges": [
                 asdict(edge)
