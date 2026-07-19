@@ -1,0 +1,55 @@
+name: Bug report
+description: Something broke, rendered wrong, or taught wrong.
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems? Use [SECURITY.md](../../SECURITY.md), not a public issue.
+        **A wrong explanation or wrong check answer is a bug** — report it! Accuracy is the product.
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: codemble 0.0.1 / abc1234
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where did it go wrong?
+      options:
+        - Parser / graph (wrong structure)
+        - Galaxy UI (rendering, zoom, camera)
+        - Explanation (wrong or ungrounded)
+        - Language lens (wrong idiom claim)
+        - Checks (wrong answer or unfair question)
+        - Install / CLI
+        - Docs / website
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A minimal code snippet that reproduces a wrong parse/explanation is gold.
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      placeholder: OS, Python version, browser
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmations
+      options:
+        - label: I am not pasting any API keys or private code I can't share.
+          required: true

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / docs-site & web
+node_modules/
+docs-site/dist/
+docs-site/.astro/
+web/dist/
+
+# Env & local state
+.env
+.DS_Store
+logs/
+*.log
+
+# Editors
+.idea/
+.vscode/
+_to_delete/

@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose something that helps a learner understand their code.
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't a learner do or understand today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Parser / adapters (new language?)
+        - Galaxy / rendering
+        - Explanations / language lens
+        - Checks / game loop
+        - CLI / install
+        - Docs / website
+    validations:
+      required: true
+  - type: checkboxes
+    id: fit
+    attributes:
+      label: Fit with Codemble's principles
+      options:
+        - label: This helps a learner understand their code (not just decorate the galaxy).
+          required: true
+        - label: This keeps explanations grounded — no invented structure.

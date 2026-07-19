@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codemble"
+version = "0.0.1"
+description = "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Umang Dhawan", email = "umangdhawan97@gmail.com" }]
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "httpx>=0.27"]
+
+[project.scripts]
+codemble = "codemble.cli:main"
+
+[project.urls]
+Homepage = "https://udhawan97.github.io/Codemble/"
+Repository = "https://github.com/udhawan97/Codemble"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.hatch.build.targets.wheel]
+packages = ["codemble"]

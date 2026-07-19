@@ -1,0 +1,68 @@
+/* ============================================================================
+   Codemble design tokens — single source of truth.
+   docs-site/design.md mirrors and explains these values; change them together.
+   MUST load before custom.css (enforced in astro.config.mjs customCss order).
+   Named tokens only in downstream CSS — never raw values.
+   ============================================================================ */
+
+:root {
+  /* --- Type --------------------------------------------------------------- */
+  --cm-font-display: "Sora", system-ui, sans-serif;
+  --cm-font-body: "Inter", system-ui, sans-serif;
+  --cm-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* --- Spacing (4-point scale) -------------------------------------------- */
+  --cm-space-xs: 0.25rem;
+  --cm-space-sm: 0.5rem;
+  --cm-space-md: 1rem;
+  --cm-space-lg: 2rem;
+  --cm-space-xl: 4rem;
+
+  /* --- Motion ------------------------------------------------------------- */
+  /* House easing shared with the app's camera rails. Never default `ease`. */
+  --cm-ease: cubic-bezier(0.16, 0.7, 0.3, 1);
+  --cm-dur-quick: 160ms;
+  --cm-dur-reveal: 420ms;
+}
+
+/* --- Dark ground (primary; the sky) -------------------------------------- */
+/* Contrast: all ink/accent tokens clear WCAG AA 4.5:1 against BOTH
+   --cm-ground and --cm-ground-2 (measured on the worse surface). */
+:root[data-theme="dark"], :root {
+  --cm-ground: #0b0d16;      /* night sky — never pure black */
+  --cm-ground-2: #131629;    /* raised surface (panels), solid — paper, never glass */
+  --cm-hairline: #262b45;
+
+  --cm-ink: #e7e9f4;         /* primary text  — 15.2:1 on ground */
+  --cm-ink-2: #a9aec7;       /* secondary     —  7.6:1 on ground */
+  --cm-ink-3: #7a809f;       /* dim / not-yet-understood — 4.6:1 on ground-2 */
+
+  /* Accent 1 — STAR (gold). ONE job: illumination = understanding.
+     Progress, lit states, the brand mark's core. 9.8:1 on ground. */
+  --cm-star: #facc15;
+  --cm-star-high: #fde047;
+  --cm-star-low: #4a3f0e;
+
+  /* Accent 2 — ORBIT (cyan). ONE job: interaction — links, focus, actions.
+     8.1:1 on ground. Never used for progress; never decorative. */
+  --cm-orbit: #67e8f9;
+  --cm-orbit-low: #0e3a42;
+}
+
+/* --- Light ground (docs reading mode) ------------------------------------ */
+:root[data-theme="light"] {
+  --cm-ground: #fbfaf7;      /* warm paper — never pure white */
+  --cm-ground-2: #f1efe9;
+  --cm-hairline: #d9d6cc;
+
+  --cm-ink: #23263a;         /* 12.9:1 on ground */
+  --cm-ink-2: #4c5069;       /*  7.4:1 on ground */
+  --cm-ink-3: #6d7290;       /*  4.7:1 on ground-2 */
+
+  --cm-star: #a16207;        /* gold, darkened for light ground — 5.0:1 */
+  --cm-star-high: #854d0e;
+  --cm-star-low: #fdf3d0;
+
+  --cm-orbit: #0e7490;       /* 5.3:1 on ground */
+  --cm-orbit-low: #d6f3fa;
+}

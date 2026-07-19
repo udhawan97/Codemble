@@ -1,0 +1,26 @@
+/* Codemble docs — Starlight overrides. tokens.css MUST load first (astro.config customCss order). */
+
+:root {
+  --sl-font: var(--cm-font-body);
+  --sl-color-accent: var(--cm-star);
+  --sl-color-accent-high: var(--cm-star-high);
+  --sl-color-accent-low: var(--cm-star-low);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--cm-font-display);
+  letter-spacing: -0.01em;
+}
+
+code, pre {
+  font-family: var(--cm-font-mono);
+}
+
+.sl-markdown-content a {
+  color: var(--cm-orbit);
+  text-decoration-color: color-mix(in srgb, var(--cm-orbit) 40%, transparent);
+}
+
+/* Illumination motif: understood = lit. Used by inline "state" chips in docs. */
+.cm-lit { color: var(--cm-star); }
+.cm-dim { color: var(--cm-ink-3); }

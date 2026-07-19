@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & ideas
+    url: https://github.com/udhawan97/Codemble/discussions
+    about: Ask anything, share what your galaxy looks like.
+  - name: Security report (private)
+    url: https://github.com/udhawan97/Codemble/security/advisories/new
+    about: Never report security issues in public issues.
