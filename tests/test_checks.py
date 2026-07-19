@@ -104,6 +104,18 @@ def test_editing_one_file_redims_only_its_region(tmp_path: Path) -> None:
     assert next(region for region in hydrated.regions if region.id == "pkg.util").understood
 
 
+def test_marking_a_region_understood_preserves_the_mode_preference(tmp_path: Path) -> None:
+    """mark_understood must not clobber sibling keys it does not own, like mode."""
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path)
+    progress.set_mode("expert")
+
+    progress.mark_understood("app")
+
+    assert progress.mode() == "expert"
+
+
 def test_check_prompts_carry_both_voices() -> None:
     graph = PythonAstAdapter().parse(FIXTURE)
 
