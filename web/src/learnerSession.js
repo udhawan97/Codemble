@@ -142,7 +142,7 @@ export function createLearnerSession({
   }
 
   async function browsePickerFolder(path) {
-    if (snapshot.status !== "picking") return;
+    if (snapshot.status !== "picking" || snapshot.picker?.busy) return;
     abortController(pickerController);
     pickerController = new AbortController();
     const controller = pickerController;

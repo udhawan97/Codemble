@@ -337,6 +337,50 @@ assert.equal(pickerSnapshot.picker, null);
 assert.equal(pickerSnapshot.graph, graph);
 pickerSession.dispose();
 
+// Regression: a browse during an in-flight selection must not wedge picker.busy.
+let resolveRaceSelect;
+const raceSelect = new Promise((resolve) => {
+  resolveRaceSelect = resolve;
+});
+const raceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+      "/home/u/demo": { path: "/home/u/demo", parent: "/home/u", entries: [] },
+    },
+    recents: [],
+    selections: {},
+  },
+});
+const raceSession = createLearnerSession({
+  adapter: { ...raceBaseAdapter, selectProject: () => raceSelect },
+  clock,
+});
+await raceSession.start();
+const raceSelectRequest = raceSession.dispatch({
+  type: "SELECT_PROJECT",
+  path: "/home/u/demo",
+});
+await raceSession.dispatch({ type: "BROWSE_PICKER", path: "/home/u/demo" });
+let raceSnapshot = raceSession.getSnapshot();
+assert.equal(
+  raceSnapshot.picker.path,
+  "/home/u",
+  "a browse is refused while a selection is in flight",
+);
+assert.equal(raceSnapshot.picker.busy, true);
+resolveRaceSelect({ state: "ready" });
+await raceSelectRequest;
+raceSnapshot = raceSession.getSnapshot();
+assert.equal(raceSnapshot.status, "ready");
+assert.equal(raceSnapshot.picker, null);
+raceSession.dispose();
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",
