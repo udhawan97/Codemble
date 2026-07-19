@@ -22,17 +22,9 @@ An Anthropic or OpenAI key is optional and enables only explanation prose.
 uvx codemble            # or: pipx install codemble && codemble
 ```
 
-From v0.3.0, Codemble opens your browser to an in-app picker — browse your
+Codemble opens your browser to an in-app picker — browse your
 home folders or reopen a recent project, no path typing required. To skip the
 picker, pass a path directly: `codemble ./your-project`.
-
-> Until the first PyPI release (v0.3.0) lands, install from the tag instead.
-> v0.2.0 has no picker yet, so pass your project path:
->
-> ```bash
-> pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
-> codemble ./your-project
-> ```
 
 The Python wheel already contains the production web app. Node is needed only
 when developing Codemble itself.
@@ -65,8 +57,8 @@ language lens, and checks — only the prose explanations need the model.
 ## Limits that fail honestly
 
 - More than 300 supported source files: run
-  `codemble --path ./project/subdirectory`; from v0.3.0, the picker prompts
-  for the same busiest-first subdirectory choice in the UI.
+  `codemble --path ./project/subdirectory`; the picker prompts for the same
+  busiest-first subdirectory choice in the UI.
 - Ambiguous startup: choose Home in the app or pass a parser-ranked node with
   `--entrypoint NODE_ID`.
 - Syntax error: the file remains visible as **Unchartable**, with raw source;

@@ -17,9 +17,6 @@ mixed project. To skip the picker, pass a path directly:
 codemble ./my-project
 ```
 
-> Until the first PyPI release (v0.3.0) lands, install from the tag instead:
-> `pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0`
-
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
 It keeps syntax-error files visible and labels unresolved calls instead of
 guessing. Use `--no-open` when you want to copy the printed URL yourself.

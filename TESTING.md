@@ -24,9 +24,6 @@ uvx codemble            # or: pipx install codemble && codemble
 Codemble opens your browser to an in-app picker — pick your project folder
 there, or pass one directly: `codemble ./path-to-your-project`.
 
-> Until the first PyPI release (v0.3.0) lands, install from the tag instead:
-> `pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0`
-
 Then, without reading the docs first:
 
 1. Identify Home, or choose it if Codemble asks.

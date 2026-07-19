@@ -38,8 +38,9 @@
 </p>
 
 > [!IMPORTANT]
-> **v0.2.0 is the current Phase 1 tester release.** It maps Python,
-> JavaScript, TypeScript, and mixed projects in one parser-proven galaxy. The
+> **v0.3.0 is the current Phase 1 tester release.** It maps Python,
+> JavaScript, TypeScript, and mixed projects in one parser-proven galaxy,
+> installable straight from PyPI with an in-app project picker. The
 > technical release is complete; unaided learner runs are the evidence still
 > being collected. [Try the ten-minute tester loop](TESTING.md).
 
@@ -51,14 +52,6 @@ uvx codemble            # or: pipx install codemble && codemble
 
 Codemble opens your browser — pick your project folder there. To skip the
 picker, pass a path: `codemble ./your-ai-built-project`.
-
-> Until the first PyPI release (v0.3.0) lands, install from the tag instead —
-> v0.2.0 has no picker yet, so pass your project path:
->
-> ```bash
-> pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
-> codemble ./your-ai-built-project
-> ```
 
 The wheel already contains the web app, so Node.js is not required. No API key is needed for the galaxy,
 source viewer, language Lens, checks, lighting, or saved progress. Add your own
