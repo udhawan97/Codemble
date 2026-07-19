@@ -25,6 +25,7 @@ def test_graph_and_source_endpoints_are_grounded(tmp_path: Path) -> None:
 
     graph_response = client.get("/api/graph")
     study_response = client.get("/api/node/pkg.service.Service.run/study")
+    explanation_response = client.get("/api/node/app.main/explanation?mode=easy")
 
     assert graph_response.status_code == 200
     assert graph_response.json()["regions"]
@@ -33,6 +34,9 @@ def test_graph_and_source_endpoints_are_grounded(tmp_path: Path) -> None:
     assert study_response.json()["source"]["lines"][0]["text"].startswith("    def run")
     assert "structural" in study_response.json()
     assert "explanation" not in study_response.json()
+    assert explanation_response.status_code == 200
+    assert explanation_response.headers["content-type"] == "application/json"
+    assert "status" in explanation_response.json()
     assert client.get("/api/node/not-real/study").status_code == 404
     assert "Codemble" in client.get("/").text
     assert "Codemble" in client.get("/galaxy/system/pkg").text
@@ -112,11 +116,14 @@ def test_js_ts_node_and_region_ids_with_paths_round_trip_through_the_api(
     region_id = "javascript:src/legacy.js"
 
     study = client.get(f"/api/node/{node_id}/study")
+    explanation = client.get(f"/api/node/{node_id}/explanation?mode=easy")
     suite = client.get(f"/api/regions/{region_id}/checks")
 
     assert study.status_code == 200
     assert study.json()["source"]["file"] == "src/util.ts"
     assert study.json()["source"]["lines"][0]["text"].startswith("export function")
+    assert explanation.status_code == 200
+    assert "status" in explanation.json()
     assert suite.status_code == 200
     check = suite.json()["checks"][0]
     generated = generate_checks(graph, region_id)[0]
