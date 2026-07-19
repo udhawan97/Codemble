@@ -155,10 +155,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M4** · Last updated: 2026-07-19 · Session note: M3 study
-complete — exact source lines, evidence-validated Anthropic/OpenAI narration,
-file-hash disk cache, honest no-key/error states, and desktop/320 px browser QA;
-all gates green.
+**Current milestone: M5** · Last updated: 2026-07-19 · Session note: M4 language
+lens and star chart complete — eight Python concepts are AST-proven and anchored
+to source, session study progress stays separate from graph-derived understanding,
+and desktop/320 px browser QA is clean; all gates green.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -203,10 +203,10 @@ nodes on a mid-range laptop; transitions scripted, no free flight anywhere.
 pulling the key degrades gracefully.
 
 ### M4 — Language lens + star chart (weeks 5–6)
-- [ ] `concepts()` for Python: decorators, comprehensions, generators, context
+- [x] `concepts()` for Python: decorators, comprehensions, generators, context
       managers, async/await, dunder methods, exceptions, type hints
-- [ ] Lens notes in study panel, anchored to detected construct lines
-- [ ] Star chart screen: concepts encountered vs. understood
+- [x] Lens notes in study panel, anchored to detected construct lines
+- [x] Star chart screen: concepts encountered vs. understood
 
 **Acceptance:** every lens note points at a parser-detected construct at a real
 location; chart updates as concepts are studied.
@@ -251,6 +251,7 @@ and lights up at least one system.
 | 2026-07-19 | Semantic zoom is input-driven and scripted; 3D navigation controls remain disabled | Preserves the locked no-free-flight learning contract while keeping the map keyboard-accessible |
 | 2026-07-19 | `StudyService.study(node_id)` is the study seam; provider adapters expose only `complete(prompt)` | Source loading, prompt construction, validation, and caching stay local while the two true external transports remain replaceable |
 | 2026-07-19 | `~/.codemble/config` accepts TOML (or JSON) and validated explanations cache by prompt/provider/model/node/file hash | Keeps BYO configuration readable and prevents stale prose after source or model changes |
+| 2026-07-19 | Graph schema 2 carries parser-owned concept annotations; star-chart studied state is session-local while understood state comes only from checks | The Lens can teach exact syntax without guessing, and viewing a structure cannot masquerade as mastery |
 
 ## Non-Goals — do NOT build (point here when asked)
 

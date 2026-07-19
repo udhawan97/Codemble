@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Mapping
 
 from codemble.adapters.base import Edge, Graph, Node
+from codemble.lens import lens_notes
 from codemble.llm.providers import (
     AnthropicProvider,
     NarrationProvider,
@@ -19,7 +20,7 @@ from codemble.llm.providers import (
     ProviderError,
 )
 
-PROMPT_VERSION = "study-v1"
+PROMPT_VERSION = "study-v2"
 _CACHE_SCHEMA = 1
 
 
@@ -131,11 +132,23 @@ class StudyService:
             raise UnknownNodeError(node_id)
         source = self._read_source(node)
         neighbors = self._neighbors(node)
-        explanation = self._explain(node, source, neighbors)
+        annotations = sorted(
+            (
+                annotation
+                for annotation in self._graph.concept_annotations
+                if annotation.node_id == node.id
+            ),
+            key=lambda item: (item.lineno, item.concept, item.end_lineno),
+        )
+        lens = lens_notes(node.language, annotations)
+        for note in lens:
+            note["citation"] = f"{node.file}:{note['line']}"
+        explanation = self._explain(node, source, neighbors, lens)
         return {
             "node": asdict(node),
             "source": source,
             "neighbors": neighbors,
+            "lens": lens,
             "explanation": explanation,
         }
 
@@ -186,6 +199,7 @@ class StudyService:
         node: Node,
         source: dict[str, object],
         neighbors: list[dict[str, object]],
+        lens: list[dict[str, object]],
     ) -> dict[str, object]:
         if self._provider is None:
             return {
@@ -200,7 +214,7 @@ class StudyService:
         if cached is not None:
             return {**cached, "cached": True}
 
-        prompt = _grounded_prompt(node, source, neighbors)
+        prompt = _grounded_prompt(node, source, neighbors, lens)
         try:
             raw = self._provider.complete(prompt)
             validated = _validate_explanation(raw, node, neighbors)
@@ -286,6 +300,7 @@ def _grounded_prompt(
     node: Node,
     source: dict[str, object],
     neighbors: list[dict[str, object]],
+    lens: list[dict[str, object]],
 ) -> str:
     source_lines = source.get("lines", [])
     numbered_source = "\n".join(
@@ -297,6 +312,10 @@ def _grounded_prompt(
         f"- {neighbor['node_id']} ({neighbor['relationship']}, "
         f"{'certain' if neighbor['certain'] else 'possible'}) at {neighbor['citation']}"
         for neighbor in neighbors
+    ) or "- none"
+    lens_evidence = "\n".join(
+        f"- {note['concept']} at {note['citation']}: {note['snippet']}"
+        for note in lens
     ) or "- none"
     return f"""You are the narration layer in Codemble, a code-learning tool.
 
@@ -327,7 +346,7 @@ PARSER-PROVEN NEIGHBORS:
 {neighbor_evidence}
 
 LANGUAGE-LENS ANNOTATIONS:
-- none in this milestone
+{lens_evidence}
 """
 
 

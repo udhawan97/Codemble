@@ -24,3 +24,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Deep narration module with direct Anthropic Messages and OpenAI Responses
   adapters, environment/TOML BYO-key configuration, file-hash disk caching,
   response grounding validation, and explicit no-key/error states.
+- Parser-proven Python concept annotations for decorators, comprehensions,
+  generators, context managers, async/await, dunder methods, exception handling,
+  and type hints, serialized in graph schema 2.
+- Python Lens notes anchored to exact source lines plus a language star chart
+  that separates concepts encountered, structures studied this session, and
+  graph-derived understanding without inventing progress.

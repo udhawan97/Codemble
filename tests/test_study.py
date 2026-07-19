@@ -11,6 +11,7 @@ from codemble.llm.providers import AnthropicProvider, OpenAIProvider
 from codemble.llm.study import StudyService
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+CONCEPT_FIXTURE = Path(__file__).parent / "fixtures" / "concepts_sample.py"
 
 
 class FakeProvider:
@@ -60,7 +61,36 @@ def test_study_without_key_keeps_real_source_available(tmp_path: Path) -> None:
         "text": "def main() -> None:",
     }
     assert result["explanation"]["status"] == "no_key"  # type: ignore[index]
+    assert result["lens"][0]["concept"] == "type-hint"  # type: ignore[index]
+    assert result["lens"][0]["citation"] == "app.py:8"  # type: ignore[index]
     assert not (tmp_path / "cache").exists()
+
+
+def test_lens_notes_are_anchored_to_parser_detected_constructs(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(CONCEPT_FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    result = service.study("concepts_sample.collect")
+    annotations = {
+        (annotation.concept, annotation.lineno, annotation.snippet)
+        for annotation in graph.concept_annotations
+        if annotation.node_id == "concepts_sample.collect"
+    }
+    notes = {
+        (note["concept"], note["line"], note["snippet"])
+        for note in result["lens"]  # type: ignore[union-attr]
+    }
+
+    assert notes == annotations
+    assert all(
+        note["citation"] == f"concepts_sample.py:{note['line']}"
+        for note in result["lens"]  # type: ignore[union-attr]
+    )
 
 
 def test_validated_explanation_is_cached_by_node_and_file_hash(tmp_path: Path) -> None:

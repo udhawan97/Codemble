@@ -24,10 +24,12 @@ centrality, entrypoint rank, region, understood-state — and the 3D frontend is
 **pure consumer**. No layout or game logic lives in the renderer. This is what
 keeps a future read-only share link (and any alternative renderer) cheap.
 
-Graph JSON is schema-versioned and byte-deterministic. It includes stable node
-IDs, source spans, regions, entrypoint ranks, call in-degree, file hashes, and
-explicit certainty/external flags on edges. The file hashes are the future cache
-and progress invalidation key.
+Graph JSON is schema-versioned and byte-deterministic. Schema 2 includes stable
+node IDs, source spans, regions, entrypoint ranks, call in-degree, file hashes,
+parser-owned concept annotations, and explicit certainty/external flags on
+edges. Concept annotations contain the exact node, line span, and source snippet
+that the Lens is allowed to teach. The file hashes are the cache and progress
+invalidation key.
 
 ### 3. The LLM narrates; it never decides
 
@@ -40,6 +42,11 @@ collects parser-proven neighbors, builds the correctness-contract prompt, calls
 the configured provider, validates every returned line and relationship, and
 only then writes a local cache entry keyed by provider, model, node, and file
 hash. Invalid provider output is withheld rather than softened into a guess.
+
+Lens notes take a separate, model-free path: the language adapter emits a
+concept ID only for a proven syntax node, and a deterministic language module
+maps that ID to a teachable note. The star chart aggregates those same graph
+annotations. Studied state is ephemeral; understood state remains check-owned.
 
 ## Stack
 

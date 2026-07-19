@@ -11,6 +11,8 @@ export function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [studyData, setStudyData] = useState(null);
   const [studyError, setStudyError] = useState("");
+  const [showChart, setShowChart] = useState(false);
+  const [studiedNodeIds, setStudiedNodeIds] = useState(() => new Set());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -45,7 +47,10 @@ export function App() {
         if (!response.ok) throw new Error(`Study request returned ${response.status}.`);
         return response.json();
       })
-      .then(setStudyData)
+      .then((payload) => {
+        setStudyData(payload);
+        setStudiedNodeIds((current) => new Set(current).add(payload.node.id));
+      })
       .catch((requestError) => {
         if (requestError.name !== "AbortError") setStudyError(requestError.message);
       });
@@ -89,6 +94,11 @@ export function App() {
     return graph.project_root.split("/").filter(Boolean).at(-1) ?? graph.project_root;
   }, [graph]);
 
+  const chart = useMemo(
+    () => (graph ? buildConceptChart(graph, studiedNodeIds) : []),
+    [graph, studiedNodeIds],
+  );
+
   if (error) {
     return (
       <main className="load-state" role="alert">
@@ -107,7 +117,7 @@ export function App() {
   }
 
   return (
-    <main className="app-shell" data-level={level.toLowerCase()}>
+    <main className="app-shell" data-level={showChart ? "chart" : level.toLowerCase()}>
       <header className="instrument-rail">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true" />
@@ -117,18 +127,27 @@ export function App() {
           </div>
         </div>
         <p className="location" aria-live="polite">
-          {level === LEVELS.GALAXY ? "Galaxy" : region.id}
-          {level === LEVELS.STUDY && selectedNode ? ` / ${selectedNode.name}` : ""}
+          {showChart ? "Star chart" : level === LEVELS.GALAXY ? `Galaxy · Home ${defaultRegion(graph)?.id ?? "unresolved"}` : region.id}
+          {!showChart && level === LEVELS.STUDY && selectedNode ? ` / ${selectedNode.name}` : ""}
         </p>
-        {level !== LEVELS.GALAXY ? (
+        {showChart ? (
+          <button className="rail-action" type="button" onClick={() => setShowChart(false)}>
+            Return to galaxy
+          </button>
+        ) : level !== LEVELS.GALAXY ? (
           <button className="rail-action" type="button" onClick={retreat}>
             {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
           </button>
         ) : (
-          <span className="home-readout">Home: {defaultRegion(graph)?.id ?? "unresolved"}</span>
+          <button className="rail-action" type="button" onClick={() => setShowChart(true)}>
+            Star chart
+          </button>
         )}
       </header>
 
+      {showChart ? (
+        <StarChart chart={chart} studiedNodeIds={studiedNodeIds} />
+      ) : (
       <section className="map-stage" aria-label="Parser-proven project map">
         <GalaxyCanvas
           graph={graph}
@@ -164,10 +183,11 @@ export function App() {
           />
         ) : null}
       </section>
+      )}
 
       <footer className="status-line">
-        <span>{graph.nodes.length} nodes · {graph.edges.length} edges</span>
-        <span>Scroll or Enter to move closer · Escape to move back</span>
+        <span>{showChart ? `${chart.length} concepts detected` : `${graph.nodes.length} nodes · ${graph.edges.length} edges`}</span>
+        <span>{showChart ? `${studiedNodeIds.size} structures studied this session` : "Scroll or Enter to move closer · Escape to move back"}</span>
         <span>Local only</span>
       </footer>
     </main>
@@ -199,11 +219,110 @@ function StudyPanel({ node, study, error, onSelectNode }) {
       {study ? (
         <div className="study-content">
           <SourceExcerpt source={study.source} />
+          <LensNotes lens={study.lens} language={node.language} />
           <Explanation explanation={explanation} node={node} onSelectNode={onSelectNode} />
         </div>
       ) : null}
     </aside>
   );
+}
+
+function LensNotes({ lens, language }) {
+  if (!lens?.length) return null;
+  return (
+    <section className="lens-study" aria-labelledby="lens-heading">
+      <div className="study-section-heading">
+        <h2 id="lens-heading">{conceptTitle(language)} lens</h2>
+        <span>{lens.length} detected</span>
+      </div>
+      <div className="lens-notes">
+        {lens.map((note) => (
+          <article className="lens-note" key={`${note.concept}-${note.line}-${note.snippet}`}>
+            <div>
+              <h3>{note.title}</h3>
+              <Citation citation={note.citation} fallbackLine={note.line} />
+            </div>
+            <div>
+              <p>{note.note}</p>
+              <code>{note.snippet}</code>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function StarChart({ chart, studiedNodeIds }) {
+  const understood = chart.filter((item) => item.understood_nodes > 0).length;
+  return (
+    <section className="star-chart-screen" aria-labelledby="star-chart-heading">
+      <header className="star-chart-intro">
+        <p>Parser-detected concepts</p>
+        <h1 id="star-chart-heading">Your language star chart.</h1>
+        <p>
+          Encountered comes from real syntax. Studied tracks this session. Understood lights only after graph-derived checks pass.
+        </p>
+        <dl>
+          <div><dt>Concepts encountered</dt><dd>{chart.length}</dd></div>
+          <div><dt>Structures studied</dt><dd>{studiedNodeIds.size}</dd></div>
+          <div><dt>Concepts understood</dt><dd>{understood}</dd></div>
+        </dl>
+      </header>
+      <div className="concept-ledger" role="list" aria-label="Language concept progress">
+        {chart.map((item) => (
+          <article className="concept-row" role="listitem" key={item.concept}>
+            <div>
+              <h2>{conceptTitle(item.concept)}</h2>
+              <span>{item.occurrences} parser {item.occurrences === 1 ? "occurrence" : "occurrences"}</span>
+            </div>
+            <div className="concept-meter" aria-label={`${item.understood_nodes} of ${item.nodes} structures understood`}>
+              <span style={{ width: `${item.nodes ? (item.understood_nodes / item.nodes) * 100 : 0}%` }} />
+            </div>
+            <dl>
+              <div><dt>Studied</dt><dd>{item.studied_nodes}/{item.nodes}</dd></div>
+              <div><dt>Understood</dt><dd>{item.understood_nodes}/{item.nodes}</dd></div>
+            </dl>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function buildConceptChart(graph, studiedNodeIds) {
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const concepts = new Map();
+  for (const annotation of graph.concept_annotations ?? []) {
+    const current = concepts.get(annotation.concept) ?? {
+      concept: annotation.concept,
+      occurrences: 0,
+      nodeIds: new Set(),
+      studiedNodeIds: new Set(),
+      understoodNodeIds: new Set(),
+    };
+    current.occurrences += 1;
+    current.nodeIds.add(annotation.node_id);
+    if (studiedNodeIds.has(annotation.node_id)) current.studiedNodeIds.add(annotation.node_id);
+    if (nodeById.get(annotation.node_id)?.understood) current.understoodNodeIds.add(annotation.node_id);
+    concepts.set(annotation.concept, current);
+  }
+  return [...concepts.values()]
+    .map((item) => ({
+      concept: item.concept,
+      occurrences: item.occurrences,
+      nodes: item.nodeIds.size,
+      studied_nodes: item.studiedNodeIds.size,
+      understood_nodes: item.understoodNodeIds.size,
+    }))
+    .sort((left, right) => left.concept.localeCompare(right.concept));
+}
+
+function conceptTitle(concept) {
+  return concept
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 function SourceExcerpt({ source }) {
