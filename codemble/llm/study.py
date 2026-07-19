@@ -234,7 +234,11 @@ class StudyService:
         }
 
     def _neighbors(self, node: Node) -> list[dict[str, object]]:
-        observations: dict[tuple[str, str, int], dict[str, object]] = {}
+        # Keyed by (neighbor, direction), not per call site: three calls from
+        # this node to the same helper are one relationship, not three. Ties
+        # keep the earliest observed line so identical input keeps producing
+        # identical output.
+        observations: dict[tuple[str, str], dict[str, object]] = {}
         for edge in self._graph.edges:
             resolved = _neighbor_id(edge, node.id)
             if resolved is None:
@@ -243,7 +247,10 @@ class StudyService:
             neighbor = self._nodes.get(neighbor_id)
             if neighbor is None:
                 continue
-            key = (neighbor.id, edge.kind, edge.lineno)
+            key = (neighbor.id, direction)
+            existing = observations.get(key)
+            if existing is not None and edge.lineno >= existing["observed_line"]:
+                continue
             observations[key] = {
                 "node_id": neighbor.id,
                 "name": neighbor.name,
