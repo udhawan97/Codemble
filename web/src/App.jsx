@@ -1,243 +1,53 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
 import {
   LEVELS,
-  buildConceptChart,
   conceptTitle,
   defaultRegion,
-  languageFocusGraph,
   languageLabel,
-  projectLanguageOptions,
 } from "./graphData.js";
+import {
+  createHttpLearnerSessionAdapter,
+  createLearnerSession,
+} from "./learnerSession.js";
 
 export function App() {
-  const [graph, setGraph] = useState(null);
-  const [error, setError] = useState("");
-  const [level, setLevel] = useState(LEVELS.GALAXY);
-  const [region, setRegion] = useState(null);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [studyData, setStudyData] = useState(null);
-  const [studyError, setStudyError] = useState("");
-  const [showChart, setShowChart] = useState(false);
-  const [studiedNodeIds, setStudiedNodeIds] = useState(() => new Set());
-  const [showChecks, setShowChecks] = useState(false);
-  const [checkData, setCheckData] = useState(null);
-  const [checkError, setCheckError] = useState("");
-  const [entrypointDismissed, setEntrypointDismissed] = useState(false);
-  const [entrypointError, setEntrypointError] = useState("");
-  const [litRegionId, setLitRegionId] = useState(null);
-  const [languageFocus, setLanguageFocus] = useState("all");
-
+  const session = useMemo(
+    () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
+    [],
+  );
+  const state = useSyncExternalStore(
+    session.subscribe,
+    session.getSnapshot,
+    session.getSnapshot,
+  );
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/graph", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Graph request returned ${response.status}.`);
-        return response.json();
-      })
-      .then((payload) => {
-        setGraph(payload);
-        setRegion(defaultRegion(payload));
-      })
-      .catch((requestError) => {
-        if (requestError.name !== "AbortError") setError(requestError.message);
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    setShowChecks(false);
-    setCheckData(null);
-    setCheckError("");
-  }, [level, region?.id]);
-
-  useEffect(() => {
-    if (!litRegionId) return undefined;
-    const timeout = window.setTimeout(() => setLitRegionId(null), 520);
-    return () => window.clearTimeout(timeout);
-  }, [litRegionId]);
-
-  useEffect(() => {
-    if (level !== LEVELS.STUDY || !selectedNode) {
-      setStudyData(null);
-      setStudyError("");
-      return undefined;
-    }
-    const controller = new AbortController();
-    setStudyData(null);
-    setStudyError("");
-    fetch(`/api/node/${encodeURIComponent(selectedNode.id)}/study`, {
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Study request returned ${response.status}.`);
-        return response.json();
-      })
-      .then((payload) => {
-        setStudyData(payload);
-        setStudiedNodeIds((current) => new Set(current).add(payload.node.id));
-      })
-      .catch((requestError) => {
-        if (requestError.name !== "AbortError") setStudyError(requestError.message);
-      });
-    return () => controller.abort();
-  }, [level, selectedNode]);
-
-  const languageOptions = useMemo(
-    () => (graph ? projectLanguageOptions(graph) : []),
-    [graph],
-  );
-  const focusedGraph = useMemo(
-    () => (graph ? languageFocusGraph(graph, languageFocus) : null),
-    [graph, languageFocus],
-  );
-
-  useEffect(() => {
-    if (!focusedGraph || !region) return;
-    const visibleRegion = focusedGraph.regions.find(
-      (candidate) => candidate.id === region.id,
-    );
-    if (!visibleRegion) {
-      setRegion(defaultRegion(focusedGraph));
-      setSelectedNode(null);
-      setLevel(LEVELS.GALAXY);
-      return;
-    }
-    if (visibleRegion !== region) setRegion(visibleRegion);
-    if (
-      selectedNode &&
-      !focusedGraph.nodes.some((candidate) => candidate.id === selectedNode.id)
-    ) {
-      setSelectedNode(null);
-      setLevel(LEVELS.SYSTEM);
-    }
-  }, [focusedGraph, level, region, selectedNode]);
-
-  const advance = useCallback(
-    (node) => {
-      if (!focusedGraph) return;
-      if (level === LEVELS.GALAXY) {
-        setRegion(
-          focusedGraph.regions.find((candidate) => candidate.id === node.id) ?? node,
-        );
-        setSelectedNode(null);
-        setLevel(LEVELS.SYSTEM);
-      } else if (level === LEVELS.SYSTEM) {
-        setSelectedNode(node);
-        setLevel(LEVELS.STUDY);
-      }
-    },
-    [focusedGraph, level],
-  );
-
-  const retreat = useCallback(() => {
-    if (level === LEVELS.STUDY) {
-      setSelectedNode(null);
-      setLevel(LEVELS.SYSTEM);
-    } else if (level === LEVELS.SYSTEM) {
-      setLevel(LEVELS.GALAXY);
-    }
-  }, [level]);
-
-  const selectStudyNode = useCallback(
-    (nodeId) => {
-      const nextNode = graph?.nodes.find((candidate) => candidate.id === nodeId);
-      if (nextNode) {
-        const nextRegion = graph.regions.find(
-          (candidate) => candidate.id === nextNode.region,
-        );
-        if (languageFocus !== "all" && nextNode.language !== languageFocus) {
-          setLanguageFocus(nextNode.language);
-        }
-        if (nextRegion) setRegion(nextRegion);
-        setSelectedNode(nextNode);
-      }
-    },
-    [graph, languageFocus],
-  );
-
-  const loadChecks = useCallback(async (regionId) => {
-    setCheckError("");
-    const response = await fetch(`/api/regions/${encodeURIComponent(regionId)}/checks`);
-    if (!response.ok) throw new Error(`Checks request returned ${response.status}.`);
-    const payload = await response.json();
-    setCheckData(payload);
-    return payload;
-  }, []);
-
-  const openChecks = useCallback(async () => {
-    if (!region) return;
-    setShowChecks(true);
-    setCheckData(null);
-    try {
-      await loadChecks(region.id);
-    } catch (requestError) {
-      setCheckError(requestError.message);
-    }
-  }, [loadChecks, region]);
-
-  const submitCheck = useCallback(
-    async (checkId, selectedIds) => {
-      const response = await fetch(
-        `/api/regions/${encodeURIComponent(region.id)}/checks/${encodeURIComponent(checkId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ selected_ids: selectedIds }),
-        },
-      );
-      if (!response.ok) throw new Error(`Check submission returned ${response.status}.`);
-      const result = await response.json();
-      if (result.correct) await loadChecks(region.id);
-      if (result.region_understood) {
-        const graphResponse = await fetch("/api/graph");
-        if (!graphResponse.ok) throw new Error(`Graph refresh returned ${graphResponse.status}.`);
-        const payload = await graphResponse.json();
-        setGraph(payload);
-        setRegion((current) =>
-          payload.regions.find((candidate) => candidate.id === current.id) ?? defaultRegion(payload),
-        );
-        setLitRegionId(region.id);
-      }
-      return result;
-    },
-    [loadChecks, region],
-  );
-
-  const selectEntrypoint = useCallback(async (nodeId) => {
-    setEntrypointError("");
-    try {
-      const response = await fetch("/api/entrypoint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ node_id: nodeId }),
-      });
-      if (!response.ok) throw new Error(`Home selection returned ${response.status}.`);
-      const payload = await response.json();
-      setGraph(payload);
-      setRegion(defaultRegion(payload));
-    } catch (requestError) {
-      setEntrypointError(requestError.message);
-    }
-  }, []);
-
-  const projectName = useMemo(() => {
-    if (!graph) return "Loading local project";
-    return graph.project_root.split("/").filter(Boolean).at(-1) ?? graph.project_root;
-  }, [graph]);
-
-  const chart = useMemo(
-    () => (focusedGraph ? buildConceptChart(focusedGraph, studiedNodeIds) : []),
-    [focusedGraph, studiedNodeIds],
-  );
-  const focusedStudiedCount = useMemo(
-    () =>
-      focusedGraph
-        ? focusedGraph.nodes.filter((node) => studiedNodeIds.has(node.id)).length
-        : 0,
-    [focusedGraph, studiedNodeIds],
-  );
+    session.start();
+    return () => session.dispose();
+  }, [session]);
+  const {
+    chart,
+    checkData,
+    checkError,
+    entrypointDismissed,
+    entrypointError,
+    error,
+    focusedGraph,
+    focusedStudiedCount,
+    graph,
+    languageFocus,
+    languageOptions,
+    level,
+    litRegionId,
+    projectName,
+    region,
+    selectedNode,
+    showChart,
+    showChecks,
+    studyData,
+    studyError,
+  } = state;
 
   if (error) {
     return (
@@ -276,22 +86,36 @@ export function App() {
           {languageFocus !== "all" ? ` · ${languageLabel(languageFocus)} focus` : ""}
         </p>
         {showChart ? (
-          <button className="rail-action" type="button" onClick={() => setShowChart(false)}>
+          <button
+            className="rail-action"
+            type="button"
+            onClick={() => session.dispatch({ type: "HIDE_CHART" })}
+          >
             Return to galaxy
           </button>
         ) : level !== LEVELS.GALAXY ? (
-          <button className="rail-action" type="button" onClick={retreat}>
+          <button
+            className="rail-action"
+            type="button"
+            onClick={() => session.dispatch({ type: "RETREAT" })}
+          >
             {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
           </button>
         ) : (
-          <button className="rail-action" type="button" onClick={() => setShowChart(true)}>
+          <button
+            className="rail-action"
+            type="button"
+            onClick={() => session.dispatch({ type: "SHOW_CHART" })}
+          >
             Star chart
           </button>
         )}
         <LanguageFocus
           options={languageOptions}
           value={languageFocus}
-          onChange={setLanguageFocus}
+          onChange={(language) =>
+            session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
+          }
         />
       </header>
 
@@ -304,8 +128,8 @@ export function App() {
           level={level}
           region={region}
           selectedNode={selectedNode}
-          onAdvance={advance}
-          onRetreat={retreat}
+          onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
+          onRetreat={() => session.dispatch({ type: "RETREAT" })}
         />
         <aside className="map-legend" aria-label="Galaxy legend">
           <span><i className="legend-dot legend-dot--dim" /> Not studied</span>
@@ -339,7 +163,11 @@ export function App() {
                 ? `${region.node_count} source ${region.node_count === 1 ? "file remains" : "files remain"} visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
                 : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
             </p>
-            <button className="check-launch" type="button" onClick={openChecks}>
+            <button
+              className="check-launch"
+              type="button"
+              onClick={() => session.dispatch({ type: "OPEN_CHECKS" })}
+            >
               {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
                 ? "Check availability"
                 : region.understood
@@ -352,8 +180,10 @@ export function App() {
           <CheckPanel
             suite={checkData}
             error={checkError}
-            onClose={() => setShowChecks(false)}
-            onSubmit={submitCheck}
+            onClose={() => session.dispatch({ type: "CLOSE_CHECKS" })}
+            onSubmit={(checkId, selectedIds) =>
+              session.dispatch({ type: "SUBMIT_CHECK", checkId, selectedIds })
+            }
           />
         ) : null}
         {!graph.selected_entrypoint && !entrypointDismissed && level === LEVELS.GALAXY ? (
@@ -361,8 +191,10 @@ export function App() {
             candidates={graph.entrypoint_candidates}
             nodes={graph.nodes}
             error={entrypointError}
-            onSelect={selectEntrypoint}
-            onContinue={() => setEntrypointDismissed(true)}
+            onSelect={(nodeId) =>
+              session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId })
+            }
+            onContinue={() => session.dispatch({ type: "DISMISS_ENTRYPOINT" })}
           />
         ) : null}
         {litRegionId ? (
@@ -376,7 +208,9 @@ export function App() {
             node={selectedNode}
             study={studyData}
             error={studyError}
-            onSelectNode={selectStudyNode}
+            onSelectNode={(nodeId) =>
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
+            }
           />
         ) : null}
       </section>
