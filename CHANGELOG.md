@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-19
+
+### Changed
+- Packaging metadata only, no behavior change: added PyPI classifiers (Beta
+  status, Python 3.11-3.13, Apache-2.0 license, dev/education audience), moved
+  license metadata to the PEP 639 SPDX form so the License field is concise
+  instead of dumping the full Apache text, made README links absolute so the
+  PyPI project page renders them, and excluded internal tooling directories
+  from the sdist.
+
 ## [0.3.0] - 2026-07-19
 
 ### Added

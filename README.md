@@ -1,8 +1,7 @@
-<!-- Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4 -->
 
 <p align="center">
   <a href="https://udhawan97.github.io/Codemble/">
-    <img src="docs-site/public/brand/mark-animated.svg" alt="Codemble — an open lapis ensō whose amber star systems light up" width="152">
+    <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/mark-animated.svg" alt="Codemble — an open lapis ensō whose amber star systems light up" width="152">
   </a>
 </p>
 
@@ -30,11 +29,11 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#how-the-learning-loop-works">Learning loop</a> ·
   <a href="https://udhawan97.github.io/Codemble/">Documentation</a> ·
-  <a href="TESTING.md">Test v0.3.0</a>
+  <a href="https://github.com/udhawan97/Codemble/blob/main/TESTING.md">Test v0.3.0</a>
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" alt="Codemble maps a project, enters Home, runs graph-derived checks, and lights the system" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/assets/demo.gif" alt="Codemble maps a project, enters Home, runs graph-derived checks, and lights the system" width="960">
 </p>
 
 > [!IMPORTANT]
@@ -42,7 +41,7 @@
 > JavaScript, TypeScript, and mixed projects in one parser-proven galaxy,
 > installable straight from PyPI with an in-app project picker. The
 > technical release is complete; unaided learner runs are the evidence still
-> being collected. [Try the ten-minute tester loop](TESTING.md).
+> being collected. [Try the ten-minute tester loop](https://github.com/udhawan97/Codemble/blob/main/TESTING.md).
 
 ## Quick start
 
@@ -141,7 +140,7 @@ the optional prose narration is unavailable.
 The most valuable contribution right now is not a feature request. It is a
 first run on a real AI-built project:
 
-1. Follow the [ten-minute tester guide](TESTING.md).
+1. Follow the [ten-minute tester guide](https://github.com/udhawan97/Codemble/blob/main/TESTING.md).
 2. Light at least one system.
 3. Report confusion verbatim—never paste private source or API keys.
 
@@ -161,9 +160,9 @@ pytest && ruff check .
 The load-bearing design and architecture contracts are documented, not implied:
 
 - [Architecture](https://udhawan97.github.io/Codemble/architecture/)
-- [Contributing](CONTRIBUTING.md)
-- [Formal Edo design system](docs-site/design.md)
-- [Agent operating guide and current state](CLAUDE.md)
+- [Contributing](https://github.com/udhawan97/Codemble/blob/main/CONTRIBUTING.md)
+- [Formal Edo design system](https://github.com/udhawan97/Codemble/blob/main/docs-site/design.md)
+- [Agent operating guide and current state](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md)
 
 ## Roadmap
 
@@ -179,7 +178,7 @@ evidence exists.
 
 ## License
 
-Codemble is released under the [Apache License 2.0](LICENSE).
+Codemble is released under the [Apache License 2.0](https://github.com/udhawan97/Codemble/blob/main/LICENSE).
 
 ---
 
