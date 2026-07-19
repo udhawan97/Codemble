@@ -1361,6 +1361,15 @@ button:focus-visible,
   border-color: var(--cm-orbit);
 }
 
+.picker-recents button {
+  flex-wrap: wrap;
+}
+
+.picker-recent-path {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .picker-recent-lit {
   color: var(--cm-star);
   white-space: nowrap;
