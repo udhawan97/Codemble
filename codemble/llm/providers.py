@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from typing import Callable, Protocol
-from urllib import error, request
+from urllib import error, parse, request
 
 from codemble import __version__
 
@@ -107,6 +107,35 @@ class OpenAIProvider:
         return text
 
 
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+@dataclass(slots=True)
+class OllamaProvider:
+    """Local narration adapter; loopback only and never sends a credential."""
+
+    model: str = "gemma4:12b"
+    host: str = "http://127.0.0.1:11434"
+    post_json: PostJson = field(default_factory=lambda: _post_local_json, repr=False)
+    name: str = field(default="ollama", init=False)
+
+    def __post_init__(self) -> None:
+        hostname = parse.urlsplit(self.host).hostname
+        if hostname not in _LOOPBACK_HOSTS:
+            raise ValueError("Codemble only talks to a local Ollama on loopback.")
+
+    def complete(self, prompt: str) -> str:
+        payload = self.post_json(
+            f"{self.host}/api/generate",
+            {"content-type": "application/json"},
+            {"model": self.model, "prompt": prompt, "stream": False},
+        )
+        response = payload.get("response")
+        if not isinstance(response, str) or not response.strip():
+            raise ProviderError("Ollama returned an empty text response.")
+        return response.strip()
+
+
 def _post_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonObject:
     encoded = json.dumps(payload).encode("utf-8")
     outbound = request.Request(
@@ -129,9 +158,41 @@ def _post_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonOb
     return decoded
 
 
+def _post_local_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonObject:
+    """POST to a loopback Ollama.
+
+    Separate from ``_post_json`` because that helper is documented as
+    HTTPS-only, and because local generation needs a longer ceiling than a
+    cloud round trip.
+    """
+
+    encoded = json.dumps(payload).encode("utf-8")
+    outbound = request.Request(
+        url,
+        data=encoded,
+        headers={**headers, "user-agent": f"Codemble/{__version__}"},
+        method="POST",
+    )
+    try:
+        with request.urlopen(outbound, timeout=120) as response:  # noqa: S310 - loopback only
+            decoded = json.loads(response.read().decode("utf-8"))
+    except error.HTTPError as provider_error:
+        raise ProviderError(
+            f"The local model rejected the request with HTTP {provider_error.code}."
+        ) from provider_error
+    except (error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProviderError(
+            "Codemble could not reach a local Ollama server on loopback."
+        ) from exc
+    if not isinstance(decoded, dict):
+        raise ProviderError("The local model returned an unexpected response shape.")
+    return decoded
+
+
 __all__ = [
     "AnthropicProvider",
     "NarrationProvider",
+    "OllamaProvider",
     "OpenAIProvider",
     "ProviderError",
 ]
