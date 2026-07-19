@@ -150,7 +150,7 @@ export function App() {
             <p>Choose a system. Size follows lines of code; brightness follows call centrality.</p>
             {focusedGraph.partial_files.length ? (
               <p className="partial-summary">
-                {focusedGraph.partial_files.length} {focusedGraph.partial_files.length === 1 ? "file is" : "files are"} unchartable because its language parser reported a syntax error.
+                {focusedGraph.partial_files.length} {focusedGraph.partial_files.length === 1 ? "file is" : "files are"} unchartable because {focusedGraph.partial_files.length === 1 ? "its" : "their"} language parser reported a syntax error.
               </p>
             ) : null}
           </section>

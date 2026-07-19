@@ -203,18 +203,33 @@ function makeMarker(node, palette) {
   return group;
 }
 
+// A custom property hands back its authored text, so a token written as
+// color-mix() reaches WebGL as a string three.js cannot parse and renders black.
+// Painting it once turns any CSS colour the browser understands into plain rgb.
+function toRenderableColor(value) {
+  const context = document.createElement("canvas").getContext("2d");
+  context.fillStyle = "#000000";
+  context.fillStyle = value;
+  context.fillRect(0, 0, 1, 1);
+  const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+  return `rgb(${red}, ${green}, ${blue})`;
+}
+
 function readPalette() {
   const styles = getComputedStyle(document.documentElement);
-  const value = (token) => styles.getPropertyValue(token).trim();
+  const value = (token) =>
+    toRenderableColor(styles.getPropertyValue(token).trim());
   return Object.freeze({
     ground: value("--cm-ground"),
     home: value("--cm-ink"),
     orbit: value("--cm-orbit"),
-    nodeBright: value("--cm-ink"),
-    node: value("--cm-ink-2"),
-    nodeDim: value("--cm-ink-3"),
+    // The unlit ramp tops out at --cm-ink-2 so understanding stays the
+    // brightest thing in the sky; a lit star uses --cm-star-high above it.
+    nodeBright: value("--cm-ink-2"),
+    node: value("--cm-ink-3"),
+    nodeDim: value("--cm-node-unlit"),
     route: value("--cm-hairline"),
     routePossible: value("--cm-route-possible"),
-    star: value("--cm-star"),
+    star: value("--cm-star-high"),
   });
 }

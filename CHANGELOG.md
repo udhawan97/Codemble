@@ -5,6 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Changed
+- Rebuilt the packaged app on the Formal Edo palette, so the galaxy and the
+  public site finally share one set of values. The app's tokens already imported
+  the site's, but `codemble/web_dist` had not been rebuilt since before the
+  redesign, so every shipped build still rendered the retired palette.
+- Self-hosted Shippori Mincho and Zen Kaku Gothic New in the app and dropped
+  Sora and Inter. The site loads these faces from the Google Fonts CDN; the app
+  must not, because it runs locally and offline. Net bundle change is smaller.
+- Illumination now owns the top of the brightness range: the unlit centrality
+  ramp stops at `--cm-ink-2` (8.2:1) and a lit star uses `--cm-star-high`
+  (12.1:1). Previously a busy un-understood module outshone an understood one
+  17.4:1 to 8.5:1, which inverted the meaning of lighting a region.
+
+### Fixed
+- Canvas colours authored as `color-mix()` reached WebGL as unparsed text and
+  rendered black, because a custom property returns its authored value rather
+  than a resolved colour. Affected unchartable nodes and every "possible call"
+  edge — exactly the uncertainty the Correctness Contract requires to stay
+  visible. Palette values are now resolved to plain `rgb()` before rendering.
+- The partial-parse notice said "its language parser" when reporting more than
+  one file.
+- Multi-answer checks offered no wrong option once a question had four or more
+  correct answers, so selecting every option lit the region without proving
+  anything. Checks now always offer wrong options alongside their answers, and a
+  question the graph cannot supply a wrong option for is dropped rather than
+  asked. On this repository the change removed all 17 such questions out of 107
+  while leaving every region's check count unchanged.
+
 ### Added
 - Expanding site search in the header of both the landing page and every docs
   page, backed by Pagefind with keyboard shortcut, arrow-key navigation, and an

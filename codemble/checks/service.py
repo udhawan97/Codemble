@@ -12,6 +12,9 @@ from codemble.progress import ProgressStore
 
 CheckKind = Literal["first-call", "direct-importer", "removal-impact", "entrypoint"]
 
+# Wrong options a check offers beyond its answers, when the graph holds that many.
+_MINIMUM_DISTRACTORS = 2
+
 
 class UnknownCheckError(KeyError):
     """Raised for a region or check absent from the current graph."""
@@ -162,7 +165,13 @@ def generate_checks(graph: Graph, region_id: str) -> tuple[Check, ...]:
     entrypoint = _entrypoint_check(graph, region_id, nodes)
     if entrypoint:
         checks.append(entrypoint)
-    return tuple(checks)
+    return tuple(check for check in checks if _proves_understanding(check))
+
+
+def _proves_understanding(check: Check) -> bool:
+    """Reject a question every option answers; passing it would prove nothing."""
+
+    return bool({option.id for option in check.options} - set(check.answer_ids))
 
 
 def _first_call_check(
@@ -321,10 +330,19 @@ def _node_options(
 def _options(
     nodes: dict[str, Node], answers: tuple[str, ...], pool: list[str]
 ) -> tuple[CheckOption, ...]:
+    """Offer every answer plus wrong options, or nothing if none exist.
+
+    The ceiling must clear ``len(answers)``; capping at four alone offered a
+    multi-answer check no wrong option, so selecting everything always passed.
+    """
+
     candidates = list(answers)
+    ceiling = max(4, len(answers) + _MINIMUM_DISTRACTORS)
     for candidate in sorted(set(pool)):
-        if candidate not in candidates and len(candidates) < max(4, len(answers)):
+        if candidate not in candidates and len(candidates) < ceiling:
             candidates.append(candidate)
+    if len(candidates) == len(answers):
+        return ()
     return tuple(CheckOption(candidate, nodes[candidate].id) for candidate in candidates)
 
 
