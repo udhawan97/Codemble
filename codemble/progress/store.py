@@ -123,4 +123,38 @@ def _region_signatures(graph: Graph) -> dict[str, str]:
     return signatures
 
 
-__all__ = ["ProgressStore", "UnknownRegionError"]
+def list_recent_projects(limit: int = 8) -> list[dict[str, object]]:
+    """Return recently explored projects whose paths still exist, newest first."""
+
+    data_root = os.environ.get("CODEMBLE_DATA_DIR")
+    progress_root = (
+        (Path(data_root).expanduser() if data_root else Path.home() / ".codemble")
+        / "progress"
+    )
+    entries: list[tuple[float, dict[str, object]]] = []
+    try:
+        candidates = sorted(progress_root.glob("*.json"))
+    except OSError:
+        return []
+    for path in candidates:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            modified = path.stat().st_mtime
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            continue
+        if not isinstance(payload, dict) or payload.get("schema_version") != _SCHEMA_VERSION:
+            continue
+        project_root = payload.get("project_root")
+        regions = payload.get("regions")
+        if not isinstance(project_root, str) or not isinstance(regions, dict):
+            continue
+        if not Path(project_root).is_dir():
+            continue
+        entries.append(
+            (modified, {"project_root": project_root, "understood_count": len(regions)})
+        )
+    entries.sort(key=lambda item: item[0], reverse=True)
+    return [entry for _, entry in entries[:limit]]
+
+
+__all__ = ["ProgressStore", "UnknownRegionError", "list_recent_projects"]
