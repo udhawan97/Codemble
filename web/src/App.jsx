@@ -40,11 +40,13 @@ export function App() {
     languageOptions,
     level,
     litRegionId,
+    picker,
     projectName,
     region,
     selectedNode,
     showChart,
     showChecks,
+    status,
     studyData,
     studyError,
   } = state;
@@ -55,6 +57,16 @@ export function App() {
         <h1>The graph did not load.</h1>
         <p>{error} Restart Codemble and reload this page.</p>
       </main>
+    );
+  }
+
+  if (status === "picking" && picker) {
+    return (
+      <PickerScreen
+        picker={picker}
+        onBrowse={(path) => session.dispatch({ type: "BROWSE_PICKER", path })}
+        onSelect={(path) => session.dispatch({ type: "SELECT_PROJECT", path })}
+      />
     );
   }
 
@@ -227,6 +239,86 @@ export function App() {
         <span>{showChart ? `${focusedStudiedCount} focused structures studied this session` : "Scroll or Enter to move closer · Escape to move back"}</span>
         <span>Local only</span>
       </footer>
+    </main>
+  );
+}
+
+function PickerScreen({ picker, onBrowse, onSelect }) {
+  const { path, parent, entries, recents, error, scale, busy } = picker;
+  return (
+    <main className="picker-screen" aria-busy={busy}>
+      <header className="picker-header">
+        <p className="picker-wordmark">Codemble</p>
+        <h1>Choose the project to chart</h1>
+        <p className="picker-subtitle">
+          Codemble reads the folder locally and turns it into a galaxy. Nothing
+          leaves this machine.
+        </p>
+      </header>
+      {recents.length ? (
+        <section className="picker-recents" aria-labelledby="picker-recents-heading">
+          <h2 id="picker-recents-heading">Continue where you left off</h2>
+          <ul>
+            {recents.map((recent) => (
+              <li key={recent.project_root}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onSelect(recent.project_root)}
+                >
+                  <span className="picker-recent-path">{recent.project_root}</span>
+                  <span className="picker-recent-lit">
+                    {recent.understood_count} {recent.understood_count === 1 ? "system" : "systems"} lit
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {scale ? (
+        <p className="picker-scale" role="alert">
+          That folder has {scale.file_count} supported source files; Codemble is
+          capped at {scale.scale_cap}. Pick a subdirectory — busiest first:{" "}
+          {scale.suggestions
+            .map((suggestion) => `${suggestion.path} (${suggestion.file_count})`)
+            .join(", ")}
+          .
+        </p>
+      ) : null}
+      {error ? (
+        <p className="picker-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <section className="picker-browser" aria-labelledby="picker-browser-heading">
+        <h2 id="picker-browser-heading">Browse folders</h2>
+        <p className="picker-path">{path}</p>
+        <ul>
+          {parent ? (
+            <li>
+              <button type="button" disabled={busy} onClick={() => onBrowse(parent)}>
+                ↑ Up
+              </button>
+            </li>
+          ) : null}
+          {entries.map((entry) => (
+            <li key={entry.path}>
+              <button type="button" disabled={busy} onClick={() => onBrowse(entry.path)}>
+                {entry.name}/
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
+          className="picker-select"
+          type="button"
+          disabled={busy}
+          onClick={() => onSelect(path)}
+        >
+          {busy ? "Mapping…" : "Map this folder"}
+        </button>
+      </section>
     </main>
   );
 }
