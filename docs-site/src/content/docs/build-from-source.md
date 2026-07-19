@@ -11,6 +11,7 @@ pip install -e ".[dev]"
 
 pytest && ruff check .   # the CI gates
 codemble --version
+codemble parse ./some-python-project --out graph.json
 ```
 
 Docs site:

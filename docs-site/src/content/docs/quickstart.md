@@ -6,11 +6,15 @@ description: From `codemble ./my-project` to your first lit star system.
 ## 1. Point it at your project
 
 ```bash
-codemble ./my-project
+codemble parse ./my-project --out graph.json
 ```
 
-Codemble parses your code (Python first; more languages on the
-[roadmap](/Codemble/roadmap/)) and opens the galaxy in your browser.
+The current M1 build parses Python into deterministic, schema-versioned graph
+JSON. It keeps syntax-error files visible and labels unresolved calls instead of
+guessing. More languages are on the [roadmap](/Codemble/roadmap/).
+
+The browser command (`codemble ./my-project`) arrives with M2. The remaining
+steps describe the complete Phase 0 learning loop now being built.
 
 ## 2. Find Home
 

@@ -87,6 +87,7 @@ export default defineConfig({
             { label: "Build from source", slug: "build-from-source" },
             { label: "Contributing", slug: "contributing" },
             { label: "Roadmap", slug: "roadmap" },
+            { label: "Build log: M1 parser", slug: "progress/m1-parser" },
           ],
         },
       ],

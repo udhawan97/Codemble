@@ -12,12 +12,22 @@ graph; `concepts()` produces idiom annotations for the lens. Python ships first
 using the stdlib `ast` module (precise, dependency-free); later languages use
 tree-sitter adapters. Nothing above the seam hardcodes a language.
 
+The Python adapter walks files in stable order, keeps syntax-error files visible
+as partial modules, and records project, external, and unresolved relationships
+without guessing. Exact name resolution is marked certain; ambiguous candidates
+remain labeled as possible calls.
+
 ### 2. The graph is render-ready
 
 The graph layer computes everything the renderer needs — language, size,
 centrality, entrypoint rank, region, understood-state — and the 3D frontend is a
 **pure consumer**. No layout or game logic lives in the renderer. This is what
 keeps a future read-only share link (and any alternative renderer) cheap.
+
+Graph JSON is schema-versioned and byte-deterministic. It includes stable node
+IDs, source spans, regions, entrypoint ranks, call in-degree, file hashes, and
+explicit certainty/external flags on edges. The file hashes are the future cache
+and progress invalidation key.
 
 ### 3. The LLM narrates; it never decides
 
