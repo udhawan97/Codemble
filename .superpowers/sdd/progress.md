@@ -11,3 +11,7 @@ Pre-flight finding (verified in web/src/App.jsx, resolved before Task 1):
   `prompt_voices`. Phase 4 drops the legacy keys.
 
 ## Tasks
+Task 1: complete (commits 08be8da..17d0709, review clean; Important test-rigor finding fixed + mutation-verified)
+Task 2: complete (commits d65ec40..58474d7, re-review clean; 1 Critical + 3 Important + 2 Minor fixed)
+Task 3: complete (commit f11d4af, review clean; 2 Minor noted - explain() partial adds cached:False; no_key end-to-end coverage returns in Task 4)
+Task 4: complete (commits e8df8ef..ed3699a, review clean; 2 Important coverage gaps closed + shadowing mutation-verified)
