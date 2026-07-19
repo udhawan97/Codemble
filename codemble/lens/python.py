@@ -47,6 +47,8 @@ def python_lens_notes(
 
     notes: list[dict[str, object]] = []
     for annotation in annotations:
+        if annotation.language != "python":
+            continue
         note = _PYTHON_NOTES.get(annotation.concept)
         if note is None:
             continue
@@ -54,6 +56,7 @@ def python_lens_notes(
         notes.append(
             {
                 "node_id": annotation.node_id,
+                "language": annotation.language,
                 "concept": annotation.concept,
                 "title": title,
                 "note": explanation,

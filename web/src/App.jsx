@@ -548,10 +548,10 @@ function StarChart({ chart, studiedNodeIds }) {
       </header>
       <div className="concept-ledger" role="list" aria-label="Language concept progress">
         {chart.map((item) => (
-          <article className="concept-row" role="listitem" key={item.concept}>
+          <article className="concept-row" role="listitem" key={`${item.language}:${item.concept}`}>
             <div>
               <h2>{conceptTitle(item.concept)}</h2>
-              <span>{item.occurrences} parser {item.occurrences === 1 ? "occurrence" : "occurrences"}</span>
+              <span>{conceptTitle(item.language)} · {item.occurrences} parser {item.occurrences === 1 ? "occurrence" : "occurrences"}</span>
             </div>
             <div className="concept-meter" aria-label={`${item.understood_nodes} of ${item.nodes} structures understood`}>
               <span style={{ width: `${item.nodes ? (item.understood_nodes / item.nodes) * 100 : 0}%` }} />
@@ -571,7 +571,9 @@ function buildConceptChart(graph, studiedNodeIds) {
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const concepts = new Map();
   for (const annotation of graph.concept_annotations ?? []) {
-    const current = concepts.get(annotation.concept) ?? {
+    const key = `${annotation.language}:${annotation.concept}`;
+    const current = concepts.get(key) ?? {
+      language: annotation.language,
       concept: annotation.concept,
       occurrences: 0,
       nodeIds: new Set(),
@@ -582,7 +584,7 @@ function buildConceptChart(graph, studiedNodeIds) {
     current.nodeIds.add(annotation.node_id);
     if (studiedNodeIds.has(annotation.node_id)) current.studiedNodeIds.add(annotation.node_id);
     if (nodeById.get(annotation.node_id)?.understood) current.understoodNodeIds.add(annotation.node_id);
-    concepts.set(annotation.concept, current);
+    concepts.set(key, current);
   }
   return [...concepts.values()]
     .map((item) => ({
@@ -592,10 +594,19 @@ function buildConceptChart(graph, studiedNodeIds) {
       studied_nodes: item.studiedNodeIds.size,
       understood_nodes: item.understoodNodeIds.size,
     }))
-    .sort((left, right) => left.concept.localeCompare(right.concept));
+    .sort(
+      (left, right) =>
+        left.language.localeCompare(right.language) || left.concept.localeCompare(right.concept),
+    );
 }
 
 function conceptTitle(concept) {
+  const exact = {
+    javascript: "JavaScript",
+    jsx: "JSX",
+    typescript: "TypeScript",
+  };
+  if (exact[concept]) return exact[concept];
   return concept
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

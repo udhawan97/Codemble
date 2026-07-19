@@ -68,6 +68,7 @@ class ConceptAnnotation:
     """A language construct proven by an adapter at an exact source span."""
 
     node_id: str
+    language: str
     concept: str
     lineno: int
     end_lineno: int
@@ -114,7 +115,7 @@ class Graph:
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
-    schema_version: int = field(default=3, init=False)
+    schema_version: int = field(default=4, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""
@@ -143,7 +144,13 @@ class Graph:
                 asdict(annotation)
                 for annotation in sorted(
                     self.concept_annotations,
-                    key=lambda item: (item.node_id, item.lineno, item.concept, item.end_lineno),
+                    key=lambda item: (
+                        item.language,
+                        item.node_id,
+                        item.lineno,
+                        item.concept,
+                        item.end_lineno,
+                    ),
                 )
             ],
             "regions": [asdict(region) for region in sorted(self.regions, key=lambda item: item.id)],

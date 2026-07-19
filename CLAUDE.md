@@ -157,10 +157,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M8 JavaScript/TypeScript structure** · Last updated:
-2026-07-18 · Session note: M7 merged with Python graph-byte parity. M8 maps all
-eight JS/TS extensions through official tree-sitter grammars, with conservative
-resolution, partial recovery, and mixed-project determinism under verification.
+**Current milestone: M9 JavaScript/TypeScript Lens** · Last updated: 2026-07-18
+· Session note: M8 merged after all parser/API/package gates. M9 adds explicit
+annotation language tags, tree-sitter-owned JS/TS concepts, and deterministic
+Lens notes while keeping broken-module claims off.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -253,11 +253,11 @@ global Home ambiguity, and fail-closed node-ID collision handling.
 syntax errors remain visible and partial; repeated mixed parses are byte-identical.
 
 ### M9 — JavaScript/TypeScript language lens (Phase 1 wave 3)
-- [ ] Detect JS/TS idioms only from tree-sitter nodes at exact source spans
-- [ ] Add learner-facing notes for async/await, arrow functions, destructuring,
+- [x] Detect JS/TS idioms only from tree-sitter nodes at exact source spans
+- [x] Add learner-facing notes for async/await, arrow functions, destructuring,
       optional chaining, nullish coalescing, modules, types/interfaces, generics,
       and JSX where parser evidence exists
-- [ ] Keep star-chart concepts language-tagged and collision-free
+- [x] Keep star-chart concepts language-tagged and collision-free
 
 **Acceptance:** every TS/JS Lens note maps to a parser annotation and real
 `file:line`; malformed source yields no invented concepts.
@@ -305,6 +305,7 @@ wheel install, web build, docs build, and downloaded release asset all pass.
 | 2026-07-18 | Owner explicitly promoted Phase 1 implementation while v0.1.0 learner acceptance continues in issue #13 | Build authorization is explicit; keeping the issue open prevents the promotion from fabricating human evidence |
 | 2026-07-18 | `ProjectParser` is the one project-level interface; language adapters own file syntax and node IDs, while composition owns global Home and collision checks | The second adapter makes the seam real without leaking registry or language rules into CLI, server, graph, checks, or UI |
 | 2026-07-18 | One tree-sitter adapter owns JS and TS dialects; exact paths may be certain, but extension substitution and extensionless resolution remain possible | Cross-JS/TS resolution stays local to one implementation and never upgrades a configuration-dependent guess into fact |
+| 2026-07-18 | Graph schema 4 adds an explicit language to every concept annotation; the star chart keys concepts by language plus concept ID | Python and JS/TS may share names such as async/await, but their evidence and learning progress must never collide silently |
 
 ## Non-Goals — do NOT build (point here when asked)
 

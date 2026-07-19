@@ -152,7 +152,13 @@ def _compose_graphs(
         concept_annotations=tuple(
             sorted(
                 set(annotations),
-                key=lambda item: (item.node_id, item.lineno, item.concept, item.end_lineno),
+                key=lambda item: (
+                    item.language,
+                    item.node_id,
+                    item.lineno,
+                    item.concept,
+                    item.end_lineno,
+                ),
             )
         ),
         partial_files=tuple(sorted(partial_files)),

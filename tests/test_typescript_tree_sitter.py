@@ -182,6 +182,58 @@ def test_repeated_mixed_parses_are_byte_identical() -> None:
     assert first == second
 
 
+def test_concepts_are_tree_sitter_proven_owned_and_language_tagged(graph) -> None:  # type: ignore[no-untyped-def]
+    concepts_by_node: dict[str, set[tuple[str, int]]] = {}
+    nodes = {node.id: node for node in graph.nodes}
+    for annotation in graph.concept_annotations:
+        concepts_by_node.setdefault(annotation.node_id, set()).add(
+            (annotation.concept, annotation.lineno)
+        )
+        assert annotation.language == nodes[annotation.node_id].language
+        assert annotation.snippet
+
+    assert {concept for concept, _ in concepts_by_node["typescript:src/main.ts::main"]} >= {
+        "async-await",
+        "generic",
+        "type-annotation",
+    }
+    assert {concept for concept, _ in concepts_by_node["typescript:src/widget.tsx::Card"]} >= {
+        "arrow-function",
+        "destructuring",
+        "jsx",
+        "type-annotation",
+    }
+    assert {
+        concept
+        for concept, _ in concepts_by_node["typescript:src/util.ts::display"]
+    } >= {"nullish-coalescing", "optional-chaining", "type-annotation"}
+    assert {concept for concept, _ in concepts_by_node["typescript:src/util.ts"]} >= {
+        "generic",
+        "interface",
+        "module-syntax",
+    }
+    assert "typescript:src/broken.ts" not in concepts_by_node
+    assert {concept for concept, _ in concepts_by_node["typescript:src/broken.ts::visible"]} == {
+        "type-annotation"
+    }
+
+
+def test_concepts_method_matches_graph_annotations_for_one_owner(graph) -> None:  # type: ignore[no-untyped-def]
+    node = next(
+        node for node in graph.nodes if node.id == "typescript:src/widget.tsx::Card"
+    )
+    source = (FIXTURE / node.file).read_text(encoding="utf-8")
+
+    direct = JavaScriptTypeScriptAdapter().concepts(node, source)
+    serialized = [
+        annotation
+        for annotation in graph.concept_annotations
+        if annotation.node_id == node.id
+    ]
+
+    assert direct == serialized
+
+
 @pytest.mark.parametrize(
     ("extension", "source", "language"),
     [
