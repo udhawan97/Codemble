@@ -157,6 +157,81 @@ assert.equal(
 );
 garbageModeSession.dispose();
 
+// Fix 1: the in-memory adapter mirrors the real backend's {mode, chosen}
+// contract directly — chosen flips true only once saveMode is called.
+const modeAdapter = createInMemoryLearnerSessionAdapter({ graph });
+assert.deepEqual(await modeAdapter.loadMode(), { mode: "easy", chosen: false });
+assert.deepEqual(await modeAdapter.saveMode("expert"), { mode: "expert", chosen: true });
+assert.deepEqual(await modeAdapter.loadMode(), { mode: "expert", chosen: true });
+
+// Fix 1: chosen vs not-chosen is the entire point of the field, including
+// when the earlier explicit choice was "easy" — same value as the silent
+// default, so mode alone can't tell these two learners apart.
+const returningLearnerSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph, mode: "easy", modeChosen: true }),
+});
+await returningLearnerSession.start();
+assert.equal(
+  returningLearnerSession.getSnapshot().modeChosen,
+  true,
+  "a returning learner who explicitly picked easy still hydrates modeChosen=true",
+);
+returningLearnerSession.dispose();
+
+const neverChosenSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph, mode: "easy", modeChosen: false }),
+});
+await neverChosenSession.start();
+assert.equal(
+  neverChosenSession.getSnapshot().modeChosen,
+  false,
+  "a project nobody has chosen a mode for hydrates modeChosen=false",
+);
+neverChosenSession.dispose();
+
+// Fix 2: SET_MODE dispatched while mode hydration is still in flight must
+// win over that hydration's response, regardless of which resolves first.
+// The in-flight request is held open by a manually-resolved promise (no
+// timers, no wall clock), so the interleaving below is deterministic.
+let resolveLateMode;
+const lateMode = new Promise((resolve) => {
+  resolveLateMode = resolve;
+});
+let signalModeRequested;
+const modeRequested = new Promise((resolve) => {
+  signalModeRequested = resolve;
+});
+const raceModeSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph }),
+    loadMode() {
+      signalModeRequested();
+      return lateMode;
+    },
+  },
+});
+const raceModeStart = raceModeSession.start();
+// Awaiting this signal (instead of guessing a tick count) guarantees
+// loadProjectGraph already captured its pre-choice baseline and is now
+// blocked on the hydration fetch before SET_MODE is dispatched below.
+await modeRequested;
+await raceModeSession.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(raceModeSession.getSnapshot().mode, "expert");
+assert.equal(raceModeSession.getSnapshot().modeChosen, true);
+resolveLateMode({ mode: "easy", chosen: false }); // stale: resolves after the choice
+await raceModeStart;
+assert.equal(
+  raceModeSession.getSnapshot().mode,
+  "expert",
+  "an explicit SET_MODE mid-flight beats a hydration response that resolves later",
+);
+assert.equal(
+  raceModeSession.getSnapshot().modeChosen,
+  true,
+  "modeChosen stays true after the race, not reverted by the stale response",
+);
+raceModeSession.dispose();
+
 let resolveLateStudy;
 const lateStudy = new Promise((resolve) => {
   resolveLateStudy = resolve;

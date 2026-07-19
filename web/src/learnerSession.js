@@ -43,6 +43,7 @@ export function createLearnerSession({
     modeChosen: false,
   });
   let lifecycle = 0;
+  let modeLifecycle = 0;
   let graphController = null;
   let studyController = null;
   let checksController = null;
@@ -118,10 +119,19 @@ export function createLearnerSession({
     // Mode is a per-project preference the backend can only serve once a
     // project is bound, so it hydrates here rather than earlier in start() —
     // and a failure here must never block the galaxy that just loaded above.
+    const requestModeLifecycle = modeLifecycle;
     try {
       const stored = await adapter.loadMode({ signal: controller.signal });
       const validMode = stored?.mode === "easy" || stored?.mode === "expert";
-      if (requestLifecycle === lifecycle && validMode) {
+      // requestModeLifecycle catches a SET_MODE dispatched while this fetch
+      // was in flight: setMode bumps modeLifecycle synchronously, so a
+      // mismatch here means the learner already made an explicit choice that
+      // must win no matter which of the two requests resolves first.
+      if (
+        requestLifecycle === lifecycle &&
+        requestModeLifecycle === modeLifecycle &&
+        validMode
+      ) {
         commit({ mode: stored.mode, modeChosen: stored.chosen === true });
       }
     } catch {
@@ -321,6 +331,9 @@ export function createLearnerSession({
   async function setMode(mode) {
     if (mode !== "easy" && mode !== "expert") return;
     if (snapshot.mode === mode && snapshot.modeChosen) return;
+    // Bump first so a mode hydration already in flight (loadProjectGraph)
+    // notices this explicit choice and skips its own commit on resolution.
+    modeLifecycle += 1;
     commit({ mode, modeChosen: true });
     try {
       await adapter.saveMode(mode, {});
@@ -595,10 +608,11 @@ export function createInMemoryLearnerSessionAdapter({
   entrypoints = {},
   picker = null,
   mode,
+  modeChosen: initialModeChosen = false,
 }) {
   let currentGraph = graph;
   let currentMode = mode ?? "easy";
-  let modeChosen = false;
+  let modeChosen = initialModeChosen;
   const currentChecks = new Map(Object.entries(checks));
   const pickerPhase = picker ? { ...picker, selected: false } : null;
   return Object.freeze({
@@ -641,7 +655,7 @@ export function createInMemoryLearnerSessionAdapter({
       throwIfAborted(options.signal);
       currentMode = nextMode;
       modeChosen = true;
-      return { mode: nextMode };
+      return { mode: nextMode, chosen: true };
     },
     async loadPickerState(options = {}) {
       throwIfAborted(options.signal);
