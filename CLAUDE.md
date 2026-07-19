@@ -143,10 +143,10 @@ The audience cannot detect when the tool is wrong. Therefore:
 
 ## Roadmap — NOW / NEXT / LATER
 
-**NOW — Phase 1 TS/JS delivery.** Build the tree-sitter JavaScript/TypeScript
-adapter, parser-anchored language lens, and polyglot language focus in M7–M10.
-The v0.1.0 Python learner-acceptance issue stays open in parallel; promotion
-does not retroactively claim those external runs passed.
+**NOW — Phase 1 tester release.** Ship the completed language-neutral parser,
+tree-sitter JavaScript/TypeScript adapter, language Lens, and view-only polyglot
+focus as v0.2.0. The v0.1.0 Python learner-acceptance issue stays open in
+parallel; technical completion does not claim those external runs passed.
 
 **NEXT — Phase 2 (months ~3–6).** Go/Rust/Java adapters, LOD culling +
 clustering for larger repos.
@@ -157,10 +157,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M9 JavaScript/TypeScript Lens** · Last updated: 2026-07-18
-· Session note: M8 merged after all parser/API/package gates. M9 adds explicit
-annotation language tags, tree-sitter-owned JS/TS concepts, and deterministic
-Lens notes while keeping broken-module claims off.
+**Current milestone: M10 polyglot focus + Phase 1 release** · Last updated:
+2026-07-19 · Session note: M7–M9 are merged. M10 adds a pure mixed-language
+focus, responsive real-app QA, public surface synchronization, and the v0.2.0
+release gate while issue #13 remains open for human evidence.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -263,10 +263,10 @@ syntax errors remain visible and partial; repeated mixed parses are byte-identic
 `file:line`; malformed source yields no invented concepts.
 
 ### M10 — Polyglot focus + Phase 1 tester release (Phase 1 wave 4)
-- [ ] Add an accessible language focus control for mixed galaxies without
+- [x] Add an accessible language focus control for mixed galaxies without
       changing graph truth, deterministic coordinates, or progress
-- [ ] Verify focus behavior at galaxy/system/study levels and at 320 px
-- [ ] Update README, public docs, packaged SPA, changelog, and release evidence
+- [x] Verify focus behavior at galaxy/system/study levels and at 320 px
+- [x] Update README, public docs, packaged SPA, changelog, and release evidence
 - [ ] Publish and verify the Phase 1 tester release from the exact `main` tag
 
 **Acceptance:** Python-only behavior remains intact; a mixed fixture can focus
@@ -306,6 +306,7 @@ wheel install, web build, docs build, and downloaded release asset all pass.
 | 2026-07-18 | `ProjectParser` is the one project-level interface; language adapters own file syntax and node IDs, while composition owns global Home and collision checks | The second adapter makes the seam real without leaking registry or language rules into CLI, server, graph, checks, or UI |
 | 2026-07-18 | One tree-sitter adapter owns JS and TS dialects; exact paths may be certain, but extension substitution and extensionless resolution remain possible | Cross-JS/TS resolution stays local to one implementation and never upgrades a configuration-dependent guess into fact |
 | 2026-07-18 | Graph schema 4 adds an explicit language to every concept annotation; the star chart keys concepts by language plus concept ID | Python and JS/TS may share names such as async/await, but their evidence and learning progress must never collide silently |
+| 2026-07-19 | Language focus is a frontend projection over the immutable mixed graph, not a parser mode or saved preference | Filtering must never mutate coordinates, progress, uncertainty, or parser truth; cross-language navigation remains available |
 
 ## Non-Goals — do NOT build (point here when asked)
 
@@ -339,11 +340,11 @@ wheel install, web build, docs build, and downloaded release asset all pass.
 
 ## Edge cases & limits
 
-- >~300 files → prompt to scope to a subdirectory (LOD arrives Phase 2)
+- >~300 supported source files → prompt to scope to a subdirectory (LOD arrives Phase 2)
 - No clear entrypoint → ranked candidates; user picks Home
 - Syntax errors / partial parses → parse what you can, flag the rest, never crash
 - Missing/invalid key → galaxy + structure + checks work; explanations show "add your key"
-- Unsupported-language files → visible, tagged, no lens, no guessing
+- Unsupported-language files → outside the graph and never guessed
 - No WebGL → clear requirements message (no 2D fallback in v1)
 
 ## Definition of done — Phase 0
@@ -353,3 +354,11 @@ accurate galaxy of their own code, zooms into Home, reads correct grounded
 explanations and Python-idiom lessons, passes checks, watches stars light up
 and their star chart grow — and comes away actually understanding the project.
 Zero invented facts. Screenshot-worthy at every zoom level.
+
+## Definition of done — Phase 1
+
+A learner runs one command on a Python, JavaScript, TypeScript, or mixed project
+and gets one deterministic parser-proven galaxy. They can focus a language
+without changing graph truth or progress, study exact source with that
+language's parser-anchored Lens, and keep uncertain or partial evidence visibly
+honest. The tagged wheel includes the production app and installs without Node.

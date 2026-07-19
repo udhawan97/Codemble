@@ -36,6 +36,11 @@ source snippet that the Lens is allowed to teach. Each annotation also carries
 its language so identically named Python and JS/TS concepts remain separate in
 the star chart. The file hashes are the cache and progress invalidation key.
 
+The mixed-project language focus is a pure frontend projection over that graph.
+It retains the original node and region records, coordinates, metadata,
+uncertainty, progress, and outward external/unresolved edges. No filtered view
+is written back to the parser or persistence layer.
+
 ### 3. The LLM narrates; it never decides
 
 Structure comes from parsers. Check answers come from the graph. The model's

@@ -34,3 +34,7 @@ Nested structures own their own annotations, so a parent does not absorb syntax
 found only inside a child. Chart rows are keyed by language plus concept: a
 Python async/await encounter and a TypeScript async/await encounter remain
 separate evidence even though their display names match.
+
+In a mixed project, the chart follows the current language focus. This changes
+only the rows and session counts you are viewing; the underlying project graph
+and persisted understanding remain intact when you return to **All**.

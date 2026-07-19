@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-19
+
 ### Added
 - Language-neutral `ProjectParser` discovery and graph composition with global
   Home selection, adapter collision checks, and Python graph-byte compatibility.
@@ -15,6 +17,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   JavaScript/TypeScript Lens notes for async/await, arrows, destructuring,
   optional chaining, nullish coalescing, modules, types, interfaces, generics,
   and JSX.
+- Accessible language focus for mixed galaxies, systems, Study navigation, and
+  the star chart. It filters a view of the graph without changing coordinates,
+  progress, source truth, uncertainty, or cross-language navigation.
+- Phase 1 mixed-project fixtures, pure frontend focus/chart contracts, packaged
+  production SPA, public documentation, and a reproducible `v0.2.0` wheel.
 
 ## [0.1.0] - 2026-07-19
 

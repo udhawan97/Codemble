@@ -14,6 +14,6 @@ The short version — five golden rules:
 4. Semantic zoom only; no game logic in the renderer.
 5. Small diffs; the project runs end-to-end after every merge.
 
-Especially valuable early: trying Codemble on your own AI-built Python project
-and filing an issue for anything it gets wrong — a wrong explanation is a
-top-severity bug, not a nitpick.
+Especially valuable early: trying Codemble on your own AI-built Python,
+JavaScript, TypeScript, or mixed project and filing an issue for anything it
+gets wrong — a wrong explanation is a top-severity bug, not a nitpick.

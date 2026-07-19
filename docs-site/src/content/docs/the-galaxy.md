@@ -30,3 +30,15 @@ Reading never happens "in space": the study panel dims the scene behind it.
 
 A **region** is one module — the unit of checks, illumination, and progress.
 Change a file and only its region goes dim again; the rest of your sky stays lit.
+
+## Focus a mixed sky without changing it
+
+When a project contains more than one supported language, the top rail offers
+**All**, **Python**, **JS**, and **TS** focus buttons with system counts. Focus
+filters the current view, its routes, partial-file notices, and star-chart rows.
+It does not reparse code, move systems, erase progress, or hide external and
+unresolved relationships originating from the focused language.
+
+Switching focus away from the system you are viewing returns safely to the
+focused galaxy. Following a real relationship into another supported language
+switches focus to that target instead of creating a dead end.

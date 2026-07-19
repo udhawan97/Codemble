@@ -5,19 +5,20 @@ description: From `codemble ./my-project` to your first lit star system.
 
 ## 1. Point it at your project
 
-Point the tagged tool at a Python project:
+Point the tagged tool at a Python, JavaScript, TypeScript, or mixed project:
 
 ```bash
-uvx --from git+https://github.com/udhawan97/Codemble.git@v0.1.0 \
+uvx --from git+https://github.com/udhawan97/Codemble.git@v0.2.0 \
   codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
 It keeps syntax-error files visible and labels unresolved calls instead of
 guessing. Use `--no-open` when you want to copy the printed URL yourself.
-More languages are on the [roadmap](/Codemble/roadmap/).
+Codemble reads supported source; it never runs your project or package scripts.
 
-For a project above 300 Python files, select a smaller intentional scope:
+For a project above 300 supported source files, select a smaller intentional
+scope:
 
 ```bash
 codemble --path ./my-project/src
@@ -32,7 +33,9 @@ is rejected rather than guessed.
 
 ## 3. Zoom in
 
-The camera moves on rails through three levels:
+The camera moves on rails through three levels. In a mixed project, use the
+**Focus** control to show All, Python, JavaScript, or TypeScript systems. Focus
+is only a view: it does not alter coordinates, progress, or graph evidence.
 
 | Level | What you see | What it's for |
 | --- | --- | --- |

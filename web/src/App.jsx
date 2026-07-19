@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
-import { LEVELS, defaultRegion } from "./graphData.js";
+import {
+  LEVELS,
+  buildConceptChart,
+  conceptTitle,
+  defaultRegion,
+  languageFocusGraph,
+  languageLabel,
+  projectLanguageOptions,
+} from "./graphData.js";
 
 export function App() {
   const [graph, setGraph] = useState(null);
@@ -19,6 +27,7 @@ export function App() {
   const [entrypointDismissed, setEntrypointDismissed] = useState(false);
   const [entrypointError, setEntrypointError] = useState("");
   const [litRegionId, setLitRegionId] = useState(null);
+  const [languageFocus, setLanguageFocus] = useState("all");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,11 +84,43 @@ export function App() {
     return () => controller.abort();
   }, [level, selectedNode]);
 
+  const languageOptions = useMemo(
+    () => (graph ? projectLanguageOptions(graph) : []),
+    [graph],
+  );
+  const focusedGraph = useMemo(
+    () => (graph ? languageFocusGraph(graph, languageFocus) : null),
+    [graph, languageFocus],
+  );
+
+  useEffect(() => {
+    if (!focusedGraph || !region) return;
+    const visibleRegion = focusedGraph.regions.find(
+      (candidate) => candidate.id === region.id,
+    );
+    if (!visibleRegion) {
+      setRegion(defaultRegion(focusedGraph));
+      setSelectedNode(null);
+      setLevel(LEVELS.GALAXY);
+      return;
+    }
+    if (visibleRegion !== region) setRegion(visibleRegion);
+    if (
+      selectedNode &&
+      !focusedGraph.nodes.some((candidate) => candidate.id === selectedNode.id)
+    ) {
+      setSelectedNode(null);
+      setLevel(LEVELS.SYSTEM);
+    }
+  }, [focusedGraph, level, region, selectedNode]);
+
   const advance = useCallback(
     (node) => {
-      if (!graph) return;
+      if (!focusedGraph) return;
       if (level === LEVELS.GALAXY) {
-        setRegion(graph.regions.find((candidate) => candidate.id === node.id) ?? node);
+        setRegion(
+          focusedGraph.regions.find((candidate) => candidate.id === node.id) ?? node,
+        );
         setSelectedNode(null);
         setLevel(LEVELS.SYSTEM);
       } else if (level === LEVELS.SYSTEM) {
@@ -87,7 +128,7 @@ export function App() {
         setLevel(LEVELS.STUDY);
       }
     },
-    [graph, level],
+    [focusedGraph, level],
   );
 
   const retreat = useCallback(() => {
@@ -102,9 +143,18 @@ export function App() {
   const selectStudyNode = useCallback(
     (nodeId) => {
       const nextNode = graph?.nodes.find((candidate) => candidate.id === nodeId);
-      if (nextNode) setSelectedNode(nextNode);
+      if (nextNode) {
+        const nextRegion = graph.regions.find(
+          (candidate) => candidate.id === nextNode.region,
+        );
+        if (languageFocus !== "all" && nextNode.language !== languageFocus) {
+          setLanguageFocus(nextNode.language);
+        }
+        if (nextRegion) setRegion(nextRegion);
+        setSelectedNode(nextNode);
+      }
     },
-    [graph],
+    [graph, languageFocus],
   );
 
   const loadChecks = useCallback(async (regionId) => {
@@ -178,8 +228,15 @@ export function App() {
   }, [graph]);
 
   const chart = useMemo(
-    () => (graph ? buildConceptChart(graph, studiedNodeIds) : []),
-    [graph, studiedNodeIds],
+    () => (focusedGraph ? buildConceptChart(focusedGraph, studiedNodeIds) : []),
+    [focusedGraph, studiedNodeIds],
+  );
+  const focusedStudiedCount = useMemo(
+    () =>
+      focusedGraph
+        ? focusedGraph.nodes.filter((node) => studiedNodeIds.has(node.id)).length
+        : 0,
+    [focusedGraph, studiedNodeIds],
   );
 
   if (error) {
@@ -191,7 +248,7 @@ export function App() {
     );
   }
 
-  if (!graph || !region) {
+  if (!graph || !focusedGraph || !region) {
     return (
       <main className="load-state" aria-busy="true">
         <p>Mapping parser evidence…</p>
@@ -216,6 +273,7 @@ export function App() {
               ? `Galaxy · Home ${graph.selected_entrypoint ? (defaultRegion(graph)?.id ?? "unresolved") : "unselected"}`
               : region.id}
           {!showChart && level === LEVELS.STUDY && selectedNode ? ` / ${selectedNode.name}` : ""}
+          {languageFocus !== "all" ? ` · ${languageLabel(languageFocus)} focus` : ""}
         </p>
         {showChart ? (
           <button className="rail-action" type="button" onClick={() => setShowChart(false)}>
@@ -230,14 +288,19 @@ export function App() {
             Star chart
           </button>
         )}
+        <LanguageFocus
+          options={languageOptions}
+          value={languageFocus}
+          onChange={setLanguageFocus}
+        />
       </header>
 
       {showChart ? (
-        <StarChart chart={chart} studiedNodeIds={studiedNodeIds} />
+        <StarChart chart={chart} studiedCount={focusedStudiedCount} />
       ) : (
       <section className="map-stage" aria-label="Parser-proven project map">
         <GalaxyCanvas
-          graph={graph}
+          graph={focusedGraph}
           level={level}
           region={region}
           selectedNode={selectedNode}
@@ -252,11 +315,18 @@ export function App() {
         </aside>
         {level === LEVELS.GALAXY ? (
           <section className="orientation-copy">
-            <h1>{graph.regions.length} systems from real source.</h1>
+            <h1>
+              {focusedGraph.regions.length}{" "}
+              {languageFocus === "all"
+                ? focusedGraph.regions.length === 1
+                  ? "system"
+                  : "systems"
+                : `${languageLabel(languageFocus)} ${focusedGraph.regions.length === 1 ? "system" : "systems"}`} from real source.
+            </h1>
             <p>Choose a system. Size follows lines of code; brightness follows call centrality.</p>
-            {graph.partial_files.length ? (
+            {focusedGraph.partial_files.length ? (
               <p className="partial-summary">
-                {graph.partial_files.length} {graph.partial_files.length === 1 ? "file is" : "files are"} unchartable because its language parser reported a syntax error.
+                {focusedGraph.partial_files.length} {focusedGraph.partial_files.length === 1 ? "file is" : "files are"} unchartable because its language parser reported a syntax error.
               </p>
             ) : null}
           </section>
@@ -265,12 +335,12 @@ export function App() {
           <section className="orientation-copy orientation-copy--system">
             <h1>{region.id}</h1>
             <p>
-              {graph.nodes.some((node) => node.region === region.id && node.partial)
-                ? `${region.node_count} source file remains visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
+              {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
+                ? `${region.node_count} source ${region.node_count === 1 ? "file remains" : "files remain"} visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
                 : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
             </p>
             <button className="check-launch" type="button" onClick={openChecks}>
-              {graph.nodes.some((node) => node.region === region.id && node.partial)
+              {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
                 ? "Check availability"
                 : region.understood
                   ? "Review understanding"
@@ -313,11 +383,41 @@ export function App() {
       )}
 
       <footer className="status-line">
-        <span>{showChart ? `${chart.length} concepts detected` : `${graph.nodes.length} nodes · ${graph.edges.length} edges`}</span>
-        <span>{showChart ? `${studiedNodeIds.size} structures studied this session` : "Scroll or Enter to move closer · Escape to move back"}</span>
+        <span>
+          {showChart
+            ? `${chart.length} concepts detected`
+            : languageFocus === "all"
+              ? `${graph.nodes.length} nodes · ${graph.edges.length} edges`
+              : `${focusedGraph.nodes.length}/${graph.nodes.length} nodes · ${focusedGraph.edges.length} focused edges`}
+        </span>
+        <span>{showChart ? `${focusedStudiedCount} focused structures studied this session` : "Scroll or Enter to move closer · Escape to move back"}</span>
         <span>Local only</span>
       </footer>
     </main>
+  );
+}
+
+function LanguageFocus({ options, value, onChange }) {
+  if (options.length <= 2) return null;
+  return (
+    <nav className="language-focus" aria-label="Language focus">
+      <span className="language-focus__label">Focus</span>
+      <div>
+        {options.map((option) => (
+          <button
+            type="button"
+            key={option.id}
+            aria-label={`Focus ${option.label}: ${option.count} ${option.count === 1 ? "system" : "systems"}`}
+            aria-pressed={value === option.id}
+            title={option.label}
+            onClick={() => onChange(option.id)}
+          >
+            <span>{option.shortLabel}</span>
+            <small>{option.count}</small>
+          </button>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -530,7 +630,7 @@ function LensNotes({ lens, language }) {
   );
 }
 
-function StarChart({ chart, studiedNodeIds }) {
+function StarChart({ chart, studiedCount }) {
   const understood = chart.filter((item) => item.understood_nodes > 0).length;
   return (
     <section className="star-chart-screen" aria-labelledby="star-chart-heading">
@@ -542,7 +642,7 @@ function StarChart({ chart, studiedNodeIds }) {
         </p>
         <dl>
           <div><dt>Concepts encountered</dt><dd>{chart.length}</dd></div>
-          <div><dt>Structures studied</dt><dd>{studiedNodeIds.size}</dd></div>
+          <div><dt>Structures studied</dt><dd>{studiedCount}</dd></div>
           <div><dt>Concepts understood</dt><dd>{understood}</dd></div>
         </dl>
       </header>
@@ -565,52 +665,6 @@ function StarChart({ chart, studiedNodeIds }) {
       </div>
     </section>
   );
-}
-
-function buildConceptChart(graph, studiedNodeIds) {
-  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
-  const concepts = new Map();
-  for (const annotation of graph.concept_annotations ?? []) {
-    const key = `${annotation.language}:${annotation.concept}`;
-    const current = concepts.get(key) ?? {
-      language: annotation.language,
-      concept: annotation.concept,
-      occurrences: 0,
-      nodeIds: new Set(),
-      studiedNodeIds: new Set(),
-      understoodNodeIds: new Set(),
-    };
-    current.occurrences += 1;
-    current.nodeIds.add(annotation.node_id);
-    if (studiedNodeIds.has(annotation.node_id)) current.studiedNodeIds.add(annotation.node_id);
-    if (nodeById.get(annotation.node_id)?.understood) current.understoodNodeIds.add(annotation.node_id);
-    concepts.set(key, current);
-  }
-  return [...concepts.values()]
-    .map((item) => ({
-      concept: item.concept,
-      occurrences: item.occurrences,
-      nodes: item.nodeIds.size,
-      studied_nodes: item.studiedNodeIds.size,
-      understood_nodes: item.understoodNodeIds.size,
-    }))
-    .sort(
-      (left, right) =>
-        left.language.localeCompare(right.language) || left.concept.localeCompare(right.concept),
-    );
-}
-
-function conceptTitle(concept) {
-  const exact = {
-    javascript: "JavaScript",
-    jsx: "JSX",
-    typescript: "TypeScript",
-  };
-  if (exact[concept]) return exact[concept];
-  return concept
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 function SourceExcerpt({ source }) {
