@@ -62,7 +62,9 @@ const contract = [
 ];
 
 const langs = ["Python", "JavaScript", "TypeScript", "Mixed projects"];
-const install = "pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0";
+const install = "uvx codemble";
+const tagInstall =
+  "pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0";
 ---
 
 <!doctype html>
@@ -182,8 +184,9 @@ const install = "pipx install git+https://github.com/udhawan97/Codemble.git@v0.2
             </button>
           </div>
           <p class="hero-note">
-            Python 3.11+ · the wheel ships the app, so no Node needed ·
-            <a href={doc("installation")}>uvx one-off run</a>
+            Python 3.11+ · opens your browser to pick a project · until
+            v0.3.0 lands on PyPI,
+            <a href={doc("installation")}>install from the tag</a>
           </p>
         </div>
       </section>
@@ -312,12 +315,20 @@ const install = "pipx install git+https://github.com/udhawan97/Codemble.git@v0.2
         <div class="install" data-reveal>
           <h3>Run it on your own project</h3>
           <div class="cmd cmd-block">
-            <code>{install}<br />codemble ./your-project</code>
-            <button
-              type="button"
-              data-copy={`${install}\ncodemble ./your-project`}
-              class="cmd-copy"
-            >
+            <code>{install}</code>
+            <button type="button" data-copy={install} class="cmd-copy">
+              <span data-copy-label>Copy</span>
+            </button>
+          </div>
+          <p class="install-note">
+            Codemble opens your browser — pick your project folder there, or
+            skip the picker with <code>codemble ./your-project</code>. Until
+            the first PyPI release (v0.3.0) lands, install from the tag
+            instead:
+          </p>
+          <div class="cmd cmd-block">
+            <code>{tagInstall}</code>
+            <button type="button" data-copy={tagInstall} class="cmd-copy">
               <span data-copy-label>Copy</span>
             </button>
           </div>
