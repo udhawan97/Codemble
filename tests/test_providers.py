@@ -17,13 +17,16 @@ def _transport(payload: dict[str, object]):
     return post_json
 
 
-def _raw_server(response: bytes) -> str:
+def _raw_server(response: bytes, *, contacted: threading.Event | None = None) -> str:
     """Start a one-shot raw TCP listener bound to an OS-assigned loopback port.
 
     Sends ``response`` verbatim to the first connection, then closes. Used to
-    drive ``ollama_status``'s *real* ``_get_json`` transport (not an injected
-    fetcher) against byte sequences a real HTTP client chokes on, without ever
-    touching port 11434 or a real Ollama.
+    drive ``ollama_status``'s and the Ollama provider's *real* transports (not
+    an injected fetcher) against byte sequences a real HTTP client chokes on,
+    without ever touching port 11434 or a real Ollama.
+
+    ``contacted``, when given, is set the moment a connection arrives -- used
+    to prove a redirect target was (or was never) actually reached.
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("127.0.0.1", 0))
@@ -32,6 +35,8 @@ def _raw_server(response: bytes) -> str:
 
     def serve() -> None:
         conn, _ = sock.accept()
+        if contacted is not None:
+            contacted.set()
         with conn:
             conn.recv(65536)
             conn.sendall(response)
@@ -129,6 +134,31 @@ def test_ollama_host_cannot_be_reassigned_after_construction():
         provider.host = "http://evil.example"
 
 
+def test_ollama_provider_refuses_to_follow_a_redirect_off_loopback():
+    """A loopback listener answering 302 must not be followed off loopback.
+
+    urlopen() follows redirects by default, so a listener on the configured
+    port could send the request (and have its response trusted as narration)
+    to another host entirely. This drives the *real* ``_post_local_json``
+    transport -- no injected ``post_json`` -- against a real redirecting
+    listener, and proves the redirect target is never even contacted.
+    """
+    contacted = threading.Event()
+    redirect_target = _raw_server(
+        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", contacted=contacted
+    )
+    host = _raw_server(
+        f"HTTP/1.1 302 Found\r\nLocation: {redirect_target}/api/generate\r\n"
+        "Content-Length: 0\r\n\r\n".encode()
+    )
+
+    provider = OllamaProvider(host=host)
+    with pytest.raises(ProviderError):
+        provider.complete("prompt")
+
+    assert not contacted.wait(timeout=0.5), "the redirect target must never be reached"
+
+
 def test_status_lists_installed_models_when_ollama_is_running():
     def get_json(url: str):
         assert url == "http://127.0.0.1:11434/api/tags"
@@ -208,3 +238,23 @@ def test_status_survives_a_non_http_listener():
 
     assert status["running"] is False
     assert status["installed_models"] == []
+
+
+def test_status_refuses_to_follow_a_redirect_off_loopback():
+    # Same threat as the provider redirect test: a listener on the
+    # configured port could 302 the status probe off loopback. This drives
+    # the real _get_json transport against a real redirecting listener.
+    contacted = threading.Event()
+    redirect_target = _raw_server(
+        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", contacted=contacted
+    )
+    host = _raw_server(
+        f"HTTP/1.1 302 Found\r\nLocation: {redirect_target}/api/tags\r\n"
+        "Content-Length: 0\r\n\r\n".encode()
+    )
+
+    status = ollama_status(host=host)
+
+    assert status["running"] is False
+    assert status["installed_models"] == []
+    assert not contacted.wait(timeout=0.5), "the redirect target must never be reached"

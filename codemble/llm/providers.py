@@ -110,6 +110,21 @@ class OpenAIProvider:
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
+class _NoRedirectHandler(request.HTTPRedirectHandler):
+    """Refuse every redirect instead of following it."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102 - urllib override signature
+        return None
+
+
+# urlopen() follows redirects by default. A listener on the configured
+# loopback port could answer "302 -> http://other-host/" and send the
+# request (and its response) off loopback. Every local-only request shares
+# this opener so a redirect always fails closed as an HTTPError instead of
+# silently leaving loopback.
+_LOOPBACK_OPENER = request.build_opener(_NoRedirectHandler)
+
+
 @dataclass(slots=True, frozen=True)
 class OllamaProvider:
     """Local narration adapter; loopback only and never sends a credential."""
@@ -179,7 +194,7 @@ def _post_local_json(url: str, headers: dict[str, str], payload: JsonObject) -> 
         method="POST",
     )
     try:
-        with request.urlopen(outbound, timeout=120) as response:  # noqa: S310 - loopback only
+        with _LOOPBACK_OPENER.open(outbound, timeout=120) as response:  # noqa: S310 - loopback only, redirects refused
             decoded = json.loads(response.read().decode("utf-8"))
     except error.HTTPError as provider_error:
         raise ProviderError(
