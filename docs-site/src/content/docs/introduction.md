@@ -32,7 +32,7 @@ own it. You bring your own Claude or OpenAI API key; everything else runs
 locally on your machine.
 
 :::note[Status]
-v0.3.0 is the Phase 1 tester release, installable from PyPI. Python,
+Codemble is in its Phase 1 tester release, installable from PyPI. Python,
 JavaScript, TypeScript, and mixed projects run through the same local learning
 loop. The original unaided Python
 learner-acceptance issue remains open; technical completion does not substitute

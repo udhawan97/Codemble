@@ -3,7 +3,7 @@ title: Installation
 description: Requirements and setup, including bring-your-own-key configuration.
 ---
 
-:::note[v0.3.0 polyglot tester release]
+:::note[Polyglot tester release]
 The complete learning loop supports Python, JavaScript, TypeScript, and mixed
 projects. Human first-run evidence is still being collected separately.
 :::

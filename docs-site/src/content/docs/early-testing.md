@@ -1,6 +1,6 @@
 ---
 title: Early testing
-description: A ten-minute, privacy-safe first-run test for Codemble v0.3.0.
+description: A ten-minute, privacy-safe first-run test for Codemble.
 ---
 
 Codemble needs learners who built a small Python, JavaScript, TypeScript, or

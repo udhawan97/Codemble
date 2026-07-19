@@ -1,4 +1,4 @@
-# Test Codemble v0.3.0
+# Test Codemble
 
 Codemble needs people who built a small Python, JavaScript, TypeScript, or mixed
 project with AI and want to understand it better. This is a ten-minute first-run

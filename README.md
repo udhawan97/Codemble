@@ -29,7 +29,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#how-the-learning-loop-works">Learning loop</a> ·
   <a href="https://udhawan97.github.io/Codemble/">Documentation</a> ·
-  <a href="https://github.com/udhawan97/Codemble/blob/main/TESTING.md">Test v0.3.0</a>
+  <a href="https://github.com/udhawan97/Codemble/blob/main/TESTING.md">Test Codemble</a>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@
 </p>
 
 > [!IMPORTANT]
-> **v0.3.0 is the current Phase 1 tester release.** It maps Python,
+> **Codemble is in its Phase 1 tester release.** It maps Python,
 > JavaScript, TypeScript, and mixed projects in one parser-proven galaxy,
 > installable straight from PyPI with an in-app project picker. The
 > technical release is complete; unaided learner runs are the evidence still
@@ -168,7 +168,7 @@ The load-bearing design and architecture contracts are documented, not implied:
 
 | Horizon | Work |
 | --- | --- |
-| **Now** | Collect unaided first-run evidence on v0.3.0 across supported project types |
+| **Now** | Collect unaided first-run evidence on the current release across supported project types |
 | **Next** | Go, Rust, and Java adapters; level-of-detail rendering for larger repositories |
 | **Later** | Read-only share links, new quest types, and the coordinated public launch |
 
