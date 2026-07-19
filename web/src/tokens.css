@@ -1,0 +1,19 @@
+@import url("../../docs-site/src/styles/tokens.css");
+
+:root {
+  --cm-route-possible: color-mix(in srgb, var(--cm-ink-3) 56%, var(--cm-ground));
+  --cm-scrim: color-mix(in srgb, var(--cm-ground) 82%, transparent);
+  --cm-error: oklch(72% 0.16 28);
+  --cm-space-2xs: 0.125rem;
+  --cm-space-2xl: 6rem;
+  --cm-radius: 0.25rem;
+  --cm-text-xs: 0.75rem;
+  --cm-text-sm: 0.875rem;
+  --cm-text-base: 1rem;
+  --cm-text-lg: 1.25rem;
+  --cm-text-display: clamp(1.75rem, 3vw + 1rem, 3.25rem);
+  --cm-z-base: 1;
+  --cm-z-raised: 10;
+  --cm-z-sticky: 200;
+  --cm-z-panel: 400;
+}

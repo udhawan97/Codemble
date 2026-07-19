@@ -1,0 +1,24 @@
+{
+  "name": "codemble-web",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "vite build"
+  },
+  "dependencies": {
+    "@fontsource/inter": "5.2.8",
+    "@fontsource/jetbrains-mono": "5.2.8",
+    "@fontsource/sora": "5.2.8",
+    "3d-force-graph": "^1.80.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "^8.1.5"
+  }
+}

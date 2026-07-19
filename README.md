@@ -49,7 +49,7 @@ galaxy you can actually learn from.
 
 | You see | It means |
 | --- | --- |
-| ⭐ A star system | A module or package in your project |
+| ⭐ A star system | One source module in your project |
 | 🪐 A planet in orbit | A function or class |
 | 🏠 The Home system | Your entrypoint — where execution starts |
 | ✨ Routes & edges | Real imports and calls (uncertain ones say so) |
@@ -85,12 +85,13 @@ git clone https://github.com/udhawan97/Codemble.git
 cd Codemble
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-
-codemble parse ./your-ai-built-project --out graph.json
+cd web && npm install && npm run build && cd ..
+codemble ./your-ai-built-project
 ```
 
-Milestone M1 can emit the deterministic, parser-proven graph today. The
-browser galaxy command (`codemble ./your-ai-built-project`) arrives with M2.
+The command parses locally, serves the production web build on a free localhost
+port, and opens the deterministic galaxy. Pass `--no-open` to print the URL
+without launching a browser.
 
 </details>
 
@@ -135,6 +136,7 @@ lives in [CLAUDE.md](CLAUDE.md) and moves only when milestones land.
 ```bash
 pip install -e ".[dev]"
 pytest && ruff check .        # CI gates
+cd web && npm install && npm run check
 cd docs-site && npm install && npm run dev   # docs at localhost:4321
 ```
 

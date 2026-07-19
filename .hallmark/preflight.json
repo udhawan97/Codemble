@@ -1,0 +1,9 @@
+{
+  "date": "2026-07-19",
+  "design_system": "docs-site/design.md",
+  "font_stack": ["Sora", "Inter", "JetBrains Mono"],
+  "framework": "Vite + React",
+  "motion": "custom house easing; no motion library",
+  "palette": "locked Observatory Instrument tokens",
+  "spacing": "4-point scale"
+}

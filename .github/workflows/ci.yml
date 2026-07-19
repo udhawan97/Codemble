@@ -31,3 +31,15 @@ jobs:
           cd docs-site
           npm install
           npm run check
+  web-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: build web app
+        run: |
+          cd web
+          npm install
+          npm run check

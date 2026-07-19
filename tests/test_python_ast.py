@@ -32,7 +32,7 @@ def test_discovers_nodes_and_keeps_parse_failures_visible(graph) -> None:  # typ
     assert nodes["pkg.service.Service.run"].lineno == 7
     assert nodes["pkg.service.Service.run"].end_lineno == 10
     assert nodes["pkg.service.Service.run"].loc == 4
-    assert nodes["pkg.service.Service.run"].region == "pkg"
+    assert nodes["pkg.service.Service.run"].region == "pkg.service"
     assert all(node.language == "python" for node in graph.nodes)
 
 
@@ -126,6 +126,24 @@ def test_serialization_is_byte_deterministic(graph) -> None:  # type: ignore[no-
     assert payload["schema_version"] == 1
     assert payload["nodes"] == sorted(payload["nodes"], key=lambda node: node["id"])
     assert list(payload["file_hashes"]) == sorted(payload["file_hashes"])
+
+
+def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignore[no-untyped-def]
+    second = PythonAstAdapter().parse(FIXTURE)
+    regions = {region.id: region for region in graph.regions}
+    second_regions = {region.id: region for region in second.regions}
+    nodes = {node.id: node for node in graph.nodes}
+
+    assert regions == second_regions
+    assert len({(region.x, region.y, region.z) for region in graph.regions}) == len(
+        graph.regions
+    )
+    assert regions["app"].home is True
+    assert regions["app"].node_count == 2
+    assert regions["pkg.service"].node_count == 4
+    assert nodes["app"].system_x == 0.0
+    assert (nodes["app.main"].system_x, nodes["app.main"].system_z) != (0.0, 0.0)
+    assert any(route.src == "cli" and route.dst == "app" for route in graph.region_edges)
 
 
 def test_invalid_target_fails_honestly(tmp_path: Path) -> None:

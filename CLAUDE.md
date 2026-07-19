@@ -155,9 +155,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M2** · Last updated: 2026-07-19 · Session note: M1 Python
-parser and render-ready graph complete — 48-file FastAPI acceptance probe in
-0.28s, 20 source-verified call edges, deterministic JSON; all gates green.
+**Current milestone: M3** · Last updated: 2026-07-19 · Session note: M2 local
+galaxy complete — 11 source-module systems in the fixture, deterministic
+semantic zoom, no free flight, responsive browser QA clean, and 1,001-node
+direct-render throughput measured at 595 FPS; all gates green.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -181,11 +182,11 @@ parser and render-ready graph complete — 48-file FastAPI acceptance probe in
 edges correct; unresolved calls flagged, never dropped or invented.
 
 ### M2 — Galaxy renderer + semantic zoom (weeks 2–4)
-- [ ] FastAPI serves SPA + graph JSON
-- [ ] Galaxy level: systems/stars/routes, deterministic layout
-- [ ] Encoding: size=LOC, brightness=centrality, color=language, Home marked
-- [ ] Semantic zoom galaxy → system (tidy orbits + call edges), camera on rails
-- [ ] Dim/lit states rendered from graph JSON
+- [x] FastAPI serves SPA + graph JSON
+- [x] Galaxy level: systems/stars/routes, deterministic layout
+- [x] Encoding: size=LOC, brightness=centrality, color=language, Home marked
+- [x] Semantic zoom galaxy → system (tidy orbits + call edges), camera on rails
+- [x] Dim/lit states rendered from graph JSON
 
 **Acceptance:** same code → identical layout; interactive framerate at ~1k
 nodes on a mid-range laptop; transitions scripted, no free flight anywhere.
@@ -246,6 +247,8 @@ and lights up at least one system.
 | 2026-07-19 | Apache-2.0; Contributor Covenant 2.1; Conventional Commits + DCO | Match sibling repos |
 | 2026-07-19 | Brand: star-gold=understanding, orbit-cyan=interaction; observatory-instrument genre | design.md locked |
 | 2026-07-19 | M1 graph adds `Edge.external`, `Node.partial`, and `Graph.partial_files` | The playbook requires external and failed parses to stay explicit; these fields prevent consumers from inferring or inventing that state |
+| 2026-07-19 | One source module is one region; layout coordinates and import routes are computed in the graph layer | Progress invalidation is module-scoped and the renderer must remain a deterministic pure consumer |
+| 2026-07-19 | Semantic zoom is input-driven and scripted; 3D navigation controls remain disabled | Preserves the locked no-free-flight learning contract while keeping the map keyboard-accessible |
 
 ## Non-Goals — do NOT build (point here when asked)
 
