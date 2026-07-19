@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 from codemble.adapters.python_ast import PythonAstAdapter
@@ -127,3 +128,48 @@ def test_the_two_voices_ask_the_same_question_of_the_same_answer() -> None:
             offered = {option["id"] for option in public["options"]}
             assert set(check.answer_ids) <= offered
             assert offered - set(check.answer_ids), "every check keeps a wrong option"
+
+
+def test_easy_wording_keeps_the_qualifiers_expert_wording_relies_on() -> None:
+    """A learner who reasons transitively must not be marked wrong.
+
+    Regression for three sampleproj cases where dropping "directly" let a
+    transitively-true option score as wrong: pkg.helpers/pkg.service removal
+    impact both offer cli.launch (which breaks transitively via app.main);
+    pkg.util removal impact offers app.main (breaks transitively via
+    pkg.util.greet/pkg.helpers.log); shared's importer check offers app
+    (imports shared transitively via pkg.service).
+    """
+    graph = PythonAstAdapter().parse(FIXTURE)
+
+    for region_id in ("pkg.helpers", "pkg.service", "pkg.util"):
+        impact = next(
+            check
+            for check in generate_checks(graph, region_id)
+            if check.kind == "removal-impact"
+        )
+        assert "directly" in impact.prompt["easy"]
+
+    importer = next(
+        check for check in generate_checks(graph, "shared") if check.kind == "direct-importer"
+    )
+    assert "directly" in importer.prompt["easy"]
+
+    first_call = next(
+        check for check in generate_checks(graph, "app") if check.kind == "first-call"
+    )
+    assert "call" in first_call.prompt["easy"]
+    assert "run" not in first_call.prompt["easy"]
+
+
+def test_check_is_hashable_and_prompt_still_affects_equality() -> None:
+    """`prompt` is a dict, so it must opt out of `__hash__` while staying in `__eq__`."""
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    check = generate_checks(graph, "app")[0]
+
+    assert hash(check) == hash(check), "a frozen dataclass must stay hashable"
+
+    reworded = replace(check, prompt={"easy": "different wording", "expert": "different wording"})
+    assert reworded != check, "hash=False must not weaken equality"
+    assert hash(reworded) == hash(check), "prompt must stay excluded from the hash"

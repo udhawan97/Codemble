@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from codemble.adapters.base import Edge, Graph, Node
@@ -35,7 +35,7 @@ class Check:
     id: str
     region_id: str
     kind: CheckKind
-    prompt: dict[str, str]
+    prompt: dict[str, str] = field(hash=False)
     options: tuple[CheckOption, ...]
     answer_ids: tuple[str, ...]
     evidence: tuple[str, ...]
@@ -201,7 +201,7 @@ def _first_call_check(
         "first-call",
         source_id,
         {
-            "easy": f"Which piece of code does {source_id} run first?",
+            "easy": f"Which piece of code does {source_id} call first?",
             "expert": f"Which structure does {source_id} call first?",
         },
         answers,
@@ -233,7 +233,7 @@ def _importer_check(
             "direct-importer",
             region_id,
             {
-                "easy": f"Which of your files brings in {region_id} to use it?",
+                "easy": f"Which of your files brings in {region_id} directly?",
                 "expert": f"Which project module imports {region_id} directly?",
             },
             answers,
@@ -301,7 +301,7 @@ def _impact_check(
         "removal-impact",
         target_id,
         {
-            "easy": f"If {target_id} disappeared, which piece of code would break?",
+            "easy": f"Which piece of code uses {target_id} directly and would break if it disappeared?",
             "expert": (
                 f"Which structure directly depends on {target_id} "
                 "and could break if it disappeared?"
