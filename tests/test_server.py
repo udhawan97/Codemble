@@ -195,12 +195,32 @@ def test_changing_mode_does_not_re_dim_a_region(
 ) -> None:
     monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
     graph = PythonAstAdapter().parse(FIXTURE)
-    client = TestClient(create_app(graph, tmp_path / "missing"))
+    checks = CheckService(graph, ProgressStore(graph, tmp_path / "progress"))
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            StudyService(graph, cache_root=tmp_path / "cache"),
+            checks,
+        )
+    )
+
+    generated = generate_checks(graph, "app")
+    for check in generated:
+        response = client.post(
+            f"/api/regions/app/checks/{check.id}",
+            json={"selected_ids": list(check.answer_ids)},
+        )
+        assert response.status_code == 200
+    assert response.json()["region_understood"] is True
 
     before = client.get("/api/graph").json()
     client.put("/api/mode", json={"mode": "expert"})
+    after = client.get("/api/graph").json()
 
-    assert client.get("/api/graph").json() == before
+    assert after == before
+    app_region = next(region for region in after["regions"] if region["id"] == "app")
+    assert app_region["understood"] is True
 
 
 def test_unpicked_app_reports_state_and_guards_project_api(tmp_path: Path) -> None:
