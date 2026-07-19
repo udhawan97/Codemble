@@ -386,3 +386,83 @@ def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> 
     assert openai_requests[0][0].endswith("/v1/responses")
     assert openai_requests[0][1]["authorization"] == "Bearer secret-o"
     assert openai_requests[0][2]["store"] is False
+
+
+def test_ollama_is_selected_only_when_asked_for(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={"CODEMBLE_PROVIDER": "ollama"},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    result = service.explain("app.main", "easy")
+
+    assert result["provider"] == "ollama"
+    assert result["model"] == "gemma4:12b"
+
+
+def test_no_configuration_never_silently_picks_a_local_model(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    assert service.explain("app.main", "easy")["status"] == "no_key"
+
+
+def test_remote_ollama_host_degrades_gracefully_instead_of_crashing(tmp_path: Path) -> None:
+    """A non-loopback CODEMBLE_OLLAMA_HOST must not raise out of from_environment.
+
+    OllamaProvider.__post_init__ raises ValueError for a non-loopback host, to
+    stop Codemble posting a learner's source to a remote endpoint. from_environment
+    must catch it, leave the service keyless, and explain what to fix, same as
+    every other misconfigured provider already does.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={
+            "CODEMBLE_PROVIDER": "ollama",
+            "CODEMBLE_OLLAMA_HOST": "http://example.com:11434",
+        },
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    result = service.explain("app.main", "easy")
+
+    assert result["status"] == "no_key"
+    assert "loopback" in result["message"]
+
+
+def test_file_scheme_ollama_host_is_refused_through_from_environment(tmp_path: Path) -> None:
+    """The guard's scheme check must still fire when host arrives via config.
+
+    file:// passes the hostname allowlist (localhost is a valid hostname) but
+    must still be refused, or urlopen would silently return a local file's
+    bytes instead of posting to Ollama. This is the same bypass Task 9's
+    report flagged, now pinned through the configuration path instead of a
+    direct OllamaProvider(...) construction.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={
+            "CODEMBLE_PROVIDER": "ollama",
+            "CODEMBLE_OLLAMA_HOST": "file://localhost/etc/passwd",
+        },
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    result = service.explain("app.main", "easy")
+
+    assert result["status"] == "no_key"
+    assert "loopback" in result["message"]
