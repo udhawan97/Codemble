@@ -30,7 +30,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#how-the-learning-loop-works">Learning loop</a> ·
   <a href="https://udhawan97.github.io/Codemble/">Documentation</a> ·
-  <a href="TESTING.md">Test v0.2.0</a>
+  <a href="TESTING.md">Test v0.3.0</a>
 </p>
 
 <p align="center">
@@ -53,9 +53,10 @@ uvx codemble            # or: pipx install codemble && codemble
 Codemble opens your browser — pick your project folder there. To skip the
 picker, pass a path: `codemble ./your-ai-built-project`.
 
-The wheel already contains the web app, so Node.js is not required. No API key is needed for the galaxy,
-source viewer, language Lens, checks, lighting, or saved progress. Add your own
-Anthropic or OpenAI key only if you want grounded prose explanations:
+The wheel already contains the web app, so Node.js is not required. No API key
+is needed for the galaxy, source viewer, language Lens, checks, lighting, or
+saved progress. Add your own Anthropic or OpenAI key only if you want grounded
+prose explanations:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY=sk-...
@@ -168,7 +169,7 @@ The load-bearing design and architecture contracts are documented, not implied:
 
 | Horizon | Work |
 | --- | --- |
-| **Now** | Collect unaided first-run evidence on v0.2.0 across supported project types |
+| **Now** | Collect unaided first-run evidence on v0.3.0 across supported project types |
 | **Next** | Go, Rust, and Java adapters; level-of-detail rendering for larger repositories |
 | **Later** | Read-only share links, new quest types, and the coordinated public launch |
 
