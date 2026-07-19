@@ -5,7 +5,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-19
+
 ### Changed
+- Packaging metadata only, no behavior change: added PyPI classifiers (Beta
+  status, Python 3.11-3.13, Apache-2.0 license, dev/education audience), moved
+  license metadata to the PEP 639 SPDX form so the License field is concise
+  instead of dumping the full Apache text, made README links absolute so the
+  PyPI project page renders them, and excluded internal tooling directories
+  from the sdist.
+
+## [0.3.0] - 2026-07-19
+
+### Added
+- Bare `codemble` now opens the browser to an in-app project picker: browse
+  home folders, reopen recent projects, and re-scope over-cap projects without
+  touching the terminal.
+- The local server rejects foreign `Host` headers, keeping the picker API
+  reachable only from the learner's own machine.
+- Codemble is published to PyPI, so installing is `uvx codemble` or
+  `pipx install codemble` with no git URL or tag.
+
+### Changed
+- `codemble` with flags but no path serves the picker instead of the current
+  directory; pass a path (or `--path`) for the previous behaviour.
 - Rebuilt the packaged app on the Formal Edo palette, so the galaxy and the
   public site finally share one set of values. The app's tokens already imported
   the site's, but `codemble/web_dist` had not been rebuilt since before the

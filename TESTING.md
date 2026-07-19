@@ -1,4 +1,4 @@
-# Test Codemble v0.2.0
+# Test Codemble
 
 Codemble needs people who built a small Python, JavaScript, TypeScript, or mixed
 project with AI and want to understand it better. This is a ten-minute first-run
@@ -9,7 +9,7 @@ happened.
 ## Protect your project
 
 - Use a local project with at most 300 supported source files, or choose a smaller
-  subdirectory with `--path`.
+  subdirectory when Codemble prompts (`--path` from the CLI).
 - Do not paste source code, API keys, credentials, or private project names into
   feedback. Codemble itself runs locally and has no telemetry.
 - An LLM key is optional. The galaxy, source, Lens, checks, and lighting work
@@ -18,9 +18,11 @@ happened.
 ## Run the test
 
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
-codemble ./path-to-your-project
+uvx codemble            # or: pipx install codemble && codemble
 ```
+
+Codemble opens your browser to an in-app picker — pick your project folder
+there, or pass one directly: `codemble ./path-to-your-project`.
 
 Then, without reading the docs first:
 

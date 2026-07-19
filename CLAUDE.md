@@ -178,7 +178,14 @@ verified Home calibration, study source, checks, illumination, and restart
 persistence end to end, and found one real defect: multi-answer checks with four
 or more answers offered no wrong option, so select-all lit a region without
 proving understanding. Fixed with a regression test; 17 of 107 questions on this
-repository were affected and no region lost a check.
+repository were affected and no region lost a check. The root README was then
+restructured around the learning loop, fast tester setup, correctness, and the
+local/AI boundary. Its top mark now uses self-contained, GitHub-safe motion with
+a static reduced-motion state; no product or app behavior changed. Bare
+`codemble` now serves a one-shot in-app project picker (home-jailed browse +
+recents, Host-header allowlisted) instead of the current directory; README,
+docs-site, the changelog, and a new PyPI release checklist now lead with
+`uvx codemble` ahead of the pending first PyPI publish.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -350,6 +357,9 @@ JS/TS certainty and concept evidence remain parser-proven through the unchanged
 | 2026-07-19 | The app self-hosts the Formal Edo faces; it never loads the site's Google Fonts CDN | `web/src/tokens.css` imports the site's tokens, so the redesign silently changed the app's requested faces. The app is local-first and says "Local only" in its own footer, so a CDN request would break offline use and contradict that promise |
 | 2026-07-19 | Understanding owns the top of the canvas brightness range: the unlit centrality ramp caps at `--cm-ink-2` and lit stars use `--cm-star-high` | Lit at 8.5:1 sat below the unlit ceiling of 17.4:1, so a busy un-understood module looked more lit than an understood one. Approved by UD; uses existing tokens only, so `design.md` is unchanged |
 | 2026-07-19 | Canvas palette values are resolved to `rgb()` before they reach WebGL | A custom property returns its authored text, so `color-mix()` tokens rendered black — silently hiding unchartable nodes and every "possible call" edge, which the Correctness Contract requires to stay visible |
+| 2026-07-19 | The root README uses a self-contained animated ensō mark; app icons and favicons remain static | GitHub strips page-level scripting, so motion belongs inside the referenced SVG. The loop is restrained to illumination, transforms, and opacity, and reduced-motion users receive the finished lit state |
+| 2026-07-19 | Bare `codemble` serves a one-shot in-app project picker (browse + recents) on a single two-phase server; binding is one-shot and the API is home-jailed with a Host-header allowlist | Approved by UD this session: easiest possible run flow for learners without a second server, without free filesystem enumeration, and without changing the one-graph app model |
+| 2026-07-19 | Codemble publishes to PyPI from the next tagged release; install collapses to `uvx codemble` | Approved by UD this session: the git+tag install was the biggest onboarding hurdle for the target learner |
 
 ## Non-Goals — do NOT build (point here when asked)
 

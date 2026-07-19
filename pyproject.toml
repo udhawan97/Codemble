@@ -4,12 +4,26 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codemble"
-version = "0.2.0"
+version = "0.3.1"
 description = "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Umang Dhawan", email = "umangdhawan97@gmail.com" }]
 requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Education",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+  "Environment :: Web Environment",
+  "Topic :: Software Development :: Documentation",
+  "Topic :: Education",
+]
 dependencies = [
   "fastapi>=0.115",
   "tree-sitter>=0.25,<0.27",
@@ -36,3 +50,6 @@ exclude = ["tests/fixtures"]
 [tool.hatch.build.targets.wheel]
 packages = ["codemble"]
 include = ["codemble/web_dist/**"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [".remember", ".hallmark", ".claude", ".superpowers", "docs-site/node_modules", "web/node_modules"]

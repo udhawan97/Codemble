@@ -1,6 +1,6 @@
 ---
 title: Early testing
-description: A ten-minute, privacy-safe first-run test for Codemble v0.2.0.
+description: A ten-minute, privacy-safe first-run test for Codemble.
 ---
 
 Codemble needs learners who built a small Python, JavaScript, TypeScript, or
@@ -10,9 +10,11 @@ without maintainer help, light one system and confirm it stays lit after restart
 ## Install
 
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
-codemble ./path-to-your-project
+uvx codemble            # or: pipx install codemble && codemble
 ```
+
+Codemble opens your browser to an in-app picker — pick your project folder
+there, or pass one directly: `codemble ./path-to-your-project`.
 
 An API key is optional. Do not read the rest of the docs before the first run;
 the product should teach the loop itself.

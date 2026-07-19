@@ -1,15 +1,20 @@
 ---
 title: Quickstart
-description: From `codemble ./my-project` to your first lit star system.
+description: From one command to your first lit star system.
 ---
 
 ## 1. Point it at your project
 
-Point the tagged tool at a Python, JavaScript, TypeScript, or mixed project:
+```bash
+uvx codemble            # or: pipx install codemble && codemble
+```
+
+Codemble opens your browser to an in-app picker: browse your home folders or
+reopen a recent project, then pick your Python, JavaScript, TypeScript, or
+mixed project. To skip the picker, pass a path directly:
 
 ```bash
-uvx --from git+https://github.com/udhawan97/Codemble.git@v0.2.0 \
-  codemble ./my-project
+codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -17,8 +22,9 @@ It keeps syntax-error files visible and labels unresolved calls instead of
 guessing. Use `--no-open` when you want to copy the printed URL yourself.
 Codemble reads supported source; it never runs your project or package scripts.
 
-For a project above 300 supported source files, select a smaller intentional
-scope:
+For a project above 300 supported source files, the picker prompts for a
+busiest-first subdirectory right in the UI. From the CLI, select the scope
+yourself:
 
 ```bash
 codemble --path ./my-project/src

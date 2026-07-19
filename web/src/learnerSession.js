@@ -38,6 +38,7 @@ export function createLearnerSession({
     entrypointError: "",
     litRegionId: null,
     languageFocus: "all",
+    picker: null,
   });
   let lifecycle = 0;
   let graphController = null;
@@ -45,6 +46,7 @@ export function createLearnerSession({
   let checksController = null;
   let submissionController = null;
   let entrypointController = null;
+  let pickerController = null;
   let illuminationTimer = null;
 
   function getSnapshot() {
@@ -84,14 +86,52 @@ export function createLearnerSession({
     graphController = new AbortController();
     const controller = graphController;
     commit({ status: "loading", error: "" });
+    let pickerState;
+    try {
+      pickerState = await adapter.loadPickerState({ signal: controller.signal });
+    } catch (requestError) {
+      if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
+        commit({ status: "error", error: errorMessage(requestError) });
+      }
+      return snapshot;
+    }
+    if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
+    if (pickerState.state === "unpicked") {
+      return startPicker(controller, requestLifecycle);
+    }
+    return loadProjectGraph(controller, requestLifecycle);
+  }
+
+  async function loadProjectGraph(controller, requestLifecycle) {
+    commit({ status: "loading", error: "", picker: null });
     try {
       const graph = await adapter.loadGraph({ signal: controller.signal });
       if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
+      commit({ status: "ready", graph, region: defaultRegion(graph), error: "" });
+    } catch (requestError) {
+      if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
+        commit({ status: "error", error: errorMessage(requestError) });
+      }
+    }
+    return snapshot;
+  }
+
+  async function startPicker(controller, requestLifecycle) {
+    try {
+      const [recentsPayload, listing] = await Promise.all([
+        adapter.loadRecents({ signal: controller.signal }),
+        adapter.browsePicker(null, { signal: controller.signal }),
+      ]);
+      if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
       commit({
-        status: "ready",
-        graph,
-        region: defaultRegion(graph),
-        error: "",
+        status: "picking",
+        picker: {
+          ...listing,
+          recents: recentsPayload.recents,
+          error: "",
+          scale: null,
+          busy: false,
+        },
       });
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
@@ -99,6 +139,64 @@ export function createLearnerSession({
       }
     }
     return snapshot;
+  }
+
+  async function browsePickerFolder(path) {
+    if (snapshot.status !== "picking" || snapshot.picker?.busy) return;
+    abortController(pickerController);
+    pickerController = new AbortController();
+    const controller = pickerController;
+    try {
+      const listing = await adapter.browsePicker(path, { signal: controller.signal });
+      if (!controller.signal.aborted && snapshot.status === "picking") {
+        commit({ picker: { ...snapshot.picker, ...listing, error: "" } });
+      }
+    } catch (requestError) {
+      if (
+        pickerController === controller &&
+        !isAbortError(requestError) &&
+        snapshot.status === "picking"
+      ) {
+        commit({ picker: { ...snapshot.picker, error: errorMessage(requestError) } });
+      }
+    }
+  }
+
+  async function selectProject(path) {
+    if (snapshot.status !== "picking" || snapshot.picker?.busy) return undefined;
+    abortController(pickerController);
+    pickerController = new AbortController();
+    const controller = pickerController;
+    commit({ picker: { ...snapshot.picker, busy: true, error: "", scale: null } });
+    try {
+      const result = await adapter.selectProject(path, { signal: controller.signal });
+      if (controller.signal.aborted || snapshot.status !== "picking") return result;
+      if (result.state === "ready") {
+        lifecycle += 1;
+        const requestLifecycle = lifecycle;
+        abortController(graphController);
+        graphController = new AbortController();
+        return loadProjectGraph(graphController, requestLifecycle);
+      }
+      if (result.state === "scale") {
+        const listing = await adapter.browsePicker(result.root, {
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted && snapshot.status === "picking") {
+          commit({
+            picker: { ...snapshot.picker, ...listing, busy: false, scale: result },
+          });
+        }
+        return result;
+      }
+      commit({ picker: { ...snapshot.picker, busy: false, error: result.detail } });
+      return result;
+    } catch (requestError) {
+      if (!isAbortError(requestError) && snapshot.status === "picking") {
+        commit({ picker: { ...snapshot.picker, busy: false, error: errorMessage(requestError) } });
+      }
+      return undefined;
+    }
   }
 
   async function dispatch(event) {
@@ -131,6 +229,10 @@ export function createLearnerSession({
       case "DISMISS_ENTRYPOINT":
         commit({ entrypointDismissed: true });
         return undefined;
+      case "BROWSE_PICKER":
+        return browsePickerFolder(event.path);
+      case "SELECT_PROJECT":
+        return selectProject(event.path);
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
@@ -345,6 +447,7 @@ export function createLearnerSession({
       checksController,
       submissionController,
       entrypointController,
+      pickerController,
     ]) {
       abortController(controller);
     }
@@ -353,6 +456,7 @@ export function createLearnerSession({
     checksController = null;
     submissionController = null;
     entrypointController = null;
+    pickerController = null;
     if (illuminationTimer !== null) {
       clock.clearTimeout(illuminationTimer);
       illuminationTimer = null;
@@ -411,6 +515,37 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ node_id: nodeId }),
       });
     },
+    loadPickerState(options = {}) {
+      return request("/api/picker/state", "Picker state", options);
+    },
+    browsePicker(path, options = {}) {
+      const query = path ? `?path=${encodeURIComponent(path)}` : "";
+      return request(`/api/picker/browse${query}`, "Folder listing", options);
+    },
+    loadRecents(options = {}) {
+      return request("/api/picker/recents", "Recent projects", options);
+    },
+    async selectProject(path, options = {}) {
+      const response = await fetchImplementation("/api/picker/select", {
+        ...options,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (response.ok) return { state: "ready" };
+      const detail = payload?.detail;
+      if (detail && typeof detail === "object" && detail.reason === "scale") {
+        return { state: "scale", ...detail };
+      }
+      return {
+        state: "error",
+        detail:
+          typeof detail === "string"
+            ? detail
+            : `Project selection returned ${response.status}.`,
+      };
+    },
   });
 }
 
@@ -420,9 +555,11 @@ export function createInMemoryLearnerSessionAdapter({
   checks = {},
   submissions = {},
   entrypoints = {},
+  picker = null,
 }) {
   let currentGraph = graph;
   const currentChecks = new Map(Object.entries(checks));
+  const pickerPhase = picker ? { ...picker, selected: false } : null;
   return Object.freeze({
     async loadGraph(options = {}) {
       throwIfAborted(options.signal);
@@ -454,6 +591,26 @@ export function createInMemoryLearnerSessionAdapter({
       throwIfAborted(options.signal);
       currentGraph = requiredFixture(entrypoints, nodeId, "entrypoint graph");
       return currentGraph;
+    },
+    async loadPickerState(options = {}) {
+      throwIfAborted(options.signal);
+      return pickerPhase && !pickerPhase.selected
+        ? { state: "unpicked" }
+        : { state: "ready" };
+    },
+    async browsePicker(path, options = {}) {
+      throwIfAborted(options.signal);
+      return requiredFixture(pickerPhase.browse, path ?? "", "picker listing");
+    },
+    async loadRecents(options = {}) {
+      throwIfAborted(options.signal);
+      return { recents: pickerPhase.recents ?? [] };
+    },
+    async selectProject(path, options = {}) {
+      throwIfAborted(options.signal);
+      const result = requiredFixture(pickerPhase.selections, path, "picker selection");
+      if (result.state === "ready") pickerPhase.selected = true;
+      return result;
     },
   });
 }

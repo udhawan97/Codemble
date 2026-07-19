@@ -9,7 +9,7 @@ only when milestones actually complete. The shape:
 
 ## NOW — Phase 1 tester evidence
 
-The v0.2.0 technical release maps Python, JavaScript, TypeScript, and mixed
+The Phase 1 technical release maps Python, JavaScript, TypeScript, and mixed
 projects through one local parser-proven learning loop. The current work is
 first-run evidence and correctness reports on real learner projects. The
 original v0.1.0 Python learner-acceptance issue remains open and is not treated

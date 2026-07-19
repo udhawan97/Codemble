@@ -3,7 +3,7 @@ title: Installation
 description: Requirements and setup, including bring-your-own-key configuration.
 ---
 
-:::note[v0.2.0 polyglot tester release]
+:::note[Polyglot tester release]
 The complete learning loop supports Python, JavaScript, TypeScript, and mixed
 projects. Human first-run evidence is still being collected separately.
 :::
@@ -16,19 +16,15 @@ projects. Human first-run evidence is still being collected separately.
 
 An Anthropic or OpenAI key is optional and enables only explanation prose.
 
-## Install from the v0.2.0 tag
+## Install and run
 
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
-codemble ./your-project
+uvx codemble            # or: pipx install codemble && codemble
 ```
 
-Or run without keeping an installation:
-
-```bash
-uvx --from git+https://github.com/udhawan97/Codemble.git@v0.2.0 \
-  codemble ./your-project
-```
+Codemble opens your browser to an in-app picker — browse your
+home folders or reopen a recent project, no path typing required. To skip the
+picker, pass a path directly: `codemble ./your-project`.
 
 The Python wheel already contains the production web app. Node is needed only
 when developing Codemble itself.
@@ -61,7 +57,8 @@ language lens, and checks — only the prose explanations need the model.
 ## Limits that fail honestly
 
 - More than 300 supported source files: run
-  `codemble --path ./project/subdirectory`.
+  `codemble --path ./project/subdirectory`; the picker prompts for the same
+  busiest-first subdirectory choice in the UI.
 - Ambiguous startup: choose Home in the app or pass a parser-ranked node with
   `--entrypoint NODE_ID`.
 - Syntax error: the file remains visible as **Unchartable**, with raw source;

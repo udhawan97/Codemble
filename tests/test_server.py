@@ -164,3 +164,199 @@ def test_explanation_endpoint_404s_for_an_unknown_node(tmp_path: Path) -> None:
     # Pin the detail body too, so this genuinely exercises the route's
     # UnknownNodeError branch rather than an unmatched-path fallback.
     assert response.json()["detail"] == "That source node is not in this graph."
+
+
+def test_unpicked_app_reports_state_and_guards_project_api(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    assert client.get("/api/picker/state").json() == {"state": "unpicked"}
+    assert client.get("/api/graph").status_code == 409
+    assert client.get("/api/regions/pkg/checks").status_code == 409
+    assert client.get("/api/node/pkg.x/study").status_code == 409
+    assert client.post("/api/entrypoint", json={"node_id": "x"}).status_code == 409
+
+
+def test_bound_app_reports_ready_picker_state(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/picker/state").json() == {"state": "ready"}
+    assert client.get("/api/graph").status_code == 200
+
+
+def test_create_app_requires_a_graph_or_picker(tmp_path: Path) -> None:
+    import pytest
+
+    with pytest.raises(ValueError):
+        create_app(web_dist=tmp_path / "missing")
+
+
+def test_picker_browse_lists_directories_inside_the_jail(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    (tmp_path / "beta").mkdir()
+    (tmp_path / "Alpha").mkdir()
+    (tmp_path / ".hidden").mkdir()
+    (tmp_path / "loose.py").write_text("A = 1\n", encoding="utf-8")
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    root_listing = client.get("/api/picker/browse")
+    child_listing = client.get(
+        "/api/picker/browse", params={"path": str(tmp_path / "beta")}
+    )
+
+    assert root_listing.status_code == 200
+    assert root_listing.json()["parent"] is None
+    assert [entry["name"] for entry in root_listing.json()["entries"]] == [
+        "Alpha",
+        "beta",
+    ]
+    assert child_listing.json()["parent"] == str(tmp_path.resolve())
+    assert client.get(
+        "/api/picker/browse", params={"path": str(tmp_path / "missing-dir")}
+    ).status_code == 404
+    assert client.get(
+        "/api/picker/browse", params={"path": str(tmp_path.parent)}
+    ).status_code == 403
+
+
+def test_picker_browse_refuses_symlink_escape(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    jail = tmp_path / "jail"
+    outside = tmp_path / "outside"
+    jail.mkdir()
+    outside.mkdir()
+    (jail / "escape").symlink_to(outside)
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=jail))
+    )
+
+    assert client.get(
+        "/api/picker/browse", params={"path": str(jail / "escape")}
+    ).status_code == 403
+
+
+def test_picker_recents_come_from_the_progress_store(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import json as json_module
+
+    from codemble.server.app import PickerConfig
+
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    jail = tmp_path / "jail"
+    jail.mkdir()
+    project = jail / "demo"
+    project.mkdir()
+    outside_project = tmp_path / "outside-project"
+    outside_project.mkdir()
+    progress = tmp_path / "data" / "progress"
+    progress.mkdir(parents=True)
+    (progress / "abc.json").write_text(
+        json_module.dumps(
+            {
+                "schema_version": 1,
+                "project_root": str(project),
+                "regions": {"pkg": {"signature": "s"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (progress / "outside.json").write_text(
+        json_module.dumps(
+            {
+                "schema_version": 1,
+                "project_root": str(outside_project),
+                "regions": {"pkg": {"signature": "s"}, "other": {"signature": "s"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=jail))
+    )
+
+    assert client.get("/api/picker/recents").json() == {
+        "recents": [{"project_root": str(project), "understood_count": 1}]
+    }
+
+
+def test_picker_select_binds_a_project_exactly_once(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+
+    first = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    second = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+
+    assert first.status_code == 200
+    assert first.json() == {"state": "ready"}
+    assert client.get("/api/picker/state").json() == {"state": "ready"}
+    assert client.get("/api/graph").status_code == 200
+    assert second.status_code == 409
+    assert second.json()["detail"] == "A project is already selected."
+    assert client.get("/api/picker/browse").status_code == 409
+
+
+def test_picker_select_reports_scale_with_suggestions(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    big = tmp_path / "big"
+    (big / "api").mkdir(parents=True)
+    for index in range(301):
+        (big / "api" / f"module_{index}.py").write_text("A = 1\n", encoding="utf-8")
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    response = client.post("/api/picker/select", json={"path": str(big)})
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["reason"] == "scale"
+    assert detail["file_count"] == 301
+    assert detail["scale_cap"] == 300
+    assert detail["root"] == str(big.resolve())
+    assert detail["suggestions"][0] == {"path": "api", "file_count": 301}
+
+
+def test_picker_select_rejects_unparseable_and_escaping_paths(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    assert client.post(
+        "/api/picker/select", json={"path": str(empty)}
+    ).status_code == 422
+    assert client.post(
+        "/api/picker/select", json={"path": str(tmp_path.parent)}
+    ).status_code == 403
+    assert client.post(
+        "/api/picker/select", json={"path": str(tmp_path / "nope")}
+    ).status_code == 404
+
+
+def test_foreign_host_headers_are_rejected(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    rebinding = client.get("/api/graph", headers={"Host": "evil.example"})
+
+    assert rebinding.status_code == 400
+    assert client.get("/api/graph").status_code == 200
