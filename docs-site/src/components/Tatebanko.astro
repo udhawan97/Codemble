@@ -1,0 +1,191 @@
+---
+/**
+ * Tatebanko (立版古) — the Edo paper diorama.
+ *
+ * Four printed sheets stood at different depths inside a box. Here they are
+ * four SVG plates that drift at different rates against the pointer and the
+ * scroll, so depth comes from parallax between flat printed layers rather than
+ * from perspective maths. That is the honest version of "3D" for an atlas: the
+ * artwork stays a print you could hold, and the wonder is in the stacking.
+ *
+ * Every sheet is a committed file from scripts/build-plates.mjs, so the sky is
+ * byte-identical on every load — the same rule the app's galaxy obeys.
+ */
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+/* Three sheets, not four. Kasumi mist was a fourth, but it read as haze behind
+   an already-busy plate and its job — separating scenes — is done better by the
+   rule between sections. One motif, one job. */
+const sheets = [
+  { src: "hero-field.svg", depth: 0.12, cls: "s-field" },
+  { src: "hero-chart.svg", depth: 0.58, cls: "s-chart" },
+  { src: "hero-gold.svg", depth: 0.9, cls: "s-gold" },
+];
+---
+
+<div class="tate" data-tate aria-hidden="true">
+  {
+    sheets.map((s) => (
+      <img
+        class={`tate-sheet ${s.cls}`}
+        src={`${base}/brand/plates/${s.src}`}
+        alt=""
+        loading="eager"
+        decoding="async"
+        data-depth={s.depth}
+      />
+    ))
+  }
+</div>
+
+<script>
+  const box = document.querySelector<HTMLElement>("[data-tate]");
+  if (box) {
+    const sheets = [...box.querySelectorAll<HTMLElement>(".tate-sheet")];
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fine = matchMedia("(pointer: fine)").matches;
+
+    let px = 0;
+    let py = 0;
+    let sy = 0;
+    let queued = false;
+
+    const paint = () => {
+      queued = false;
+      for (const el of sheets) {
+        const d = Number(el.dataset.depth) || 0;
+        // Sheets nearer the front travel further — the parallax of a diorama.
+        const x = px * d * 22;
+        const y = py * d * 14 + sy * d * 0.14;
+        el.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
+      }
+    };
+    const schedule = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(paint);
+    };
+
+    if (!reduce) {
+      if (fine) {
+        addEventListener(
+          "pointermove",
+          (e) => {
+            px = (e.clientX / innerWidth - 0.5) * 2;
+            py = (e.clientY / innerHeight - 0.5) * 2;
+            schedule();
+          },
+          { passive: true },
+        );
+      }
+      addEventListener(
+        "scroll",
+        () => {
+          // Only while the diorama is still on screen.
+          const top = box.getBoundingClientRect().top;
+          if (top > -innerHeight) {
+            sy = -top;
+            schedule();
+          }
+        },
+        { passive: true },
+      );
+    }
+
+    // The gold sheet breathes once the plate is in view: the lit region is the
+    // only thing on this page allowed to celebrate itself.
+    if (!reduce && "IntersectionObserver" in window) {
+      const gold = box.querySelector(".s-gold");
+      new IntersectionObserver(([e]) =>
+        gold?.classList.toggle("lit", e.isIntersecting),
+      ).observe(box);
+    }
+  }
+</script>
+
+<style>
+  .tate {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    pointer-events: none;
+    z-index: var(--cm-z-canvas);
+  }
+
+  /* Bokashi — the hand-wiped ink fade at the head of a woodblock print. Lives
+     here rather than inside a sheet so it can be full-bleed with no edge. */
+  .tate::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      120% 90% at 72% 34%,
+      var(--cm-ground-2) 0%,
+      transparent 62%
+    );
+    opacity: 0.75;
+  }
+
+  .tate-sheet {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* `translate` centres the sheet; `transform` is left free for the parallax
+       so the two never fight over the same property. */
+    translate: -50% -50%;
+    width: min(122%, 124vh);
+    max-width: none;
+    aspect-ratio: 1000 / 820;
+    height: auto;
+    will-change: transform;
+  }
+
+  /* Above the split the plate moves into the right of the frame and the copy
+     keeps the left column to itself. */
+  @media (min-width: 56.25rem) {
+    .tate-sheet {
+      left: 74%;
+      width: min(56%, 86vh);
+    }
+  }
+
+  .s-field {
+    opacity: 0.9;
+  }
+
+  /* The field is printed with white stars for the indigo ground. On gofun
+     paper those vanish, so they invert to ink specks — which is what an Edo
+     chart on paper actually shows. The enso and the gold need no such help;
+     ruri and kohaku read on both grounds. */
+  :root[data-theme="light"] .s-field {
+    filter: invert(1);
+    opacity: 0.5;
+  }
+
+  .s-gold {
+    opacity: 0.86;
+    transition: opacity 2.4s var(--cm-ease);
+  }
+
+  .s-gold.lit {
+    animation: breathe 7s var(--cm-ease) infinite;
+  }
+
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 0.78;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .s-gold.lit {
+      animation: none;
+    }
+    .tate-sheet {
+      transition: none;
+    }
+  }
+</style>

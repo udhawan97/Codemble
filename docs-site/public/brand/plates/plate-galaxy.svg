@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 300" width="420" height="300">
+  <defs>
+    <filter id="washi-p" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+    <linearGradient id="bokashi-p" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101a3e" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#070b1c" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#070b1c" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+<rect width="420" height="300" fill="#070b1c"/>
+<rect x="8" y="8" width="404" height="284" fill="none" stroke="#2b4d96" stroke-width="1" opacity="0.55"/>
+<line x1="325.52" y1="169.42" x2="277" y2="198.77" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="277" y1="198.77" x2="197.69" y2="219.09" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="197.69" y1="219.09" x2="149.77" y2="187.12" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="149.77" y1="187.12" x2="132.54" y2="162.51" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="132.54" y1="162.51" x2="112.21" y2="111.42" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="112.21" y1="111.42" x2="188.92" y2="46.9" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="188.92" y1="46.9" x2="252.7" y2="45.54" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="252.7" y1="45.54" x2="345.61" y2="108.46" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="345.61" y1="108.46" x2="325.52" y2="169.42" stroke="#3f6ac0" stroke-width="1" opacity="0.45"/><line x1="325.52" y1="169.42" x2="132.54" y2="162.51" stroke="#3f6ac0" stroke-width="1" opacity="0.28"/><circle cx="325.52" cy="169.42" r="7" fill="#f4c46a"/><circle cx="325.52" cy="169.42" r="14" fill="none" stroke="#e89b2e" stroke-width="1" opacity="0.5"/><circle cx="277" cy="198.77" r="4.4" fill="#82abec" opacity="0.9"/><circle cx="197.69" cy="219.09" r="5.8" fill="#82abec" opacity="0.9"/><circle cx="149.77" cy="187.12" r="3" fill="#82abec" opacity="0.9"/><circle cx="132.54" cy="162.51" r="4.4" fill="#82abec" opacity="0.9"/><circle cx="112.21" cy="111.42" r="5.8" fill="#82abec" opacity="0.9"/><circle cx="188.92" cy="46.9" r="3" fill="#82abec" opacity="0.9"/><circle cx="252.7" cy="45.54" r="4.4" fill="#82abec" opacity="0.9"/><circle cx="345.61" cy="108.46" r="5.8" fill="#82abec" opacity="0.9"/>
+<rect width="420" height="300" filter="url(#washi-p)" opacity="0.05"/>
+</svg>

@@ -1,0 +1,403 @@
+---
+/**
+ * Expandable search — family convention (Golavo and FolioOrb each ship one).
+ *
+ * Collapsed it is a single control in the nav; clicking or pressing the
+ * shortcut widens it in place into a field with results underneath. It never
+ * takes over the page with a modal: the atlas stays visible behind you, which
+ * is the whole point of an index.
+ *
+ * Backed by Pagefind, which Starlight generates at build time. In `astro dev`
+ * that index does not exist yet, so the field says so rather than failing
+ * silently — this component is used by the docs header AND the landing page.
+ */
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+---
+
+<div class="cmsearch" data-search data-base={base}>
+  <button
+    type="button"
+    class="cmsearch-open"
+    data-search-open
+    aria-expanded="false"
+    aria-controls="cmsearch-panel"
+  >
+    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle>
+      <line x1="10.4" y1="10.4" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></line>
+    </svg>
+    <span class="cmsearch-label">Search</span>
+    <kbd class="cmsearch-kbd"><span class="cmsearch-mod">⌘</span>K</kbd>
+  </button>
+
+  <div class="cmsearch-panel" id="cmsearch-panel" data-search-panel hidden>
+    <div class="cmsearch-field">
+      <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle>
+        <line x1="10.4" y1="10.4" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></line>
+      </svg>
+      <input
+        type="search"
+        data-search-input
+        placeholder="Search the docs"
+        aria-label="Search the docs"
+        autocomplete="off"
+        spellcheck="false"
+        role="combobox"
+        aria-expanded="false"
+        aria-controls="cmsearch-results"
+      />
+      <button type="button" class="cmsearch-close" data-search-close aria-label="Close search">
+        Esc
+      </button>
+    </div>
+    <div class="cmsearch-results" id="cmsearch-results" role="listbox" data-search-results></div>
+  </div>
+</div>
+
+<script>
+  type Hit = { url: string; title: string; excerpt: string };
+
+  const rootEl = document.querySelector<HTMLElement>("[data-search]");
+  if (rootEl) {
+    const root = rootEl; // narrowed once, so the closures below aren't nullable
+    const openBtn = root.querySelector<HTMLButtonElement>("[data-search-open]")!;
+    const panel = root.querySelector<HTMLElement>("[data-search-panel]")!;
+    const input = root.querySelector<HTMLInputElement>("[data-search-input]")!;
+    const closeBtn = root.querySelector<HTMLButtonElement>("[data-search-close]")!;
+    const list = root.querySelector<HTMLElement>("[data-search-results]")!;
+    const base = root.dataset.base || "";
+
+    let pagefind: any = null;
+    let loadFailed = false;
+    let active = -1;
+    let hits: Hit[] = [];
+
+    /* Pagefind only exists in a built site; load it once, on first open.
+       `new Function` keeps the bundler out of this. A plain dynamic import —
+       even with @vite-ignore — gets rewritten into Vite's preload helper, and
+       inside an inline Astro script the `__VITE_PRELOAD__` marker ships
+       unresolved, so the call throws ReferenceError at runtime. */
+    const dynamicImport = new Function("u", "return import(u)") as (
+      u: string,
+    ) => Promise<any>;
+
+    async function ensureIndex() {
+      if (pagefind || loadFailed) return;
+      try {
+        pagefind = await dynamicImport(`${base}/pagefind/pagefind.js`);
+        await pagefind.init();
+      } catch (err) {
+        loadFailed = true;
+        // Never swallow this silently — a broken index and an unbuilt one look
+        // identical from the field otherwise.
+        console.warn("[search] Pagefind unavailable:", err);
+      }
+    }
+
+    function setOpen(open: boolean) {
+      panel.hidden = !open;
+      openBtn.setAttribute("aria-expanded", String(open));
+      root.classList.toggle("is-open", open);
+      if (open) {
+        // This component sits at the right of the landing nav but at the left
+        // of Starlight's header, so the panel opens toward whichever side has
+        // room instead of assuming one anchor and sliding off-screen.
+        const box = openBtn.getBoundingClientRect();
+        root.classList.toggle("opens-left", box.left > window.innerWidth / 2);
+        ensureIndex();
+        input.focus();
+      } else {
+        input.value = "";
+        render([]);
+      }
+    }
+
+    function render(next: Hit[]) {
+      hits = next;
+      active = -1;
+      input.setAttribute("aria-expanded", String(next.length > 0));
+      if (!next.length) {
+        list.innerHTML = "";
+        return;
+      }
+      list.innerHTML = next
+        .map(
+          (h, i) =>
+            `<a class="cmsearch-hit" role="option" aria-selected="false" data-i="${i}" href="${h.url}">
+               <span class="cmsearch-hit-title">${h.title}</span>
+               <span class="cmsearch-hit-text">${h.excerpt}</span>
+             </a>`,
+        )
+        .join("");
+    }
+
+    function note(message: string) {
+      hits = [];
+      active = -1;
+      list.innerHTML = `<p class="cmsearch-note">${message}</p>`;
+    }
+
+    function highlight(i: number) {
+      const items = [...list.querySelectorAll<HTMLElement>(".cmsearch-hit")];
+      items.forEach((el, k) => {
+        const on = k === i;
+        el.classList.toggle("is-active", on);
+        el.setAttribute("aria-selected", String(on));
+        if (on) el.scrollIntoView({ block: "nearest" });
+      });
+      active = i;
+    }
+
+    let seq = 0;
+    async function run(q: string) {
+      const mine = ++seq;
+      if (q.trim().length < 2) return render([]);
+      await ensureIndex();
+      if (loadFailed) {
+        return note("Search runs on the built site — try <code>npm run build</code>.");
+      }
+      const res = await pagefind.search(q);
+      if (mine !== seq) return; // a newer keystroke already won
+      const data = await Promise.all(res.results.slice(0, 6).map((r: any) => r.data()));
+      if (mine !== seq) return;
+      const mapped: Hit[] = data.map((d: any) => ({
+        url: d.url,
+        title: d.meta?.title ?? d.url,
+        excerpt: d.excerpt,
+      }));
+      if (!mapped.length) return note(`No matches for “${q}”.`);
+      render(mapped);
+    }
+
+    let t = 0;
+    input.addEventListener("input", () => {
+      clearTimeout(t);
+      t = window.setTimeout(() => run(input.value), 140);
+    });
+
+    openBtn.addEventListener("click", () => setOpen(true));
+    closeBtn.addEventListener("click", () => {
+      setOpen(false);
+      openBtn.focus();
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" && hits.length) {
+        e.preventDefault();
+        highlight((active + 1) % hits.length);
+      } else if (e.key === "ArrowUp" && hits.length) {
+        e.preventDefault();
+        highlight((active - 1 + hits.length) % hits.length);
+      } else if (e.key === "Enter" && active >= 0) {
+        e.preventDefault();
+        location.href = hits[active].url;
+      }
+    });
+
+    list.addEventListener("mousemove", (e) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>(".cmsearch-hit");
+      if (el) highlight(Number(el.dataset.i));
+    });
+
+    addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen(panel.hidden === true);
+      } else if (e.key === "Escape" && !panel.hidden) {
+        setOpen(false);
+        openBtn.focus();
+      }
+    });
+
+    addEventListener("pointerdown", (e) => {
+      if (!panel.hidden && !root.contains(e.target as Node)) setOpen(false);
+    });
+
+    // Non-Mac keyboards say Ctrl.
+    if (!/Mac|iPhone|iPad/.test(navigator.platform)) {
+      const mod = root.querySelector(".cmsearch-mod");
+      if (mod) mod.textContent = "Ctrl ";
+    }
+  }
+</script>
+
+<style>
+  .cmsearch {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .cmsearch-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.34rem 0.6rem;
+    font: inherit;
+    font-size: var(--cm-text-xs);
+    color: var(--cm-ink-3);
+    background: transparent;
+    border: var(--cm-rule) solid var(--cm-hairline);
+    border-radius: var(--cm-radius);
+    cursor: pointer;
+    transition:
+      color var(--cm-dur-quick) var(--cm-ease),
+      border-color var(--cm-dur-quick) var(--cm-ease),
+      width var(--cm-dur-reveal) var(--cm-ease);
+  }
+
+  .cmsearch-open:hover {
+    color: var(--cm-ink);
+    border-color: var(--cm-orbit);
+  }
+
+  .cmsearch.is-open .cmsearch-open {
+    visibility: hidden;
+  }
+
+  .cmsearch-kbd {
+    display: inline-flex;
+    gap: 1px;
+    padding: 0.05rem 0.3rem;
+    font-family: var(--cm-font-mono);
+    font-size: 0.65rem;
+    color: var(--cm-ink-3);
+    border: var(--cm-rule) solid var(--cm-hairline);
+    border-radius: 2px;
+  }
+
+  /* The panel opens over the collapsed control so the nav never reflows.
+     Direction is set by JS (`opens-left`) from the control's position, because
+     this component is right-aligned in the landing nav and left-aligned in
+     Starlight's header. */
+  .cmsearch-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: auto;
+    z-index: 20;
+    width: min(30rem, calc(100vw - 2rem));
+  }
+
+  .cmsearch.opens-left .cmsearch-panel {
+    left: auto;
+    right: 0;
+  }
+
+  .cmsearch-field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+    color: var(--cm-ink-3);
+    background: var(--cm-ground-2);
+    border: var(--cm-rule) solid var(--cm-orbit);
+    border-radius: var(--cm-radius);
+  }
+
+  .cmsearch-field input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.28rem 0;
+    font: inherit;
+    font-size: var(--cm-text-sm);
+    color: var(--cm-ink);
+    background: none;
+    border: 0;
+    outline: none;
+  }
+
+  .cmsearch-field input::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  .cmsearch-close {
+    flex: none;
+    padding: 0.15rem 0.4rem;
+    font: inherit;
+    font-family: var(--cm-font-mono);
+    font-size: 0.65rem;
+    color: var(--cm-ink-3);
+    background: transparent;
+    border: var(--cm-rule) solid var(--cm-hairline);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+
+  .cmsearch-close:hover {
+    color: var(--cm-ink);
+  }
+
+  .cmsearch-results:not(:empty) {
+    margin-top: 4px;
+    max-height: min(24rem, 60vh);
+    overflow-y: auto;
+    background: var(--cm-ground-2);
+    border: var(--cm-rule) solid var(--cm-hairline);
+    border-radius: var(--cm-radius);
+  }
+
+  /* Results are written with innerHTML at runtime, so they never receive
+     Astro's scope attribute. Reaching them through the template-owned parent
+     with :global() keeps the rules component-local but makes them apply. */
+  .cmsearch-results :global(.cmsearch-hit) {
+    display: grid;
+    gap: 2px;
+    padding: 0.55rem 0.75rem;
+    text-decoration: none;
+    border-bottom: var(--cm-rule) solid var(--cm-hairline-soft);
+  }
+
+  .cmsearch-results :global(.cmsearch-hit:last-child) {
+    border-bottom: 0;
+  }
+
+  .cmsearch-results :global(.cmsearch-hit.is-active) {
+    background: var(--cm-orbit-low);
+  }
+
+  .cmsearch-results :global(.cmsearch-hit-title) {
+    font-size: var(--cm-text-sm);
+    font-weight: 700;
+    color: var(--cm-ink);
+  }
+
+  /* Two-line clamp via max-height rather than -webkit-box: the minifier drops
+     `-webkit-box-orient`, and a -webkit-box without it lays out horizontally,
+     so the excerpt runs off the panel instead of wrapping. */
+  .cmsearch-results :global(.cmsearch-hit-text) {
+    font-size: var(--cm-text-xs);
+    line-height: 1.5;
+    max-height: 3em;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    color: var(--cm-ink-2);
+  }
+
+  .cmsearch-results :global(mark) {
+    color: var(--cm-star);
+    background: none;
+    font-weight: 700;
+  }
+
+  .cmsearch-results :global(.cmsearch-note) {
+    margin: 0;
+    padding: 0.7rem 0.75rem;
+    font-size: var(--cm-text-xs);
+    color: var(--cm-ink-2);
+  }
+
+  .cmsearch-results :global(.cmsearch-note code) {
+    font-family: var(--cm-font-mono);
+    color: var(--cm-ink);
+  }
+
+  /* Narrow: the control collapses to its icon; the panel still gets room. */
+  @media (max-width: 50rem) {
+    .cmsearch-label,
+    .cmsearch-kbd {
+      display: none;
+    }
+  }
+</style>

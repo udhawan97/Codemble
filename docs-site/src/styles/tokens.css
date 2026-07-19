@@ -1,68 +1,140 @@
-/* ============================================================================
-   Codemble design tokens — single source of truth.
-   docs-site/design.md mirrors and explains these values; change them together.
-   MUST load before custom.css (enforced in astro.config.mjs customCss order).
-   Named tokens only in downstream CSS — never raw values.
-   ============================================================================ */
+/* Hallmark · genre: atmospheric · macrostructure: Kishotenketsu (four-act narrative)
+ * theme: Formal Edo (custom) · nav: N9 edge-aligned · footer: Ft5 statement
+ * signature: the Enso Galaxy — seeded 3D canvas, zero dependencies
+ * enrichment: none (the galaxy IS the enrichment; no stock art, no fake chrome)
+ * paper: #070b1c kachi-night · accent: #e89b2e kohaku warm + #82abec ruri cool
+ * display: Shippori Mincho · body: Zen Kaku Gothic New · data: JetBrains Mono
+ * contrast: pass — every ink/accent >= 4.5:1 on BOTH grounds (ratios annotated)
+ * pre-emit critique: P5 H5 E5 S5 R4 V5
+ * ============================================================================
+ * Codemble design tokens — single source of truth.
+ * docs-site/design.md mirrors and explains these values; change them together.
+ * MUST load before custom.css (enforced in astro.config.mjs customCss order).
+ * Named tokens only in downstream CSS — never raw values.
+ * ========================================================================== */
 
 :root {
-  /* --- Type --------------------------------------------------------------- */
-  --cm-font-display: "Sora", system-ui, sans-serif;
-  --cm-font-body: "Inter", system-ui, sans-serif;
+  /* --- Type ---------------------------------------------------------------
+     Shippori Mincho is a formal Japanese mincho: sharp vertical stress, high
+     stroke contrast, and native kana/kanji. It carries the Edo register that a
+     Latin high-contrast serif cannot. Roman always — italic headings banned. */
+  --cm-font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho",
+    serif;
+  --cm-font-body: "Zen Kaku Gothic New", "Hiragino Sans", system-ui, sans-serif;
   --cm-font-mono: "JetBrains Mono", ui-monospace, monospace;
 
+  /* Type scale — clamp anchors, no fixed pixel headings. */
+  --cm-text-xs: 0.75rem;
+  --cm-text-sm: 0.875rem;
+  --cm-text-base: 1rem;
+  --cm-text-lg: clamp(1.0625rem, 0.2vw + 1rem, 1.1875rem);
+  --cm-text-xl: clamp(1.25rem, 0.5vw + 1.1rem, 1.5rem);
+  --cm-text-2xl: clamp(1.5rem, 1vw + 1.25rem, 2rem);
+  --cm-text-3xl: clamp(1.75rem, 2vw + 1.25rem, 3rem);
+  /* Min is deliberately 2.25rem, not 2.75: at 320px the hero headline has
+     ~280px of measure, and a larger floor pushes it past four lines. */
+  --cm-text-display: clamp(2.25rem, 4.4vw + 0.9rem, 4.75rem);
+
   /* --- Spacing (4-point scale) -------------------------------------------- */
-  --cm-space-xs: 0.25rem;
-  --cm-space-sm: 0.5rem;
+  --cm-space-2xs: 0.25rem;
+  --cm-space-xs: 0.5rem;
+  --cm-space-sm: 0.75rem;
   --cm-space-md: 1rem;
   --cm-space-lg: 2rem;
   --cm-space-xl: 4rem;
+  --cm-space-2xl: 6rem;
+  --cm-space-3xl: 9rem;
 
-  /* --- Motion ------------------------------------------------------------- */
-  /* House easing shared with the app's camera rails. Never default `ease`. */
+  /* --- Geometry -----------------------------------------------------------
+     Edo joinery, not soft UI. Hairlines and near-square corners; the only
+     circle on the page is the enso itself. */
+  --cm-radius: 3px;
+  --cm-radius-lg: 6px;
+  --cm-rule: 1px;
+
+  /* --- Motion -------------------------------------------------------------
+     House easing shared with the app's camera rails. Never default `ease`,
+     never bounce — a planetarium console does not spring. */
   --cm-ease: cubic-bezier(0.16, 0.7, 0.3, 1);
   --cm-dur-quick: 160ms;
   --cm-dur-reveal: 420ms;
+  --cm-dur-slow: 900ms;
+
+  /* --- Stacking ------------------------------------------------------------ */
+  --cm-z-canvas: 0;
+  --cm-z-content: 1;
+  --cm-z-rail: 40;
+  --cm-z-nav: 50;
 }
 
-/* --- Dark ground (primary; the sky) -------------------------------------- */
-/* Contrast: all ink/accent tokens clear WCAG AA 4.5:1 against BOTH
-   --cm-ground and --cm-ground-2 (measured on the worse surface). */
-:root[data-theme="dark"], :root {
-  --cm-ground: #0b0d16;      /* night sky — never pure black */
-  --cm-ground-2: #131629;    /* raised surface (panels), solid — paper, never glass */
-  --cm-hairline: #262b45;
+/* --- Dark ground (primary; the sky) ---------------------------------------
+   Kachi (勝色) is the deep indigo of Edo — the "victory colour". It is the
+   brand's home surface. Contrast: all ink/accent tokens clear WCAG AA 4.5:1
+   against BOTH --cm-ground and --cm-ground-2 (measured on the worse surface).
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"],
+:root {
+  --cm-ground: #070b1c;      /* night — never pure black */
+  --cm-ground-2: #101a3e;    /* kachi indigo — solid panel, paper never glass */
+  --cm-ground-3: #1a2750;    /* raised */
+  --cm-hairline: #24325c;
+  --cm-hairline-soft: #17203f;
 
-  --cm-ink: #e7e9f4;         /* primary text  — 15.2:1 on ground */
-  --cm-ink-2: #a9aec7;       /* secondary     —  7.6:1 on ground */
-  --cm-ink-3: #7a809f;       /* dim / not-yet-understood — 4.6:1 on ground-2 */
+  --cm-ink: #eef2fa;         /* primary text   — 16.8:1 on ground */
+  --cm-ink-2: #9aa8c4;       /* secondary      —  7.5:1 on ground */
+  --cm-ink-3: #7d8aa8;       /* dim / unlit    —  5.7:1 on ground, 4.9:1 on ground-2 */
 
-  /* Accent 1 — STAR (gold). ONE job: illumination = understanding.
-     Progress, lit states, the brand mark's core. 9.8:1 on ground. */
-  --cm-star: #facc15;
-  --cm-star-high: #fde047;
-  --cm-star-low: #4a3f0e;
+  /* Accent 1 — KOHAKU 琥珀 (amber). ONE job: illumination = understanding.
+     Lit states, progress, the mark's ignited core. 8.5:1 on ground. */
+  --cm-star: #e89b2e;
+  --cm-star-high: #f4c46a;
+  --cm-star-low: #3a2a0c;
+  --cm-star-tint: rgba(232, 155, 46, 0.14);
 
-  /* Accent 2 — ORBIT (cyan). ONE job: interaction — links, focus, actions.
-     8.1:1 on ground. Never used for progress; never decorative. */
-  --cm-orbit: #67e8f9;
-  --cm-orbit-low: #0e3a42;
+  /* Accent 2 — RURI 瑠璃 (lapis). ONE job: interaction — links, focus, actions.
+     Text-weight lapis is ruri-200 (8.4:1); ruri-500 is a FILL only, and only
+     ever under --cm-ink (5.2:1 white-on-ruri). Never used for progress. */
+  --cm-orbit: #82abec;
+  --cm-orbit-fill: #3f6ac0;
+  --cm-orbit-deep: #2b4d96;
+  --cm-orbit-low: #14264a;
+
+  --cm-on-fill: #f7faff;     /* ink that sits on a ruri fill */
+
+  /* Canvas-only values. The galaxy reads these so the sky and the page can
+     never drift apart. Not for use in layout CSS. */
+  --cm-sky-far: #070b1c;
+  --cm-sky-near: #16224a;
 }
 
-/* --- Light ground (docs reading mode) ------------------------------------ */
+/* --- Light ground (docs reading mode) -------------------------------------
+   Gofun (胡粉) is powdered shell-white — the warm ground of a hanging scroll.
+   -------------------------------------------------------------------------- */
 :root[data-theme="light"] {
-  --cm-ground: #fbfaf7;      /* warm paper — never pure white */
-  --cm-ground-2: #f1efe9;
-  --cm-hairline: #d9d6cc;
+  --cm-ground: #faf7f0;      /* gofun — never pure white */
+  --cm-ground-2: #ffffff;
+  --cm-ground-3: #f2eee4;
+  --cm-hairline: #e6e2d6;
+  --cm-hairline-soft: #efece3;
 
-  --cm-ink: #23263a;         /* 12.9:1 on ground */
-  --cm-ink-2: #4c5069;       /*  7.4:1 on ground */
-  --cm-ink-3: #6d7290;       /*  4.7:1 on ground-2 */
+  --cm-ink: #101a3e;         /* 15.9:1 on ground */
+  --cm-ink-2: #3c4a74;       /*  9.1:1 on ground */
+  --cm-ink-3: #5c688c;       /*  5.6:1 on ground */
 
-  --cm-star: #a16207;        /* gold, darkened for light ground — 5.0:1 */
-  --cm-star-high: #854d0e;
-  --cm-star-low: #fdf3d0;
+  /* Kohaku darkened for paper — kohaku-800. 6.9:1 (kohaku-700 measures 4.4). */
+  --cm-star: #7d4a06;
+  --cm-star-high: #a86408;
+  --cm-star-low: #fff3d6;
+  --cm-star-tint: rgba(125, 74, 6, 0.1);
 
-  --cm-orbit: #0e7490;       /* 5.3:1 on ground */
-  --cm-orbit-low: #d6f3fa;
+  /* Ruri deepened for paper — ruri-600. 7.5:1. */
+  --cm-orbit: #2b4d96;
+  --cm-orbit-fill: #2b4d96;
+  --cm-orbit-deep: #1e3a6e;
+  --cm-orbit-low: #e3ecfb;
+
+  --cm-on-fill: #faf7f0;
+
+  --cm-sky-far: #e9edf7;
+  --cm-sky-near: #ffffff;
 }

@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+
+<defs>
+<radialGradient id="nightK" cx="50%" cy="34%" r="85%">
+      <stop offset="0" stop-color="#1a2750"></stop>
+      <stop offset="0.55" stop-color="#101a3e"></stop>
+      <stop offset="1" stop-color="#070b1c"></stop>
+    </radialGradient>
+<radialGradient id="hazeK">
+      <stop offset="0" stop-color="#1e3a6e" stop-opacity="0.42"></stop>
+      <stop offset="1" stop-color="#1e3a6e" stop-opacity="0"></stop>
+    </radialGradient>
+<linearGradient id="ensoK" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#82abec"></stop>
+      <stop offset="0.5" stop-color="#3f6ac0"></stop>
+      <stop offset="1" stop-color="#2b4d96"></stop>
+    </linearGradient>
+<linearGradient id="ensoMK" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8fb5f2"></stop>
+      <stop offset="0.5" stop-color="#4a75cc"></stop>
+      <stop offset="1" stop-color="#3459a6"></stop>
+    </linearGradient>
+<radialGradient id="goldGlowK">
+      <stop offset="0" stop-color="#e89b2e" stop-opacity="0.5"></stop>
+      <stop offset="1" stop-color="#e89b2e" stop-opacity="0"></stop>
+    </radialGradient>
+<radialGradient id="starCoreK">
+      <stop offset="0" stop-color="#fff1cd"></stop>
+      <stop offset="0.45" stop-color="#f0a52f"></stop>
+      <stop offset="1" stop-color="#d1820e"></stop>
+    </radialGradient>
+<linearGradient id="flareJ" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffdfa0" stop-opacity="0"></stop>
+      <stop offset="0.5" stop-color="#ffdfa0" stop-opacity="1"></stop>
+      <stop offset="1" stop-color="#ffdfa0" stop-opacity="0"></stop>
+    </linearGradient>
+<linearGradient id="sheenJ" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe4ff" stop-opacity="0.07"></stop>
+      <stop offset="0.35" stop-color="#cfe4ff" stop-opacity="0.015"></stop>
+      <stop offset="0.6" stop-color="#cfe4ff" stop-opacity="0"></stop>
+    </linearGradient>
+<filter id="washi"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="11"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter>
+<filter id="b30" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="30"></feGaussianBlur></filter>
+<filter id="b12" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="12"></feGaussianBlur></filter>
+<clipPath id="sqClip"><path d="M512 0 C300 0 184 4 94 94 C4 184 0 300 0 512 C0 724 4 840 94 930 C184 1020 300 1024 512 1024 C724 1024 840 1020 930 930 C1020 840 1024 724 1024 512 C1024 300 1020 184 930 94 C840 4 724 0 512 0 Z"></path></clipPath>
+<mask id="revK" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024"><path d="M772 715 A330 330 0 1 1 772 309" fill="none" stroke="#ffffff" stroke-width="100" stroke-linecap="round" stroke-dasharray="1700" stroke-dashoffset="1700" style="animation: cm-draw 1100ms cubic-bezier(0.16, 0.7, 0.3, 1) 0.05s both"></path></mask>
+</defs>
+<g clip-path="url(#sqClip)">
+    <path d="M512 0 C300 0 184 4 94 94 C4 184 0 300 0 512 C0 724 4 840 94 930 C184 1020 300 1024 512 1024 C724 1024 840 1020 930 930 C1020 840 1024 724 1024 512 C1024 300 1020 184 930 94 C840 4 724 0 512 0 Z" fill="url(#nightK)"></path>
+    <ellipse cx="512" cy="1000" rx="560" ry="230" fill="url(#hazeK)" style="transform-box: fill-box; transform-origin: center; animation: cm-haze 14s ease-in-out infinite"></ellipse>
+    <rect width="1024" height="1024" filter="url(#washi)" opacity="0.06" style="mix-blend-mode: soft-light"></rect>
+    <rect width="1024" height="1024" fill="url(#sheenJ)"></rect>
+    <g style="animation: cm-fadein 700ms cubic-bezier(0.16, 0.7, 0.3, 1) 0.15s both">
+      <g style="animation: cm-tw 3.8s ease-in-out -0.5s infinite"><circle cx="150" cy="190" r="5" fill="#b6c2da" opacity="0.28"></circle></g>
+      <g style="animation: cm-tw 5.2s ease-in-out -1.7s infinite"><circle cx="255" cy="140" r="3" fill="#b6c2da" opacity="0.16"></circle></g>
+      <g style="animation: cm-tw 4.4s ease-in-out -2.9s infinite"><circle cx="860" cy="150" r="4" fill="#a9bce8" opacity="0.26"></circle></g>
+      <g style="animation: cm-tw 6.1s ease-in-out -0.9s infinite"><circle cx="915" cy="255" r="3" fill="#b6c2da" opacity="0.18"></circle></g>
+      <g style="animation: cm-tw 5.7s ease-in-out -2.2s infinite"><circle cx="120" cy="470" r="3" fill="#b6c2da" opacity="0.15"></circle></g>
+      <g style="animation: cm-tw 3.6s ease-in-out -1.1s infinite"><circle cx="905" cy="540" r="3" fill="#b6c2da" opacity="0.16"></circle></g>
+      <g style="animation: cm-tw 6.5s ease-in-out -3.4s infinite"><circle cx="170" cy="795" r="4" fill="#a9bce8" opacity="0.2"></circle></g>
+      <g style="animation: cm-tw 4.9s ease-in-out -0.2s infinite"><circle cx="300" cy="900" r="3" fill="#b6c2da" opacity="0.15"></circle></g>
+      <g style="animation: cm-tw 5.4s ease-in-out -1.5s infinite"><circle cx="760" cy="905" r="4" fill="#b6c2da" opacity="0.18"></circle></g>
+      <g style="animation: cm-tw 4.1s ease-in-out -2.6s infinite"><circle cx="880" cy="820" r="3" fill="#b6c2da" opacity="0.15"></circle></g>
+      <g style="animation: cm-tw 6.8s ease-in-out -0.7s infinite"><circle cx="360" cy="120" r="3" fill="#b6c2da" opacity="0.14"></circle></g>
+      <g style="animation: cm-tw 4.6s ease-in-out -1.9s infinite"><circle cx="680" cy="120" r="4" fill="#b6c2da" opacity="0.2"></circle></g>
+    </g>
+    <g style="animation: cm-fadein 400ms cubic-bezier(0.16, 0.7, 0.3, 1) 0.5s both">
+      <line x1="512" y1="478" x2="656" y2="352" stroke="#2e3d6e" stroke-width="7" stroke-linecap="round"></line>
+      <g style="animation: cm-tw 6.5s ease-in-out -2s infinite"><circle cx="656" cy="352" r="9" fill="#9aa8c4" opacity="0.55"></circle></g>
+    </g>
+    <g style="transform-box: fill-box; transform-origin: center; animation: cm-sway 16s ease-in-out 2.4s infinite">
+      <path d="M772 715 A330 330 0 1 1 772 309" fill="none" stroke="#3f6ac0" stroke-width="52" stroke-linecap="round" opacity="0.15" filter="url(#b12)" style="animation: cm-fadein 500ms cubic-bezier(0.16, 0.7, 0.3, 1) 0.55s both, cm-glowPulse 9s ease-in-out 3s infinite"></path>
+      <g mask="url(#revK)"><path d="M791.1 730.0 C784.1 737.9 764.6 762.6 749.4 777.0 C734.2 791.3 717.6 804.9 699.9 816.0 C682.2 827.2 662.8 836.6 643.3 844.0 C623.7 851.4 603.0 856.7 582.4 860.2 C561.8 863.7 540.7 865.2 519.9 865.1 C499.2 864.9 478.2 863.1 457.9 859.5 C437.5 855.9 417.1 850.7 397.8 843.6 C378.5 836.6 359.5 827.5 341.9 817.1 C324.2 806.7 307.3 794.5 291.9 781.1 C276.4 767.7 262.0 752.8 249.2 737.0 C236.5 721.2 225.0 704.1 215.1 686.4 C205.3 668.7 196.9 649.9 190.3 630.9 C183.6 611.9 178.5 592.1 175.1 572.3 C171.7 552.4 169.9 532.1 170.0 512.0 C170.0 491.9 171.7 471.5 175.2 451.7 C178.7 432.0 184.0 412.2 191.0 393.3 C197.9 374.5 206.7 356.0 216.8 338.6 C227.0 321.3 238.9 304.6 251.9 289.3 C264.9 274.0 279.5 259.6 295.0 246.7 C310.5 233.9 327.4 222.3 344.9 212.3 C362.4 202.3 381.0 193.6 400.1 186.9 C419.1 180.2 439.1 175.1 459.0 172.0 C479.0 169.0 499.6 167.8 519.7 168.4 C539.9 169.1 560.3 171.7 579.9 175.9 C599.6 180.1 619.2 186.2 637.8 193.8 C656.4 201.4 674.7 210.6 691.5 221.5 C708.4 232.3 724.2 245.3 738.6 259.0 C753.1 272.8 771.6 296.5 778.2 304.0 A6.5 6.5 0 0 1 768.0 312.0 C761.4 305.1 742.8 282.9 728.5 270.4 C714.2 257.8 698.4 246.6 682.1 236.7 C665.9 226.8 648.7 217.9 631.0 211.0 C613.3 204.1 594.6 198.8 576.0 195.3 C557.4 191.8 538.1 190.1 519.2 190.1 C500.3 190.1 481.2 191.8 462.6 195.1 C444.1 198.3 425.5 203.2 407.9 209.6 C390.2 216.0 372.9 224.0 356.7 233.5 C340.5 242.9 325.0 254.0 310.9 266.1 C296.7 278.3 283.5 291.9 271.8 306.4 C260.1 320.8 249.6 336.5 240.7 352.6 C231.7 368.8 224.1 386.0 218.0 403.3 C212.0 420.7 207.4 438.9 204.4 457.0 C201.4 475.1 199.9 493.7 200.0 512.0 C200.1 530.3 201.7 548.9 205.0 566.9 C208.4 584.9 213.4 602.9 219.8 620.0 C226.3 637.1 234.4 653.9 243.7 669.6 C253.1 685.3 264.0 700.3 275.9 714.2 C287.8 728.0 301.2 740.9 315.3 752.4 C329.4 764.0 344.8 774.4 360.7 783.4 C376.6 792.3 393.5 800.0 410.7 806.1 C428.0 812.2 446.0 817.1 464.0 819.9 C482.1 822.8 500.7 824.1 519.0 823.4 C537.2 822.8 555.7 820.1 573.5 816.1 C591.2 812.1 608.8 806.3 625.6 799.3 C642.4 792.4 658.7 783.9 674.2 774.4 C689.7 765.0 704.9 754.5 718.6 742.6 C732.3 730.7 750.1 709.6 756.4 702.9 A22.0 22.0 0 0 1 791.1 730.0 Z" fill="url(#ensoK)"></path></g>
+    </g>
+    <path d="M512 0 C300 0 184 4 94 94 C4 184 0 300 0 512 C0 724 4 840 94 930 C184 1020 300 1024 512 1024 C724 1024 840 1020 930 930 C1020 840 1024 724 1024 512 C1024 300 1020 184 930 94 C840 4 724 0 512 0 Z" fill="#000000" style="animation: cm-dim 400ms cubic-bezier(0.16, 0.7, 0.3, 1) 1.15s both"></path>
+    <g stroke="#e89b2e" stroke-width="7" stroke-linecap="round" opacity="0.42">
+      <line x1="512" y1="478" x2="398" y2="606" stroke-dasharray="200" stroke-dashoffset="200" style="animation: cm-line 240ms cubic-bezier(0.16, 0.7, 0.3, 1) 1.5s both"></line>
+      <line x1="512" y1="478" x2="622" y2="614" stroke-dasharray="200" stroke-dashoffset="200" style="animation: cm-line 240ms cubic-bezier(0.16, 0.7, 0.3, 1) 1.54s both"></line>
+    </g>
+    <g style="transform-box: fill-box; transform-origin: center; animation: cm-pop 180ms cubic-bezier(0.16, 0.7, 0.3, 1) 1.72s both">
+      <circle cx="398" cy="606" r="26" fill="#e89b2e" opacity="0.5" filter="url(#b30)" style="animation: cm-breathe 8s ease-in-out 4.2s infinite"></circle>
+      <circle cx="398" cy="606" r="46" fill="url(#goldGlowK)"></circle>
+      <path d="M398 570 C402 591 413 602 434 606 C413 610 402 621 398 642 C394 621 383 610 362 606 C383 602 394 591 398 570 Z" fill="#dd8f24"></path>
+    </g>
+    <g style="transform-box: fill-box; transform-origin: center; animation: cm-pop 180ms cubic-bezier(0.16, 0.7, 0.3, 1) 1.76s both">
+      <circle cx="622" cy="614" r="24" fill="#e89b2e" opacity="0.5" filter="url(#b30)" style="animation: cm-breathe 8s ease-in-out 5.6s infinite"></circle>
+      <circle cx="622" cy="614" r="42" fill="url(#goldGlowK)"></circle>
+      <path d="M622 582 C625 601 635 611 654 614 C635 617 625 627 622 646 C619 627 609 617 590 614 C609 611 619 601 622 582 Z" fill="#dd8f24"></path>
+    </g>
+    <g style="transform-box: fill-box; transform-origin: center; animation: cm-pop 220ms cubic-bezier(0.16, 0.7, 0.3, 1) 1.25s both">
+      <circle cx="512" cy="478" r="150" fill="url(#goldGlowK)"></circle>
+      <circle cx="512" cy="478" r="70" fill="#e89b2e" style="opacity: 0.5; animation: cm-breathe 8s ease-in-out 2.6s infinite" filter="url(#b30)"></circle>
+      <rect x="402" y="475" width="220" height="5" rx="2.5" fill="url(#flareJ)" opacity="0.5" style="transform-box: fill-box; transform-origin: center; animation: cm-flare 8s ease-in-out 2.6s infinite"></rect>
+      <g transform="rotate(45 512 478)" opacity="0.38"><path d="M512 434 C516 459 531 471 556 478 C531 485 516 497 512 522 C508 497 493 485 468 478 C493 471 508 459 512 434 Z" fill="#ffe8bc"></path></g>
+      <path d="M512 396 C519 442 547 470 594 478 C547 486 519 514 512 560 C505 514 477 486 430 478 C477 470 505 442 512 396 Z" fill="url(#starCoreK)" style="transform-box: fill-box; transform-origin: center; animation: cm-starBreathe 8s ease-in-out 2.6s infinite"></path>
+      <circle cx="512" cy="478" r="9" fill="#fff3d6"></circle>
+    </g>
+    <circle cx="512" cy="478" r="95" fill="none" stroke="#e89b2e" stroke-width="8" style="transform-box: fill-box; transform-origin: center; animation: cm-ring 600ms cubic-bezier(0.16, 0.7, 0.3, 1) 1.95s both"></circle>
+    <circle cx="512" cy="478" r="95" fill="none" stroke="#e89b2e" stroke-width="5" style="transform-box: fill-box; transform-origin: center; animation: cm-ring2 700ms cubic-bezier(0.16, 0.7, 0.3, 1) 2.1s both"></circle>
+    <path d="M512 0 C300 0 184 4 94 94 C4 184 0 300 0 512 C0 724 4 840 94 930 C184 1020 300 1024 512 1024 C724 1024 840 1020 930 930 C1020 840 1024 724 1024 512 C1024 300 1020 184 930 94 C840 4 724 0 512 0 Z" fill="none" stroke="#ffffff" stroke-width="6" opacity="0.05"></path>
+  </g>
+</svg>
