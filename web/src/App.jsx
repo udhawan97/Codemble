@@ -269,6 +269,7 @@ function PickerScreen({ picker, onBrowse, onSelect }) {
                   <span className="picker-recent-path">{recent.project_root}</span>
                   <span className="picker-recent-lit">
                     {recent.understood_count} {recent.understood_count === 1 ? "system" : "systems"} lit
+                    last visit
                   </span>
                 </button>
               </li>

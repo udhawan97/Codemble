@@ -212,8 +212,12 @@ def test_picker_recents_come_from_the_progress_store(
     from codemble.server.app import PickerConfig
 
     monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
-    project = tmp_path / "demo"
+    jail = tmp_path / "jail"
+    jail.mkdir()
+    project = jail / "demo"
     project.mkdir()
+    outside_project = tmp_path / "outside-project"
+    outside_project.mkdir()
     progress = tmp_path / "data" / "progress"
     progress.mkdir(parents=True)
     (progress / "abc.json").write_text(
@@ -226,8 +230,18 @@ def test_picker_recents_come_from_the_progress_store(
         ),
         encoding="utf-8",
     )
+    (progress / "outside.json").write_text(
+        json_module.dumps(
+            {
+                "schema_version": 1,
+                "project_root": str(outside_project),
+                "regions": {"pkg": {"signature": "s"}, "other": {"signature": "s"}},
+            }
+        ),
+        encoding="utf-8",
+    )
     client = TestClient(
-        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=jail))
     )
 
     assert client.get("/api/picker/recents").json() == {

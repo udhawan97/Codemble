@@ -133,7 +133,13 @@ def create_app(
     def picker_recents() -> dict[str, object]:
         if state.bound or picker is None:
             raise HTTPException(status_code=409, detail="A project is already selected.")
-        return {"recents": list_recent_projects()}
+        jail = picker.browse_root.expanduser().resolve()
+        recents = [
+            entry
+            for entry in list_recent_projects()
+            if Path(str(entry["project_root"])).resolve().is_relative_to(jail)
+        ]
+        return {"recents": recents}
 
     @app.post("/api/picker/select")
     def select_project(selection: ProjectSelection) -> dict[str, object]:
