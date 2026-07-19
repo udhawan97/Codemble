@@ -67,6 +67,12 @@ class CheckService:
         }
         self._passed: dict[str, set[str]] = {}
 
+    @property
+    def progress(self) -> ProgressStore:
+        """Expose the local progress store for preference reads and writes."""
+
+        return self._progress
+
     def graph(self) -> Graph:
         """Return render data hydrated from currently valid local progress."""
 

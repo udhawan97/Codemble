@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from codemble.adapters.python_ast import PythonAstAdapter
@@ -167,6 +168,41 @@ def test_explanation_endpoint_404s_for_an_unknown_node(tmp_path: Path) -> None:
     assert response.json()["detail"] == "That source node is not in this graph."
 
 
+def test_mode_defaults_to_easy_and_round_trips(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/mode").json()["mode"] == "easy"
+    assert client.put("/api/mode", json={"mode": "expert"}).status_code == 200
+    assert client.get("/api/mode").json()["mode"] == "expert"
+
+
+def test_mode_rejects_an_unknown_value(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.put("/api/mode", json={"mode": "casual"}).status_code == 422
+
+
+def test_changing_mode_does_not_re_dim_a_region(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    before = client.get("/api/graph").json()
+    client.put("/api/mode", json={"mode": "expert"})
+
+    assert client.get("/api/graph").json() == before
+
+
 def test_unpicked_app_reports_state_and_guards_project_api(tmp_path: Path) -> None:
     from codemble.server.app import PickerConfig
 
@@ -179,6 +215,8 @@ def test_unpicked_app_reports_state_and_guards_project_api(tmp_path: Path) -> No
     assert client.get("/api/regions/pkg/checks").status_code == 409
     assert client.get("/api/node/pkg.x/study").status_code == 409
     assert client.post("/api/entrypoint", json={"node_id": "x"}).status_code == 409
+    assert client.get("/api/mode").status_code == 409
+    assert client.put("/api/mode", json={"mode": "easy"}).status_code == 409
 
 
 def test_bound_app_reports_ready_picker_state(tmp_path: Path) -> None:

@@ -62,6 +62,22 @@ class ProgressStore:
             }
         )
 
+    def mode(self) -> str:
+        """Return the learner's audience mode; this never affects progress."""
+
+        payload = self._read()
+        value = payload.get("mode")
+        return value if value in {"easy", "expert"} else "easy"
+
+    def set_mode(self, mode: str) -> None:
+        """Persist the audience mode beside progress without touching signatures."""
+
+        if mode not in {"easy", "expert"}:
+            raise ValueError("Mode must be 'easy' or 'expert'.")
+        payload = self._read()
+        payload["mode"] = mode
+        self._write(payload)
+
     def hydrated_graph(self) -> Graph:
         """Project valid progress onto immutable render data."""
 

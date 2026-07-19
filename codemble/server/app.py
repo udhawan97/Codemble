@@ -42,6 +42,12 @@ class ProjectSelection(BaseModel):
     path: str
 
 
+class ModeSelection(BaseModel):
+    """The learner's chosen audience voice."""
+
+    mode: Literal["easy", "expert"]
+
+
 @dataclass(frozen=True)
 class PickerConfig:
     """Filesystem scope and parse settings for the in-app project picker."""
@@ -252,6 +258,17 @@ def create_app(
             ) from error
         except StudySourceError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/api/mode")
+    def get_mode() -> dict[str, str]:
+        checks, _ = _services()
+        return {"mode": checks.progress.mode()}
+
+    @app.put("/api/mode")
+    def set_mode(selection: ModeSelection) -> dict[str, str]:
+        checks, _ = _services()
+        checks.progress.set_mode(selection.mode)
+        return {"mode": selection.mode}
 
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():
