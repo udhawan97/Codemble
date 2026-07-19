@@ -18,8 +18,19 @@ verifiably correct:
 - *"If you deleted `foo()`, what would break?"* — from its callers
 - *"Where does execution start?"* — from the entrypoint
 
-The LLM phrases questions and feedback. It **never decides the answer** — the
-graph does. A check that could be wrong does not ship.
+Questions and answers are deterministic in v1. The check service uses exactly
+four parser-owned evidence families:
+
+- first certain project call, ordered by real source line
+- direct project imports
+- direct callers that depend on a structure
+- parser-ranked execution entrypoint
+
+The provider is not called to phrase, score, or explain a check. The response
+sent to the browser withholds the answer; submission is compared against the
+immutable generated option IDs. After an attempt, Codemble shows the graph-owned
+answer and its real `file:line` evidence. A check that cannot be derived with
+certainty is not offered.
 
 ## Lighting rules
 
@@ -27,3 +38,9 @@ graph does. A check that could be wrong does not ship.
 - Progress is saved locally and survives restarts.
 - Edit a file → only that region re-dims. Understanding is re-earned where the
   code actually changed, never globally revoked.
+
+Progress lives in a project-keyed JSON record under `~/.codemble/progress` and
+is written only after every offered check in the region passes. Each region is
+bound to a deterministic signature of its current parser file hashes. On the
+next run, matching regions light and changed regions stay dim; no background
+watcher or network service is involved.

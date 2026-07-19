@@ -48,6 +48,13 @@ concept ID only for a proven syntax node, and a deterministic language module
 maps that ID to a teachable note. The star chart aggregates those same graph
 annotations. Studied state is ephemeral; understood state remains check-owned.
 
+Checks use another deep interface with no provider dependency. `CheckService`
+derives stable question suites from certain calls, project imports, direct
+callers, and entrypoint ranks, then validates exact option IDs against those
+generated answers. Only a completed suite asks `ProgressStore` to persist the
+region. The store projects valid file signatures onto immutable nodes and
+regions when graph JSON is requested; stale signatures simply remain dim.
+
 ## Stack
 
 Python 3.11+ · FastAPI · Vite + React · `3d-force-graph` (three.js) ·

@@ -13,6 +13,9 @@ export function App() {
   const [studyError, setStudyError] = useState("");
   const [showChart, setShowChart] = useState(false);
   const [studiedNodeIds, setStudiedNodeIds] = useState(() => new Set());
+  const [showChecks, setShowChecks] = useState(false);
+  const [checkData, setCheckData] = useState(null);
+  const [checkError, setCheckError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -30,6 +33,12 @@ export function App() {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    setShowChecks(false);
+    setCheckData(null);
+    setCheckError("");
+  }, [level, region?.id]);
 
   useEffect(() => {
     if (level !== LEVELS.STUDY || !selectedNode) {
@@ -87,6 +96,53 @@ export function App() {
       if (nextNode) setSelectedNode(nextNode);
     },
     [graph],
+  );
+
+  const loadChecks = useCallback(async (regionId) => {
+    setCheckError("");
+    const response = await fetch(`/api/regions/${encodeURIComponent(regionId)}/checks`);
+    if (!response.ok) throw new Error(`Checks request returned ${response.status}.`);
+    const payload = await response.json();
+    setCheckData(payload);
+    return payload;
+  }, []);
+
+  const openChecks = useCallback(async () => {
+    if (!region) return;
+    setShowChecks(true);
+    setCheckData(null);
+    try {
+      await loadChecks(region.id);
+    } catch (requestError) {
+      setCheckError(requestError.message);
+    }
+  }, [loadChecks, region]);
+
+  const submitCheck = useCallback(
+    async (checkId, selectedIds) => {
+      const response = await fetch(
+        `/api/regions/${encodeURIComponent(region.id)}/checks/${encodeURIComponent(checkId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selected_ids: selectedIds }),
+        },
+      );
+      if (!response.ok) throw new Error(`Check submission returned ${response.status}.`);
+      const result = await response.json();
+      if (result.correct) await loadChecks(region.id);
+      if (result.region_understood) {
+        const graphResponse = await fetch("/api/graph");
+        if (!graphResponse.ok) throw new Error(`Graph refresh returned ${graphResponse.status}.`);
+        const payload = await graphResponse.json();
+        setGraph(payload);
+        setRegion((current) =>
+          payload.regions.find((candidate) => candidate.id === current.id) ?? defaultRegion(payload),
+        );
+      }
+      return result;
+    },
+    [loadChecks, region],
   );
 
   const projectName = useMemo(() => {
@@ -172,7 +228,18 @@ export function App() {
           <section className="orientation-copy orientation-copy--system">
             <h1>{region.id}</h1>
             <p>{region.node_count} parser-proven structures · {region.loc} lines in this system.</p>
+            <button className="check-launch" type="button" onClick={openChecks}>
+              {region.understood ? "Review understanding" : "Prove understanding"}
+            </button>
           </section>
+        ) : null}
+        {level === LEVELS.SYSTEM && showChecks ? (
+          <CheckPanel
+            suite={checkData}
+            error={checkError}
+            onClose={() => setShowChecks(false)}
+            onSubmit={submitCheck}
+          />
         ) : null}
         {level === LEVELS.STUDY && selectedNode ? (
           <StudyPanel
@@ -191,6 +258,116 @@ export function App() {
         <span>Local only</span>
       </footer>
     </main>
+  );
+}
+
+function CheckPanel({ suite, error, onClose, onSubmit }) {
+  const current = suite?.checks.find((check) => !check.passed) ?? null;
+  const passed = suite?.checks.filter((check) => check.passed).length ?? 0;
+  const [selected, setSelected] = useState(() => new Set());
+  const [feedback, setFeedback] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  useEffect(() => {
+    setSelected(new Set());
+    setFeedback(null);
+    setSubmitError("");
+  }, [current?.id]);
+
+  function choose(optionId, multiple) {
+    setSelected((existing) => {
+      if (!multiple) return new Set([optionId]);
+      const next = new Set(existing);
+      if (next.has(optionId)) next.delete(optionId);
+      else next.add(optionId);
+      return next;
+    });
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    if (!current || selected.size === 0) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const result = await onSubmit(current.id, [...selected]);
+      setFeedback(result);
+    } catch (requestError) {
+      setSubmitError(requestError.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <aside className="check-panel" aria-label="Graph-derived understanding checks">
+      <header className="check-panel__header">
+        <div>
+          <p>Active recall · graph only</p>
+          <h1>{suite?.region_id ?? "Loading checks"}</h1>
+        </div>
+        <button className="check-close" type="button" onClick={onClose}>Close</button>
+      </header>
+
+      {error || submitError ? (
+        <div className="check-state" role="alert">
+          <h2>The checks did not load.</h2>
+          <p>{error || submitError} The galaxy remains available.</p>
+        </div>
+      ) : null}
+      {!suite && !error ? <p className="check-loading">Deriving answers from parser edges…</p> : null}
+      {suite?.region_understood ? (
+        <div className="check-complete" aria-live="polite">
+          <span className="check-complete__star" aria-hidden="true">✦</span>
+          <h2>System lit.</h2>
+          <p>This region's source hash matches the checks you passed. Edit its file and only this system will dim again.</p>
+          <button className="check-primary" type="button" onClick={onClose}>Return to the system</button>
+        </div>
+      ) : null}
+      {suite && !suite.region_understood && suite.checks.length === 0 ? (
+        <div className="check-state">
+          <h2>No safe check yet.</h2>
+          <p>This region has no certain graph relationship Codemble can test without guessing.</p>
+        </div>
+      ) : null}
+      {current && !suite.region_understood ? (
+        <form className="active-check" onSubmit={submit}>
+          <div className="check-progress">
+            <span>Check {passed + 1} of {suite.checks.length}</span>
+            <progress value={passed} max={suite.checks.length} />
+          </div>
+          <fieldset>
+            <legend>{current.prompt}</legend>
+            {current.multiple ? <p>Select every answer supported by the graph.</p> : null}
+            <div className="check-options">
+              {current.options.map((option) => (
+                <label key={option.id}>
+                  <input
+                    type={current.multiple ? "checkbox" : "radio"}
+                    name={`answer-${current.id}`}
+                    value={option.id}
+                    checked={selected.has(option.id)}
+                    onChange={() => choose(option.id, current.multiple)}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {feedback && !feedback.correct ? (
+            <div className="check-feedback" role="status">
+              <strong>{feedback.message}</strong>
+              <span>Parser answer: {feedback.answer_labels.join(", ")}</span>
+              <span>Evidence: {feedback.evidence.join(", ")}</span>
+            </div>
+          ) : null}
+          <button className="check-primary" type="submit" disabled={!selected.size || submitting}>
+            {submitting ? "Checking parser evidence…" : "Check answer"}
+          </button>
+        </form>
+      ) : null}
+    </aside>
   );
 }
 
