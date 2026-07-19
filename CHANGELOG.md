@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- Expanding site search in the header of both the landing page and every docs
+  page, backed by Pagefind with keyboard shortcut, arrow-key navigation, and an
+  explicit message when the index has not been built yet.
+- Generated Edo star-atlas plate artwork (`docs-site/scripts/build-plates.mjs`),
+  emitted from a fixed seed so the same script always produces the same sky.
+- A standalone landing page at `docs-site/src/pages/index.astro`, structured as
+  four numbered plates in 起承転結 order with a layered tatebanko hero.
+
 ### Changed
 - Centralized graph canonicalization, Home selection, centrality, annotation
   normalization, edge deduplication, and deterministic layout behind one graph
@@ -18,6 +27,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Reused one internal JavaScript/TypeScript syntax-evidence index across
   entrypoint, concept, call, binding, and imported-symbol resolution passes,
   eliminating repeated ownership maps and whole-graph symbol scans.
+- Rebuilt the public site on the Formal Edo palette (kachi indigo, ruri lapis,
+  kohaku amber, gofun white) with Shippori Mincho and Zen Kaku Gothic New. The
+  accent contracts are unchanged: kohaku still means understanding, ruri still
+  means interaction.
+
+### Fixed
+- The current docs page was marked with a filled kohaku pill, which claimed
+  "understood" about a navigation state; it now uses ruri, the interaction accent.
+- The landing hero overflowed a 320px viewport, putting a call to action and the
+  install command outside the clipped area where they could not be reached.
+
+### Removed
+- `docs-site/src/content/docs/index.mdx`, replaced by the standalone landing
+  page; its content moved there.
 
 ## [0.2.0] - 2026-07-19
 

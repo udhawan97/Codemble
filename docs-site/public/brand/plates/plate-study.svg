@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 300" width="420" height="300">
+  <defs>
+    <filter id="washi-p" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+    <linearGradient id="bokashi-p" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101a3e" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#070b1c" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#070b1c" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+<rect width="420" height="300" fill="#070b1c"/>
+<rect x="8" y="8" width="404" height="284" fill="none" stroke="#2b4d96" stroke-width="1" opacity="0.55"/>
+<rect x="34" y="40" width="352" height="220" fill="#101a3e" stroke="#2b4d96" stroke-width="1"/><text x="48" y="66" font-family="monospace" font-size="9" fill="#2b4d96">01</text><rect x="72" y="58" width="115.02" height="4" rx="2" fill="#82abec" opacity="0.34"/><text x="48" y="86" font-family="monospace" font-size="9" fill="#2b4d96">02</text><rect x="72" y="78" width="100.94" height="4" rx="2" fill="#82abec" opacity="0.34"/><text x="48" y="106" font-family="monospace" font-size="9" fill="#2b4d96">03</text><rect x="72" y="98" width="202.33" height="4" rx="2" fill="#82abec" opacity="0.34"/><text x="48" y="126" font-family="monospace" font-size="9" fill="#2b4d96">04</text><rect x="72" y="118" width="191.55" height="4" rx="2" fill="#82abec" opacity="0.34"/><text x="48" y="146" font-family="monospace" font-size="9" fill="#2b4d96">05</text><rect x="72" y="138" width="70.38" height="4" rx="2" fill="#e89b2e" opacity="0.95"/><rect x="34" y="132" width="352" height="16" fill="#e89b2e" opacity="0.09"/><text x="48" y="166" font-family="monospace" font-size="9" fill="#2b4d96">06</text><rect x="72" y="158" width="177.15" height="4" rx="2" fill="#82abec" opacity="0.34"/><text x="48" y="186" font-family="monospace" font-size="9" fill="#2b4d96">07</text><rect x="72" y="178" width="90.85" height="4" rx="2" fill="#82abec" opacity="0.34"/><text x="48" y="206" font-family="monospace" font-size="9" fill="#2b4d96">08</text><rect x="72" y="198" width="104.19" height="4" rx="2" fill="#82abec" opacity="0.34"/><text x="48" y="226" font-family="monospace" font-size="9" fill="#2b4d96">09</text><rect x="72" y="218" width="157.78" height="4" rx="2" fill="#82abec" opacity="0.34"/>
+<rect width="420" height="300" filter="url(#washi-p)" opacity="0.05"/>
+</svg>

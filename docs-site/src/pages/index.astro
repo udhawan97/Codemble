@@ -1,0 +1,438 @@
+---
+/**
+ * Codemble landing — an Edo star atlas (天文図).
+ *
+ * Edo astronomers published sky charts as numbered plates: gold stars and
+ * constellation lines on indigo, each plate framed, annotated and captioned.
+ * That is exactly what Codemble makes of a codebase, so the site is built as
+ * one of those atlases rather than as a page about one.
+ *
+ * Plate order follows 起承転結 (kishōtenketsu) because it is true of the
+ * content: the third plate is a real turn — Codemble looks like a viewer and
+ * then reveals a pass/fail gate. Western three-act would flatten that.
+ *
+ * Zero JS dependencies (family convention). Every claim is drawn from the
+ * shipped docs — no invented metrics, no invented capabilities.
+ */
+import Tatebanko from "../components/Tatebanko.astro";
+import Search from "../components/Search.astro";
+import "../styles/tokens.css";
+import "../styles/landing.css";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const doc = (slug: string) => `${base}/${slug}/`;
+const plate = (f: string) => `${base}/brand/plates/${f}`;
+const REPO = "https://github.com/udhawan97/Codemble";
+
+const acts = [
+  { kanji: "起", romaji: "ki", id: "chart", label: "The chart" },
+  { kanji: "承", romaji: "shō", id: "instrument", label: "The instrument" },
+  { kanji: "転", romaji: "ten", id: "turn", label: "The turn" },
+  { kanji: "結", romaji: "ketsu", id: "contract", label: "The contract" },
+];
+
+const levels = [
+  {
+    n: "Galaxy",
+    jp: "銀河",
+    art: "plate-galaxy.svg",
+    body: "Modules are star systems, imports are routes, your entrypoint is Home. Size is lines of code; brightness is how often something is called.",
+  },
+  {
+    n: "System",
+    jp: "星系",
+    art: "plate-system.svg",
+    body: "Zoom a system and its functions and classes orbit as planets, joined by call edges. Anything the parser could not prove is labelled possible call.",
+  },
+  {
+    n: "Study",
+    jp: "精読",
+    art: "plate-study.svg",
+    body: "Open a planet for real source, a grounded explanation, and the language idiom it demonstrates — every claim linked to a real file:line.",
+  },
+];
+
+const contract = [
+  "Structure is never invented — nodes, edges and entrypoints come only from the parser.",
+  "Explanations are grounded, and say “unclear from the code” rather than guess.",
+  "Lens claims attach only to parser-detected constructs.",
+  "Every explanation links to a real file:line, so you can check it.",
+  "Check answers come from the graph, never the model.",
+  "Approximate call edges are labelled “possible call” — never stated as fact.",
+];
+
+const langs = ["Python", "JavaScript", "TypeScript", "Mixed projects"];
+const install = "pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0";
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Codemble — chart the code you didn’t write</title>
+    <meta
+      name="description"
+      content="A learning game that charts the code AI wrote for you as a star atlas you light up by understanding it. Local-first, bring your own key, zero invented facts."
+    />
+    <link rel="icon" href={`${base}/favicon.svg`} />
+    <link rel="apple-touch-icon" href={`${base}/brand/icon-180.png`} />
+    <meta name="theme-color" content="#070b1c" />
+    <meta property="og:title" content="Codemble" />
+    <meta
+      property="og:description"
+      content="Chart the code AI wrote for you as a star atlas you light up by understanding it."
+    />
+    <meta property="og:image" content={`${base}/brand/icon-512.png`} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+
+    <!-- Theme resolved before paint, sharing Starlight's storage key so the
+         landing and the docs never disagree. -->
+    <script is:inline>
+      (() => {
+        const stored = localStorage.getItem("starlight-theme");
+        document.documentElement.dataset.theme =
+          stored === "light" || stored === "dark"
+            ? stored
+            : matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+      })();
+    </script>
+  </head>
+
+  <body>
+    <a class="skip" href="#chart">Skip to content</a>
+
+    <!-- N9 edge-aligned nav: an instrument bezel, not a floating pill. -->
+    <header class="nav">
+      <a class="nav-mark" href={`${base}/`}>
+        <img src={`${base}/brand/mark.svg`} alt="" width="30" height="30" />
+        <span>Codemble</span>
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        <a href={doc("introduction")}>Docs</a>
+        <a href={doc("the-galaxy")}>The galaxy</a>
+        <a href={doc("correctness")}>Contract</a>
+        <a href={REPO} rel="noopener">GitHub</a>
+        <Search />
+        <button
+          type="button"
+          class="nav-theme"
+          data-theme-toggle
+          aria-label="Switch to light theme"
+        >
+          <span data-theme-icon aria-hidden="true">☾</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- 起承転結 rail. Tategaki used as a real scroll indicator, not ornament. -->
+    <nav class="rail" aria-label="Plates">
+      <ol>
+        {
+          acts.map((a) => (
+            <li>
+              <a href={`#${a.id}`} data-rail={a.id}>
+                <span class="rail-kanji">{a.kanji}</span>
+                <span class="rail-romaji">{a.romaji}</span>
+                <span class="sr-only">{a.label}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </nav>
+
+    <main>
+      <!-- ===== 起 KI — plate one: the chart ========================== -->
+      <section class="hero" id="chart">
+        <Tatebanko />
+        <div class="hero-inner">
+          <p class="plate-no">
+            <span lang="ja">第一図</span><span class="sep">·</span>plate one
+          </p>
+          <h1 class="hero-title">Chart the code you didn’t write.</h1>
+          <p class="hero-lede">
+            You built it with AI. Codemble reads your project on your own
+            machine and draws it the way an Edo astronomer drew the sky —
+            modules as star systems, functions as planets, your entrypoint as
+            Home. Every star starts dark. You light it by proving you
+            understand it.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href={doc("quickstart")}>
+              Chart your project
+            </a>
+            <a class="btn btn-quiet" href={doc("correctness")}>
+              Read the contract
+            </a>
+          </div>
+          <div class="cmd">
+            <code>{install}</code>
+            <button type="button" data-copy={install} class="cmd-copy">
+              <span data-copy-label>Copy</span>
+            </button>
+          </div>
+          <p class="hero-note">
+            Python 3.11+ · the wheel ships the app, so no Node needed ·
+            <a href={doc("installation")}>uvx one-off run</a>
+          </p>
+        </div>
+      </section>
+
+      <img class="rule" src={plate("kasumi-rule.svg")} alt="" aria-hidden="true" />
+
+      <!-- ===== 承 SHŌ — plate two: the instrument ==================== -->
+      <section class="act" id="instrument">
+        <div class="act-head">
+          <p class="act-mark">
+            <span lang="ja">承</span> shō<span class="sep">·</span>plate two
+          </p>
+          <h2>Three levels of zoom. No free flight.</h2>
+          <p class="act-lede">
+            The camera runs on rails, because wandering a 3D scene is not
+            learning. Each level shows one thing well, and everything on it is
+            something the parser proved.
+          </p>
+        </div>
+        <ol class="levels">
+          {
+            levels.map((l, i) => (
+              <li class="level" data-reveal style={`--d:${i * 70}ms`}>
+                <img class="level-art" src={plate(l.art)} alt="" width="420" height="300" loading="lazy" />
+                <div class="level-body">
+                  <p class="level-jp" lang="ja" aria-hidden="true">{l.jp}</p>
+                  <h3>{l.n}</h3>
+                  <p>{l.body}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+        <div class="langs" data-reveal>
+          <p class="langs-label">One atlas, whichever language you shipped</p>
+          <ul>{langs.map((l) => <li>{l}</li>)}</ul>
+          <p class="langs-note">
+            Focus a language to dim the rest — the graph, the coordinates and
+            your progress never change.
+            <a href={doc("the-galaxy")}>How focus works</a>
+          </p>
+        </div>
+      </section>
+
+      <!-- ===== 転 TEN — plate three: the turn ======================== -->
+      <section class="act act-turn" id="turn">
+        <div class="act-inner">
+          <div class="act-head">
+            <p class="act-mark">
+              <span lang="ja">転</span> ten<span class="sep">·</span>plate three
+            </p>
+            <h2>Then it stops being a map.</h2>
+            <p class="act-lede">
+              Here is the turn. Codemble looks like a visualisation, and every
+              visualisation lets you nod along without learning anything. This
+              one asks you to prove it.
+            </p>
+          </div>
+          <div class="turn-grid">
+            <article class="turn-card" data-reveal>
+              <h3>Checks are drawn from your graph</h3>
+              <p>
+                Short questions built from your code’s actual structure — which
+                module imports this one, what Home reaches first. The answers
+                come from the parsed graph, never from the model, so a confident
+                wrong answer is not possible.
+              </p>
+            </article>
+            <article class="turn-card" data-reveal style="--d:70ms">
+              <h3>Passing lights the region, permanently</h3>
+              <p>
+                A region is one module. Pass its checks and it lights in kohaku
+                amber and stays lit, saved locally in <code>~/.codemble/</code>.
+                Edit that file later and only that region goes dark again —
+                nothing else you earned is taken away.
+              </p>
+            </article>
+            <article class="turn-card" data-reveal style="--d:140ms">
+              <h3>One score, and it is the real one</h3>
+              <p>
+                No XP, no streaks, no leaderboards. A fully lit atlas means you
+                understand your project. The star chart beside it records every
+                language concept you met on the way.
+              </p>
+            </article>
+          </div>
+          <p class="turn-honest" data-reveal>
+            A region with no safe graph-derived check stays dark and tells you
+            why. Lighting a star for showing up would be a lie about what you
+            know.
+          </p>
+        </div>
+      </section>
+
+      <!-- ===== 結 KETSU — plate four: the contract =================== -->
+      <section class="act" id="contract">
+        <div class="act-head">
+          <p class="act-mark">
+            <span lang="ja">結</span> ketsu<span class="sep">·</span>plate four
+          </p>
+          <h2>Six rules that outrank every feature.</h2>
+          <p class="act-lede">
+            Codemble’s reader often cannot tell when a tool is wrong — that is
+            exactly why they need it. A tool that teaches a beginner something
+            false is worse than no tool, so these come first, including ahead of
+            what we want to build.
+          </p>
+        </div>
+
+        <div class="contract-block">
+          <ol class="contract">
+            {
+              contract.map((rule, i) => (
+                <li data-reveal style={`--d:${i * 50}ms`}>
+                  <span class="contract-n" aria-hidden="true">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <p set:html={rule.replace(/file:line/, "<code>file:line</code>")} />
+                </li>
+              ))
+            }
+          </ol>
+          <img class="seal" src={plate("seal.svg")} alt="" width="120" height="120" loading="lazy" />
+        </div>
+
+        <div class="install" data-reveal>
+          <h3>Run it on your own project</h3>
+          <div class="cmd cmd-block">
+            <code>{install}<br />codemble ./your-project</code>
+            <button
+              type="button"
+              data-copy={`${install}\ncodemble ./your-project`}
+              class="cmd-copy"
+            >
+              <span data-copy-label>Copy</span>
+            </button>
+          </div>
+          <p class="install-note">
+            Your code is parsed locally. The only network calls are the LLM
+            requests you configure, sent from your machine straight to your
+            provider. Without a key you still get the atlas, the source, the
+            lens and the checks — only the prose needs a model.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href={doc("installation")}>
+              Installation guide
+            </a>
+            <a class="btn btn-quiet" href={doc("early-testing")}>
+              Testing notes
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="foot-inner">
+        <p class="foot-statement">
+          Zero invented facts. A wrong explanation is our highest-severity bug.
+        </p>
+        <div class="foot-row">
+          <p class="foot-mark">
+            <img src={`${base}/brand/mark.svg`} alt="" width="22" height="22" />
+            Codemble · v0.2.0 tester release · Apache-2.0
+          </p>
+          <nav class="foot-links" aria-label="Footer">
+            <a href={doc("introduction")}>Docs</a>
+            <a href={doc("roadmap")}>Roadmap</a>
+            <a href={doc("contributing")}>Contributing</a>
+            <a href={REPO} rel="noopener">GitHub</a>
+          </nav>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const items = document.querySelectorAll<HTMLElement>("[data-reveal]");
+      if (reduce || !("IntersectionObserver" in window)) {
+        items.forEach((el) => el.classList.add("shown"));
+      } else {
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (!e.isIntersecting) continue;
+              e.target.classList.add("shown");
+              io.unobserve(e.target);
+            }
+          },
+          { threshold: 0.16 },
+        );
+        items.forEach((el) => io.observe(el));
+      }
+
+      /* 起承転結 rail follows the reader. */
+      const rail = document.querySelectorAll<HTMLElement>("[data-rail]");
+      const sections = document.querySelectorAll<HTMLElement>("main section[id]");
+      if ("IntersectionObserver" in window && rail.length) {
+        const spy = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (!e.isIntersecting) continue;
+              rail.forEach((r) =>
+                r.toggleAttribute("data-current", r.dataset.rail === e.target.id),
+              );
+            }
+          },
+          { rootMargin: "-45% 0px -45% 0px" },
+        );
+        sections.forEach((s) => spy.observe(s));
+      }
+
+      /* Copy — silent success, label reverts. No toast. */
+      document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const label = b.querySelector("[data-copy-label]");
+          try {
+            await navigator.clipboard.writeText(b.dataset.copy || "");
+            if (label) label.textContent = "Copied";
+            b.setAttribute("data-done", "");
+          } catch {
+            if (label) label.textContent = "Press ⌘C";
+          }
+          setTimeout(() => {
+            if (label) label.textContent = "Copy";
+            b.removeAttribute("data-done");
+          }, 1800);
+        });
+      });
+
+      /* Theme toggle — same storage key as Starlight. */
+      const toggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
+      const icon = document.querySelector("[data-theme-icon]");
+      const paint = (t: string) => {
+        document.documentElement.dataset.theme = t;
+        if (icon) icon.textContent = t === "dark" ? "☾" : "☀";
+        toggle?.setAttribute(
+          "aria-label",
+          t === "dark" ? "Switch to light theme" : "Switch to dark theme",
+        );
+      };
+      paint(document.documentElement.dataset.theme || "dark");
+      toggle?.addEventListener("click", () => {
+        const next =
+          document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        localStorage.setItem("starlight-theme", next);
+        paint(next);
+      });
+    </script>
+  </body>
+</html>

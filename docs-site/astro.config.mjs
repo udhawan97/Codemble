@@ -12,9 +12,10 @@ export default defineConfig({
       title: "Codemble",
       description:
         "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it. Local-first, bring your own key, zero invented facts.",
+      // The Enso mark carries its own kachi-indigo ground, so one file serves
+      // both themes.
       logo: {
-        light: "./src/assets/codemble-mark-light.svg",
-        dark: "./src/assets/codemble-mark-dark.svg",
+        src: "./src/assets/codemble-mark-dark.svg",
         replacesTitle: false,
       },
       favicon: "/favicon.svg",
@@ -27,6 +28,11 @@ export default defineConfig({
       ],
       // tokens.css must load first — custom.css resolves against its variables.
       customCss: ["./src/styles/tokens.css", "./src/styles/custom.css"],
+      // Expanding in-place search shared with the landing nav (family
+      // convention: Golavo and FolioOrb each override this slot too).
+      components: {
+        Search: "./src/components/Search.astro",
+      },
       editLink: {
         baseUrl: "https://github.com/udhawan97/Codemble/edit/main/docs-site/",
       },
@@ -43,16 +49,20 @@ export default defineConfig({
             crossorigin: true,
           },
         },
+        // Shippori Mincho is a formal Japanese mincho (display); Zen Kaku
+        // Gothic New is its gothic counterpart (body). Google serves both with
+        // unicode-range subsets, so pages without kana download Latin only.
+        // The landing page loads these itself in its own <head>.
         {
           tag: "link",
           attrs: {
             rel: "stylesheet",
-            href: "https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap",
+            href: "https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap",
           },
         },
         {
           tag: "meta",
-          attrs: { name: "theme-color", content: "#0b0d16" },
+          attrs: { name: "theme-color", content: "#070b1c" },
         },
       ],
       // Sidebar is hand-authored (family convention): every new docs page needs

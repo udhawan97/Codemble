@@ -1,0 +1,847 @@
+/* Hallmark · macrostructure: Kishotenketsu plates · theme: Edo star atlas
+ * nav: N9 edge-aligned · footer: Ft5 statement · signature: tatebanko hero
+ * Landing-only styles. Scoped to src/pages/index.astro; the docs never load it.
+ * Every value references a token from tokens.css — no raw colours here.
+ * ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  /* clip, never hidden — `hidden` breaks position:sticky further down. */
+  overflow-x: clip;
+  margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--cm-ground);
+  color: var(--cm-ink);
+  font-family: var(--cm-font-body);
+  font-size: var(--cm-text-base);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Declared on :root, not per-section. Scoping it to a selector list meant any
+   section left off that list resolved `var(--gutter)` to nothing, which
+   invalidates the whole padding shorthand and silently drops the gutter. */
+:root {
+  --gutter: clamp(1.25rem, 5vw, 4rem);
+  /* The 起承転結 rail is fixed; content clears it rather than flowing under. */
+  --rail-clear: 4.5rem;
+  --measure: 74rem;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--cm-font-display);
+  font-style: normal; /* roman always — italic headings are banned */
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--cm-orbit);
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--cm-orbit) 42%, transparent);
+  transition: color var(--cm-dur-quick) var(--cm-ease);
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+:focus-visible {
+  /* Never animated — a focus ring that fades in is a focus ring you miss. */
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 3px;
+  border-radius: var(--cm-radius);
+}
+
+code {
+  font-family: var(--cm-font-mono);
+  font-size: 0.9em;
+}
+
+img {
+  max-width: 100%;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip {
+  position: absolute;
+  left: var(--cm-space-md);
+  top: -4rem;
+  z-index: 100;
+  padding: var(--cm-space-xs) var(--cm-space-md);
+  background: var(--cm-ground-2);
+  border: var(--cm-rule) solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  text-decoration: none;
+  transition: top var(--cm-dur-quick) var(--cm-ease);
+}
+
+.skip:focus {
+  top: var(--cm-space-md);
+}
+
+/* --- N9 nav: edge-aligned bezel ------------------------------------------ */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--cm-z-nav);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cm-space-md);
+  padding: var(--cm-space-sm) var(--gutter);
+  background: color-mix(in srgb, var(--cm-ground) 94%, transparent);
+  border-bottom: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.nav-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cm-space-xs);
+  font-family: var(--cm-font-display);
+  font-weight: 700;
+  font-size: var(--cm-text-lg);
+  color: var(--cm-ink);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+
+.nav-mark img {
+  display: block;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 1.6vw, 1.5rem);
+  font-size: var(--cm-text-sm);
+}
+
+.nav-links a {
+  color: var(--cm-ink-2);
+  text-decoration: none;
+  white-space: nowrap; /* nav links never wrap to two lines */
+}
+
+.nav-links a:hover {
+  color: var(--cm-ink);
+}
+
+.nav-theme {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 0.95rem;
+  color: var(--cm-ink-2);
+  background: transparent;
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  cursor: pointer;
+  transition:
+    color var(--cm-dur-quick) var(--cm-ease),
+    border-color var(--cm-dur-quick) var(--cm-ease);
+}
+
+.nav-theme:hover {
+  color: var(--cm-star);
+  border-color: var(--cm-star);
+}
+
+.nav-theme:active {
+  transform: translateY(1px);
+}
+
+/* Search and GitHub survive narrowest; section links fold away first. */
+@media (max-width: 56rem) {
+  .nav-links > a:nth-of-type(2),
+  .nav-links > a:nth-of-type(3) {
+    display: none;
+  }
+}
+
+@media (max-width: 34rem) {
+  .nav-links > a:nth-of-type(1) {
+    display: none;
+  }
+}
+
+/* --- 起承転結 rail ------------------------------------------------------- */
+
+.rail {
+  position: fixed;
+  left: clamp(1rem, 2vw, 2rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: var(--cm-z-rail);
+}
+
+.rail ol {
+  display: grid;
+  gap: var(--cm-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rail a {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: var(--cm-space-2xs);
+  text-decoration: none;
+  color: var(--cm-ink-3);
+  transition: color var(--cm-dur-quick) var(--cm-ease);
+}
+
+.rail-kanji {
+  font-family: var(--cm-font-display);
+  font-size: 1.05rem;
+  line-height: 1;
+  writing-mode: vertical-rl; /* tategaki — vertical Japanese */
+}
+
+.rail-romaji {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transition: opacity var(--cm-dur-quick) var(--cm-ease);
+}
+
+.rail a:hover,
+.rail a[data-current] {
+  color: var(--cm-star);
+}
+
+.rail a:hover .rail-romaji,
+.rail a[data-current] .rail-romaji {
+  opacity: 1;
+}
+
+@media (max-width: 68.75rem) {
+  .rail {
+    display: none;
+  }
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.4rem;
+  font-family: var(--cm-font-body);
+  font-size: var(--cm-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap; /* a CTA never wraps to two lines */
+  text-decoration: none;
+  border: var(--cm-rule) solid transparent;
+  border-radius: var(--cm-radius);
+  cursor: pointer;
+  transition:
+    background-color var(--cm-dur-quick) var(--cm-ease),
+    border-color var(--cm-dur-quick) var(--cm-ease),
+    color var(--cm-dur-quick) var(--cm-ease),
+    transform var(--cm-dur-quick) var(--cm-ease);
+}
+
+.btn-primary {
+  background: var(--cm-orbit-fill);
+  color: var(--cm-on-fill);
+}
+
+.btn-primary:hover {
+  background: var(--cm-orbit-deep);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-quiet {
+  color: var(--cm-ink);
+  border-color: var(--cm-hairline);
+}
+
+.btn-quiet:hover {
+  border-color: var(--cm-orbit);
+  color: var(--cm-orbit);
+}
+
+.btn-quiet:active {
+  transform: translateY(1px);
+}
+
+/* --- Command line (no fake terminal chrome) ------------------------------ */
+
+.cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-sm);
+  max-width: 100%;
+  min-width: 0; /* same reason: let the <code> inside scroll, not push */
+  margin-top: var(--cm-space-lg);
+  padding: 0.6rem 0.6rem 0.6rem 0.9rem;
+  background: var(--cm-ground-2);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-left: 2px solid var(--cm-star);
+  border-radius: var(--cm-radius);
+}
+
+.cmd code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--cm-ink-2);
+  white-space: pre;
+}
+
+.cmd-block code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cmd-copy {
+  flex: none;
+  padding: 0.35rem 0.7rem;
+  font-family: var(--cm-font-body);
+  font-size: var(--cm-text-xs);
+  font-weight: 700;
+  color: var(--cm-ink-2);
+  background: transparent;
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  cursor: pointer;
+  transition:
+    color var(--cm-dur-quick) var(--cm-ease),
+    border-color var(--cm-dur-quick) var(--cm-ease);
+}
+
+.cmd-copy:hover {
+  color: var(--cm-ink);
+  border-color: var(--cm-ink-3);
+}
+
+.cmd-copy:active {
+  transform: translateY(1px);
+}
+
+/* Silent success — the label says it, nothing pops. */
+.cmd-copy[data-done] {
+  color: var(--cm-star);
+  border-color: var(--cm-star);
+}
+
+/* --- Plate numbering ----------------------------------------------------- */
+/* Numbered because a real atlas is: these are plates in sequence, and the
+   sequence carries meaning the reader needs. */
+
+.plate-no,
+.act-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--cm-text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cm-ink-3);
+}
+
+.plate-no [lang="ja"],
+.act-mark [lang="ja"] {
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--cm-star);
+}
+
+.plate-no .sep,
+.act-mark .sep {
+  color: var(--cm-hairline);
+}
+
+/* --- 起 Hero: the tatebanko plate ---------------------------------------- */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: center;
+  min-height: min(92svh, 50rem);
+  padding: var(--cm-space-xl) var(--gutter);
+  overflow: clip;
+}
+
+/* Left-aligned, never centred — a centred-everything hero is banned for this
+   genre, and the left column leaves the right of the plate to the chart. */
+.hero-inner {
+  position: relative;
+  z-index: var(--cm-z-content);
+  width: 100%;
+  max-width: 34rem;
+  /* Grid items default to min-width:auto, so the non-wrapping install command
+     inside would force this track wider than the viewport. With overflow-x
+     clipped on <body> the overspill is unreachable rather than scrollable,
+     which at 320px hides a CTA entirely. */
+  min-width: 0;
+  text-align: left;
+}
+
+@media (min-width: 56.25rem) {
+  .hero-inner {
+    max-width: min(34rem, 44vw);
+  }
+}
+
+@media (min-width: 68.8125rem) {
+  .hero-inner {
+    margin-left: var(--rail-clear);
+  }
+}
+
+.hero-title {
+  font-size: var(--cm-text-display);
+  margin: var(--cm-space-md) 0;
+  text-wrap: balance;
+}
+
+.hero-lede {
+  max-width: 32rem;
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-lg);
+  text-wrap: pretty;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-sm);
+  margin-top: var(--cm-space-lg);
+}
+
+.hero .cmd {
+  max-width: 32rem;
+}
+
+.hero-note {
+  margin-top: var(--cm-space-sm);
+  font-size: var(--cm-text-xs);
+  color: var(--cm-ink-3);
+}
+
+/* Below the split the plate sits behind the copy, so it steps back to keep
+   the headline at full contrast. */
+@media (max-width: 56.25rem) {
+  .tate {
+    opacity: 0.42;
+  }
+}
+
+/* --- Kasumi rule: the divider between plates ----------------------------- */
+
+.rule {
+  display: block;
+  width: 100%;
+  height: 42px;
+  object-fit: cover;
+  opacity: 0.85;
+}
+
+/* --- Acts ---------------------------------------------------------------- */
+
+.act {
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding: var(--cm-space-2xl) var(--gutter);
+}
+
+.act-turn {
+  /* The turn gets its own ground — a change of light at the pivot. */
+  max-width: none;
+  background: var(--cm-ground-2);
+  border-block: var(--cm-rule) solid var(--cm-hairline);
+}
+
+/* Full-bleed sections delegate the measure to one inner wrapper. Putting
+   max-width + margin-inline:auto on `> *` instead meant any child with its own
+   narrower max-width (.act-head, .foot-statement) got centred in the viewport
+   rather than aligned to the column. */
+.act-inner,
+.foot-inner {
+  max-width: var(--measure);
+  margin-inline: auto;
+}
+
+/* Once the rail appears it owns the left edge; sections step clear of it. */
+@media (min-width: 68.8125rem) {
+  .act,
+  .act-inner,
+  .foot-inner {
+    padding-left: var(--rail-clear);
+  }
+}
+
+.act-head {
+  max-width: 44rem;
+  margin-bottom: var(--cm-space-xl);
+}
+
+.act-mark {
+  margin-bottom: var(--cm-space-sm);
+}
+
+.act h2 {
+  font-size: var(--cm-text-3xl);
+  margin-bottom: var(--cm-space-md);
+  text-wrap: balance;
+}
+
+.act-lede {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-lg);
+  text-wrap: pretty;
+}
+
+/* --- 承 The three plates ------------------------------------------------- */
+
+.levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: var(--cm-space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.level {
+  min-width: 0;
+  background: var(--cm-ground-2);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  /* The seam: ruri while dark, kohaku once you touch it. The product's whole
+     loop, compressed into one hover. */
+  border-left: 2px solid var(--cm-orbit-fill);
+  border-radius: var(--cm-radius);
+  overflow: hidden;
+  transition: border-color var(--cm-dur-reveal) var(--cm-ease);
+}
+
+.level:hover {
+  border-left-color: var(--cm-star);
+}
+
+.level-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-bottom: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.level-body {
+  padding: var(--cm-space-lg);
+}
+
+.level-jp {
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-sm);
+  letter-spacing: 0.3em;
+  color: var(--cm-ink-3);
+  margin-bottom: var(--cm-space-2xs);
+}
+
+.level h3 {
+  font-size: var(--cm-text-xl);
+  margin-bottom: var(--cm-space-xs);
+}
+
+.level-body p {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+/* --- Languages ----------------------------------------------------------- */
+
+.langs {
+  margin-top: var(--cm-space-2xl);
+  padding-top: var(--cm-space-lg);
+  border-top: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.langs-label {
+  font-size: var(--cm-text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cm-ink-3);
+}
+
+.langs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs);
+  margin: var(--cm-space-sm) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.langs li {
+  padding: 0.3rem 0.75rem;
+  font-size: var(--cm-text-sm);
+  color: var(--cm-ink);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+}
+
+.langs-note {
+  font-size: var(--cm-text-sm);
+  color: var(--cm-ink-2);
+}
+
+/* --- 転 The turn --------------------------------------------------------- */
+
+.turn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: var(--cm-space-lg);
+}
+
+.turn-card {
+  min-width: 0;
+  padding: var(--cm-space-lg);
+  background: var(--cm-ground);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius-lg);
+}
+
+.turn-card h3 {
+  font-size: var(--cm-text-lg);
+  margin-bottom: var(--cm-space-xs);
+  color: var(--cm-star);
+}
+
+.turn-card p {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.turn-card code {
+  color: var(--cm-ink);
+}
+
+.turn-honest {
+  max-width: 44rem;
+  margin-top: var(--cm-space-lg);
+  padding-left: var(--cm-space-md);
+  border-left: 2px solid var(--cm-star);
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+/* --- 結 Contract --------------------------------------------------------- */
+/* The six rules read as a signed document: the kaō seal sits with them, the
+   way a real chart is stamped by the astronomer who vouches for it. */
+
+.contract-block {
+  display: grid;
+  gap: var(--cm-space-lg);
+  align-items: start;
+}
+
+@media (min-width: 56.25rem) {
+  .contract-block {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+.contract {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.contract li {
+  display: flex;
+  gap: var(--cm-space-md);
+  min-width: 0;
+  padding: var(--cm-space-md) var(--cm-space-md) var(--cm-space-md) 0;
+  border-bottom: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.contract-n {
+  flex: none;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  line-height: 1.9;
+  color: var(--cm-star);
+}
+
+.contract p {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.seal {
+  justify-self: center;
+  width: clamp(72px, 9vw, 108px);
+  height: auto;
+  opacity: 0.85;
+}
+
+.install {
+  max-width: 44rem;
+  margin-top: var(--cm-space-2xl);
+}
+
+.install h3 {
+  font-size: var(--cm-text-2xl);
+  margin-bottom: var(--cm-space-md);
+}
+
+.install .cmd {
+  margin-top: 0;
+}
+
+.install-note {
+  margin-top: var(--cm-space-md);
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+/* --- Ft5 statement footer ------------------------------------------------ */
+
+.foot {
+  padding: var(--cm-space-2xl) var(--gutter) var(--cm-space-xl);
+  border-top: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.foot-statement {
+  max-width: 32rem;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-2xl);
+  line-height: 1.3;
+  color: var(--cm-ink);
+  text-wrap: balance;
+}
+
+.foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cm-space-md);
+  margin-top: var(--cm-space-xl);
+  padding-top: var(--cm-space-md);
+  border-top: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.foot-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cm-space-xs);
+  font-size: var(--cm-text-xs);
+  color: var(--cm-ink-3);
+}
+
+.foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-md);
+  font-size: var(--cm-text-xs);
+}
+
+.foot-links a {
+  color: var(--cm-ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.foot-links a:hover {
+  color: var(--cm-orbit);
+}
+
+/* --- Reveal -------------------------------------------------------------- */
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity var(--cm-dur-reveal) var(--cm-ease),
+    transform var(--cm-dur-reveal) var(--cm-ease);
+  transition-delay: var(--d, 0ms);
+}
+
+[data-reveal].shown {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .btn:active,
+  .cmd-copy:active,
+  .nav-theme:active {
+    transform: none;
+  }
+}

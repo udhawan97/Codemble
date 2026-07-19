@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 820" width="1000" height="820">
+<defs><radialGradient id="lamp"><stop offset="0" stop-color="#e89b2e" stop-opacity="0.3"/><stop offset="0.55" stop-color="#e89b2e" stop-opacity="0.07"/><stop offset="1" stop-color="#e89b2e" stop-opacity="0"/></radialGradient></defs>
+<circle cx="488" cy="403.4" r="105" fill="url(#lamp)"/>
+<line x1="488" y1="403.4" x2="404" y2="313.4" stroke="#e89b2e" stroke-width="1.5" opacity="0.75"/><line x1="488" y1="403.4" x2="566" y2="301.4" stroke="#e89b2e" stroke-width="1.5" opacity="0.75"/><line x1="488" y1="403.4" x2="602" y2="475.4" stroke="#e89b2e" stroke-width="1.5" opacity="0.75"/>
+<circle cx="488" cy="403.4" r="11" fill="#f4c46a"/><circle cx="404" cy="313.4" r="5.5" fill="#f4c46a"/><circle cx="566" cy="301.4" r="5" fill="#f4c46a"/><circle cx="602" cy="475.4" r="4" fill="#f4c46a"/>
+</svg>

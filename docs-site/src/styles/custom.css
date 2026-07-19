@@ -1,26 +1,203 @@
-/* Codemble docs — Starlight overrides. tokens.css MUST load first (astro.config customCss order). */
+/* Codemble docs — Starlight mapping layer.
+ * tokens.css MUST load first (astro.config.mjs customCss order).
+ *
+ * This file only *maps* Starlight's own variables onto Codemble tokens and
+ * adds a small number of motif rules. It never restructures Starlight's shell,
+ * and it declares no raw colour values — family convention.
+ *
+ * Docs carry the Formal Edo voice but bend toward reading: mincho display for
+ * headings, Zen Kaku Gothic for running text, and the asanoha lattice pulled
+ * far back so it never competes with a code block.
+ * ========================================================================== */
 
 :root {
   --sl-font: var(--cm-font-body);
-  --sl-color-accent: var(--cm-star);
-  --sl-color-accent-high: var(--cm-star-high);
-  --sl-color-accent-low: var(--cm-star-low);
+  --sl-font-mono: var(--cm-font-mono);
+
+  /* Interaction is ruri — Starlight's "accent" drives links and focus. */
+  --sl-color-accent: var(--cm-orbit-fill);
+  --sl-color-accent-high: var(--cm-orbit);
+  --sl-color-accent-low: var(--cm-orbit-low);
 }
 
-h1, h2, h3, h4 {
+/* --- Dark (kachi night) --------------------------------------------------- */
+:root,
+:root[data-theme="dark"] {
+  --sl-color-white: var(--cm-ink);
+  --sl-color-gray-1: var(--cm-ink);
+  --sl-color-gray-2: var(--cm-ink-2);
+  --sl-color-gray-3: var(--cm-ink-3);
+  --sl-color-gray-4: var(--cm-hairline);
+  --sl-color-gray-5: var(--cm-ground-3);
+  --sl-color-gray-6: var(--cm-ground-2);
+  --sl-color-gray-7: var(--cm-ground-2);
+  --sl-color-black: var(--cm-ground);
+
+  --sl-color-bg: var(--cm-ground);
+  --sl-color-bg-nav: var(--cm-ground);
+  --sl-color-bg-sidebar: var(--cm-ground);
+  --sl-color-bg-inline-code: var(--cm-ground-3);
+  --sl-color-bg-accent: var(--cm-orbit-fill);
+
+  --sl-color-hairline: var(--cm-hairline);
+  --sl-color-hairline-light: var(--cm-hairline);
+  --sl-color-hairline-shade: var(--cm-hairline-soft);
+
+  --sl-color-text: var(--cm-ink-2);
+  /* Interaction, not progress. Starlight paints the current sidebar entry and
+     the site title with this; kohaku there would claim "understood" about a
+     nav state, which is the one thing that accent may never mean. */
+  --sl-color-text-accent: var(--cm-orbit);
+  --sl-color-text-invert: var(--cm-on-fill);
+}
+
+/* --- Light (gofun paper) -------------------------------------------------- */
+:root[data-theme="light"] {
+  --sl-color-white: var(--cm-ink);
+  --sl-color-gray-1: var(--cm-ink);
+  --sl-color-gray-2: var(--cm-ink-2);
+  --sl-color-gray-3: var(--cm-ink-3);
+  --sl-color-gray-4: var(--cm-hairline);
+  --sl-color-gray-5: var(--cm-ground-3);
+  --sl-color-gray-6: var(--cm-ground-3);
+  --sl-color-gray-7: var(--cm-ground-2);
+  --sl-color-black: var(--cm-ground);
+
+  --sl-color-bg: var(--cm-ground);
+  --sl-color-bg-nav: var(--cm-ground);
+  --sl-color-bg-sidebar: var(--cm-ground);
+  --sl-color-bg-inline-code: var(--cm-ground-3);
+
+  --sl-color-text: var(--cm-ink-2);
+  /* Interaction, not progress. Starlight paints the current sidebar entry and
+     the site title with this; kohaku there would claim "understood" about a
+     nav state, which is the one thing that accent may never mean. */
+  --sl-color-text-accent: var(--cm-orbit);
+  --sl-color-text-invert: var(--cm-on-fill);
+}
+
+/* `hidden` would break Starlight's sticky sidebar; clip does not. */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* --- The Edo voice, applied where it helps reading ------------------------ */
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4,
+.content-panel h1,
+.content-panel h2,
+.site-title {
   font-family: var(--cm-font-display);
-  letter-spacing: -0.01em;
+  font-style: normal; /* roman always — italic headings are banned */
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
-code, pre {
-  font-family: var(--cm-font-mono);
+/* Section rules are sashiko-thin, and only under h2 — enough to pace a long
+   document without turning it into a broadsheet. */
+.sl-markdown-content h2 {
+  padding-bottom: var(--cm-space-xs);
+  border-bottom: var(--cm-rule) solid var(--cm-hairline);
 }
 
 .sl-markdown-content a {
   color: var(--cm-orbit);
-  text-decoration-color: color-mix(in srgb, var(--cm-orbit) 40%, transparent);
+  text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in srgb, var(--cm-orbit) 42%, transparent);
 }
 
-/* Illumination motif: understood = lit. Used by inline "state" chips in docs. */
-.cm-lit { color: var(--cm-star); }
-.cm-dim { color: var(--cm-ink-3); }
+.sl-markdown-content a:hover {
+  text-decoration-color: currentColor;
+}
+
+code,
+pre {
+  font-family: var(--cm-font-mono);
+}
+
+/* Asanoha (麻の葉) lattice — the landing page's motif, pulled to a whisper so
+   long-form reading stays the priority. */
+.main-frame::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      60deg,
+      var(--cm-hairline-soft) 0 1px,
+      transparent 1px 46px
+    ),
+    repeating-linear-gradient(
+      120deg,
+      var(--cm-hairline-soft) 0 1px,
+      transparent 1px 46px
+    );
+  opacity: 0.4;
+  -webkit-mask-image: radial-gradient(
+    100% 60% at 100% 0%,
+    #000 0%,
+    transparent 62%
+  );
+  mask-image: radial-gradient(100% 60% at 100% 0%, #000 0%, transparent 62%);
+}
+
+/* Current page: a marked entry, not a filled pill. An observatory console
+   indicates position with a rule; it does not highlight it like a marker pen. */
+.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"]:hover,
+.sidebar-content a[aria-current="page"]:focus {
+  color: var(--cm-ink);
+  background: var(--cm-orbit-low);
+  border-inline-start: 2px solid var(--cm-orbit);
+}
+
+/* --- Cards: the seam ignites --------------------------------------------- */
+/* Codemble's loop in one hover: a ruri edge (unlit) that turns kohaku (lit).
+   Deliberately a left seam, not a top-corner rule — Golavo owns that gesture. */
+
+.card {
+  border-left: 2px solid var(--cm-orbit-fill);
+  border-radius: var(--cm-radius);
+  transition: border-color var(--cm-dur-reveal) var(--cm-ease);
+}
+
+.card:hover {
+  border-left-color: var(--cm-star);
+}
+
+.card .icon {
+  color: var(--cm-star);
+}
+
+/* Asides: kohaku marks understanding, ruri marks a pointer to act on. */
+.starlight-aside--note {
+  border-inline-start-color: var(--cm-orbit);
+}
+
+.starlight-aside--tip {
+  border-inline-start-color: var(--cm-star);
+}
+
+/* --- Motif helpers used inline in docs ----------------------------------- */
+
+.cm-lit {
+  color: var(--cm-star);
+}
+
+.cm-dim {
+  color: var(--cm-ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition-duration: 0.01ms;
+  }
+}

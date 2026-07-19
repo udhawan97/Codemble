@@ -1,18 +1,14 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs-site/src/assets/codemble-mark-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs-site/src/assets/codemble-mark-light.svg">
-    <img src="docs-site/src/assets/codemble-mark-light.svg" alt="Codemble mark — a lit node on its orbit" width="180">
-  </picture>
+  <img src="docs-site/public/brand/icon.svg" alt="Codemble — an open enso circle in ruri lapis with one star region lit in kohaku amber" width="160">
 </p>
 
 <h1 align="center">Codemble</h1>
 
-<p align="center"><em>Your code is a galaxy. Light it up.</em></p>
+<p align="center"><em>Chart the code you didn’t write.</em></p>
 
 <p align="center">
   You built it with AI — Claude Code, Codex — and it works.<br>
-  But do you <em>understand</em> it? Codemble turns your own project into a
+  But do you <em>understand</em> it? Codemble charts your own project as a
   3D galaxy<br> you illuminate by proving, region by region, that you actually get it.
 </p>
 
@@ -22,7 +18,7 @@
   <img src="https://img.shields.io/github/v/release/udhawan97/Codemble?style=flat-square&label=release" alt="Latest release">
   <img src="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status">
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/source-Python_·_JavaScript_·_TypeScript-67e8f9?style=flat-square" alt="Python, JavaScript, and TypeScript source support">
+  <img src="https://img.shields.io/badge/source-Python_·_JavaScript_·_TypeScript-3f6ac0?style=flat-square" alt="Python, JavaScript, and TypeScript source support">
   <img src="https://img.shields.io/badge/runs-100%25_locally-2ea44f?style=flat-square" alt="Local-first">
   <img src="https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square" alt="Apache 2.0">
 </p>
@@ -160,6 +156,15 @@ pytest && ruff check .        # CI gates
 cd web && npm install && npm run check
 cd docs-site && npm install && npm run dev   # docs at localhost:4321
 ```
+
+The public site is an Edo star-atlas treatment of the same idea: numbered
+plates, a layered paper hero, and gold reserved for understanding. Its design
+system is locked in [docs-site/design.md](docs-site/design.md), its values in
+`docs-site/src/styles/tokens.css`, and its plate artwork is generated —
+`node docs-site/scripts/build-plates.mjs` rewrites `public/brand/plates/` from
+a fixed seed, so the same script always produces the same sky. Site search is
+Pagefind, which only exists after `npm run build`; `npm run dev` will say so
+rather than fail quietly.
 
 Architecture (the three load-bearing decisions), contribution rules, and the
 agent operating guide: [docs](https://udhawan97.github.io/Codemble/architecture/) ·
