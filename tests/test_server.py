@@ -25,13 +25,18 @@ def test_graph_and_source_endpoints_are_grounded(tmp_path: Path) -> None:
 
     graph_response = client.get("/api/graph")
     study_response = client.get("/api/node/pkg.service.Service.run/study")
+    explanation_response = client.get("/api/node/app.main/explanation?mode=easy")
 
     assert graph_response.status_code == 200
     assert graph_response.json()["regions"]
     assert study_response.status_code == 200
     assert study_response.json()["source"]["file"] == "pkg/service.py"
     assert study_response.json()["source"]["lines"][0]["text"].startswith("    def run")
-    assert study_response.json()["explanation"]["status"] == "no_key"
+    assert "structural" in study_response.json()
+    assert "explanation" not in study_response.json()
+    assert explanation_response.status_code == 200
+    assert explanation_response.headers["content-type"] == "application/json"
+    assert "status" in explanation_response.json()
     assert client.get("/api/node/not-real/study").status_code == 404
     assert "Codemble" in client.get("/").text
     assert "Codemble" in client.get("/galaxy/system/pkg").text
@@ -111,11 +116,14 @@ def test_js_ts_node_and_region_ids_with_paths_round_trip_through_the_api(
     region_id = "javascript:src/legacy.js"
 
     study = client.get(f"/api/node/{node_id}/study")
+    explanation = client.get(f"/api/node/{node_id}/explanation?mode=easy")
     suite = client.get(f"/api/regions/{region_id}/checks")
 
     assert study.status_code == 200
     assert study.json()["source"]["file"] == "src/util.ts"
     assert study.json()["source"]["lines"][0]["text"].startswith("export function")
+    assert explanation.status_code == 200
+    assert "status" in explanation.json()
     assert suite.status_code == 200
     check = suite.json()["checks"][0]
     generated = generate_checks(graph, region_id)[0]
@@ -125,6 +133,37 @@ def test_js_ts_node_and_region_ids_with_paths_round_trip_through_the_api(
     )
     assert submission.status_code == 200
     assert submission.json()["correct"] is True
+
+
+def test_explanation_endpoint_returns_narration_state(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    response = client.get("/api/node/app.main/explanation?mode=easy")
+
+    assert response.status_code == 200
+    assert "status" in response.json()
+
+
+def test_explanation_endpoint_rejects_an_unknown_mode(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/node/app.main/explanation?mode=casual").status_code == 422
+
+
+def test_explanation_endpoint_404s_for_an_unknown_node(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    response = client.get("/api/node/nope/explanation?mode=easy")
+
+    assert response.status_code == 404
+    # status_code alone passes even with no route at all (FastAPI's default
+    # "Not Found" is also a 404), so it can't prove this hit the handler.
+    # Pin the detail body too, so this genuinely exercises the route's
+    # UnknownNodeError branch rather than an unmatched-path fallback.
+    assert response.json()["detail"] == "That source node is not in this graph."
 
 
 def test_unpicked_app_reports_state_and_guards_project_api(tmp_path: Path) -> None:

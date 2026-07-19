@@ -19,6 +19,7 @@ from codemble.llm.providers import (
     OpenAIProvider,
     ProviderError,
 )
+from codemble.llm.structural import structural_summary
 
 PROMPT_VERSION = "study-v2"
 _CACHE_SCHEMA = 1
@@ -125,11 +126,51 @@ class StudyService:
         )
 
     def study(self, node_id: str) -> dict[str, object]:
-        """Return real source, parser neighbors, and a bounded narration state."""
+        """Return real source, parser neighbors, and the local structural summary.
+
+        Never calls the narration provider — this stays fast and fully local so
+        opening a node in the study panel cannot block on a network round trip.
+        """
 
         node = self._nodes.get(node_id)
         if node is None:
             raise UnknownNodeError(node_id)
+        source, neighbors, lens = self._prepare(node)
+        return {
+            "node": asdict(node),
+            "source": source,
+            "neighbors": neighbors,
+            "lens": lens,
+            "structural": structural_summary(node, neighbors, lens),
+        }
+
+    def explain(self, node_id: str, mode: str = "easy") -> dict[str, object]:
+        """Return only the narration state for one node in one audience voice."""
+
+        node = self._nodes.get(node_id)
+        if node is None:
+            raise UnknownNodeError(node_id)
+        if node.partial:
+            return {
+                "status": "partial",
+                "message": (
+                    "Narration is unavailable because the language parser reported "
+                    "syntax errors in this file. The raw source remains visible."
+                ),
+                "cached": False,
+            }
+        source, neighbors, lens = self._prepare(node)
+        return self._explain(node, source, neighbors, lens, mode)
+
+    def _prepare(
+        self, node: Node
+    ) -> tuple[dict[str, object], list[dict[str, object]], list[dict[str, object]]]:
+        """Return the source, neighbors, and citation-anchored lens notes.
+
+        Shared by ``study`` and ``explain`` so the lens-citation loop and
+        neighbor/annotation lookup exist in exactly one place.
+        """
+
         source = self._read_source(node)
         neighbors = self._neighbors(node)
         annotations = sorted(
@@ -143,25 +184,7 @@ class StudyService:
         lens = lens_notes(node.language, annotations)
         for note in lens:
             note["citation"] = f"{node.file}:{note['line']}"
-        explanation = (
-            {
-                "status": "partial",
-                "message": (
-                    "Narration is unavailable because the language parser reported "
-                    "syntax errors in this file. "
-                    "The raw source remains visible."
-                ),
-            }
-            if node.partial
-            else self._explain(node, source, neighbors, lens)
-        )
-        return {
-            "node": asdict(node),
-            "source": source,
-            "neighbors": neighbors,
-            "lens": lens,
-            "explanation": explanation,
-        }
+        return source, neighbors, lens
 
     def _read_source(self, node: Node) -> dict[str, object]:
         source_path = (self._project_root / node.file).resolve()
@@ -191,8 +214,11 @@ class StudyService:
     def _neighbors(self, node: Node) -> list[dict[str, object]]:
         observations: dict[tuple[str, str, int], dict[str, object]] = {}
         for edge in self._graph.edges:
-            neighbor_id = _neighbor_id(edge, node.id)
-            neighbor = self._nodes.get(neighbor_id) if neighbor_id else None
+            resolved = _neighbor_id(edge, node.id)
+            if resolved is None:
+                continue
+            neighbor_id, direction = resolved
+            neighbor = self._nodes.get(neighbor_id)
             if neighbor is None:
                 continue
             key = (neighbor.id, edge.kind, edge.lineno)
@@ -205,6 +231,7 @@ class StudyService:
                 "citation": f"{neighbor.file}:{neighbor.lineno}",
                 "relationship": edge.kind,
                 "certain": edge.certain,
+                "direction": direction,
                 "observed_line": edge.lineno,
             }
         return [observations[key] for key in sorted(observations)]
@@ -215,6 +242,7 @@ class StudyService:
         source: dict[str, object],
         neighbors: list[dict[str, object]],
         lens: list[dict[str, object]],
+        mode: str,
     ) -> dict[str, object]:
         if self._provider is None:
             return {
@@ -296,11 +324,11 @@ def _read_config(path: Path) -> tuple[dict[str, str], str | None]:
     return decoded, None
 
 
-def _neighbor_id(edge: Edge, node_id: str) -> str | None:
+def _neighbor_id(edge: Edge, node_id: str) -> tuple[str, str] | None:
     if edge.src == node_id and not edge.external:
-        return edge.dst
+        return edge.dst, "outbound"
     if edge.dst == node_id:
-        return edge.src
+        return edge.src, "inbound"
     return None
 
 

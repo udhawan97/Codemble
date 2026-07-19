@@ -7,35 +7,59 @@ from codemble.adapters.base import ConceptAnnotation
 _PYTHON_NOTES = {
     "decorator": (
         "Decorator",
-        "Python evaluates this decorator while defining the structure and binds the returned object to its name.",
+        {
+            "easy": "The @ line above wraps this in extra behavior before it runs. Think of it as a sticker that adds a rule.",
+            "expert": "Python evaluates this decorator while defining the structure and binds the returned object to its name.",
+        },
     ),
     "comprehension": (
         "Comprehension",
-        "This expression builds a collection through inline iteration and optional filtering.",
+        {
+            "easy": "This is a short way to build a list, set, or dictionary by looping in one line, instead of writing a longer loop.",
+            "expert": "This expression builds a collection through inline iteration and optional filtering.",
+        },
     ),
     "generator": (
         "Generator",
-        "This construct produces values lazily instead of building the complete sequence at once.",
+        {
+            "easy": "This hands back one value at a time instead of building everything at once, which saves memory.",
+            "expert": "This construct produces values lazily instead of building the complete sequence at once.",
+        },
     ),
     "context-manager": (
         "Context manager",
-        "The `with` protocol brackets this block with managed setup and cleanup behavior.",
+        {
+            "easy": "The `with` line opens something and promises to close it again, even if an error happens.",
+            "expert": "The `with` protocol brackets this block with managed setup and cleanup behavior.",
+        },
     ),
     "async-await": (
         "Async / await",
-        "This construct participates in Python's asynchronous protocol and may yield control while work is pending.",
+        {
+            "easy": "This can pause while waiting for slow work, letting other things run instead of blocking.",
+            "expert": "This construct participates in Python's asynchronous protocol and may yield control while work is pending.",
+        },
     ),
     "dunder-method": (
         "Dunder method",
-        "Python calls this specially named method through a language protocol such as length, comparison, or display.",
+        {
+            "easy": "The double underscores mean Python calls this for you, for things like len() or printing.",
+            "expert": "Python calls this specially named method through a language protocol such as length, comparison, or display.",
+        },
     ),
     "exception-handling": (
         "Exception handling",
-        "This construct makes failure part of explicit control flow by catching, grouping, or raising an exception.",
+        {
+            "easy": "This plans for something going wrong, so the program can react instead of crashing.",
+            "expert": "This construct makes failure part of explicit control flow by catching, grouping, or raising an exception.",
+        },
     ),
     "type-hint": (
         "Type hint",
-        "This annotation communicates an expected type to readers and tooling; Python does not enforce it by default.",
+        {
+            "easy": "This is a note about what kind of value belongs here. Python does not enforce it; it helps readers and tools.",
+            "expert": "This annotation communicates an expected type to readers and tooling; Python does not enforce it by default.",
+        },
     ),
 }
 
@@ -59,7 +83,8 @@ def python_lens_notes(
                 "language": annotation.language,
                 "concept": annotation.concept,
                 "title": title,
-                "note": explanation,
+                "note": explanation["easy"],
+                "note_voices": explanation,
                 "line": annotation.lineno,
                 "end_line": annotation.end_lineno,
                 "snippet": annotation.snippet,

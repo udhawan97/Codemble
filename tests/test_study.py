@@ -62,9 +62,10 @@ def test_study_without_key_keeps_real_source_available(tmp_path: Path) -> None:
         "number": 8,
         "text": "def main() -> None:",
     }
-    assert result["explanation"]["status"] == "no_key"  # type: ignore[index]
+    assert "explanation" not in result
     assert result["lens"][0]["concept"] == "type-hint"  # type: ignore[index]
     assert result["lens"][0]["citation"] == "app.py:8"  # type: ignore[index]
+    assert service.explain("app.main")["status"] == "no_key"
     assert not (tmp_path / "cache").exists()
 
 
@@ -134,6 +135,45 @@ def test_typescript_lens_notes_equal_language_tagged_parser_annotations(
         note["citation"] == f"src/widget.tsx:{note['line']}"
         for note in result["lens"]  # type: ignore[union-attr]
     )
+    for note in result["lens"]:  # type: ignore[union-attr]
+        assert set(note["note_voices"]) == {"easy", "expert"}
+        assert note["note_voices"]["easy"].strip()
+        assert note["note_voices"]["expert"].strip()
+        assert note["note"] == note["note_voices"]["easy"], (
+            "the legacy string keeps the shipped SPA rendering until phase 4"
+        )
+
+
+def test_every_lens_note_carries_both_voices(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(CONCEPT_FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    notes = service.study("concepts_sample.collect")["lens"]  # type: ignore[index]
+
+    assert notes, "the concept fixture must produce at least one lens note"
+    for note in notes:
+        assert set(note["note_voices"]) == {"easy", "expert"}
+        assert note["note_voices"]["easy"].strip()
+        assert note["note_voices"]["expert"].strip()
+        assert note["note"] == note["note_voices"]["easy"], (
+            "the legacy string keeps the shipped SPA rendering until phase 4"
+        )
+
+
+def test_no_concept_is_missing_a_voice():
+    from codemble.lens.javascript_typescript import _NOTES
+    from codemble.lens.python import _PYTHON_NOTES
+
+    for table in (_PYTHON_NOTES, _NOTES):
+        for concept, (title, voices) in table.items():
+            assert title.strip(), concept
+            assert voices["easy"].strip(), concept
+            assert voices["expert"].strip(), concept
 
 
 def test_partial_source_stays_visible_without_model_narration(tmp_path: Path) -> None:
@@ -144,8 +184,9 @@ def test_partial_source_stays_visible_without_model_narration(tmp_path: Path) ->
     result = service.study("broken")
 
     assert result["source"]["file"] == "broken.py"  # type: ignore[index]
-    assert result["explanation"]["status"] == "partial"  # type: ignore[index]
+    assert "explanation" not in result
     assert result["lens"] == []
+    assert service.explain("broken")["status"] == "partial"
     assert provider.calls == 0
 
 
@@ -154,10 +195,10 @@ def test_validated_explanation_is_cached_by_node_and_file_hash(tmp_path: Path) -
     provider = FakeProvider()
     service = StudyService(graph, provider=provider, cache_root=tmp_path)
 
-    first = service.study("app.main")["explanation"]
+    first = service.explain("app.main")
     reopened_provider = FakeProvider()
     reopened = StudyService(graph, provider=reopened_provider, cache_root=tmp_path)
-    second = reopened.study("app.main")["explanation"]
+    second = reopened.explain("app.main")
 
     assert first["status"] == "ready"  # type: ignore[index]
     assert first["summary"]["citation"] == "app.py:8"  # type: ignore[index]
@@ -178,7 +219,7 @@ def test_validated_explanation_is_cached_by_node_and_file_hash(tmp_path: Path) -
         provider=changed_provider,
         cache_root=tmp_path,
     )
-    assert changed_service.study("app.main")["explanation"]["cached"] is False  # type: ignore[index]
+    assert changed_service.explain("app.main")["cached"] is False  # type: ignore[index]
     assert changed_provider.calls == 1
 
 
@@ -187,11 +228,62 @@ def test_provider_output_cannot_reference_an_unobserved_node(tmp_path: Path) -> 
     provider = FakeProvider("invented.module")
     service = StudyService(graph, provider=provider, cache_root=tmp_path)
 
-    explanation = service.study("app.main")["explanation"]
+    explanation = service.explain("app.main")
 
     assert explanation["status"] == "error"  # type: ignore[index]
     assert "outside the parser graph" in explanation["message"]  # type: ignore[index]
     assert not list(tmp_path.glob("*.json"))
+
+
+def test_neighbors_record_edge_direction(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    neighbors = service.study("app.main")["neighbors"]  # type: ignore[index]
+
+    directions = {neighbor["direction"] for neighbor in neighbors}
+    assert directions <= {"inbound", "outbound"}
+    assert any(neighbor["direction"] == "outbound" for neighbor in neighbors)
+    assert any(neighbor["direction"] == "inbound" for neighbor in neighbors)
+
+
+def test_study_never_calls_the_provider(tmp_path: Path) -> None:
+    class RefusingProvider:
+        name = "refusing"
+        model = "test"
+
+        def complete(self, prompt: str) -> str:
+            raise AssertionError("study() must not reach the provider")
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService(
+        graph, provider=RefusingProvider(), cache_root=tmp_path / "cache"
+    )
+
+    payload = service.study("app.main")
+
+    assert payload["structural"]["easy"]  # type: ignore[index]
+    assert payload["structural"]["expert"]  # type: ignore[index]
+    assert "explanation" not in payload, (
+        "the shipped SPA crashes on an unknown explanation status; omitting the "
+        "key makes App.jsx:523 render nothing instead"
+    )
+
+
+def test_explain_reaches_the_provider(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    provider = FakeProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / "cache")
+
+    result = service.explain("app.main", "easy")
+
+    assert result["status"] == "ready"
+    assert provider.calls == 1
 
 
 def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> None:
