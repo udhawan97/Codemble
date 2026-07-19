@@ -2,6 +2,10 @@
 
 :root {
   --cm-route-possible: color-mix(in srgb, var(--cm-ink-3) 56%, var(--cm-ground));
+  /* Floor of the unlit centrality ramp. The ramp stops at --cm-ink-2 so that a
+     lit star (--cm-star-high) is always the brightest object in the sky —
+     understanding, not call centrality, owns the top of the range. */
+  --cm-node-unlit: color-mix(in srgb, var(--cm-ink-3) 78%, var(--cm-ground));
   --cm-scrim: color-mix(in srgb, var(--cm-ground) 82%, transparent);
   --cm-error: oklch(72% 0.16 28);
   --cm-space-2xs: 0.125rem;

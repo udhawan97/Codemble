@@ -390,7 +390,7 @@ button:focus-visible,
 }
 
 .legend-dot--lit {
-  background: var(--cm-star);
+  background: var(--cm-star-high);
 }
 
 .legend-dot--partial {
