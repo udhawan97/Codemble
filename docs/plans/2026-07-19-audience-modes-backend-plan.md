@@ -20,6 +20,10 @@
 - **Tests are the gate:** `pytest` and `ruff check .` must both pass before every commit.
 - **Never echo provider response bodies or credentials in errors** — matches existing `ProviderError` behaviour.
 - **Phases 1–3 touch no files under `web/`.** The frontend lands in phases 4–6, so `codemble/web_dist` is not rebuilt in this plan.
+- **`main` must keep working after every phase.** The committed `web_dist` SPA renders these payload fields directly and has no tolerant fallback — verified in `web/src/App.jsx`:
+  - `App.jsx:523` — `if (!explanation) return null`, but an *unknown* `status` falls through to `App.jsx:557` (`explanation.summary.text`) and throws. So `/study` **omits** the `explanation` key rather than sending a placeholder status.
+  - `App.jsx:457` (`{note.note}`) and `App.jsx:369` (`{current.prompt}`) render values directly; an object there is React's "Objects are not valid as a React child" crash. So the wire keeps `note` and `prompt` as **easy-voice strings**, and adds the dicts under `note_voices` and `prompt_voices`.
+  - Phase 4 switches the SPA to the `_voices` keys and drops the legacy strings in the same PR that rebuilds `web_dist`.
 
 ---
 
@@ -420,7 +424,10 @@ def test_study_never_calls_the_provider(tmp_path: Path) -> None:
 
     assert payload["structural"]["easy"]  # type: ignore[index]
     assert payload["structural"]["expert"]  # type: ignore[index]
-    assert payload["explanation"]["status"] == "deferred"  # type: ignore[index]
+    assert "explanation" not in payload, (
+        "the shipped SPA crashes on an unknown explanation status; omitting the "
+        "key makes App.jsx:523 render nothing instead"
+    )
 
 
 def test_explain_reaches_the_provider(tmp_path: Path) -> None:
@@ -451,7 +458,7 @@ In `codemble/llm/study.py`, add the import:
 from codemble.llm.structural import structural_summary
 ```
 
-Replace the body of `study` from the `explanation = (` assignment to the `return` with:
+Delete the whole `explanation = (...)` assignment and replace the `return` with:
 
 ```python
         return {
@@ -460,13 +467,12 @@ Replace the body of `study` from the `explanation = (` assignment to the `return
             "neighbors": neighbors,
             "lens": lens,
             "structural": structural_summary(node, neighbors, lens),
-            "explanation": {
-                "status": "deferred",
-                "message": "Narration loads separately.",
-                "cached": False,
-            },
         }
 ```
+
+The `explanation` key is omitted, not set to a placeholder status: `App.jsx:523`
+returns `null` for a missing value but falls through to `explanation.summary.text`
+for an unrecognised status, which throws.
 
 Add a new public method directly after `study`:
 
@@ -636,7 +642,7 @@ provider.
 - Test: `tests/test_study.py`
 
 **Interfaces:**
-- Produces: every lens note dict's `"note"` key becomes `{"easy": str, "expert": str}`. `"title"`, `"concept"`, `"line"`, `"end_line"`, `"snippet"`, `"citation"` are unchanged.
+- Produces: every lens note dict keeps `"note"` as the **easy-voice string** (so the committed SPA at `App.jsx:457` keeps rendering) and gains `"note_voices": {"easy": str, "expert": str}`. `"title"`, `"concept"`, `"line"`, `"end_line"`, `"snippet"`, `"citation"` are unchanged. Phase 4 drops `"note"`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -656,9 +662,12 @@ def test_every_lens_note_carries_both_voices(tmp_path: Path) -> None:
 
     assert notes, "the concept fixture must produce at least one lens note"
     for note in notes:
-        assert set(note["note"]) == {"easy", "expert"}
-        assert note["note"]["easy"].strip()
-        assert note["note"]["expert"].strip()
+        assert set(note["note_voices"]) == {"easy", "expert"}
+        assert note["note_voices"]["easy"].strip()
+        assert note["note_voices"]["expert"].strip()
+        assert note["note"] == note["note_voices"]["easy"], (
+            "the legacy string keeps the shipped SPA rendering until phase 4"
+        )
 
 
 def test_no_concept_is_missing_a_voice():
@@ -744,7 +753,15 @@ _PYTHON_NOTES = {
 }
 ```
 
-The unpacking in `python_lens_notes` needs no change (`title, explanation = note`), because `explanation` is now the dict and is stored under `"note"` unchanged.
+Then change the emitted dict in `python_lens_notes` so the wire keeps a string under `"note"`:
+
+```python
+                "title": title,
+                "note": explanation["easy"],
+                "note_voices": explanation,
+```
+
+Apply the same two-line change to `javascript_typescript_lens_notes`.
 
 Now the JS/TS table. In `codemble/lens/javascript_typescript.py` the dict is named `_NOTES` (not `_JS_TS_NOTES` — correct the test import in Step 1 to `from codemble.lens.javascript_typescript import _NOTES`). Full replacement:
 
@@ -844,7 +861,7 @@ git commit -m "feat(lens): author both audience voices for every concept"
 - Test: `tests/test_checks.py`
 
 **Interfaces:**
-- Produces: `Check.prompt` becomes `dict[str, str]` with `easy` and `expert` keys; `Check.public()` emits it unchanged. `answer_ids`, `options`, and `id` are untouched.
+- Produces: `Check.prompt` becomes `dict[str, str]` with `easy` and `expert` keys. `Check.public()` emits `"prompt"` as the **easy-voice string** (so the committed SPA at `App.jsx:369` keeps rendering) plus `"prompt_voices"` carrying the dict. `answer_ids`, `options`, and `id` are untouched. Phase 4 drops `"prompt"`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -869,7 +886,10 @@ def test_the_two_voices_ask_the_same_question_of_the_same_answer() -> None:
     for region in graph.regions:
         for check in generate_checks(graph, region.id):
             public = check.public(passed=False)
-            assert public["prompt"] == check.prompt
+            assert public["prompt_voices"] == check.prompt
+            assert public["prompt"] == check.prompt["easy"], (
+                "the legacy string keeps the shipped SPA rendering until phase 4"
+            )
             assert public["multiple"] == (len(check.answer_ids) > 1)
             offered = {option["id"] for option in public["options"]}
             assert set(check.answer_ids) <= offered
@@ -892,7 +912,21 @@ In `codemble/checks/service.py`, change the dataclass field:
     prompt: dict[str, str]
 ```
 
-Change `_check`'s parameter type to `prompt: dict[str, str]`. Then give each generator both voices — replace each `f"..."` prompt argument:
+Change `_check`'s parameter type to `prompt: dict[str, str]`. In `Check.public`, emit the legacy string alongside the dict:
+
+```python
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "prompt": self.prompt["easy"],
+            "prompt_voices": self.prompt,
+            "multiple": len(self.answer_ids) > 1,
+            "options": [
+                {"id": option.id, "label": option.label} for option in self.options
+            ],
+            "passed": passed,
+        }
+``` Then give each generator both voices — replace each `f"..."` prompt argument:
 
 `_first_call_check`:
 
