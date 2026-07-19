@@ -141,6 +141,12 @@ class StudyService:
             setup_message=setup_message,
         )
 
+    @property
+    def provider(self) -> NarrationProvider | None:
+        """The narration provider this project is configured to use, if any."""
+
+        return self._provider
+
     def study(self, node_id: str) -> dict[str, object]:
         """Return real source, parser neighbors, and the local structural summary.
 

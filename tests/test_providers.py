@@ -2,6 +2,7 @@
 
 import pytest
 
+from codemble.llm.local_status import ollama_status
 from codemble.llm.providers import OllamaProvider, ProviderError
 
 
@@ -100,3 +101,52 @@ def test_ollama_host_cannot_be_reassigned_after_construction():
     provider = OllamaProvider(post_json=_transport({"response": "text"}))
     with pytest.raises(AttributeError):
         provider.host = "http://evil.example"
+
+
+def test_status_lists_installed_models_when_ollama_is_running():
+    def get_json(url: str):
+        assert url == "http://127.0.0.1:11434/api/tags"
+        return {"models": [{"name": "gemma4:12b"}, {"name": "qwen3:8b"}]}
+
+    status = ollama_status(get_json=get_json)
+    assert status["running"] is True
+    assert status["installed_models"] == ["gemma4:12b", "qwen3:8b"]
+    assert status["recommended"] == "gemma4:12b"
+    assert status["fallback"] == "qwen3:8b"
+
+
+def test_status_reports_not_running_without_raising():
+    def get_json(url: str):
+        raise OSError("connection refused")
+
+    status = ollama_status(get_json=get_json)
+    assert status["running"] is False
+    assert status["installed_models"] == []
+
+
+def test_status_reports_not_running_for_a_non_dict_body():
+    # A learner could point CODEMBLE at something on 11434 that isn't Ollama
+    # at all; the body might parse as JSON but not be a JSON object.
+    def get_json(url: str):
+        return ["not", "a", "dict"]
+
+    status = ollama_status(get_json=get_json)
+    assert status["running"] is False
+    assert status["installed_models"] == []
+
+
+def test_status_skips_malformed_model_entries_without_raising():
+    def get_json(url: str):
+        return {
+            "models": [
+                {"name": "gemma4:12b"},
+                {"no_name_field": "oops"},
+                "not-a-dict-entry",
+                {"name": 12345},
+                None,
+            ]
+        }
+
+    status = ollama_status(get_json=get_json)
+    assert status["running"] is True
+    assert status["installed_models"] == ["gemma4:12b"]

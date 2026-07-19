@@ -411,6 +411,52 @@ def test_picker_select_rejects_unparseable_and_escaping_paths(tmp_path: Path) ->
     ).status_code == 404
 
 
+def test_llm_status_endpoint_reports_provider_and_local_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Fake the transport, not just the value: a real ollama_status() call
+    # would otherwise reach out to 127.0.0.1:11434 for real, making this test
+    # depend on whether Ollama happens to be running on the machine that
+    # executes it.
+    monkeypatch.setattr(
+        "codemble.llm.local_status._get_json",
+        lambda url: {"models": [{"name": "gemma4:12b"}]},
+    )
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    payload = client.get("/api/llm/status").json()
+
+    assert "configured_provider" in payload
+    assert payload["ollama"]["recommended"] == "gemma4:12b"
+    assert payload["ollama"]["fallback"] == "qwen3:8b"
+    assert payload["ollama"]["running"] is True
+    assert payload["ollama"]["installed_models"] == ["gemma4:12b"]
+
+
+def test_llm_status_endpoint_works_before_a_project_is_selected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The in-app setup guide this endpoint feeds is most useful *before* a
+    # learner has picked a project, so this must not 409 like /api/graph does.
+    from codemble.server.app import PickerConfig
+
+    def refused(url: str):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr("codemble.llm.local_status._get_json", refused)
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    response = client.get("/api/llm/status")
+
+    assert response.status_code == 200
+    assert response.json()["configured_provider"] is None
+    assert response.json()["configured_model"] is None
+    assert response.json()["ollama"]["running"] is False
+
+
 def test_foreign_host_headers_are_rejected(tmp_path: Path) -> None:
     graph = PythonAstAdapter().parse(FIXTURE)
     client = TestClient(create_app(graph, tmp_path / "missing"))
