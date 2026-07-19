@@ -202,3 +202,34 @@ def test_picker_browse_refuses_symlink_escape(tmp_path: Path) -> None:
     assert client.get(
         "/api/picker/browse", params={"path": str(jail / "escape")}
     ).status_code == 403
+
+
+def test_picker_recents_come_from_the_progress_store(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import json as json_module
+
+    from codemble.server.app import PickerConfig
+
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    project = tmp_path / "demo"
+    project.mkdir()
+    progress = tmp_path / "data" / "progress"
+    progress.mkdir(parents=True)
+    (progress / "abc.json").write_text(
+        json_module.dumps(
+            {
+                "schema_version": 1,
+                "project_root": str(project),
+                "regions": {"pkg": {"signature": "s"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    assert client.get("/api/picker/recents").json() == {
+        "recents": [{"project_root": str(project), "understood_count": 1}]
+    }

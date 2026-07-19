@@ -14,6 +14,7 @@ from codemble import __version__
 from codemble.adapters.base import Graph
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
+from codemble.progress import list_recent_projects
 
 
 class CheckSubmission(BaseModel):
@@ -113,6 +114,12 @@ def create_app(
         )
         parent = str(resolved.parent) if resolved != jail else None
         return {"path": str(resolved), "parent": parent, "entries": entries}
+
+    @app.get("/api/picker/recents")
+    def picker_recents() -> dict[str, object]:
+        if state.bound or picker is None:
+            raise HTTPException(status_code=409, detail="A project is already selected.")
+        return {"recents": list_recent_projects()}
 
     @app.get("/api/graph")
     def get_graph() -> dict[str, object]:
