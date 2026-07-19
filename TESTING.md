@@ -1,11 +1,14 @@
-# Test Codemble v0.1.0
+# Test Codemble v0.2.0
 
-Codemble needs 3–5 people who built a small Python project with AI and want to
-understand it better. This is a ten-minute first-run test, not a code review.
+Codemble needs people who built a small Python, JavaScript, TypeScript, or mixed
+project with AI and want to understand it better. This is a ten-minute first-run
+test, not a code review. The original Python learner-acceptance issue remains
+open; Phase 1 adds mixed-language evidence without pretending those runs
+happened.
 
 ## Protect your project
 
-- Use a local project with at most 300 Python files, or choose a smaller
+- Use a local project with at most 300 supported source files, or choose a smaller
   subdirectory with `--path`.
 - Do not paste source code, API keys, credentials, or private project names into
   feedback. Codemble itself runs locally and has no telemetry.
@@ -15,16 +18,18 @@ understand it better. This is a ten-minute first-run test, not a code review.
 ## Run the test
 
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.1.0
+pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
 codemble ./path-to-your-project
 ```
 
 Then, without reading the docs first:
 
 1. Identify Home, or choose it if Codemble asks.
-2. Enter one system and open one source structure.
-3. Return to the system, choose **Prove understanding**, and light it.
-4. Quit Codemble, run the same command again, and confirm the system stays lit.
+2. If the project is mixed, focus one language and return to **All**; report any
+   missing system or relationship.
+3. Enter one system and open one source structure.
+4. Return to the system, choose **Prove understanding**, and light it.
+5. Quit Codemble, run the same command again, and confirm the system stays lit.
 
 ## Report what happened
 

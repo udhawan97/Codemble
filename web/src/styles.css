@@ -153,6 +153,82 @@ button:focus-visible,
   color: var(--cm-star);
 }
 
+.language-focus {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--cm-space-sm);
+  overflow-x: auto;
+  color: var(--cm-ink-3);
+  scrollbar-width: none;
+}
+
+.language-focus::-webkit-scrollbar {
+  display: none;
+}
+
+.language-focus__label {
+  flex: 0 0 auto;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.language-focus > div {
+  display: flex;
+  min-width: max-content;
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+}
+
+.language-focus button {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cm-space-xs);
+  padding-inline: var(--cm-space-sm);
+  border: 0;
+  border-inline-end: 1px solid var(--cm-hairline);
+  background: transparent;
+  color: var(--cm-ink-2);
+  cursor: pointer;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  white-space: nowrap;
+}
+
+.language-focus button:last-child {
+  border-inline-end: 0;
+}
+
+.language-focus button[aria-pressed="true"] {
+  background: var(--cm-orbit-low);
+  color: var(--cm-orbit);
+}
+
+.language-focus button small {
+  color: var(--cm-ink-3);
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .language-focus button:hover {
+    background: var(--cm-ground-2);
+    color: var(--cm-ink);
+  }
+
+  .language-focus button[aria-pressed="true"]:hover {
+    background: var(--cm-orbit-low);
+    color: var(--cm-orbit);
+  }
+}
+
 .map-stage {
   position: relative;
   min-width: 0;
@@ -1128,6 +1204,11 @@ button:focus-visible,
   .rail-action,
   .home-readout {
     justify-self: end;
+  }
+
+  .language-focus {
+    grid-row: 2;
+    justify-self: center;
   }
 
   .status-line span {

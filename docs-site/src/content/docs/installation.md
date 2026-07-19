@@ -3,9 +3,9 @@ title: Installation
 description: Requirements and setup, including bring-your-own-key configuration.
 ---
 
-:::note[v0.1.0 tester release]
-The complete Python loop is ready for early testing. Human first-run acceptance
-is still being collected before the roadmap advances to more languages.
+:::note[v0.2.0 polyglot tester release]
+The complete learning loop supports Python, JavaScript, TypeScript, and mixed
+projects. Human first-run evidence is still being collected separately.
 :::
 
 ## Requirements
@@ -16,18 +16,18 @@ is still being collected before the roadmap advances to more languages.
 
 An Anthropic or OpenAI key is optional and enables only explanation prose.
 
-## Install from the v0.1.0 tag
+## Install from the v0.2.0 tag
 
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.1.0
-codemble ./your-python-project
+pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
+codemble ./your-project
 ```
 
 Or run without keeping an installation:
 
 ```bash
-uvx --from git+https://github.com/udhawan97/Codemble.git@v0.1.0 \
-  codemble ./your-python-project
+uvx --from git+https://github.com/udhawan97/Codemble.git@v0.2.0 \
+  codemble ./your-project
 ```
 
 The Python wheel already contains the production web app. Node is needed only
@@ -60,8 +60,13 @@ language lens, and checks — only the prose explanations need the model.
 
 ## Limits that fail honestly
 
-- More than 300 Python files: run `codemble --path ./project/subdirectory`.
+- More than 300 supported source files: run
+  `codemble --path ./project/subdirectory`.
 - Ambiguous startup: choose Home in the app or pass a parser-ranked node with
-  `--entrypoint module.qualname`.
+  `--entrypoint NODE_ID`.
 - Syntax error: the file remains visible as **Unchartable**, with raw source;
   no inner structure or model narration is invented.
+
+Supported source extensions are `.py`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`,
+`.tsx`, `.mts`, and `.cts`. Codemble parses them; it does not run source files,
+package scripts, compilers, or bundlers.

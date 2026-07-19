@@ -1,12 +1,12 @@
 {
   "name": "codemble-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "vite build"
+    "check": "node scripts/check_graph_data.mjs && vite build"
   },
   "dependencies": {
     "@fontsource/inter": "5.2.8",

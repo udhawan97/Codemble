@@ -1,6 +1,6 @@
-name: v0.1.0 early-tester report
+name: v0.2.0 early-tester report
 description: Report your first unaided run without sharing private code.
-labels: ["feedback", "v0.1.0"]
+labels: ["feedback"]
 body:
   - type: markdown
     attributes:
@@ -12,8 +12,8 @@ body:
     attributes:
       label: Install route
       options:
-        - pipx from v0.1.0 Git tag
-        - uvx from v0.1.0 Git tag
+        - pipx from v0.2.0 Git tag
+        - uvx from v0.2.0 Git tag
         - source checkout
     validations:
       required: true

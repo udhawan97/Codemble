@@ -32,7 +32,9 @@ own it. You bring your own Claude or OpenAI API key; everything else runs
 locally on your machine.
 
 :::note[Status]
-v0.1.0 is the Phase 0 tester release. The complete Python loop runs end to end;
-3–5 unaided learner runs are still required before Phase 1 begins. Follow on
-[GitHub](https://github.com/udhawan97/Codemble) — the roadmap stays public.
+v0.2.0 is the Phase 1 tester release. Python, JavaScript, TypeScript, and mixed
+projects run through the same local learning loop. The original unaided Python
+learner-acceptance issue remains open; technical completion does not substitute
+for human evidence. Follow on [GitHub](https://github.com/udhawan97/Codemble) —
+the roadmap stays public.
 :::

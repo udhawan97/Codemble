@@ -46,7 +46,7 @@ npm run check    # astro check (CI gate)
 
 - Branch prefixes: `feat/`, `fix/`, `docs/`, `chore/`.
 - [Conventional Commits](https://www.conventionalcommits.org/), signed off (`git commit -s`, DCO).
-- Fill in the PR template; link the milestone (M1–M6) your change belongs to.
+- Fill in the PR template; link the current milestone from `CLAUDE.md`.
 
 ## Tests & quality gates
 

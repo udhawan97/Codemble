@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Version / commit
-      placeholder: codemble 0.1.0 / abc1234
+      placeholder: codemble 0.2.0 / abc1234
     validations:
       required: true
   - type: dropdown

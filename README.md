@@ -19,8 +19,10 @@
 <p align="center"><strong>Local-first · Your key, your machine · Zero invented facts</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-v0.1.0_·_tester_release-facc15?style=flat-square" alt="Status">
+  <img src="https://img.shields.io/github/v/release/udhawan97/Codemble?style=flat-square&label=release" alt="Latest release">
+  <img src="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status">
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/source-Python_·_JavaScript_·_TypeScript-67e8f9?style=flat-square" alt="Python, JavaScript, and TypeScript source support">
   <img src="https://img.shields.io/badge/runs-100%25_locally-2ea44f?style=flat-square" alt="Local-first">
   <img src="https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square" alt="Apache 2.0">
 </p>
@@ -37,8 +39,10 @@
 ---
 
 > [!NOTE]
-> **v0.1.0 is the Phase 0 tester release.** The complete Python loop works;
-> human onboarding evidence is still being collected before Phase 1 begins.
+> **v0.2.0 is the Phase 1 tester release.** Python, JavaScript, TypeScript, and
+> mixed projects share one parser-proven galaxy with language-specific Lens
+> notes and a view-only language focus. The original unaided learner-acceptance
+> issue remains open; technical completion is not being counted as human proof.
 
 <p align="center">
   <img src="assets/demo.gif" alt="Codemble maps a Python fixture, enters Home, runs graph-derived checks, and lights the system" width="960">
@@ -48,7 +52,8 @@
 
 The AI wrote it. That doesn't mean you own it. Codemble parses your project
 into a real structural map — no hallucinated architecture — and renders it as a
-galaxy you can actually learn from.
+galaxy you can actually learn from. The tagged release maps Python, JavaScript,
+TypeScript, and mixed projects without running their code or package scripts.
 
 | You see | It means |
 | --- | --- |
@@ -80,14 +85,14 @@ No XP. No streaks. One score that matters: how much of your sky is lit.
 Install the tagged package in an isolated environment—Node is not required:
 
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.1.0
+pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
 codemble ./your-ai-built-project
 ```
 
 Or run it without a persistent install:
 
 ```bash
-uvx --from git+https://github.com/udhawan97/Codemble.git@v0.1.0 \
+uvx --from git+https://github.com/udhawan97/Codemble.git@v0.2.0 \
   codemble ./your-ai-built-project
 ```
 
@@ -105,9 +110,9 @@ codemble ./your-ai-built-project
 
 The command parses locally, serves the packaged web app on a free localhost
 port, and opens the deterministic galaxy. Pass `--no-open` to print the URL
-without launching a browser. Projects above 300 Python files must choose an
-explicit scope with `codemble --path ./project/subdirectory`; use
-`--entrypoint module.qualname` to choose one parser-ranked Home from the CLI.
+without launching a browser. Projects above 300 supported source files must
+choose an explicit scope with `codemble --path ./project/subdirectory`; use
+`--entrypoint NODE_ID` to choose one parser-ranked Home from the CLI.
 
 </details>
 
@@ -138,10 +143,10 @@ edges are labeled uncertain. A wrong explanation is our highest-severity bug —
 
 ## What's brewing
 
-**NOW** — Phase 0 v0.1.0: collect first-run evidence from 3–5 Python learners
-on the complete parser → galaxy → study → checks → illumination loop.
-**NEXT** — TypeScript/JavaScript adapter, language switching for polyglot
-projects, more languages.
+**NOW** — Phase 1 v0.2.0: collect first-run evidence on Python, JavaScript,
+TypeScript, and mixed projects while the original Python learner-acceptance
+issue remains open.
+**NEXT** — Go/Rust/Java adapters plus level-of-detail rendering for larger repos.
 **LATER** — shareable read-only galaxy links, new quest types, the loud launch.
 
 Details: [roadmap](https://udhawan97.github.io/Codemble/roadmap/) · progress
@@ -169,9 +174,9 @@ traffic is the LLM calls you configure with your own key.
 
 Issues, PRs, and screenshots of your galaxy are all welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md). Especially valuable early: run Codemble on
-your own AI-built project and report anything it explains wrong. The focused
-[early-tester guide](TESTING.md) takes about ten minutes and asks for confusion
-verbatim—never paste private source or API keys.
+your own AI-built project in any supported language and report anything it gets
+wrong. The focused [early-tester guide](TESTING.md) takes about ten minutes and
+asks for confusion verbatim—never paste private source or API keys.
 
 ## License
 
