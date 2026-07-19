@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- Bare `codemble` now opens the browser to an in-app project picker: browse
+  home folders, reopen recent projects, and re-scope over-cap projects without
+  touching the terminal.
+- The local server rejects foreign `Host` headers, keeping the picker API
+  reachable only from the learner's own machine.
+
+### Changed
+- `codemble` with flags but no path serves the picker instead of the current
+  directory; pass a path (or `--path`) for the previous behaviour.
+
 ### Changed
 - Rebuilt the packaged app on the Formal Edo palette, so the galaxy and the
   public site finally share one set of values. The app's tokens already imported

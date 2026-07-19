@@ -78,19 +78,17 @@ No XP. No streaks. One score that matters: how much of your sky is lit.
 
 ## Setup
 
-Install the tagged package in an isolated environment—Node is not required:
+### Run it
 
 ```bash
-pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0
-codemble ./your-ai-built-project
+uvx codemble            # or: pipx install codemble && codemble
 ```
 
-Or run it without a persistent install:
+Codemble opens your browser — pick your project folder there. To skip the
+picker, pass a path: `codemble ./your-ai-built-project`.
 
-```bash
-uvx --from git+https://github.com/udhawan97/Codemble.git@v0.2.0 \
-  codemble ./your-ai-built-project
-```
+> Until the first PyPI release (v0.3.0) lands, install from the tag instead:
+> `pipx install git+https://github.com/udhawan97/Codemble.git@v0.2.0`
 
 <details>
 <summary><strong>Run from source</strong></summary>
@@ -107,8 +105,10 @@ codemble ./your-ai-built-project
 The command parses locally, serves the packaged web app on a free localhost
 port, and opens the deterministic galaxy. Pass `--no-open` to print the URL
 without launching a browser. Projects above 300 supported source files must
-choose an explicit scope with `codemble --path ./project/subdirectory`; use
-`--entrypoint NODE_ID` to choose one parser-ranked Home from the CLI.
+choose an explicit scope with `codemble --path ./project/subdirectory` — the
+in-app picker prompts for the same scope choice when you pick an over-cap
+folder there instead. Use `--entrypoint NODE_ID` to choose one parser-ranked
+Home from the CLI.
 
 </details>
 
