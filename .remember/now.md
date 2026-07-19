@@ -13,3 +13,9 @@ Designed easy/expert modes + Ollama narration (spec d90139f, plan 7aeb9bb); phas
 Shipped folder-picker install UX (recents + browser, one-shot binding): 12 exec tasks → merged b7c6590 → v0.3.0 on PyPI; flagged classifiers, broken links, .remember for 0.3.1.
 ## 09:09 | friendly-wizard-claude/work-planning-f2e933
 Designed easy/expert audience modes + local Ollama support (spec d90139f, plan 7aeb9bb); Phase 1 backend: Task 1 done (neighbor direction), Task 2 testing (flagged dead NodeKind.method code).
+## 09:11 | friendly-wizard-claude/web-app-install-ux-b9f408
+Shipped folder picker (bare `codemble` → browser picker); 20 commits → main; v0.3.0+v0.3.1 on PyPI (trusted publisher wired, classifiers + SPDX license + README links fixed).
+## 09:13 | friendly-wizard-claude/work-planning-f2e933
+Reopened #13; designed audience-modes (easy/expert + local Ollama/Gemma4 + structural-summaries); backend impl underway (2 of 11 tasks done, 9 remain).
+## 10:15 | friendly-wizard-claude/web-app-install-ux-b9f408
+Shipped in-app folder picker install UX (bare codemble → select project via UI, stores recents); released v0.3.0 on PyPI, then v0.3.1 fixing metadata gaps + excluding agent notes; documented uv prereq w/ icons on README/docs-site/GitHub; verified uvx codemble works e2e.
