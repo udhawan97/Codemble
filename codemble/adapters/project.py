@@ -3,15 +3,50 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 from codemble.adapters.base import AdapterParseError, Graph, LanguageAdapter, Node
-from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
+from codemble.adapters.discovery import (
+    OwnedSourceFiles,
+    SourceDiscoveryError,
+    SourceOwnership,
+    discover_project_sources,
+)
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 
 class ProjectParseError(AdapterParseError):
     """A project cannot be composed into one honest graph."""
+
+
+class ProjectScaleError(ProjectParseError):
+    """A discovered project needs a smaller learner-selected scope."""
+
+    def __init__(self, intake: ProjectIntake, scale_cap: int) -> None:
+        self.intake = intake
+        self.scale_cap = scale_cap
+        super().__init__(
+            f"found {len(intake.files)} supported source files; Codemble is capped at "
+            f"{scale_cap}. Re-run with `codemble --path PATH` to choose a project "
+            "subdirectory."
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectIntake:
+    """One supported project scope with adapter ownership resolved once."""
+
+    path: Path
+    root: Path
+    files: tuple[Path, ...]
+    _ownership: tuple[OwnedSourceFiles, ...]
+
+    def _files_for(self, language: str) -> tuple[Path, ...]:
+        return next(
+            (owned.files for owned in self._ownership if owned.owner == language),
+            (),
+        )
 
 
 class ProjectParser:
@@ -38,45 +73,72 @@ class ProjectParser:
 
         return tuple(adapter.language for adapter in self._adapters)
 
-    def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
-        """Return all files accepted by the registered language adapters."""
+    scale_cap = 300
 
+    def intake(self, path: Path, *, explicit: bool = False) -> ProjectIntake:
+        """Resolve one project scope and every adapter's owned files."""
+
+        normalized = path.expanduser().resolve()
         extensions = frozenset().union(*(adapter.file_extensions for adapter in self._adapters))
-        try:
-            discoveries = tuple(
-                discover_source_files(
-                    path,
-                    adapter.file_extensions,
-                    ignored_directories=adapter.ignored_directories,
-                )
-                for adapter in self._adapters
+        ownership = tuple(
+            SourceOwnership(
+                owner=adapter.language,
+                extensions=adapter.file_extensions,
+                ignored_directories=adapter.ignored_directories,
             )
+            for adapter in self._adapters
+        )
+        try:
+            discovery = discover_project_sources(normalized, ownership)
         except SourceDiscoveryError as error:
             raise ProjectParseError(str(error)) from error
-        files = tuple(sorted({file for discovery in discoveries for file in discovery.files}))
+        files = discovery.files
         if not files:
             expected = ", ".join(sorted(extensions))
             raise ProjectParseError(
-                f"no supported source files found under: {path.expanduser().resolve()} "
+                f"no supported source files found under: {normalized} "
                 f"(expected {expected})"
             )
-        return discoveries[0].root, files
+        intake = ProjectIntake(
+            path=normalized,
+            root=discovery.root,
+            files=files,
+            _ownership=discovery.ownership,
+        )
+        if not explicit and len(files) > self.scale_cap:
+            raise ProjectScaleError(intake, self.scale_cap)
+        return intake
 
-    def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
+    def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
+        """Return all files accepted by the registered language adapters."""
+
+        intake = self.intake(path)
+        return intake.root, intake.files
+
+    def parse(
+        self,
+        source: Path | ProjectIntake,
+        *,
+        entrypoint: str | None = None,
+        explicit: bool = False,
+    ) -> Graph:
         """Parse every detected language and return one deterministic graph."""
 
-        project_root, files = self.discover(path)
-        suffixes = {file.suffix.lower() for file in files}
+        intake = (
+            source
+            if isinstance(source, ProjectIntake)
+            else self.intake(source, explicit=explicit)
+        )
         graphs: list[Graph] = []
         for adapter in self._adapters:
-            if adapter.file_extensions.isdisjoint(suffixes):
+            files = intake._files_for(adapter.language)
+            if not files:
                 continue
             try:
-                graphs.append(adapter.parse(path))
+                graphs.append(adapter.parse_files(intake.root, files))
             except AdapterParseError as error:
                 raise ProjectParseError(str(error)) from error
-        return _compose_graphs(tuple(graphs), project_root, entrypoint)
-
+        return _compose_graphs(tuple(graphs), intake.root, entrypoint)
 
 def _compose_graphs(
     graphs: tuple[Graph, ...],
@@ -124,4 +186,9 @@ def _compose_graphs(
         raise ProjectParseError(str(error)) from error
 
 
-__all__ = ["ProjectParseError", "ProjectParser"]
+__all__ = [
+    "ProjectIntake",
+    "ProjectParseError",
+    "ProjectParser",
+    "ProjectScaleError",
+]

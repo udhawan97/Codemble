@@ -186,5 +186,14 @@ class LanguageAdapter(Protocol):
     def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
         """Parse ``path`` into a graph without inventing source structure."""
 
+    def parse_files(
+        self,
+        project_root: Path,
+        files: tuple[Path, ...],
+        *,
+        entrypoint: str | None = None,
+    ) -> Graph:
+        """Parse files already discovered as owned by this adapter."""
+
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only language constructs proven present in ``source``."""

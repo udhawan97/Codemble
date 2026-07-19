@@ -93,10 +93,10 @@ human-approved only; never self-promote.
 
 ## Architecture rules
 
-1. **LanguageAdapter seam:** every language implements `parse(path) -> Graph`
-   and `concepts(node) -> [ConceptAnnotation]`. Python first via stdlib `ast`;
-   all later languages via tree-sitter. Nothing above the seam hardcodes a
-   language.
+1. **LanguageAdapter seam:** every language implements `discover(path)`,
+   `parse(path) -> Graph`, `parse_files(root, files) -> Graph`, and
+   `concepts(node) -> [ConceptAnnotation]`. Python first via stdlib `ast`; all
+   later languages via tree-sitter. Nothing above the seam hardcodes a language.
 2. **The graph is render-ready:** graph layer computes language, LOC,
    centrality, entrypoint rank, region id, understood-state. The renderer is a
    pure consumer — **no layout or game logic in the frontend.** This keeps the
@@ -159,8 +159,8 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-19 ·
 Session note: architecture-deepening maintenance is in progress after the verified
-v0.2.0 release; graph finalization is centralized while issue #13 remains open
-for human tester evidence.
+v0.2.0 release; graph finalization and project intake are centralized while issue
+#13 remains open for human tester evidence.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -275,7 +275,7 @@ wheel install, web build, docs build, and downloaded release asset all pass.
 
 ### M11 — Architecture deepening maintenance
 - [x] Centralize canonical graph finalization across language adapters and project composition
-- [ ] Deepen `ProjectParser` project intake and reuse discovered file evidence
+- [x] Deepen `ProjectParser` project intake and reuse discovered file evidence
 - [ ] Move learner-session transitions behind one testable frontend interface
 - [ ] Reuse one internal JS/TS syntax-evidence index across parser passes
 
@@ -320,6 +320,7 @@ JS/TS certainty and concept evidence remain parser-proven through the unchanged
 | 2026-07-19 | Language focus is a frontend projection over the immutable mixed graph, not a parser mode or saved preference | Filtering must never mutate coordinates, progress, uncertainty, or parser truth; cross-language navigation remains available |
 | 2026-07-19 | v0.2.0 is tagged from exact-main commit `b6b7776` with a wheel and SHA256SUMS release asset | A release is complete only after CI, live docs, fresh download, checksum, isolated install, and mixed parse all pass |
 | 2026-07-19 | Canonical graph finalization is one graph interface shared by adapters and project composition | Home selection, edge deduplication, centrality, annotation ordering, and layout are language-neutral truth and must not drift per adapter |
+| 2026-07-19 | `ProjectIntake` carries one normalized scope and its adapter-owned files from scale selection through parsing | `ProjectParser` owns the 300-file policy, and adapters must not rediscover file evidence that project intake already resolved |
 
 ## Non-Goals — do NOT build (point here when asked)
 

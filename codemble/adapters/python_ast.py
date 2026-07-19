@@ -306,6 +306,17 @@ class PythonAstAdapter:
 
     def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
         project_root, files = self.discover(path)
+        return self.parse_files(project_root, files, entrypoint=entrypoint)
+
+    def parse_files(
+        self,
+        project_root: Path,
+        files: tuple[Path, ...],
+        *,
+        entrypoint: str | None = None,
+    ) -> Graph:
+        """Parse Python files already owned by this adapter."""
+
         parsed_files = tuple(_parse_file(file, project_root) for file in files)
 
         nodes: list[Node] = []

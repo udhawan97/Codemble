@@ -130,6 +130,17 @@ class JavaScriptTypeScriptAdapter:
         """Parse ``path`` using official tree-sitter grammar wheels."""
 
         project_root, files = self.discover(path)
+        return self.parse_files(project_root, files, entrypoint=entrypoint)
+
+    def parse_files(
+        self,
+        project_root: Path,
+        files: tuple[Path, ...],
+        *,
+        entrypoint: str | None = None,
+    ) -> Graph:
+        """Parse JS/TS files already owned by this adapter."""
+
         parsed_files = tuple(_parse_file(file, project_root) for file in files)
         parsed_by_relative = {parsed.relative_path: parsed for parsed in parsed_files}
 

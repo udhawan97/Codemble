@@ -8,11 +8,13 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 from codemble import __version__
-from codemble.adapters.project import ProjectParseError, ProjectParser
+from codemble.adapters.project import (
+    ProjectIntake,
+    ProjectParseError,
+    ProjectParser,
+    ProjectScaleError,
+)
 from codemble.server.runtime import serve_project
-
-_SCALE_CAP = 300
-
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -63,7 +65,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.command == "parse":
         try:
             graph = ProjectParser().parse(
-                arguments.path, entrypoint=arguments.entrypoint
+                arguments.path,
+                entrypoint=arguments.entrypoint,
+                explicit=True,
             )
             graph.write_json(arguments.out)
         except (OSError, ProjectParseError) as error:
@@ -101,30 +105,32 @@ def choose_project_scope(
     interactive: bool,
     input_fn: Callable[[str], str] = input,
     output_fn: Callable[[str], None] = print,
-) -> Path:
+) -> ProjectIntake:
     """Require an intentional subdirectory for projects above the v1 scale cap."""
 
     parser = ProjectParser()
-    project_root, files = parser.discover(requested)
-    if explicit or len(files) <= _SCALE_CAP:
-        return requested
-    if not interactive:
-        raise ProjectParseError(
-            f"found {len(files)} supported source files; Codemble is capped at {_SCALE_CAP}. "
-            "Re-run with `codemble --path PATH` to choose a project subdirectory."
-        )
+    try:
+        return parser.intake(requested, explicit=explicit)
+    except ProjectScaleError as error:
+        if not interactive:
+            raise
+        intake = error.intake
+        scale_cap = error.scale_cap
 
     counts: dict[str, int] = {}
-    for file in files:
-        relative = file.relative_to(project_root)
+    for file in intake.files:
+        relative = file.relative_to(intake.root)
         directory = relative.parts[0] if len(relative.parts) > 1 else "."
         counts[directory] = counts.get(directory, 0) + 1
     suggestions = ", ".join(
         f"{directory} ({count})"
-        for directory, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:6]
+        for directory, count in sorted(
+            counts.items(), key=lambda item: (-item[1], item[0])
+        )[:6]
     )
     output_fn(
-        f"Codemble found {len(files)} supported source files; the limit is {_SCALE_CAP}."
+        f"Codemble found {len(intake.files)} supported source files; "
+        f"the limit is {scale_cap}."
     )
     if suggestions:
         output_fn(f"Top scopes: {suggestions}")
@@ -133,21 +139,19 @@ def choose_project_scope(
         answer = input_fn("Subdirectory to map (or q to quit): ").strip()
         if answer.lower() in {"q", "quit"}:
             raise ProjectParseError("project scope selection cancelled")
-        candidate = (project_root / answer).expanduser().resolve()
-        if not candidate.is_relative_to(project_root):
+        candidate = (intake.root / answer).expanduser().resolve()
+        if not candidate.is_relative_to(intake.root):
             output_fn("Choose a subdirectory inside the project root.")
             continue
         try:
-            _, scoped_files = parser.discover(candidate)
+            return parser.intake(candidate)
+        except ProjectScaleError as error:
+            output_fn(
+                f"That scope still has {len(error.intake.files)} supported source files; "
+                "choose a smaller one."
+            )
         except ProjectParseError as error:
             output_fn(str(error))
-            continue
-        if len(scoped_files) > _SCALE_CAP:
-            output_fn(
-                f"That scope still has {len(scoped_files)} supported source files; choose a smaller one."
-            )
-            continue
-        return candidate
 
 
 if __name__ == "__main__":

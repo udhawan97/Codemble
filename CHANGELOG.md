@@ -9,6 +9,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Centralized graph canonicalization, Home selection, centrality, annotation
   normalization, edge deduplication, and deterministic layout behind one graph
   finalization interface shared by every language adapter and project composition.
+- Moved scale guarding and scope selection into `ProjectParser`, with one
+  reusable project intake that preserves adapter file ownership through parsing
+  instead of rediscovering the same scope in each adapter.
 
 ## [0.2.0] - 2026-07-19
 
