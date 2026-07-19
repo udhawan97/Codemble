@@ -155,10 +155,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M5** · Last updated: 2026-07-19 · Session note: M4 language
-lens and star chart complete — eight Python concepts are AST-proven and anchored
-to source, session study progress stays separate from graph-derived understanding,
-and desktop/320 px browser QA is clean; all gates green.
+**Current milestone: M6** · Last updated: 2026-07-19 · Session note: M5 checks,
+illumination, and persistence complete — four check families are generated and
+scored only from the graph, file-scoped progress survives restart, and the real
+desktop/320 px active-recall flow is clean; all gates green.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -212,9 +212,9 @@ pulling the key degrades gracefully.
 location; chart updates as concepts are studied.
 
 ### M5 — Checks + illumination + persistence (weeks 6–7)
-- [ ] Check generator (four types), answers validated from graph only
-- [ ] Region "understood" flow → permanent lighting
-- [ ] Persistence in `~/.codemble/`; changed file re-dims only its region
+- [x] Check generator (four types), answers validated from graph only
+- [x] Region "understood" flow → permanent lighting
+- [x] Persistence in `~/.codemble/`; changed file re-dims only its region
 
 **Acceptance:** no check answer ever comes from the LLM; progress survives
 restart; editing one file re-dims only that region.
@@ -252,6 +252,7 @@ and lights up at least one system.
 | 2026-07-19 | `StudyService.study(node_id)` is the study seam; provider adapters expose only `complete(prompt)` | Source loading, prompt construction, validation, and caching stay local while the two true external transports remain replaceable |
 | 2026-07-19 | `~/.codemble/config` accepts TOML (or JSON) and validated explanations cache by prompt/provider/model/node/file hash | Keeps BYO configuration readable and prevents stale prose after source or model changes |
 | 2026-07-19 | Graph schema 2 carries parser-owned concept annotations; star-chart studied state is session-local while understood state comes only from checks | The Lens can teach exact syntax without guessing, and viewing a structure cannot masquerade as mastery |
+| 2026-07-19 | `CheckService` owns four deterministic graph-only check families; `ProgressStore` owns atomic region signatures separately from the graph parser | No model can decide correctness, and changed source invalidates only the region whose file evidence changed |
 
 ## Non-Goals — do NOT build (point here when asked)
 

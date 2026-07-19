@@ -30,3 +30,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Python Lens notes anchored to exact source lines plus a language star chart
   that separates concepts encountered, structures studied this session, and
   graph-derived understanding without inventing progress.
+- Four deterministic active-check families derived and scored only from call
+  edges, import edges, direct callers, and parser-ranked entrypoints.
+- Region illumination persisted atomically under `~/.codemble/progress`, with
+  per-region file signatures so editing one file re-dims only its own system.
+- Responsive System check flow with explicit wrong-answer evidence, suite
+  progress, restart-safe completion, and star-chart understanding updates.

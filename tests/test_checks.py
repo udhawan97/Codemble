@@ -1,0 +1,76 @@
+"""Graph-only check generation and file-scoped progress contracts."""
+
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.checks import CheckService, generate_checks
+from codemble.progress import ProgressStore
+
+FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+
+
+def test_home_region_has_all_four_graph_derived_check_types() -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    checks = generate_checks(graph, "app")
+
+    assert {check.kind for check in checks} == {
+        "first-call",
+        "direct-importer",
+        "removal-impact",
+        "entrypoint",
+    }
+    assert all(check.answer_ids for check in checks)
+    assert all(check.evidence for check in checks)
+    public = [check.public(passed=False) for check in checks]
+    assert all("answer_ids" not in question for question in public)
+
+
+def test_only_the_complete_exact_suite_lights_a_region(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path)
+    service = CheckService(graph, progress)
+    checks = generate_checks(graph, "app")
+
+    first = checks[0]
+    wrong = next(option.id for option in first.options if option.id not in first.answer_ids)
+    result = service.submit("app", first.id, [wrong])
+    assert result["correct"] is False
+    assert not progress.path.exists()
+
+    for index, check in enumerate(checks):
+        result = service.submit("app", check.id, list(check.answer_ids))
+        assert result["correct"] is True
+        assert result["region_understood"] is (index == len(checks) - 1)
+
+    hydrated = service.graph()
+    assert next(region for region in hydrated.regions if region.id == "app").understood
+    assert all(node.understood for node in hydrated.nodes if node.region == "app")
+
+    restarted = CheckService(graph, ProgressStore(graph, tmp_path))
+    assert restarted.for_region("app")["region_understood"] is True
+
+
+def test_editing_one_file_redims_only_its_region(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    shutil.copytree(FIXTURE, project)
+    graph = PythonAstAdapter().parse(project)
+    progress_root = tmp_path / "progress"
+    progress = ProgressStore(graph, progress_root)
+    progress.mark_understood("app")
+    progress.mark_understood("pkg.util")
+
+    app_file = project / "app.py"
+    app_file.write_text(
+        app_file.read_text(encoding="utf-8") + "\n# changed after learning\n",
+        encoding="utf-8",
+    )
+    changed_graph = PythonAstAdapter().parse(project)
+    restarted = ProgressStore(changed_graph, progress_root)
+
+    assert restarted.understood_regions() == frozenset({"pkg.util"})
+    hydrated = restarted.hydrated_graph()
+    assert not next(region for region in hydrated.regions if region.id == "app").understood
+    assert next(region for region in hydrated.regions if region.id == "pkg.util").understood

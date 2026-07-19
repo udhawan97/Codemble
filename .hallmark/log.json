@@ -15,5 +15,14 @@
     "enrichment": "none",
     "brief": "Codemble language star chart",
     "variation": "syntax inventory rows with graph-derived progress"
+  },
+  {
+    "date": "2026-07-19",
+    "macrostructure": "Focused Readout",
+    "theme": "Observatory Instrument",
+    "enrichment": "none",
+    "brief": "Codemble graph-only active recall",
+    "variation": "one-question system overlay with a single illumination payoff",
+    "slop_test": "pass (plain controls, complete states, 320 px verified)"
   }
 ]
