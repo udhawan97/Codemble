@@ -208,6 +208,7 @@ def test_neighbors_record_edge_direction(tmp_path: Path) -> None:
     directions = {neighbor["direction"] for neighbor in neighbors}
     assert directions <= {"inbound", "outbound"}
     assert any(neighbor["direction"] == "outbound" for neighbor in neighbors)
+    assert any(neighbor["direction"] == "inbound" for neighbor in neighbors)
 
 
 def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> None:
