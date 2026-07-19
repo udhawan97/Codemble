@@ -38,7 +38,7 @@ def test_large_project_requires_an_explicit_or_interactive_scope(tmp_path: Path)
 
     with pytest.raises(ProjectParseError, match="Re-run with `codemble --path PATH`"):
         choose_project_scope(project, explicit=False, interactive=False)
-    assert choose_project_scope(project, explicit=True, interactive=False) == project
+    assert choose_project_scope(project, explicit=True, interactive=False).path == project.resolve()
 
     output: list[str] = []
     selected = choose_project_scope(
@@ -48,5 +48,5 @@ def test_large_project_requires_an_explicit_or_interactive_scope(tmp_path: Path)
         input_fn=lambda _prompt: "small",
         output_fn=output.append,
     )
-    assert selected == small
+    assert selected.path == small.resolve()
     assert any("301 supported source files" in message for message in output)

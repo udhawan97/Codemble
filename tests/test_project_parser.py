@@ -7,9 +7,10 @@ from pathlib import Path
 
 import pytest
 
+import codemble.adapters.discovery as source_discovery
 from codemble.adapters.base import ConceptAnnotation, Graph, Node
 from codemble.adapters.discovery import discover_source_files
-from codemble.adapters.project import ProjectParseError, ProjectParser
+from codemble.adapters.project import ProjectIntake, ProjectParseError, ProjectParser
 from codemble.adapters.python_ast import PythonAstAdapter
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
@@ -26,6 +27,15 @@ class _FixtureAdapter:
 
     def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
         root, files = self.discover(path)
+        return self.parse_files(root, files, entrypoint=entrypoint)
+
+    def parse_files(
+        self,
+        root: Path,
+        files: tuple[Path, ...],
+        *,
+        entrypoint: str | None = None,
+    ) -> Graph:
         nodes: list[Node] = []
         hashes: dict[str, str] = {}
         for file in files:
@@ -66,8 +76,13 @@ class _FixtureAdapter:
 class _CollidingAdapter(_FixtureAdapter):
     language = "javascript"
 
-    def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
-        root, files = self.discover(path)
+    def parse_files(
+        self,
+        root: Path,
+        files: tuple[Path, ...],
+        *,
+        entrypoint: str | None = None,
+    ) -> Graph:
         relative = files[0].relative_to(root).as_posix()
         raw = files[0].read_bytes()
         return Graph(
@@ -93,6 +108,46 @@ class _CollidingAdapter(_FixtureAdapter):
 
 def test_default_project_parser_preserves_the_python_graph() -> None:
     assert ProjectParser().parse(FIXTURE).to_json() == PythonAstAdapter().parse(FIXTURE).to_json()
+
+
+def test_project_intake_reuses_discovered_file_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
+    adapter = PythonAstAdapter()
+    parser = ProjectParser((adapter,))
+
+    intake = parser.intake(FIXTURE)
+    monkeypatch.setattr(
+        adapter,
+        "parse",
+        lambda *_args, **_kwargs: pytest.fail("path-based parse rediscovered the project"),
+    )
+    graph = parser.parse(intake)
+
+    assert isinstance(intake, ProjectIntake)
+    assert intake.root == FIXTURE.resolve()
+    assert len(intake.files) == 11
+    assert graph.to_json() == PythonAstAdapter().parse(FIXTURE).to_json()
+
+
+def test_project_intake_resolves_all_adapter_ownership_in_one_walk(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "app.py").write_text("pass\n", encoding="utf-8")
+    (tmp_path / "main.ts").write_text("export function main() {}\n", encoding="utf-8")
+    walk = source_discovery.os.walk
+    walk_count = 0
+
+    def counting_walk(path: Path):  # type: ignore[no-untyped-def]
+        nonlocal walk_count
+        walk_count += 1
+        return walk(path)
+
+    monkeypatch.setattr(source_discovery.os, "walk", counting_walk)
+
+    intake = ProjectParser((PythonAstAdapter(), _FixtureAdapter())).intake(tmp_path)
+
+    assert walk_count == 1
+    assert [file.name for file in intake.files] == ["app.py", "main.ts"]
 
 
 def test_project_parser_composes_languages_and_resolves_home_globally(

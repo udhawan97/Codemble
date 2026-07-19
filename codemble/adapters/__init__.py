@@ -8,7 +8,12 @@ from codemble.adapters.base import (
     LanguageAdapter,
     Node,
 )
-from codemble.adapters.project import ProjectParseError, ProjectParser
+from codemble.adapters.project import (
+    ProjectIntake,
+    ProjectParseError,
+    ProjectParser,
+    ProjectScaleError,
+)
 from codemble.adapters.python_ast import PythonAstAdapter, PythonParseError
 from codemble.adapters.typescript_tree_sitter import (
     JavaScriptTypeScriptAdapter,
@@ -26,6 +31,8 @@ __all__ = [
     "JavaScriptTypeScriptParseError",
     "PythonAstAdapter",
     "PythonParseError",
+    "ProjectIntake",
     "ProjectParseError",
     "ProjectParser",
+    "ProjectScaleError",
 ]

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import uvicorn
 
-from codemble.adapters.project import ProjectParser
+from codemble.adapters.project import ProjectIntake, ProjectParser
 from codemble.server.app import create_app
 
 
@@ -22,7 +22,7 @@ def available_port(host: str = "127.0.0.1") -> int:
 
 
 def serve_project(
-    path: Path,
+    path: Path | ProjectIntake,
     *,
     host: str = "127.0.0.1",
     port: int = 0,
