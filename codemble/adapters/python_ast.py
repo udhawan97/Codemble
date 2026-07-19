@@ -13,6 +13,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
+from codemble.graph.layout import layout_graph
 
 _IGNORED_DIRECTORIES = {"venv", ".venv", "node_modules", "__pycache__"}
 _APP_FACTORIES = {"FastAPI", "Flask", "Typer"}
@@ -268,7 +269,7 @@ class PythonAstAdapter:
                 key=lambda node: (node.entrypoint_rank, node.id),  # type: ignore[arg-type]
             )
         )
-        return Graph(
+        return layout_graph(Graph(
             nodes=tuple(sorted(nodes, key=lambda node: node.id)),
             edges=tuple(
                 sorted(
@@ -289,7 +290,7 @@ class PythonAstAdapter:
             partial_files=tuple(
                 parsed.relative_path for parsed in parsed_files if parsed.tree is None
             ),
-        )
+        ))
 
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Concept extraction arrives in M4; returning none invents nothing."""
@@ -419,7 +420,7 @@ def _module_node(parsed: _ParsedFile) -> Node:
 
 
 def _region_for(module: str) -> str:
-    return module.split(".", 1)[0]
+    return module
 
 
 def _entrypoint_ranks(

@@ -10,7 +10,7 @@ from the parsed structure of your code:
 
 | Visual | Meaning |
 | --- | --- |
-| Star system | A module or package |
+| Star system | One source module |
 | Planet | A function or class |
 | Route between systems | An import |
 | Edge between planets | A call (uncertain calls are labeled "possible call") |

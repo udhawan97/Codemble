@@ -88,6 +88,7 @@ export default defineConfig({
             { label: "Contributing", slug: "contributing" },
             { label: "Roadmap", slug: "roadmap" },
             { label: "Build log: M1 parser", slug: "progress/m1-parser" },
+            { label: "Build log: M2 galaxy", slug: "progress/m2-galaxy" },
           ],
         },
       ],

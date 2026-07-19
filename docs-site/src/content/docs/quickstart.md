@@ -5,16 +5,18 @@ description: From `codemble ./my-project` to your first lit star system.
 
 ## 1. Point it at your project
 
+From a source checkout, build the local web app once and point Codemble at a
+Python project:
+
 ```bash
-codemble parse ./my-project --out graph.json
+cd web && npm install && npm run build && cd ..
+codemble ./my-project
 ```
 
-The current M1 build parses Python into deterministic, schema-versioned graph
-JSON. It keeps syntax-error files visible and labels unresolved calls instead of
-guessing. More languages are on the [roadmap](/Codemble/roadmap/).
-
-The browser command (`codemble ./my-project`) arrives with M2. The remaining
-steps describe the complete Phase 0 learning loop now being built.
+Codemble parses locally, chooses a free localhost port, and opens the galaxy.
+It keeps syntax-error files visible and labels unresolved calls instead of
+guessing. Use `--no-open` when you want to copy the printed URL yourself.
+More languages are on the [roadmap](/Codemble/roadmap/).
 
 ## 2. Find Home
 
@@ -27,7 +29,7 @@ The camera moves on rails through three levels:
 
 | Level | What you see | What it's for |
 | --- | --- | --- |
-| **Galaxy** | Modules as star systems, imports as routes | Orientation |
+| **Galaxy** | Source modules as star systems, imports as routes | Orientation |
 | **System** | Functions and classes as planets in tidy orbits, call edges | Structure |
 | **Study** | Real source, grounded explanation, language lens, checks | Learning |
 

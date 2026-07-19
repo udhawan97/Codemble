@@ -37,6 +37,9 @@ class Node:
     entrypoint_rank: int | None = None
     understood: bool = False
     partial: bool = False
+    system_x: float = 0.0
+    system_y: float = 0.0
+    system_z: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +71,32 @@ class ConceptAnnotation:
 
 
 @dataclass(frozen=True, slots=True)
+class Region:
+    """A render-ready star system derived from parser-proven nodes."""
+
+    id: str
+    language: str
+    loc: int
+    centrality: int
+    node_count: int
+    understood: bool
+    home: bool
+    x: float
+    y: float
+    z: float
+
+
+@dataclass(frozen=True, slots=True)
+class RegionEdge:
+    """An aggregated import route between two project regions."""
+
+    src: str
+    dst: str
+    weight: int
+    certain: bool
+
+
+@dataclass(frozen=True, slots=True)
 class Graph:
     """A deterministic, language-tagged project graph."""
 
@@ -76,6 +105,8 @@ class Graph:
     entrypoint_candidates: tuple[str, ...]
     project_root: str
     file_hashes: dict[str, str]
+    regions: tuple[Region, ...] = ()
+    region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
     schema_version: int = field(default=1, init=False)
 
@@ -101,6 +132,11 @@ class Graph:
             "entrypoint_candidates": list(self.entrypoint_candidates),
             "project_root": self.project_root,
             "file_hashes": dict(sorted(self.file_hashes.items())),
+            "regions": [asdict(region) for region in sorted(self.regions, key=lambda item: item.id)],
+            "region_edges": [
+                asdict(edge)
+                for edge in sorted(self.region_edges, key=lambda item: (item.src, item.dst))
+            ],
             "partial_files": sorted(self.partial_files),
         }
 

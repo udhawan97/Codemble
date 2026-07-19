@@ -1,0 +1,220 @@
+import ForceGraph3D from "3d-force-graph";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+
+import { LEVELS, galaxyData, nodeLabel, systemData } from "./graphData.js";
+
+const CAMERA_DURATION = 420;
+const NODE_REL_SIZE = 1.6;
+
+export function GalaxyCanvas({ graph, level, region, selectedNode, onAdvance, onRetreat }) {
+  const hostRef = useRef(null);
+  const rendererRef = useRef(null);
+  const advanceRef = useRef(onAdvance);
+  const retreatRef = useRef(onRetreat);
+  const wheelLockRef = useRef(0);
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [renderError, setRenderError] = useState("");
+  const palette = useMemo(readPalette, []);
+  const data = useMemo(() => {
+    if (level === LEVELS.GALAXY) return galaxyData(graph, palette);
+    return systemData(graph, region?.id, palette, {
+      selectedId: selectedNode?.id,
+    });
+  }, [graph, level, palette, region?.id, selectedNode?.id]);
+
+  useEffect(() => {
+    advanceRef.current = onAdvance;
+    retreatRef.current = onRetreat;
+  }, [onAdvance, onRetreat]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return undefined;
+    const probe = document.createElement("canvas");
+    if (!probe.getContext("webgl2") && !probe.getContext("webgl")) {
+      setRenderError("Codemble needs WebGL to draw your galaxy. Enable WebGL and reload.");
+      return undefined;
+    }
+
+    try {
+      const renderer = ForceGraph3D()(host)
+        .backgroundColor(palette.ground)
+        .showNavInfo(false)
+        .enableNavigationControls(false)
+        .warmupTicks(0)
+        .cooldownTicks(0)
+        .nodeId("id")
+        .nodeLabel(nodeLabel)
+        .nodeVal("val")
+        .nodeColor("color")
+        .nodeRelSize(NODE_REL_SIZE)
+        .nodeResolution(8)
+        .nodeOpacity(0.82)
+        .nodeThreeObject((node) => makeMarker(node, palette))
+        .nodeThreeObjectExtend(true)
+        .linkColor("color")
+        .linkOpacity(0.32)
+        .linkWidth((link) => Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25))
+        .onNodeHover((node) => {
+          host.style.cursor = node ? "pointer" : "default";
+        })
+        .onNodeClick((node) => advanceRef.current(node));
+      const hideNavigationHint = requestAnimationFrame(() => {
+        host.querySelector(".scene-nav-info")?.remove();
+      });
+      rendererRef.current = renderer;
+
+      const resize = new ResizeObserver(([entry]) => {
+        renderer.width(entry.contentRect.width).height(entry.contentRect.height);
+      });
+      resize.observe(host);
+      return () => {
+        resize.disconnect();
+        cancelAnimationFrame(hideNavigationHint);
+        renderer.pauseAnimation();
+        host.replaceChildren();
+        rendererRef.current = null;
+      };
+    } catch (error) {
+      setRenderError(`The galaxy could not start: ${error.message}`);
+      return undefined;
+    }
+  }, [palette]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    renderer
+      .nodeResolution(data.nodes.length >= 900 ? 4 : 8)
+      .nodeOpacity(level === LEVELS.STUDY ? 0.16 : 0.82)
+      .graphData(data);
+    if (level === LEVELS.GALAXY) {
+      renderer.cameraPosition({ x: 0, y: 105, z: 310 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
+    } else {
+      renderer.cameraPosition({ x: 0, y: 52, z: 150 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
+    }
+    setFocusedIndex(0);
+  }, [data, level]);
+
+  useEffect(() => {
+    const benchmarking = new URLSearchParams(window.location.search).has("benchmark");
+    if (!benchmarking || data.nodes.length < 900) return undefined;
+    document.documentElement.removeAttribute("data-codemble-fps");
+    const begin = setTimeout(() => {
+      const graphRenderer = rendererRef.current;
+      if (!graphRenderer) return;
+      const webglRenderer = graphRenderer.renderer();
+      const frameCount = 60;
+      const startedAt = performance.now();
+      for (let frame = 0; frame < frameCount; frame += 1) {
+        webglRenderer.render(graphRenderer.scene(), graphRenderer.camera());
+      }
+      webglRenderer.getContext().finish();
+      const elapsed = performance.now() - startedAt;
+      document.documentElement.dataset.codembleFps = ((frameCount * 1000) / elapsed).toFixed(1);
+    }, 1000);
+    return () => clearTimeout(begin);
+  }, [data.nodes.length]);
+
+  useEffect(() => {
+    if (!selectedNode || !rendererRef.current || level !== LEVELS.STUDY) return;
+    rendererRef.current.cameraPosition(
+      { x: selectedNode.system_x + 20, y: selectedNode.system_y + 15, z: selectedNode.system_z + 42 },
+      { x: selectedNode.system_x, y: selectedNode.system_y, z: selectedNode.system_z },
+      CAMERA_DURATION,
+    );
+  }, [level, selectedNode]);
+
+  const focusedNode = data.nodes[focusedIndex] ?? null;
+
+  function handleKeyDown(event) {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      setFocusedIndex((index) => (index + 1) % Math.max(1, data.nodes.length));
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setFocusedIndex((index) => (index - 1 + data.nodes.length) % Math.max(1, data.nodes.length));
+    } else if (event.key === "Enter" && focusedNode) {
+      event.preventDefault();
+      advanceRef.current(focusedNode);
+    } else if (event.key === "Escape" || event.key === "Backspace") {
+      event.preventDefault();
+      retreatRef.current();
+    }
+  }
+
+  function handleWheel(event) {
+    const now = performance.now();
+    if (now < wheelLockRef.current || Math.abs(event.deltaY) < 24) return;
+    wheelLockRef.current = now + 620;
+    if (event.deltaY > 0 && focusedNode) advanceRef.current(focusedNode);
+    if (event.deltaY < 0) retreatRef.current();
+  }
+
+  if (renderError) {
+    return (
+      <section className="webgl-error" role="alert">
+        <h1>The sky could not open.</h1>
+        <p>{renderError}</p>
+      </section>
+    );
+  }
+
+  return (
+    <div
+      className="galaxy-frame"
+      role="application"
+      tabIndex="0"
+      aria-label={`Codemble ${level.toLowerCase()} view. Use arrow keys to choose a node and Enter to move closer.`}
+      onKeyDown={handleKeyDown}
+      onWheel={handleWheel}
+    >
+      <div ref={hostRef} className="galaxy-canvas" aria-hidden="true" />
+      {focusedNode ? (
+        <output className="keyboard-focus" aria-live="polite">
+          {nodeLabel(focusedNode)}
+        </output>
+      ) : null}
+    </div>
+  );
+}
+
+function makeMarker(node, palette) {
+  if (!node.home && !node.selected) return null;
+  const group = new THREE.Group();
+  const radius = Math.cbrt(node.val ?? 1) * NODE_REL_SIZE;
+  if (node.home) {
+    const homeRing = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 1.7, Math.max(0.18, radius * 0.07), 8, 36),
+      new THREE.MeshBasicMaterial({ color: palette.home }),
+    );
+    homeRing.rotation.x = Math.PI / 2.8;
+    group.add(homeRing);
+  }
+  if (node.selected) {
+    const selectedRing = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 2.1, Math.max(0.16, radius * 0.05), 6, 24),
+      new THREE.MeshBasicMaterial({ color: palette.orbit }),
+    );
+    selectedRing.rotation.x = Math.PI / 2.8;
+    group.add(selectedRing);
+  }
+  return group;
+}
+
+function readPalette() {
+  const styles = getComputedStyle(document.documentElement);
+  const value = (token) => styles.getPropertyValue(token).trim();
+  return Object.freeze({
+    ground: value("--cm-ground"),
+    home: value("--cm-ink"),
+    orbit: value("--cm-orbit"),
+    nodeBright: value("--cm-ink"),
+    node: value("--cm-ink-2"),
+    nodeDim: value("--cm-ink-3"),
+    route: value("--cm-hairline"),
+    routePossible: value("--cm-route-possible"),
+    star: value("--cm-star"),
+  });
+}
