@@ -15,8 +15,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ### Changed
 - `codemble` with flags but no path serves the picker instead of the current
   directory; pass a path (or `--path`) for the previous behaviour.
-
-### Changed
 - Rebuilt the packaged app on the Formal Edo palette, so the galaxy and the
   public site finally share one set of values. The app's tokens already imported
   the site's, but `codemble/web_dist` had not been rebuilt since before the
