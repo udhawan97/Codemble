@@ -110,7 +110,7 @@ class OpenAIProvider:
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class OllamaProvider:
     """Local narration adapter; loopback only and never sends a credential."""
 
@@ -120,8 +120,13 @@ class OllamaProvider:
     name: str = field(default="ollama", init=False)
 
     def __post_init__(self) -> None:
-        hostname = parse.urlsplit(self.host).hostname
-        if hostname not in _LOOPBACK_HOSTS:
+        parsed = parse.urlsplit(self.host)
+        # Scheme matters as much as hostname: a hostname match on a non-"http"
+        # scheme (e.g. "file://localhost") still passes urlsplit, but
+        # urlopen() on "file://" silently ignores method="POST"/data= and
+        # returns a local file's bytes instead — loopback Ollama only ever
+        # speaks plain HTTP, so anything else is refused here, at construction.
+        if parsed.scheme != "http" or parsed.hostname not in _LOOPBACK_HOSTS:
             raise ValueError("Codemble only talks to a local Ollama on loopback.")
 
     def complete(self, prompt: str) -> str:

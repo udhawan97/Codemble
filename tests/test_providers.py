@@ -71,3 +71,32 @@ def test_ollama_refuses_a_non_loopback_host(host):
 def test_ollama_accepts_loopback_hosts(host):
     provider = OllamaProvider(host=host, post_json=_transport({"response": "text"}))
     assert provider.name == "ollama"
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        # Scheme bypass: the hostname allowlist matches "localhost"/"127.0.0.1"
+        # regardless of scheme. `urlopen` on a `file://` URL ignores method="POST"
+        # and data=, and instead returns the raw bytes of a local file — turning
+        # this into arbitrary local file disclosure into the narration pipeline.
+        "file://localhost",
+        "file://127.0.0.1",
+        # Not file://, but still not the plain HTTP loopback Ollama actually speaks.
+        "https://127.0.0.1:11434",
+        # Schemeless (e.g. the bare `OLLAMA_HOST` format Ollama itself documents):
+        # urlsplit parses no netloc here, so hostname is None too, but the scheme
+        # check is what must fail this closed, not an accidental hostname miss.
+        "127.0.0.1:11434",
+    ],
+    ids=["file-scheme-localhost", "file-scheme-loopback-ip", "https-scheme", "schemeless"],
+)
+def test_ollama_refuses_a_non_http_scheme(host):
+    with pytest.raises(ValueError):
+        OllamaProvider(host=host)
+
+
+def test_ollama_host_cannot_be_reassigned_after_construction():
+    provider = OllamaProvider(post_json=_transport({"response": "text"}))
+    with pytest.raises(AttributeError):
+        provider.host = "http://evil.example"
