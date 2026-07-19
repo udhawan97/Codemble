@@ -27,7 +27,6 @@ _KIND_WORDS = {
     "module": "file",
     "function": "function",
     "class": "class",
-    "method": "function inside a class",
 }
 
 
@@ -60,6 +59,9 @@ def _easy_voice(
     sentences = [
         f"This is {node.name}, a {kind}.",
         f"It lives in {node.file}, starting on line {node.lineno}.",
+        f"It is {node.loc} line long."
+        if node.loc == 1
+        else f"It is {node.loc} lines long.",
     ]
     sentences.append(
         f"{_count_word(len(inbound))} other "
@@ -75,10 +77,11 @@ def _easy_voice(
         else "It does not use any other part of your code."
     )
     if possible:
+        count_word = _count_word(len(possible))
         sentences.append(
-            f"{_count_word(len(possible))} of those "
-            f"{'link is' if len(possible) == 1 else 'links are'} a possible "
-            "connection, not a certain one."
+            f"{count_word} of those links is a possible connection, not a certain one."
+            if len(possible) == 1
+            else f"{count_word} of those links are possible connections, not certain ones."
         )
     if titles:
         sentences.append(f"Ideas found here: {_join_words(titles)}.")

@@ -51,10 +51,21 @@ def test_easy_voice_spells_small_counts_and_expert_uses_digits():
 
 
 def test_possible_relationships_stay_labelled_possible_in_both_voices():
-    neighbors = [_neighbor("inbound", certain=False)]
-    summary = structural_summary(_node(), neighbors, [])
-    assert "possible" in summary["easy"].lower()
-    assert "possible" in summary["expert"].lower()
+    one = structural_summary(_node(), [_neighbor("inbound", certain=False)], [])
+    assert (
+        "One of those links is a possible connection, not a certain one."
+        in one["easy"]
+    )
+    assert "1 possible" in one["expert"]
+
+    three = structural_summary(
+        _node(), [_neighbor("inbound", certain=False) for _ in range(3)], []
+    )
+    assert (
+        "Three of those links are possible connections, not certain ones."
+        in three["easy"]
+    )
+    assert "3 possible" in three["expert"]
 
 
 def test_zero_neighbours_is_stated_not_omitted():
@@ -76,3 +87,34 @@ def test_lens_concepts_are_listed_when_present_and_omitted_when_not():
     assert "decorator" in with_concepts["expert"]
     without = structural_summary(_node(), [], [])
     assert "ideas" not in without["easy"]
+
+
+def test_both_voices_state_the_structures_length():
+    summary = structural_summary(_node(), [], [])
+    assert "It is 48 lines long." in summary["easy"]
+    assert "(48 lines)" in summary["expert"]
+
+    single_line = structural_summary(_node(lineno=41, end_lineno=41, loc=1), [], [])
+    assert "It is 1 line long." in single_line["easy"]
+    assert "(1 lines)" in single_line["expert"]
+
+
+def test_more_than_ten_neighbours_render_as_digits_not_words():
+    neighbors = [_neighbor("inbound") for _ in range(11)]
+    summary = structural_summary(_node(), neighbors, [])
+    assert "11 other parts of your code use it." in summary["easy"]
+    assert "Inbound 11" in summary["expert"]
+
+
+def test_two_or_more_lens_concepts_join_with_a_comma_and_and():
+    lens = [
+        {"concept": "decorator", "title": "Decorators"},
+        {"concept": "comprehension", "title": "Comprehensions"},
+        {"concept": "generator", "title": "Generators"},
+    ]
+    summary = structural_summary(_node(), [], lens)
+    assert (
+        "Ideas found here: Decorators, Comprehensions and Generators."
+        in summary["easy"]
+    )
+    assert "Concepts: decorator, comprehension, generator" in summary["expert"]
