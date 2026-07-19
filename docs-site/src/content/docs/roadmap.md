@@ -7,18 +7,18 @@ The authoritative roadmap lives in the repo's
 [CLAUDE.md](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md) and moves
 only when milestones actually complete. The shape:
 
-## NOW — Phase 0 acceptance, Python only
+## NOW — Phase 1 TS/JS delivery
 
-Parser → galaxy (semantic zoom) → grounded explanations → Python language lens
-→ checks → illumination + star chart is implemented in v0.1.0. The remaining
-gate is evidence from 3–5 learners running it unaided on their own AI-built
-projects. Phase 1 does not begin until that human acceptance is real.
+The owner promoted Phase 1 implementation while the v0.1.0 Python learner runs
+continue in parallel. The language-neutral project parser and tree-sitter
+JavaScript/TypeScript structure are in progress now; the TS/JS Lens, polyglot
+language focus, and Phase 1 tester release follow. The open learner issue is not
+treated as passed by this promotion.
 
-## NEXT — more languages
+## NEXT — more languages and scale
 
-TypeScript/JavaScript via a tree-sitter adapter, language filter/switch for
-polyglot projects, TS/JS idiom lens. Then Go / Rust / Java, plus
-level-of-detail rendering for larger repos.
+Go / Rust / Java adapters, plus level-of-detail rendering and clustering for
+larger repos.
 
 ## LATER — reach
 

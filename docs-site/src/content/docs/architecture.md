@@ -8,14 +8,16 @@ description: The adapter seam, the render-ready graph, and why the LLM only narr
 ### 1. Language adapters (the seam)
 
 Every language plugs in behind one interface: `parse()` produces the structural
-graph; `concepts()` produces idiom annotations for the lens. Python ships first
-using the stdlib `ast` module (precise, dependency-free); later languages use
-tree-sitter adapters. Nothing above the seam hardcodes a language.
+graph; `concepts()` produces idiom annotations for the lens. Python uses the
+stdlib `ast` module; JavaScript/TypeScript use the official tree-sitter grammar
+wheels. Nothing above the seam hardcodes a language.
 
-The Python adapter walks files in stable order, keeps syntax-error files visible
-as partial modules, and records project, external, and unresolved relationships
-without guessing. Exact name resolution is marked certain; ambiguous candidates
-remain labeled as possible calls.
+One project parser selects adapters by extension, merges their graphs, resolves
+Home globally, and rejects node-ID or file-hash conflicts. Adapters walk files
+in stable order, keep syntax-error files visible as partial modules, and record
+project, external, and unresolved relationships without guessing. Exact path
+and unique-name resolution can be certain; extension substitution, extensionless
+resolution, and ambiguous candidates remain labeled possible.
 
 ### 2. The graph is render-ready
 
@@ -59,5 +61,5 @@ regions when graph JSON is requested; stale signatures simply remain dim.
 
 ## Stack
 
-Python 3.11+ · FastAPI · Vite + React · `3d-force-graph` (three.js) ·
+Python 3.11+ · FastAPI · tree-sitter · Vite + React · `3d-force-graph` (three.js) ·
 Anthropic / OpenAI (bring your own key) · local JSON persistence.

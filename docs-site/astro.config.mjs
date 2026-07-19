@@ -94,6 +94,7 @@ export default defineConfig({
             { label: "Build log: M4 lens", slug: "progress/m4-lens" },
             { label: "Build log: M5 checks", slug: "progress/m5-checks" },
             { label: "Build log: M6 tester release", slug: "progress/m6-release" },
+            { label: "Build log: M8 TS/JS structure", slug: "progress/m8-typescript" },
           ],
         },
       ],

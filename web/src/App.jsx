@@ -256,7 +256,7 @@ export function App() {
             <p>Choose a system. Size follows lines of code; brightness follows call centrality.</p>
             {graph.partial_files.length ? (
               <p className="partial-summary">
-                {graph.partial_files.length} {graph.partial_files.length === 1 ? "file is" : "files are"} unchartable because Python reported a syntax error.
+                {graph.partial_files.length} {graph.partial_files.length === 1 ? "file is" : "files are"} unchartable because its language parser reported a syntax error.
               </p>
             ) : null}
           </section>
@@ -492,7 +492,7 @@ function StudyPanel({ node, study, error, onSelectNode }) {
           {node.partial ? (
             <section className="partial-study" role="status">
               <h2>Unchartable beyond this source.</h2>
-              <p>Python reported a syntax error, so Codemble kept the file visible but did not invent structures or relationships inside it.</p>
+              <p>The language parser reported a syntax error, so Codemble kept the file visible but did not invent structures or relationships inside it.</p>
             </section>
           ) : null}
           <SourceExcerpt source={study.source} />

@@ -157,10 +157,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M7 language orchestration** · Last updated: 2026-07-18 ·
-Session note: the owner explicitly promoted Phase 1 implementation while M6
-external learner evidence continues in issue #13. The language-neutral project
-parser is the first wave; no Phase 0 acceptance evidence is being inferred.
+**Current milestone: M8 JavaScript/TypeScript structure** · Last updated:
+2026-07-18 · Session note: M7 merged with Python graph-byte parity. M8 maps all
+eight JS/TS extensions through official tree-sitter grammars, with conservative
+resolution, partial recovery, and mixed-project determinism under verification.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -242,12 +242,12 @@ interface; injected second-adapter tests prove deterministic mixed graph merge,
 global Home ambiguity, and fail-closed node-ID collision handling.
 
 ### M8 — JavaScript/TypeScript structure (Phase 1 wave 2)
-- [ ] Add official tree-sitter runtime + JS/TS/TSX grammar wheels
-- [ ] Parse JS/JSX/MJS/CJS/TS/TSX/MTS/CTS modules, functions, classes, methods,
+- [x] Add official tree-sitter runtime + JS/TS/TSX grammar wheels
+- [x] Parse JS/JSX/MJS/CJS/TS/TSX/MTS/CTS modules, functions, classes, methods,
       imports/exports, calls, source spans, file hashes, and partial syntax
-- [ ] Resolve same-project JS/TS imports and statically provable calls; label
+- [x] Resolve same-project JS/TS imports and statically provable calls; label
       all approximate relationships as possible
-- [ ] Rank parser-proven JS/TS entrypoints and compose mixed Python+TS projects
+- [x] Rank parser-proven JS/TS entrypoints and compose mixed Python+TS projects
 
 **Acceptance:** fixture assertions hand-check exact structures/edges/spans;
 syntax errors remain visible and partial; repeated mixed parses are byte-identical.
@@ -304,6 +304,7 @@ wheel install, web build, docs build, and downloaded release asset all pass.
 | 2026-07-19 | v0.1.0 is a tester release; keep Phase 1 out of NOW until 3–5 unaided learner runs pass | Technical completion cannot substitute for the human first-run acceptance criterion |
 | 2026-07-18 | Owner explicitly promoted Phase 1 implementation while v0.1.0 learner acceptance continues in issue #13 | Build authorization is explicit; keeping the issue open prevents the promotion from fabricating human evidence |
 | 2026-07-18 | `ProjectParser` is the one project-level interface; language adapters own file syntax and node IDs, while composition owns global Home and collision checks | The second adapter makes the seam real without leaking registry or language rules into CLI, server, graph, checks, or UI |
+| 2026-07-18 | One tree-sitter adapter owns JS and TS dialects; exact paths may be certain, but extension substitution and extensionless resolution remain possible | Cross-JS/TS resolution stays local to one implementation and never upgrades a configuration-dependent guess into fact |
 
 ## Non-Goals — do NOT build (point here when asked)
 

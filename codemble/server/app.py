@@ -63,7 +63,7 @@ def create_app(
                 status_code=404, detail="That region is not in this graph."
             ) from error
 
-    @app.post("/api/regions/{region_id}/checks/{check_id}")
+    @app.post("/api/regions/{region_id:path}/checks/{check_id}")
     def submit_region_check(
         region_id: str, check_id: str, submission: CheckSubmission
     ) -> dict[str, object]:

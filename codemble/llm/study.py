@@ -147,7 +147,8 @@ class StudyService:
             {
                 "status": "partial",
                 "message": (
-                    "Narration is unavailable because Python could not parse this file. "
+                    "Narration is unavailable because the language parser reported "
+                    "syntax errors in this file. "
                     "The raw source remains visible."
                 ),
             }
@@ -167,8 +168,12 @@ class StudyService:
         if not source_path.is_relative_to(self._project_root) or not source_path.is_file():
             raise StudySourceError("The parser-proven source file is no longer available.")
         try:
-            with tokenize.open(source_path) as source_file:
-                all_lines = source_file.read().splitlines()
+            if node.language == "python":
+                with tokenize.open(source_path) as source_file:
+                    source_text = source_file.read()
+            else:
+                source_text = source_path.read_bytes().decode("utf-8", errors="replace")
+            all_lines = source_text.splitlines()
         except (OSError, SyntaxError, UnicodeDecodeError) as error:
             raise StudySourceError("The parser-proven source could not be decoded safely.") from error
         start = max(1, node.lineno)

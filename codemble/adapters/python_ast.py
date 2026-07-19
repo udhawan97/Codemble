@@ -295,6 +295,7 @@ class PythonAstAdapter:
 
     language = "python"
     file_extensions = frozenset({".py"})
+    ignored_directories = frozenset()
 
     def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
         """Return the parser's exact project root and accepted Python files."""

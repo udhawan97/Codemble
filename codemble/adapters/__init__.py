@@ -10,6 +10,10 @@ from codemble.adapters.base import (
 )
 from codemble.adapters.project import ProjectParseError, ProjectParser
 from codemble.adapters.python_ast import PythonAstAdapter, PythonParseError
+from codemble.adapters.typescript_tree_sitter import (
+    JavaScriptTypeScriptAdapter,
+    JavaScriptTypeScriptParseError,
+)
 
 __all__ = [
     "AdapterParseError",
@@ -18,6 +22,8 @@ __all__ = [
     "Graph",
     "LanguageAdapter",
     "Node",
+    "JavaScriptTypeScriptAdapter",
+    "JavaScriptTypeScriptParseError",
     "PythonAstAdapter",
     "PythonParseError",
     "ProjectParseError",
