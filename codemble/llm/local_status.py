@@ -8,6 +8,7 @@ from typing import Callable
 from urllib import request
 
 from codemble import __version__
+from codemble.llm.providers import _LOOPBACK_OPENER
 
 RECOMMENDED_MODEL = "gemma4:12b"
 FALLBACK_MODEL = "qwen3:8b"
@@ -58,7 +59,7 @@ def _get_json(url: str) -> dict:
     outbound = request.Request(
         url, headers={"user-agent": f"Codemble/{__version__}"}, method="GET"
     )
-    with request.urlopen(outbound, timeout=2) as response:  # noqa: S310 - loopback only
+    with _LOOPBACK_OPENER.open(outbound, timeout=2) as response:  # noqa: S310 - loopback only, redirects refused
         decoded = json.loads(response.read().decode("utf-8"))
     if not isinstance(decoded, dict):
         raise ValueError("Ollama returned an unexpected shape.")
