@@ -64,6 +64,7 @@ export default defineConfig({
             { label: "Introduction", slug: "introduction" },
             { label: "Installation", slug: "installation" },
             { label: "Quickstart", slug: "quickstart" },
+            { label: "Early testing", slug: "early-testing" },
           ],
         },
         {
@@ -92,6 +93,7 @@ export default defineConfig({
             { label: "Build log: M3 study", slug: "progress/m3-study" },
             { label: "Build log: M4 lens", slug: "progress/m4-lens" },
             { label: "Build log: M5 checks", slug: "progress/m5-checks" },
+            { label: "Build log: M6 tester release", slug: "progress/m6-release" },
           ],
         },
       ],

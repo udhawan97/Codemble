@@ -143,7 +143,17 @@ class StudyService:
         lens = lens_notes(node.language, annotations)
         for note in lens:
             note["citation"] = f"{node.file}:{note['line']}"
-        explanation = self._explain(node, source, neighbors, lens)
+        explanation = (
+            {
+                "status": "partial",
+                "message": (
+                    "Narration is unavailable because Python could not parse this file. "
+                    "The raw source remains visible."
+                ),
+            }
+            if node.partial
+            else self._explain(node, source, neighbors, lens)
+        )
         return {
             "node": asdict(node),
             "source": source,

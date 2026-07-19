@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from codemble import __version__
 from codemble.adapters.base import Graph
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
@@ -20,6 +21,12 @@ class CheckSubmission(BaseModel):
     selected_ids: list[str]
 
 
+class EntrypointSelection(BaseModel):
+    """One parser-ranked candidate chosen as Home."""
+
+    node_id: str
+
+
 def create_app(
     graph: Graph,
     web_dist: Path | None = None,
@@ -28,13 +35,24 @@ def create_app(
 ) -> FastAPI:
     """Create an API and optional SPA server for one parsed project."""
 
-    app = FastAPI(title="Codemble", version="0.0.1", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
     studies = study_service or StudyService.from_environment(graph)
     checks = check_service or CheckService(graph)
 
     @app.get("/api/graph")
     def get_graph() -> dict[str, object]:
         return checks.graph().to_dict()
+
+    @app.post("/api/entrypoint")
+    def select_entrypoint(selection: EntrypointSelection) -> dict[str, object]:
+        try:
+            selected = checks.select_entrypoint(selection.node_id)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=422,
+                detail="Choose one of the parser-ranked entrypoint candidates.",
+            ) from error
+        return selected.to_dict()
 
     @app.get("/api/regions/{region_id:path}/checks")
     def get_region_checks(region_id: str) -> dict[str, object]:
@@ -101,7 +119,7 @@ def create_app(
 
 
 def _default_web_dist() -> Path:
-    return Path(__file__).resolve().parents[2] / "web" / "dist"
+    return Path(__file__).resolve().parents[1] / "web_dist"
 
 
 __all__ = ["create_app"]

@@ -3,16 +3,35 @@ title: Installation
 description: Requirements and setup, including bring-your-own-key configuration.
 ---
 
-:::caution[Pre-release]
-Codemble is under active construction. Until the first release, install from
-source — see [Build from source](/Codemble/build-from-source/).
+:::note[v0.1.0 tester release]
+The complete Python loop is ready for early testing. Human first-run acceptance
+is still being collected before the roadmap advances to more languages.
 :::
 
 ## Requirements
 
 - **Python 3.11+**
 - A modern browser with WebGL (the galaxy is rendered locally in your browser)
-- An **Anthropic (Claude)** or **OpenAI** API key
+- `pipx` for a persistent install, or `uv` for an isolated one-off run
+
+An Anthropic or OpenAI key is optional and enables only explanation prose.
+
+## Install from the v0.1.0 tag
+
+```bash
+pipx install git+https://github.com/udhawan97/Codemble.git@v0.1.0
+codemble ./your-python-project
+```
+
+Or run without keeping an installation:
+
+```bash
+uvx --from git+https://github.com/udhawan97/Codemble.git@v0.1.0 \
+  codemble ./your-python-project
+```
+
+The Python wheel already contains the production web app. Node is needed only
+when developing Codemble itself.
 
 ## Bring your own key
 
@@ -38,3 +57,11 @@ you configured, sent directly from your machine to your provider.
 
 Without a key you still get the full galaxy, source, parser relationships,
 language lens, and checks — only the prose explanations need the model.
+
+## Limits that fail honestly
+
+- More than 300 Python files: run `codemble --path ./project/subdirectory`.
+- Ambiguous startup: choose Home in the app or pass a parser-ranked node with
+  `--entrypoint module.qualname`.
+- Syntax error: the file remains visible as **Unchartable**, with raw source;
+  no inner structure or model narration is invented.

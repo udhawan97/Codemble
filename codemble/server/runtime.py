@@ -27,10 +27,11 @@ def serve_project(
     host: str = "127.0.0.1",
     port: int = 0,
     open_browser: bool = True,
+    entrypoint: str | None = None,
 ) -> None:
     """Parse ``path`` and block while serving its local Codemble app."""
 
-    graph = PythonAstAdapter().parse(path)
+    graph = PythonAstAdapter().parse(path, entrypoint=entrypoint)
     selected_port = port or available_port(host)
     url = f"http://{host}:{selected_port}"
     app = create_app(graph)

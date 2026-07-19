@@ -50,7 +50,7 @@ def layout_graph(graph: Graph) -> Graph:
                 centrality=sum(node.centrality for node in members),
                 node_count=len(members),
                 understood=bool(members) and all(node.understood for node in members),
-                home=any(node.entrypoint_rank == 0 for node in members),
+                home=any(node.id == graph.selected_entrypoint for node in members),
                 x=region_x,
                 y=region_y,
                 z=region_z,
@@ -103,6 +103,19 @@ def layout_graph(graph: Graph) -> Graph:
     )
 
 
+def with_entrypoint(graph: Graph, node_id: str) -> Graph:
+    """Select one parser-ranked candidate as Home without changing layout."""
+
+    if node_id not in graph.entrypoint_candidates:
+        raise ValueError(f"entrypoint is not a parser-ranked candidate: {node_id}")
+    node_by_id = {node.id: node for node in graph.nodes}
+    selected = node_by_id[node_id]
+    regions = tuple(
+        replace(region, home=region.id == selected.region) for region in graph.regions
+    )
+    return replace(graph, selected_entrypoint=node_id, regions=regions)
+
+
 def _digest(value: str, salt: str = "") -> bytes:
     return hashlib.sha256(f"{salt}:{value}".encode()).digest()
 
@@ -116,4 +129,4 @@ def _rounded(value: float) -> float:
     return round(value, 6)
 
 
-__all__ = ["layout_graph"]
+__all__ = ["layout_graph", "with_entrypoint"]

@@ -24,5 +24,14 @@
     "brief": "Codemble graph-only active recall",
     "variation": "one-question system overlay with a single illumination payoff",
     "slop_test": "pass (plain controls, complete states, 320 px verified)"
+  },
+  {
+    "date": "2026-07-19",
+    "macrostructure": "Calibration Readout",
+    "theme": "Observatory Instrument",
+    "enrichment": "real product demo GIF",
+    "brief": "Codemble ambiguous Home and Unchartable states",
+    "variation": "ranked evidence rows, raw-source failure state, one 420ms glow pulse",
+    "slop_test": "pass (desktop and 320 px, reduced motion, no new visual language)"
   }
 ]

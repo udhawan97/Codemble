@@ -5,12 +5,11 @@ description: From `codemble ./my-project` to your first lit star system.
 
 ## 1. Point it at your project
 
-From a source checkout, build the local web app once and point Codemble at a
-Python project:
+Point the tagged tool at a Python project:
 
 ```bash
-cd web && npm install && npm run build && cd ..
-codemble ./my-project
+uvx --from git+https://github.com/udhawan97/Codemble.git@v0.1.0 \
+  codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -18,10 +17,18 @@ It keeps syntax-error files visible and labels unresolved calls instead of
 guessing. Use `--no-open` when you want to copy the printed URL yourself.
 More languages are on the [roadmap](/Codemble/roadmap/).
 
+For a project above 300 Python files, select a smaller intentional scope:
+
+```bash
+codemble --path ./my-project/src
+```
+
 ## 2. Find Home
 
 Your entrypoint system is marked **Home** — where execution starts. If the
-entrypoint is ambiguous, Codemble shows ranked candidates and you pick.
+entrypoint is ambiguous, Codemble shows only parser-ranked candidates and you
+pick. The CLI equivalent is `--entrypoint module.qualname`; an unranked value
+is rejected rather than guessed.
 
 ## 3. Zoom in
 
@@ -43,3 +50,6 @@ Pass a region's checks and its stars light up — permanently. Watch your
 [star chart](/Codemble/star-chart/) grow as you meet new language concepts.
 
 A fully lit galaxy means you understand your project. That's the game.
+
+Ready to help? Follow the [ten-minute early-tester guide](https://github.com/udhawan97/Codemble/blob/main/TESTING.md)
+and report the first confusing moment in your own words.
