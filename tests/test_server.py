@@ -434,6 +434,35 @@ def test_llm_status_endpoint_reports_provider_and_local_state(
     assert payload["ollama"]["installed_models"] == ["gemma4:12b"]
 
 
+def test_llm_status_endpoint_reports_a_configured_providers_name_and_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Pins the provider.name / provider.model lookups in the route to real
+    # values from a bound project. Without this, the getattr(..., None)
+    # defaults used to survive an unbound project would also silently mask a
+    # typo'd attribute name as None, and no other test here would notice.
+    monkeypatch.setattr(
+        "codemble.llm.local_status._get_json",
+        lambda url: {"models": []},
+    )
+
+    class FakeProvider:
+        name = "fake"
+        model = "grounded-test"
+
+        def complete(self, prompt: str) -> str:
+            raise NotImplementedError
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    studies = StudyService(graph, provider=FakeProvider(), cache_root=tmp_path / "cache")
+    client = TestClient(create_app(graph, tmp_path / "missing", studies))
+
+    payload = client.get("/api/llm/status").json()
+
+    assert payload["configured_provider"] == "fake"
+    assert payload["configured_model"] == "grounded-test"
+
+
 def test_llm_status_endpoint_works_before_a_project_is_selected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
