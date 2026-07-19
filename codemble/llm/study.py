@@ -16,6 +16,7 @@ from codemble.lens import lens_notes
 from codemble.llm.providers import (
     AnthropicProvider,
     NarrationProvider,
+    OllamaProvider,
     OpenAIProvider,
     ProviderError,
 )
@@ -108,9 +109,24 @@ class StudyService:
                 or config.get("model")
                 or "gpt-5.4-mini",
             )
-        elif provider_name and provider_name not in {"anthropic", "openai"}:
+        elif provider_name == "ollama":
+            try:
+                provider = OllamaProvider(
+                    model=values.get("CODEMBLE_OLLAMA_MODEL")
+                    or config.get("ollama_model")
+                    or "gemma4:12b",
+                    host=values.get("CODEMBLE_OLLAMA_HOST")
+                    or config.get("ollama_host")
+                    or "http://127.0.0.1:11434",
+                )
+            except ValueError as host_error:
+                setup_message = (
+                    f"{host_error} Fix CODEMBLE_OLLAMA_HOST or {path}, then restart Codemble."
+                )
+        elif provider_name and provider_name not in {"anthropic", "openai", "ollama"}:
             setup_message = (
-                "CODEMBLE_PROVIDER must be 'anthropic' or 'openai'; structure remains available."
+                "CODEMBLE_PROVIDER must be 'anthropic', 'openai', or 'ollama'; "
+                "structure remains available."
             )
         elif provider_name:
             setup_message = (
