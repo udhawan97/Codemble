@@ -155,9 +155,9 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M1** · Last updated: 2026-07-19 · Session note: M0 repo
-scaffold complete (README, community files, CI, docs-site with 12 pages,
-package skeleton, smoke tests) — verified: pytest, ruff, astro build all green.
+**Current milestone: M2** · Last updated: 2026-07-19 · Session note: M1 Python
+parser and render-ready graph complete — 48-file FastAPI acceptance probe in
+0.28s, 20 source-verified call edges, deterministic JSON; all gates green.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -168,14 +168,14 @@ package skeleton, smoke tests) — verified: pytest, ruff, astro build all green
 - [x] docs-site: Starlight scaffold, tokens + design.md, 12 seeded pages,
       hand-authored sidebar, brand marks
 
-### M1 — Parser & graph (weeks 1–2)
-- [ ] `adapters/base.py`: LanguageAdapter interface + Graph/Node/Edge/ConceptAnnotation models
-- [ ] `python_ast.py`: modules, functions, classes with file + line spans
-- [ ] Import edges (project-resolved where possible; external flagged)
-- [ ] Call edges by name resolution (unresolved flagged "possible call")
-- [ ] Entrypoint ranking (`__main__`, `main()`, app objects)
-- [ ] Render metadata (LOC, centrality, region id, language)
-- [ ] Graph JSON serialization + fixture-project unit tests
+### M1 — Parser & graph ✅ (2026-07-19)
+- [x] `adapters/base.py`: LanguageAdapter interface + Graph/Node/Edge/ConceptAnnotation models
+- [x] `python_ast.py`: modules, functions, classes with file + line spans
+- [x] Import edges (project-resolved where possible; external flagged)
+- [x] Call edges by name resolution (unresolved flagged "possible call")
+- [x] Entrypoint ranking (`__main__`, `main()`, app objects)
+- [x] Render metadata (LOC, centrality, region id, language)
+- [x] Graph JSON serialization + fixture-project unit tests
 
 **Acceptance:** runs on a real ~50-file Python project in <5s; 20 hand-verified
 edges correct; unresolved calls flagged, never dropped or invented.
@@ -245,6 +245,7 @@ and lights up at least one system.
 | 2026-07-19 | Repo layout, docs-site (Astro+Starlight 0.41, Pages), community files mirror FolioOrb/Golavo | Family consistency across UD's projects |
 | 2026-07-19 | Apache-2.0; Contributor Covenant 2.1; Conventional Commits + DCO | Match sibling repos |
 | 2026-07-19 | Brand: star-gold=understanding, orbit-cyan=interaction; observatory-instrument genre | design.md locked |
+| 2026-07-19 | M1 graph adds `Edge.external`, `Node.partial`, and `Graph.partial_files` | The playbook requires external and failed parses to stay explicit; these fields prevent consumers from inferring or inventing that state |
 
 ## Non-Goals — do NOT build (point here when asked)
 

@@ -86,8 +86,11 @@ cd Codemble
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-codemble ./your-ai-built-project
+codemble parse ./your-ai-built-project --out graph.json
 ```
+
+Milestone M1 can emit the deterministic, parser-proven graph today. The
+browser galaxy command (`codemble ./your-ai-built-project`) arrives with M2.
 
 </details>
 
