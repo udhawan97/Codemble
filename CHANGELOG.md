@@ -5,12 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-19
+
 ### Added
 - Bare `codemble` now opens the browser to an in-app project picker: browse
   home folders, reopen recent projects, and re-scope over-cap projects without
   touching the terminal.
 - The local server rejects foreign `Host` headers, keeping the picker API
   reachable only from the learner's own machine.
+- Codemble is published to PyPI, so installing is `uvx codemble` or
+  `pipx install codemble` with no git URL or tag.
 
 ### Changed
 - `codemble` with flags but no path serves the picker instead of the current
