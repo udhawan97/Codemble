@@ -286,6 +286,31 @@ def test_explain_reaches_the_provider(tmp_path: Path) -> None:
     assert provider.calls == 1
 
 
+def test_easy_and_expert_do_not_share_a_cache_entry(tmp_path: Path) -> None:
+    class RecordingProvider(FakeProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.prompts: list[str] = []
+
+        def complete(self, prompt: str) -> str:
+            self.prompts.append(prompt)
+            return super().complete(prompt)
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    provider = RecordingProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / "cache")
+
+    service.explain("app.main", "easy")
+    service.explain("app.main", "expert")
+
+    assert provider.calls == 2, "expert must not be served the easy cache entry"
+    assert provider.prompts[0] != provider.prompts[1], "each mode sends its own style"
+
+    service.explain("app.main", "easy")
+
+    assert provider.calls == 2, "the repeated easy call must hit cache"
+
+
 def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> None:
     anthropic_requests: list[tuple[str, dict[str, str], dict[str, object]]] = []
     openai_requests: list[tuple[str, dict[str, str], dict[str, object]]] = []
