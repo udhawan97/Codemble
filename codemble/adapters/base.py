@@ -15,6 +15,10 @@ NodeKind = Literal["module", "class", "function"]
 EdgeKind = Literal["import", "call"]
 
 
+class AdapterParseError(ValueError):
+    """A supported language could not be mapped without guessing."""
+
+
 @dataclass(frozen=True, slots=True)
 class Node:
     """A parser-proven source structure.
@@ -164,6 +168,12 @@ class Graph:
 
 class LanguageAdapter(Protocol):
     """The seam every supported language implements."""
+
+    language: str
+    file_extensions: frozenset[str]
+
+    def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
+        """Return the exact root and supported files this adapter will parse."""
 
     def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
         """Parse ``path`` into a graph without inventing source structure."""

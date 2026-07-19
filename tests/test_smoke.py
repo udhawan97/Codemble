@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import codemble
-from codemble.adapters.python_ast import PythonParseError
+from codemble.adapters.project import ProjectParseError
 from codemble.cli import choose_project_scope, main
 from codemble.server.app import _default_web_dist
 
@@ -36,7 +36,7 @@ def test_large_project_requires_an_explicit_or_interactive_scope(tmp_path: Path)
     (small / "one.py").touch()
     (small / "two.py").touch()
 
-    with pytest.raises(PythonParseError, match="Re-run with `codemble --path PATH`"):
+    with pytest.raises(ProjectParseError, match="Re-run with `codemble --path PATH`"):
         choose_project_scope(project, explicit=False, interactive=False)
     assert choose_project_scope(project, explicit=True, interactive=False) == project
 
@@ -49,4 +49,4 @@ def test_large_project_requires_an_explicit_or_interactive_scope(tmp_path: Path)
         output_fn=output.append,
     )
     assert selected == small
-    assert any("301 Python files" in message for message in output)
+    assert any("301 supported source files" in message for message in output)

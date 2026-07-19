@@ -4,23 +4,21 @@ from __future__ import annotations
 
 import ast
 import builtins
-import fnmatch
 import hashlib
-import os
 import tokenize
 from collections import Counter, defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
+from codemble.adapters.base import AdapterParseError, ConceptAnnotation, Edge, Graph, Node
+from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
 from codemble.graph.layout import layout_graph
 
-_IGNORED_DIRECTORIES = {"venv", ".venv", "node_modules", "__pycache__"}
 _APP_FACTORIES = {"FastAPI", "Flask", "Typer"}
 _BUILTIN_NAMES = frozenset(dir(builtins))
 
 
-class PythonParseError(ValueError):
+class PythonParseError(AdapterParseError):
     """The requested Python project cannot be discovered safely."""
 
 
@@ -296,6 +294,7 @@ class PythonAstAdapter:
     """Parse Python source into deterministic, render-ready graph data."""
 
     language = "python"
+    file_extensions = frozenset({".py"})
 
     def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
         """Return the parser's exact project root and accepted Python files."""
@@ -491,76 +490,16 @@ class PythonAstAdapter:
 
 
 def _discover_python_files(requested: Path) -> tuple[Path, tuple[Path, ...]]:
-    if not requested.exists():
-        raise PythonParseError(f"path does not exist: {requested}")
-    if requested.is_file():
-        if requested.suffix != ".py":
-            raise PythonParseError(f"expected a Python file or directory: {requested}")
-        return requested.parent, (requested,)
-    if not requested.is_dir():
-        raise PythonParseError(f"expected a Python file or directory: {requested}")
-
-    ignore_rules = _load_gitignore(requested)
-    discovered: list[Path] = []
-    for current, directory_names, file_names in os.walk(requested):
-        current_path = Path(current)
-        directory_names[:] = sorted(
-            directory_name
-            for directory_name in directory_names
-            if not _ignore_directory(
-                (current_path / directory_name).relative_to(requested), ignore_rules
-            )
-        )
-        for file_name in sorted(file_names):
-            candidate = current_path / file_name
-            relative = candidate.relative_to(requested)
-            if candidate.suffix == ".py" and not _matches_gitignore(relative, False, ignore_rules):
-                discovered.append(candidate)
-    if not discovered:
-        raise PythonParseError(f"no Python files found under: {requested}")
-    return requested, tuple(sorted(discovered))
-
-
-def _load_gitignore(root: Path) -> tuple[tuple[str, bool], ...]:
-    gitignore = root / ".gitignore"
-    if not gitignore.is_file():
-        return ()
-    rules: list[tuple[str, bool]] = []
-    for raw_line in gitignore.read_text(encoding="utf-8", errors="replace").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        negated = line.startswith("!")
-        pattern = line[1:] if negated else line
-        rules.append((pattern, negated))
-    return tuple(rules)
-
-
-def _ignore_directory(relative: Path, rules: tuple[tuple[str, bool], ...]) -> bool:
-    if any(part.startswith(".") for part in relative.parts):
-        return True
-    if any(part in _IGNORED_DIRECTORIES for part in relative.parts):
-        return True
-    return _matches_gitignore(relative, True, rules)
-
-
-def _matches_gitignore(
-    relative: Path, is_directory: bool, rules: tuple[tuple[str, bool], ...]
-) -> bool:
-    path = relative.as_posix()
-    ignored = False
-    for raw_pattern, negated in rules:
-        directory_only = raw_pattern.endswith("/")
-        pattern = raw_pattern.rstrip("/").lstrip("/")
-        if directory_only and not is_directory and not path.startswith(f"{pattern}/"):
-            continue
-        if "/" in pattern:
-            matched = fnmatch.fnmatch(path, pattern) or path.startswith(f"{pattern}/")
-        else:
-            matched = any(fnmatch.fnmatch(part, pattern) for part in relative.parts)
-        if matched:
-            ignored = not negated
-    return ignored
+    normalized = requested.expanduser().resolve()
+    try:
+        discovery = discover_source_files(normalized, PythonAstAdapter.file_extensions)
+    except SourceDiscoveryError as error:
+        raise PythonParseError(str(error)) from error
+    if not discovery.files:
+        if normalized.is_file():
+            raise PythonParseError(f"expected a Python file or directory: {normalized}")
+        raise PythonParseError(f"no Python files found under: {normalized}")
+    return discovery.root, discovery.files
 
 
 def _parse_file(path: Path, project_root: Path) -> _ParsedFile:

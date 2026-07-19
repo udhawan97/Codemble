@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 from codemble import __version__
-from codemble.adapters.python_ast import PythonAstAdapter, PythonParseError
+from codemble.adapters.project import ProjectParseError, ProjectParser
 from codemble.server.runtime import serve_project
 
 _SCALE_CAP = 300
@@ -21,8 +21,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"codemble {__version__}")
     commands = parser.add_subparsers(dest="command")
-    parse_command = commands.add_parser("parse", help="parse a Python project into graph JSON")
-    parse_command.add_argument("path", type=Path, help="Python file or project directory")
+    parse_command = commands.add_parser("parse", help="parse a project into graph JSON")
+    parse_command.add_argument("path", type=Path, help="source file or project directory")
     parse_command.add_argument(
         "--out", required=True, type=Path, help="destination for deterministic graph JSON"
     )
@@ -31,7 +31,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     serve_command = commands.add_parser("serve", help=argparse.SUPPRESS)
     serve_command.add_argument(
-        "path", nargs="?", default=Path("."), type=Path, help="Python file or project directory"
+        "path", nargs="?", default=Path("."), type=Path, help="source file or project directory"
     )
     serve_command.add_argument(
         "--path",
@@ -62,11 +62,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if arguments.command == "parse":
         try:
-            graph = PythonAstAdapter().parse(
+            graph = ProjectParser().parse(
                 arguments.path, entrypoint=arguments.entrypoint
             )
             graph.write_json(arguments.out)
-        except (OSError, PythonParseError) as error:
+        except (OSError, ProjectParseError) as error:
             print(f"codemble: {error}", file=sys.stderr)
             return 2
         print(
@@ -88,7 +88,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 open_browser=not arguments.no_open,
                 entrypoint=arguments.entrypoint,
             )
-        except (OSError, PythonParseError) as error:
+        except (OSError, ProjectParseError) as error:
             print(f"codemble: {error}", file=sys.stderr)
             return 2
     return 0
@@ -104,13 +104,13 @@ def choose_project_scope(
 ) -> Path:
     """Require an intentional subdirectory for projects above the v1 scale cap."""
 
-    adapter = PythonAstAdapter()
-    project_root, files = adapter.discover(requested)
+    parser = ProjectParser()
+    project_root, files = parser.discover(requested)
     if explicit or len(files) <= _SCALE_CAP:
         return requested
     if not interactive:
-        raise PythonParseError(
-            f"found {len(files)} Python files; Phase 0 is capped at {_SCALE_CAP}. "
+        raise ProjectParseError(
+            f"found {len(files)} supported source files; Codemble is capped at {_SCALE_CAP}. "
             "Re-run with `codemble --path PATH` to choose a project subdirectory."
         )
 
@@ -124,7 +124,7 @@ def choose_project_scope(
         for directory, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:6]
     )
     output_fn(
-        f"Codemble found {len(files)} Python files; the Phase 0 limit is {_SCALE_CAP}."
+        f"Codemble found {len(files)} supported source files; the limit is {_SCALE_CAP}."
     )
     if suggestions:
         output_fn(f"Top scopes: {suggestions}")
@@ -132,19 +132,19 @@ def choose_project_scope(
     while True:
         answer = input_fn("Subdirectory to map (or q to quit): ").strip()
         if answer.lower() in {"q", "quit"}:
-            raise PythonParseError("project scope selection cancelled")
+            raise ProjectParseError("project scope selection cancelled")
         candidate = (project_root / answer).expanduser().resolve()
         if not candidate.is_relative_to(project_root):
             output_fn("Choose a subdirectory inside the project root.")
             continue
         try:
-            _, scoped_files = adapter.discover(candidate)
-        except PythonParseError as error:
+            _, scoped_files = parser.discover(candidate)
+        except ProjectParseError as error:
             output_fn(str(error))
             continue
         if len(scoped_files) > _SCALE_CAP:
             output_fn(
-                f"That scope still has {len(scoped_files)} Python files; choose a smaller one."
+                f"That scope still has {len(scoped_files)} supported source files; choose a smaller one."
             )
             continue
         return candidate
