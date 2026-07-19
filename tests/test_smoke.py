@@ -14,9 +14,32 @@ def test_version() -> None:
     assert codemble.__version__
 
 
-def test_cli_runs(capsys) -> None:  # type: ignore[no-untyped-def]
+def test_bare_codemble_serves_the_picker(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    calls: dict[str, object] = {}
+    monkeypatch.setattr(
+        "codemble.cli.serve_picker", lambda **kwargs: calls.update(kwargs)
+    )
+
     assert main([]) == 0
-    assert "usage: codemble" in capsys.readouterr().out
+
+    assert calls == {
+        "host": "127.0.0.1",
+        "port": 0,
+        "open_browser": True,
+        "entrypoint": None,
+    }
+
+
+def test_flags_without_a_path_still_serve_the_picker(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    calls: dict[str, object] = {}
+    monkeypatch.setattr(
+        "codemble.cli.serve_picker", lambda **kwargs: calls.update(kwargs)
+    )
+
+    assert main(["--no-open", "--port", "8123"]) == 0
+
+    assert calls["open_browser"] is False
+    assert calls["port"] == 8123
 
 
 def test_production_web_app_is_part_of_the_python_package() -> None:

@@ -14,7 +14,7 @@ from codemble.adapters.project import (
     ProjectParser,
     ProjectScaleError,
 )
-from codemble.server.runtime import serve_project
+from codemble.server.runtime import serve_picker, serve_project
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -33,7 +33,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     serve_command = commands.add_parser("serve", help=argparse.SUPPRESS)
     serve_command.add_argument(
-        "path", nargs="?", default=Path("."), type=Path, help="source file or project directory"
+        "path", nargs="?", default=None, type=Path, help="source file or project directory"
     )
     serve_command.add_argument(
         "--path",
@@ -55,12 +55,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser = _parser()
     raw_arguments = list(argv) if argv is not None else list(sys.argv[1:])
-    if raw_arguments and raw_arguments[0] not in {"parse", "serve", "--version", "-h", "--help"}:
+    if not raw_arguments or raw_arguments[0] not in {
+        "parse",
+        "serve",
+        "--version",
+        "-h",
+        "--help",
+    }:
         raw_arguments.insert(0, "serve")
     arguments = parser.parse_args(raw_arguments)
-    if arguments.command is None:
-        parser.print_help()
-        return 0
 
     if arguments.command == "parse":
         try:
@@ -79,6 +82,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     elif arguments.command == "serve":
         try:
+            if arguments.path is None and arguments.scope_path is None:
+                serve_picker(
+                    host=arguments.host,
+                    port=arguments.port,
+                    open_browser=not arguments.no_open,
+                    entrypoint=arguments.entrypoint,
+                )
+                return 0
             requested = arguments.scope_path or arguments.path
             selected_path = choose_project_scope(
                 requested,
