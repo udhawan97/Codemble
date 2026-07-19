@@ -126,3 +126,34 @@ def test_js_ts_node_and_region_ids_with_paths_round_trip_through_the_api(
     )
     assert submission.status_code == 200
     assert submission.json()["correct"] is True
+
+
+def test_explanation_endpoint_returns_narration_state(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    response = client.get("/api/node/app.main/explanation?mode=easy")
+
+    assert response.status_code == 200
+    assert "status" in response.json()
+
+
+def test_explanation_endpoint_rejects_an_unknown_mode(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/node/app.main/explanation?mode=casual").status_code == 422
+
+
+def test_explanation_endpoint_404s_for_an_unknown_node(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    response = client.get("/api/node/nope/explanation?mode=easy")
+
+    assert response.status_code == 404
+    # status_code alone passes even with no route at all (FastAPI's default
+    # "Not Found" is also a 404), so it can't prove this hit the handler.
+    # Pin the detail body too, so this genuinely exercises the route's
+    # UnknownNodeError branch rather than an unmatched-path fallback.
+    assert response.json()["detail"] == "That source node is not in this graph."

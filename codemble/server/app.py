@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -89,6 +90,19 @@ def create_app(
                 status_code=422,
                 detail=str(error),
             ) from error
+
+    @app.get("/api/node/{node_id:path}/explanation")
+    def get_node_explanation(
+        node_id: str, mode: Literal["easy", "expert"] = "easy"
+    ) -> dict[str, object]:
+        try:
+            return studies.explain(node_id, mode)
+        except UnknownNodeError as error:
+            raise HTTPException(
+                status_code=404, detail="That source node is not in this graph."
+            ) from error
+        except StudySourceError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():
