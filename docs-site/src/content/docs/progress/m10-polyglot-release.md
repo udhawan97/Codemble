@@ -24,7 +24,13 @@ immutability. The packaged app was also exercised against the mixed fixture at
 desktop and 320 px: focus counts and resets matched the graph, Star Chart had no
 console errors, and neither viewport overflowed horizontally.
 
-The Phase 1 release gate covers the Python regression suite, Ruff, web and docs
-production builds, source install, wheel contents, isolated wheel install, exact
-`main` tag, checksums, and a fresh download of the published asset. Human
-first-run evidence remains a separate open acceptance item.
+## Release evidence
+
+[v0.2.0](https://github.com/udhawan97/Codemble/releases/tag/v0.2.0) is published
+from exact-main commit `b6b7776`. All four CI jobs passed along with 53 Python
+tests, Ruff, web and docs production builds, and the live Pages deployment. The
+published wheel and `SHA256SUMS.txt` were downloaded fresh; the checksum passed,
+the isolated install reported `codemble 0.2.0`, and it reproduced the 23-node,
+8-system schema-4 mixed graph. Isolated `pipx` and `uvx` installs from the tag
+also resolved to the release commit. Human first-run evidence remains a separate
+open acceptance item.

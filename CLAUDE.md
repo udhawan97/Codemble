@@ -143,10 +143,10 @@ The audience cannot detect when the tool is wrong. Therefore:
 
 ## Roadmap — NOW / NEXT / LATER
 
-**NOW — Phase 1 tester release.** Ship the completed language-neutral parser,
-tree-sitter JavaScript/TypeScript adapter, language Lens, and view-only polyglot
-focus as v0.2.0. The v0.1.0 Python learner-acceptance issue stays open in
-parallel; technical completion does not claim those external runs passed.
+**NOW — Phase 1 tester evidence.** Exercise the shipped v0.2.0
+Python/JavaScript/TypeScript and mixed-project loop on real learner projects.
+The v0.1.0 Python learner-acceptance issue stays open in parallel; technical
+completion does not claim those external runs passed.
 
 **NEXT — Phase 2 (months ~3–6).** Go/Rust/Java adapters, LOD culling +
 clustering for larger repos.
@@ -157,10 +157,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M10 polyglot focus + Phase 1 release** · Last updated:
-2026-07-19 · Session note: M7–M9 are merged. M10 adds a pure mixed-language
-focus, responsive real-app QA, public surface synchronization, and the v0.2.0
-release gate while issue #13 remains open for human evidence.
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-19 ·
+Session note: M7–M10 are merged and v0.2.0 is published from exact-main commit
+`b6b7776`; CI, live docs, checksums, downloaded wheel install/parse, and isolated
+tag installs pass while issue #13 remains open for human evidence.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -267,7 +267,7 @@ syntax errors remain visible and partial; repeated mixed parses are byte-identic
       changing graph truth, deterministic coordinates, or progress
 - [x] Verify focus behavior at galaxy/system/study levels and at 320 px
 - [x] Update README, public docs, packaged SPA, changelog, and release evidence
-- [ ] Publish and verify the Phase 1 tester release from the exact `main` tag
+- [x] Publish and verify the Phase 1 tester release from the exact `main` tag
 
 **Acceptance:** Python-only behavior remains intact; a mixed fixture can focus
 Python, JavaScript, or TypeScript without hiding uncertainty; source install,
@@ -307,6 +307,7 @@ wheel install, web build, docs build, and downloaded release asset all pass.
 | 2026-07-18 | One tree-sitter adapter owns JS and TS dialects; exact paths may be certain, but extension substitution and extensionless resolution remain possible | Cross-JS/TS resolution stays local to one implementation and never upgrades a configuration-dependent guess into fact |
 | 2026-07-18 | Graph schema 4 adds an explicit language to every concept annotation; the star chart keys concepts by language plus concept ID | Python and JS/TS may share names such as async/await, but their evidence and learning progress must never collide silently |
 | 2026-07-19 | Language focus is a frontend projection over the immutable mixed graph, not a parser mode or saved preference | Filtering must never mutate coordinates, progress, uncertainty, or parser truth; cross-language navigation remains available |
+| 2026-07-19 | v0.2.0 is tagged from exact-main commit `b6b7776` with a wheel and SHA256SUMS release asset | A release is complete only after CI, live docs, fresh download, checksum, isolated install, and mixed parse all pass |
 
 ## Non-Goals — do NOT build (point here when asked)
 

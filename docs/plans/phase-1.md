@@ -1,7 +1,8 @@
 # Phase 1 — JavaScript/TypeScript and polyglot focus
 
-Status: owner-approved on 2026-07-18. M6 external learner acceptance continues
-separately in GitHub issue #13 and is not treated as complete.
+Status: technically complete and published as v0.2.0 from exact-main commit
+`b6b7776` on 2026-07-19. M6 external learner acceptance continues separately
+in GitHub issue #13 and is not treated as complete.
 
 ## Outcome
 
