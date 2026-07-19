@@ -194,6 +194,22 @@ def test_provider_output_cannot_reference_an_unobserved_node(tmp_path: Path) -> 
     assert not list(tmp_path.glob("*.json"))
 
 
+def test_neighbors_record_edge_direction(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+
+    neighbors = service.study("app.main")["neighbors"]  # type: ignore[index]
+
+    directions = {neighbor["direction"] for neighbor in neighbors}
+    assert directions <= {"inbound", "outbound"}
+    assert any(neighbor["direction"] == "outbound" for neighbor in neighbors)
+
+
 def test_anthropic_and_openai_adapters_keep_transport_behind_one_interface() -> None:
     anthropic_requests: list[tuple[str, dict[str, str], dict[str, object]]] = []
     openai_requests: list[tuple[str, dict[str, str], dict[str, object]]] = []

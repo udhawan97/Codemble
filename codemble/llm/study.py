@@ -191,8 +191,11 @@ class StudyService:
     def _neighbors(self, node: Node) -> list[dict[str, object]]:
         observations: dict[tuple[str, str, int], dict[str, object]] = {}
         for edge in self._graph.edges:
-            neighbor_id = _neighbor_id(edge, node.id)
-            neighbor = self._nodes.get(neighbor_id) if neighbor_id else None
+            resolved = _neighbor_id(edge, node.id)
+            if resolved is None:
+                continue
+            neighbor_id, direction = resolved
+            neighbor = self._nodes.get(neighbor_id)
             if neighbor is None:
                 continue
             key = (neighbor.id, edge.kind, edge.lineno)
@@ -205,6 +208,7 @@ class StudyService:
                 "citation": f"{neighbor.file}:{neighbor.lineno}",
                 "relationship": edge.kind,
                 "certain": edge.certain,
+                "direction": direction,
                 "observed_line": edge.lineno,
             }
         return [observations[key] for key in sorted(observations)]
@@ -296,11 +300,11 @@ def _read_config(path: Path) -> tuple[dict[str, str], str | None]:
     return decoded, None
 
 
-def _neighbor_id(edge: Edge, node_id: str) -> str | None:
+def _neighbor_id(edge: Edge, node_id: str) -> tuple[str, str] | None:
     if edge.src == node_id and not edge.external:
-        return edge.dst
+        return edge.dst, "outbound"
     if edge.dst == node_id:
-        return edge.src
+        return edge.src, "inbound"
     return None
 
 
