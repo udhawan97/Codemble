@@ -6,7 +6,7 @@ import hashlib
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Iterable
+from typing import AbstractSet, Iterable
 
 import tree_sitter_javascript
 import tree_sitter_typescript
@@ -97,6 +97,118 @@ class _ImportBinding:
     external_specifier: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class _SyntaxEvidenceIndex:
+    """Reusable ownership and lookup evidence derived from one syntax parse."""
+
+    parsed_files: tuple[_ParsedFile, ...]
+    definitions: tuple[_Definition, ...]
+    nodes: tuple[Node, ...]
+    parsed_by_relative: dict[str, _ParsedFile]
+    parsed_by_module: dict[str, _ParsedFile]
+    definitions_by_module: dict[str, tuple[_Definition, ...]]
+    node_by_id: dict[str, Node]
+    children_by_parent: dict[str, tuple[Node, ...]]
+    nodes_by_module_name: dict[tuple[str, str], tuple[Node, ...]]
+    nested_ranges_by_owner: dict[str, frozenset[tuple[int, int]]]
+    local_bindings_by_owner: dict[str, frozenset[str]]
+
+    @classmethod
+    def build(
+        cls,
+        parsed_files: tuple[_ParsedFile, ...],
+        definitions: tuple[_Definition, ...],
+        nodes: tuple[Node, ...],
+    ) -> _SyntaxEvidenceIndex:
+        parsed_by_relative = {
+            parsed.relative_path: parsed for parsed in parsed_files
+        }
+        parsed_by_module = {parsed.module_id: parsed for parsed in parsed_files}
+        definitions_by_id = {
+            definition.node_id: definition for definition in definitions
+        }
+        definitions_by_module_lists: dict[str, list[_Definition]] = defaultdict(list)
+        nested_ranges: dict[str, set[tuple[int, int]]] = defaultdict(set)
+        for definition in definitions:
+            definitions_by_module_lists[definition.module_id].append(definition)
+            syntax_range = (definition.syntax.start_byte, definition.syntax.end_byte)
+            nested_ranges[definition.module_id].add(syntax_range)
+            ancestor = definition.parent_id
+            while ancestor in definitions_by_id:
+                nested_ranges[ancestor].add(syntax_range)
+                ancestor = definitions_by_id[ancestor].parent_id
+
+        node_by_id = {node.id: node for node in nodes}
+        children_by_parent, nodes_by_module_name = cls._node_lookups(
+            definitions,
+            node_by_id,
+        )
+        frozen_ranges = {
+            owner: frozenset(ranges) for owner, ranges in nested_ranges.items()
+        }
+        local_bindings_by_owner = {
+            definition.node_id: frozenset(
+                _local_binding_names(
+                    definition.syntax,
+                    parsed_by_module[definition.module_id].raw,
+                    frozen_ranges.get(definition.node_id, frozenset()),
+                )
+            )
+            for definition in definitions
+        }
+        return cls(
+            parsed_files=parsed_files,
+            definitions=definitions,
+            nodes=nodes,
+            parsed_by_relative=parsed_by_relative,
+            parsed_by_module=parsed_by_module,
+            definitions_by_module={
+                module_id: tuple(module_definitions)
+                for module_id, module_definitions in definitions_by_module_lists.items()
+            },
+            node_by_id=node_by_id,
+            children_by_parent=children_by_parent,
+            nodes_by_module_name=nodes_by_module_name,
+            nested_ranges_by_owner=frozen_ranges,
+            local_bindings_by_owner=local_bindings_by_owner,
+        )
+
+    def with_nodes(self, nodes: tuple[Node, ...]) -> _SyntaxEvidenceIndex:
+        """Refresh node metadata without rebuilding syntax ownership evidence."""
+
+        node_by_id = {node.id: node for node in nodes}
+        children_by_parent, nodes_by_module_name = self._node_lookups(
+            self.definitions,
+            node_by_id,
+        )
+        return replace(
+            self,
+            nodes=nodes,
+            node_by_id=node_by_id,
+            children_by_parent=children_by_parent,
+            nodes_by_module_name=nodes_by_module_name,
+        )
+
+    @staticmethod
+    def _node_lookups(
+        definitions: tuple[_Definition, ...],
+        node_by_id: dict[str, Node],
+    ) -> tuple[
+        dict[str, tuple[Node, ...]],
+        dict[tuple[str, str], tuple[Node, ...]],
+    ]:
+        children: dict[str, list[Node]] = defaultdict(list)
+        module_names: dict[tuple[str, str], list[Node]] = defaultdict(list)
+        for definition in definitions:
+            node = node_by_id[definition.node_id]
+            children[definition.parent_id].append(node)
+            module_names[(definition.module_id, node.name)].append(node)
+        return (
+            {parent: tuple(nodes) for parent, nodes in children.items()},
+            {key: tuple(nodes) for key, nodes in module_names.items()},
+        )
+
+
 class JavaScriptTypeScriptAdapter:
     """Map JavaScript, JSX, TypeScript, and TSX into one deterministic graph."""
 
@@ -142,7 +254,6 @@ class JavaScriptTypeScriptAdapter:
         """Parse JS/TS files already owned by this adapter."""
 
         parsed_files = tuple(_parse_file(file, project_root) for file in files)
-        parsed_by_relative = {parsed.relative_path: parsed for parsed in parsed_files}
 
         nodes: list[Node] = []
         definitions: list[_Definition] = []
@@ -152,31 +263,30 @@ class JavaScriptTypeScriptAdapter:
             nodes.extend(file_nodes)
             definitions.extend(file_definitions)
 
-        node_by_id = {node.id: node for node in nodes}
-        entrypoint_ranks = _entrypoint_ranks(parsed_files, definitions, node_by_id)
-        nodes = [
+        index = _SyntaxEvidenceIndex.build(
+            parsed_files,
+            tuple(definitions),
+            tuple(nodes),
+        )
+        entrypoint_ranks = _entrypoint_ranks(index)
+        ranked_nodes = tuple(
             replace(node, entrypoint_rank=entrypoint_ranks.get(node.id))
-            for node in nodes
-        ]
-        node_by_id = {node.id: node for node in nodes}
+            for node in index.nodes
+        )
+        index = index.with_nodes(ranked_nodes)
 
         import_edges: set[Edge] = set()
         bindings_by_module: dict[str, list[_ImportBinding]] = defaultdict(list)
         for parsed in parsed_files:
-            edges, bindings = _imports_for_file(parsed, parsed_by_relative)
+            edges, bindings = _imports_for_file(parsed, index.parsed_by_relative)
             import_edges.update(edges)
             bindings_by_module[parsed.module_id].extend(bindings)
 
-        call_edges = _call_edges(
-            parsed_files,
-            definitions,
-            node_by_id,
-            bindings_by_module,
-        )
+        call_edges = _call_edges(index, bindings_by_module)
         all_edges = [*import_edges, *call_edges]
-        annotations = _concept_annotations(parsed_files, definitions, node_by_id)
+        annotations = _concept_annotations(index)
         draft = Graph(
-            nodes=tuple(nodes),
+            nodes=index.nodes,
             edges=tuple(all_edges),
             entrypoint_candidates=(),
             project_root=str(project_root),
@@ -215,12 +325,16 @@ class JavaScriptTypeScriptAdapter:
         )
         module_node = _module_node(parsed)
         file_nodes, definitions = _collect_definitions(parsed)
-        node_by_id = {candidate.id: candidate for candidate in (module_node, *file_nodes)}
-        if node.id not in node_by_id:
+        index = _SyntaxEvidenceIndex.build(
+            (parsed,),
+            tuple(definitions),
+            (module_node, *file_nodes),
+        )
+        if node.id not in index.node_by_id:
             return []
         return [
             annotation
-            for annotation in _concept_annotations((parsed,), definitions, node_by_id)
+            for annotation in _concept_annotations(index)
             if annotation.node_id == node.id
         ]
 
@@ -430,7 +544,7 @@ def _walk(syntax: SyntaxNode) -> Iterable[SyntaxNode]:
 
 def _walk_owned(
     syntax: SyntaxNode,
-    nested_definition_ranges: set[tuple[int, int]],
+    nested_definition_ranges: AbstractSet[tuple[int, int]],
 ) -> Iterable[SyntaxNode]:
     for child in syntax.named_children:
         if (child.start_byte, child.end_byte) in nested_definition_ranges:
@@ -440,47 +554,28 @@ def _walk_owned(
 
 
 def _concept_annotations(
-    parsed_files: tuple[_ParsedFile, ...],
-    definitions: list[_Definition],
-    node_by_id: dict[str, Node],
+    index: _SyntaxEvidenceIndex,
 ) -> tuple[ConceptAnnotation, ...]:
-    parsed_by_module = {parsed.module_id: parsed for parsed in parsed_files}
-    definitions_by_id = {definition.node_id: definition for definition in definitions}
-    definitions_by_module: dict[str, list[_Definition]] = defaultdict(list)
-    nested_ranges_by_owner: dict[str, set[tuple[int, int]]] = defaultdict(set)
-    for definition in definitions:
-        definitions_by_module[definition.module_id].append(definition)
-        ancestor = definition.parent_id
-        while ancestor in definitions_by_id:
-            nested_ranges_by_owner[ancestor].add(
-                (definition.syntax.start_byte, definition.syntax.end_byte)
-            )
-            ancestor = definitions_by_id[ancestor].parent_id
-
     annotations: set[ConceptAnnotation] = set()
-    for parsed in parsed_files:
+    for parsed in index.parsed_files:
         if parsed.tree.root_node.has_error:
             continue
-        module_ranges = {
-            (definition.syntax.start_byte, definition.syntax.end_byte)
-            for definition in definitions_by_module[parsed.module_id]
-        }
         annotations.update(
             _concepts_for_owner(
-                node_by_id[parsed.module_id],
+                index.node_by_id[parsed.module_id],
                 parsed.tree.root_node,
                 parsed,
-                module_ranges,
+                index.nested_ranges_by_owner.get(parsed.module_id, frozenset()),
                 include_owner=False,
             )
         )
-    for definition in definitions:
+    for definition in index.definitions:
         annotations.update(
             _concepts_for_owner(
-                node_by_id[definition.node_id],
+                index.node_by_id[definition.node_id],
                 definition.syntax,
-                parsed_by_module[definition.module_id],
-                nested_ranges_by_owner[definition.node_id],
+                index.parsed_by_module[definition.module_id],
+                index.nested_ranges_by_owner.get(definition.node_id, frozenset()),
                 include_owner=True,
             )
         )
@@ -502,7 +597,7 @@ def _concepts_for_owner(
     owner: Node,
     syntax: SyntaxNode,
     parsed: _ParsedFile,
-    nested_definition_ranges: set[tuple[int, int]],
+    nested_definition_ranges: AbstractSet[tuple[int, int]],
     *,
     include_owner: bool,
 ) -> set[ConceptAnnotation]:
@@ -805,47 +900,19 @@ def _binding_from_require(
 
 
 def _call_edges(
-    parsed_files: tuple[_ParsedFile, ...],
-    definitions: list[_Definition],
-    node_by_id: dict[str, Node],
+    index: _SyntaxEvidenceIndex,
     bindings_by_module: dict[str, list[_ImportBinding]],
 ) -> list[Edge]:
-    parsed_by_module = {parsed.module_id: parsed for parsed in parsed_files}
-    definitions_by_id = {definition.node_id: definition for definition in definitions}
-    children_by_parent: dict[str, list[Node]] = defaultdict(list)
-    nodes_by_module_name: dict[tuple[str, str], list[Node]] = defaultdict(list)
-    for definition in definitions:
-        node = node_by_id[definition.node_id]
-        children_by_parent[definition.parent_id].append(node)
-        nodes_by_module_name[(definition.module_id, node.name)].append(node)
-    nested_ranges_by_owner: dict[str, set[tuple[int, int]]] = defaultdict(set)
-    for definition in definitions:
-        ancestor = definition.parent_id
-        while ancestor in definitions_by_id:
-            nested_ranges_by_owner[ancestor].add(
-                (definition.syntax.start_byte, definition.syntax.end_byte)
-            )
-            ancestor = definitions_by_id[ancestor].parent_id
-
-    local_bindings_by_owner = {
-        definition.node_id: _local_binding_names(
-            definition.syntax,
-            parsed_by_module[definition.module_id].raw,
-            nested_ranges_by_owner[definition.node_id],
-        )
-        for definition in definitions
-    }
-
     edges: list[Edge] = []
-    for definition in definitions:
-        parsed = parsed_by_module[definition.module_id]
+    for definition in index.definitions:
+        parsed = index.parsed_by_module[definition.module_id]
         binding_map = {
             binding.local_name: binding
             for binding in bindings_by_module[definition.module_id]
         }
         for syntax in _walk_owned(
             definition.syntax,
-            nested_ranges_by_owner[definition.node_id],
+            index.nested_ranges_by_owner.get(definition.node_id, frozenset()),
         ):
             if syntax.has_error or syntax.type not in {"call_expression", "new_expression"}:
                 continue
@@ -857,10 +924,8 @@ def _call_edges(
                     syntax,
                     parsed.raw,
                     binding_map,
-                    node_by_id,
-                    nodes_by_module_name,
-                    children_by_parent,
-                    local_bindings_by_owner[definition.node_id],
+                    index,
+                    index.local_bindings_by_owner[definition.node_id],
                 )
             )
     return edges
@@ -880,10 +945,8 @@ def _resolve_call(
     syntax: SyntaxNode,
     raw: bytes,
     bindings: dict[str, _ImportBinding],
-    node_by_id: dict[str, Node],
-    nodes_by_module_name: dict[tuple[str, str], list[Node]],
-    children_by_parent: dict[str, list[Node]],
-    local_binding_names: set[str],
+    index: _SyntaxEvidenceIndex,
+    local_binding_names: frozenset[str],
 ) -> list[Edge]:
     target = syntax.child_by_field_name("function")
     if target is None and syntax.type == "new_expression":
@@ -896,7 +959,7 @@ def _resolve_call(
         name = _node_text(target, raw)
         nested = [
             node
-            for node in children_by_parent[definition.node_id]
+            for node in index.children_by_parent.get(definition.node_id, ())
             if node.name == name
         ]
         if nested:
@@ -920,7 +983,9 @@ def _resolve_call(
                 )
             ]
         local = _local_call_candidates(
-            definition, name, nodes_by_module_name, children_by_parent
+            definition,
+            name,
+            index,
         )
         if local:
             return [
@@ -939,7 +1004,7 @@ def _resolve_call(
                 binding,
                 binding.imported_name,
                 lineno,
-                node_by_id,
+                index,
             )
         return [
             Edge(
@@ -960,8 +1025,8 @@ def _resolve_call(
         if object_node is not None and object_node.type in {"this", "super"}:
             candidates = [
                 node
-                for node in children_by_parent.get(
-                    definition.enclosing_class_id or "", []
+                for node in index.children_by_parent.get(
+                    definition.enclosing_class_id or "", ()
                 )
                 if node.name == name
             ]
@@ -984,9 +1049,9 @@ def _resolve_call(
                     binding,
                     name,
                     lineno,
-                    node_by_id,
+                    index,
                 )
-        possible = nodes_by_module_name.get((definition.module_id, name), [])
+        possible = index.nodes_by_module_name.get((definition.module_id, name), ())
         if possible:
             return [
                 _call_edge(definition.node_id, node.id, lineno, certain=False)
@@ -1010,14 +1075,17 @@ def _resolve_call(
 def _local_call_candidates(
     definition: _Definition,
     name: str,
-    nodes_by_module_name: dict[tuple[str, str], list[Node]],
-    children_by_parent: dict[str, list[Node]],
+    index: _SyntaxEvidenceIndex,
 ) -> list[Node]:
-    siblings = [node for node in children_by_parent[definition.parent_id] if node.name == name]
+    siblings = [
+        node
+        for node in index.children_by_parent.get(definition.parent_id, ())
+        if node.name == name
+    ]
     if siblings:
         return sorted(siblings, key=lambda node: node.id)
     return sorted(
-        nodes_by_module_name.get((definition.module_id, name), []),
+        index.nodes_by_module_name.get((definition.module_id, name), ()),
         key=lambda node: node.id,
     )
 
@@ -1025,7 +1093,7 @@ def _local_call_candidates(
 def _local_binding_names(
     syntax: SyntaxNode,
     raw: bytes,
-    nested_definition_ranges: set[tuple[int, int]],
+    nested_definition_ranges: AbstractSet[tuple[int, int]],
 ) -> set[str]:
     names: set[str] = set()
     for field in ("parameter", "parameters"):
@@ -1058,7 +1126,7 @@ def _binding_call_edges(
     binding: _ImportBinding,
     imported_name: str | None,
     lineno: int,
-    node_by_id: dict[str, Node],
+    index: _SyntaxEvidenceIndex,
 ) -> list[Edge]:
     if binding.external_specifier is not None:
         suffix = f".{imported_name}" if imported_name else ""
@@ -1075,9 +1143,13 @@ def _binding_call_edges(
     candidates: list[tuple[Node, bool]] = []
     if imported_name and imported_name != "default":
         for target in binding.targets:
-            for node in node_by_id.values():
-                if node.region == target.module_id and node.name == imported_name:
-                    candidates.append((node, target.certain))
+            candidates.extend(
+                (node, target.certain)
+                for node in index.nodes_by_module_name.get(
+                    (target.module_id, imported_name),
+                    (),
+                )
+            )
     if candidates:
         unambiguous = len(candidates) == 1
         return [
@@ -1118,18 +1190,13 @@ def _dynamic_call_edge(src: str, lineno: int) -> Edge:
 
 
 def _entrypoint_ranks(
-    parsed_files: tuple[_ParsedFile, ...],
-    definitions: list[_Definition],
-    node_by_id: dict[str, Node],
+    index: _SyntaxEvidenceIndex,
 ) -> dict[str, int]:
     ranks: dict[str, int] = {}
-    definitions_by_module: dict[str, list[_Definition]] = defaultdict(list)
-    for definition in definitions:
-        definitions_by_module[definition.module_id].append(definition)
-        if node_by_id[definition.node_id].name == "main":
-            ranks[definition.node_id] = 1
-
-    for parsed in parsed_files:
+    for parsed in index.parsed_files:
+        for definition in index.definitions_by_module.get(parsed.module_id, ()):
+            if index.node_by_id[definition.node_id].name == "main":
+                ranks[definition.node_id] = 1
         module_rank: int | None = None
         direct_children = [
             child for child in parsed.tree.root_node.named_children if not child.has_error
@@ -1140,7 +1207,7 @@ def _entrypoint_ranks(
                 break
         if module_rank is None and _has_top_level_startup_call(
             parsed,
-            definitions_by_module[parsed.module_id],
+            index.nested_ranges_by_owner.get(parsed.module_id, frozenset()),
         ):
             module_rank = 2
         if module_rank is None and parsed.path.stem.lower() in _STARTUP_FILE_STEMS:
@@ -1166,13 +1233,9 @@ def _is_entrypoint_guard(syntax: SyntaxNode, raw: bytes) -> bool:
 
 def _has_top_level_startup_call(
     parsed: _ParsedFile,
-    definitions: list[_Definition],
+    nested_definition_ranges: AbstractSet[tuple[int, int]],
 ) -> bool:
-    nested_ranges = {
-        (definition.syntax.start_byte, definition.syntax.end_byte)
-        for definition in definitions
-    }
-    for syntax in _walk_owned(parsed.tree.root_node, nested_ranges):
+    for syntax in _walk_owned(parsed.tree.root_node, nested_definition_ranges):
         if syntax.has_error or syntax.type != "call_expression":
             continue
         function = syntax.child_by_field_name("function")

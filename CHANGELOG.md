@@ -15,6 +15,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Moved learner navigation, language focus, study/check/Home requests, progress
   refresh, and illumination sequencing behind one testable learner-session
   interface with HTTP and in-memory adapters, leaving React to render snapshots.
+- Reused one internal JavaScript/TypeScript syntax-evidence index across
+  entrypoint, concept, call, binding, and imported-symbol resolution passes,
+  eliminating repeated ownership maps and whole-graph symbol scans.
 
 ## [0.2.0] - 2026-07-19
 

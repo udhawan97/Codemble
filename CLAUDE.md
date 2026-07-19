@@ -97,6 +97,8 @@ human-approved only; never self-promote.
    `parse(path) -> Graph`, `parse_files(root, files) -> Graph`, and
    `concepts(node) -> [ConceptAnnotation]`. Python first via stdlib `ast`; all
    later languages via tree-sitter. Nothing above the seam hardcodes a language.
+   The JS/TS adapter reuses one internal syntax-evidence index across entrypoint,
+   call, binding, and concept passes without widening this public seam.
 2. **The graph is render-ready:** graph layer computes language, LOC,
    centrality, entrypoint rank, region id, understood-state. `LearnerSession`
    owns session transitions and local HTTP sequencing behind one external-store
@@ -160,9 +162,9 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-19 ·
-Session note: architecture-deepening maintenance is in progress after the verified
-v0.2.0 release; graph finalization, project intake, and learner-session coordination
-are centralized while issue #13 remains open for human tester evidence.
+Session note: architecture-deepening maintenance is complete after the verified
+v0.2.0 release; all four report recommendations are merged in phases while issue
+#13 remains open for human tester evidence.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -275,11 +277,11 @@ syntax errors remain visible and partial; repeated mixed parses are byte-identic
 Python, JavaScript, or TypeScript without hiding uncertainty; source install,
 wheel install, web build, docs build, and downloaded release asset all pass.
 
-### M11 — Architecture deepening maintenance
+### M11 — Architecture deepening maintenance ✅ (2026-07-19)
 - [x] Centralize canonical graph finalization across language adapters and project composition
 - [x] Deepen `ProjectParser` project intake and reuse discovered file evidence
 - [x] Move learner-session transitions behind one testable frontend interface
-- [ ] Reuse one internal JS/TS syntax-evidence index across parser passes
+- [x] Reuse one internal JS/TS syntax-evidence index across parser passes
 
 **Acceptance:** existing Python and mixed graph bytes stay deterministic; project
 intake avoids repeated discovery; learner transitions are tested above local HTTP;
@@ -324,6 +326,7 @@ JS/TS certainty and concept evidence remain parser-proven through the unchanged
 | 2026-07-19 | Canonical graph finalization is one graph interface shared by adapters and project composition | Home selection, edge deduplication, centrality, annotation ordering, and layout are language-neutral truth and must not drift per adapter |
 | 2026-07-19 | `ProjectIntake` carries one normalized scope and its adapter-owned files from scale selection through parsing | `ProjectParser` owns the 300-file policy, and adapters must not rediscover file evidence that project intake already resolved |
 | 2026-07-19 | `LearnerSession` owns frontend transitions and request sequencing behind snapshot, subscription, lifecycle, and event-dispatch operations | React remains a renderer of session truth, local HTTP is replaceable, and transition races are testable through an in-memory adapter |
+| 2026-07-19 | One internal `_SyntaxEvidenceIndex` owns JS/TS parse, definition, ownership, binding, and symbol lookups across parser passes | Rebuilding overlapping maps made certainty-sensitive passes harder to reason about and imported-call resolution scanned every node; the public `LanguageAdapter` seam stays unchanged |
 
 ## Non-Goals — do NOT build (point here when asked)
 
