@@ -170,6 +170,7 @@ class JavaScriptTypeScriptAdapter:
         )
         nodes = [replace(node, centrality=indegree[node.id]) for node in nodes]
         node_by_id = {node.id: node for node in nodes}
+        annotations = _concept_annotations(parsed_files, definitions, node_by_id)
 
         candidates = tuple(
             node.id
@@ -214,6 +215,7 @@ class JavaScriptTypeScriptAdapter:
                     parsed.relative_path: parsed.digest for parsed in parsed_files
                 },
                 selected_entrypoint=selected_entrypoint,
+                concept_annotations=annotations,
                 partial_files=tuple(
                     parsed.relative_path
                     for parsed in parsed_files
@@ -223,9 +225,33 @@ class JavaScriptTypeScriptAdapter:
         )
 
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
-        """Return no Lens claims until the dedicated M9 concept pass lands."""
+        """Return only tree-sitter-proven concepts owned by ``node``."""
 
-        return []
+        if node.partial or node.language not in {"javascript", "typescript"}:
+            return []
+        raw = source.encode("utf-8")
+        path = Path(node.file)
+        parsed = _ParsedFile(
+            path=path,
+            project_root=Path("."),
+            relative_path=node.file,
+            module_id=node.region,
+            language=node.language,
+            raw=raw,
+            source=source,
+            digest=hashlib.sha256(raw).hexdigest(),
+            tree=Parser(_language_for(path.suffix.lower())).parse(raw),
+        )
+        module_node = _module_node(parsed)
+        file_nodes, definitions = _collect_definitions(parsed)
+        node_by_id = {candidate.id: candidate for candidate in (module_node, *file_nodes)}
+        if node.id not in node_by_id:
+            return []
+        return [
+            annotation
+            for annotation in _concept_annotations((parsed,), definitions, node_by_id)
+            if annotation.node_id == node.id
+        ]
 
 
 def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
@@ -440,6 +466,137 @@ def _walk_owned(
             continue
         yield child
         yield from _walk_owned(child, nested_definition_ranges)
+
+
+def _concept_annotations(
+    parsed_files: tuple[_ParsedFile, ...],
+    definitions: list[_Definition],
+    node_by_id: dict[str, Node],
+) -> tuple[ConceptAnnotation, ...]:
+    parsed_by_module = {parsed.module_id: parsed for parsed in parsed_files}
+    definitions_by_id = {definition.node_id: definition for definition in definitions}
+    definitions_by_module: dict[str, list[_Definition]] = defaultdict(list)
+    nested_ranges_by_owner: dict[str, set[tuple[int, int]]] = defaultdict(set)
+    for definition in definitions:
+        definitions_by_module[definition.module_id].append(definition)
+        ancestor = definition.parent_id
+        while ancestor in definitions_by_id:
+            nested_ranges_by_owner[ancestor].add(
+                (definition.syntax.start_byte, definition.syntax.end_byte)
+            )
+            ancestor = definitions_by_id[ancestor].parent_id
+
+    annotations: set[ConceptAnnotation] = set()
+    for parsed in parsed_files:
+        if parsed.tree.root_node.has_error:
+            continue
+        module_ranges = {
+            (definition.syntax.start_byte, definition.syntax.end_byte)
+            for definition in definitions_by_module[parsed.module_id]
+        }
+        annotations.update(
+            _concepts_for_owner(
+                node_by_id[parsed.module_id],
+                parsed.tree.root_node,
+                parsed,
+                module_ranges,
+                include_owner=False,
+            )
+        )
+    for definition in definitions:
+        annotations.update(
+            _concepts_for_owner(
+                node_by_id[definition.node_id],
+                definition.syntax,
+                parsed_by_module[definition.module_id],
+                nested_ranges_by_owner[definition.node_id],
+                include_owner=True,
+            )
+        )
+    return tuple(
+        sorted(
+            annotations,
+            key=lambda item: (
+                item.language,
+                item.node_id,
+                item.lineno,
+                item.concept,
+                item.end_lineno,
+            ),
+        )
+    )
+
+
+def _concepts_for_owner(
+    owner: Node,
+    syntax: SyntaxNode,
+    parsed: _ParsedFile,
+    nested_definition_ranges: set[tuple[int, int]],
+    *,
+    include_owner: bool,
+) -> set[ConceptAnnotation]:
+    candidates: Iterable[SyntaxNode]
+    walked = _walk_owned(syntax, nested_definition_ranges)
+    candidates = (syntax, *walked) if include_owner else walked
+    annotations: set[ConceptAnnotation] = set()
+    source_lines = parsed.source.splitlines()
+    for candidate in candidates:
+        if candidate.has_error:
+            continue
+        for concept in _concepts_for_syntax(candidate):
+            lineno, end_lineno = _line_span(candidate)
+            snippet = (
+                source_lines[lineno - 1].strip()
+                if 0 < lineno <= len(source_lines)
+                else ""
+            )
+            annotations.add(
+                ConceptAnnotation(
+                    node_id=owner.id,
+                    language=owner.language,
+                    concept=concept,
+                    lineno=lineno,
+                    end_lineno=end_lineno,
+                    snippet=snippet[:240],
+                )
+            )
+    return annotations
+
+
+def _concepts_for_syntax(syntax: SyntaxNode) -> tuple[str, ...]:
+    concepts: list[str] = []
+    if syntax.type in {
+        "function_declaration",
+        "function_expression",
+        "generator_function",
+        "generator_function_declaration",
+        "method_definition",
+        "arrow_function",
+    } and any(child.type == "async" for child in syntax.children):
+        concepts.append("async-await")
+    if syntax.type == "await_expression":
+        concepts.append("async-await")
+    if syntax.type == "arrow_function":
+        concepts.append("arrow-function")
+    if syntax.type in {"object_pattern", "array_pattern"}:
+        concepts.append("destructuring")
+    if syntax.type == "optional_chain":
+        concepts.append("optional-chaining")
+    if syntax.type == "binary_expression" and any(
+        child.type == "??" for child in syntax.children
+    ):
+        concepts.append("nullish-coalescing")
+    if syntax.type in {"import_statement", "export_statement"}:
+        concepts.append("module-syntax")
+    if syntax.type == "type_annotation":
+        concepts.append("type-annotation")
+    if syntax.type == "interface_declaration":
+        concepts.append("interface")
+    if syntax.type in {"type_parameters", "type_arguments"}:
+        concepts.append("generic")
+    if syntax.type in {"jsx_element", "jsx_self_closing_element", "jsx_fragment"}:
+        concepts.append("jsx")
+    return tuple(concepts)
 
 
 def _imports_for_file(

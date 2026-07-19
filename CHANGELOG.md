@@ -11,6 +11,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Official tree-sitter JavaScript/TypeScript adapter for JS, JSX, MJS, CJS, TS,
   TSX, MTS, and CTS modules, definitions, imports, calls, entrypoint ranking,
   exact source spans, file hashes, and honest partial-parse recovery.
+- Language-tagged graph schema 4 concept annotations plus deterministic
+  JavaScript/TypeScript Lens notes for async/await, arrows, destructuring,
+  optional chaining, nullish coalescing, modules, types, interfaces, generics,
+  and JSX.
 
 ## [0.1.0] - 2026-07-19
 

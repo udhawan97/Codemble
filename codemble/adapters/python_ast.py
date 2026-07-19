@@ -164,8 +164,9 @@ class _ScopeFacts(ast.NodeVisitor):
 class _ConceptCollector(ast.NodeVisitor):
     """Collect concepts inside one lexical owner without crossing into children."""
 
-    def __init__(self, node_id: str, source: str) -> None:
+    def __init__(self, node_id: str, language: str, source: str) -> None:
         self.node_id = node_id
+        self.language = language
         self.source_lines = source.splitlines()
         self.annotations: set[ConceptAnnotation] = set()
 
@@ -180,6 +181,7 @@ class _ConceptCollector(ast.NodeVisitor):
         self.annotations.add(
             ConceptAnnotation(
                 node_id=self.node_id,
+                language=self.language,
                 concept=concept,
                 lineno=lineno,
                 end_lineno=end_lineno,
@@ -259,7 +261,7 @@ def _concepts_for_target(
     target: ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
     source: str,
 ) -> list[ConceptAnnotation]:
-    collector = _ConceptCollector(node.id, source)
+    collector = _ConceptCollector(node.id, node.language, source)
     if isinstance(target, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
         for decorator in target.decorator_list:
             collector.add("decorator", decorator)

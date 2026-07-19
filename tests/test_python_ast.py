@@ -125,12 +125,18 @@ def test_serialization_is_byte_deterministic(graph) -> None:  # type: ignore[no-
 
     assert graph.to_json().encode() == second.to_json().encode()
     payload = json.loads(graph.to_json())
-    assert payload["schema_version"] == 3
+    assert payload["schema_version"] == 4
     assert payload["nodes"] == sorted(payload["nodes"], key=lambda node: node["id"])
     assert list(payload["file_hashes"]) == sorted(payload["file_hashes"])
     assert payload["concept_annotations"] == sorted(
         payload["concept_annotations"],
-        key=lambda item: (item["node_id"], item["lineno"], item["concept"], item["end_lineno"]),
+        key=lambda item: (
+            item["language"],
+            item["node_id"],
+            item["lineno"],
+            item["concept"],
+            item["end_lineno"],
+        ),
     )
 
 
@@ -163,6 +169,7 @@ def test_python_lens_annotations_are_ast_proven_and_lexically_owned() -> None:
         ("type-hint", 33),
     } <= concepts_by_node["concepts_sample.Example.__len__"]
     assert all(annotation.snippet for annotation in graph.concept_annotations)
+    assert {annotation.language for annotation in graph.concept_annotations} == {"python"}
 
 
 def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignore[no-untyped-def]
@@ -214,5 +221,5 @@ def test_parse_cli_writes_graph_json(tmp_path: Path, capsys) -> None:  # type: i
 
     assert main(["parse", str(FIXTURE), "--out", str(destination)]) == 0
     payload = json.loads(destination.read_text(encoding="utf-8"))
-    assert payload["schema_version"] == 3
+    assert payload["schema_version"] == 4
     assert "Wrote" in capsys.readouterr().out

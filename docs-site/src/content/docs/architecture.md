@@ -26,14 +26,15 @@ centrality, entrypoint rank, region, understood-state — and the 3D frontend is
 **pure consumer**. No layout or game logic lives in the renderer. This is what
 keeps a future read-only share link (and any alternative renderer) cheap.
 
-Graph JSON is schema-versioned and byte-deterministic. Schema 3 includes stable
+Graph JSON is schema-versioned and byte-deterministic. Schema 4 includes stable
 node IDs, source spans, regions, entrypoint ranks, call in-degree, file hashes,
 parser-owned concept annotations, and explicit certainty/external flags on
 edges. It also separates parser-ranked entrypoint candidates from the explicit
 Home selection, so ambiguous rank-zero candidates remain unselected until the
 learner chooses. Concept annotations contain the exact node, line span, and
-source snippet that the Lens is allowed to teach. The file hashes are the cache
-and progress invalidation key.
+source snippet that the Lens is allowed to teach. Each annotation also carries
+its language so identically named Python and JS/TS concepts remain separate in
+the star chart. The file hashes are the cache and progress invalidation key.
 
 ### 3. The LLM narrates; it never decides
 

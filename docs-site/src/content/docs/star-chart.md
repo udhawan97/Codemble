@@ -23,10 +23,14 @@ Opening a Study view can move Studied, but it cannot claim you understand the
 concept. It only ever claims a concept exists where the parser actually detected
 it — the lens never guesses.
 
-The Python Lens currently recognizes decorators, comprehensions, generators,
-context managers, async/await, dunder methods, exception handling, and type
-hints. Each note carries its real source snippet and a clickable `file:line`
-anchor. Nested functions and classes own their own annotations, so a parent does
-not absorb concepts found only inside a child structure.
+The Python Lens recognizes decorators, comprehensions, generators, context
+managers, async/await, dunder methods, exception handling, and type hints. The
+JavaScript/TypeScript Lens recognizes async/await, arrow functions,
+destructuring, optional chaining, nullish coalescing, module syntax, type
+annotations, interfaces, generics, and JSX.
 
-Python concepts ship first; each new language adapter brings its own concept set.
+Each note carries its real source snippet and a clickable `file:line` anchor.
+Nested structures own their own annotations, so a parent does not absorb syntax
+found only inside a child. Chart rows are keyed by language plus concept: a
+Python async/await encounter and a TypeScript async/await encounter remain
+separate evidence even though their display names match.

@@ -7,11 +7,13 @@ from dataclasses import replace
 from pathlib import Path
 
 from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
 from codemble.llm.providers import AnthropicProvider, OpenAIProvider
 from codemble.llm.study import StudyService
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 CONCEPT_FIXTURE = Path(__file__).parent / "fixtures" / "concepts_sample.py"
+POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
 
 
 class FakeProvider:
@@ -89,6 +91,47 @@ def test_lens_notes_are_anchored_to_parser_detected_constructs(tmp_path: Path) -
     assert notes == annotations
     assert all(
         note["citation"] == f"concepts_sample.py:{note['line']}"
+        for note in result["lens"]  # type: ignore[union-attr]
+    )
+
+
+def test_typescript_lens_notes_equal_language_tagged_parser_annotations(
+    tmp_path: Path,
+) -> None:
+    graph = JavaScriptTypeScriptAdapter().parse(POLYGLOT_FIXTURE)
+    service = StudyService.from_environment(
+        graph,
+        environ={},
+        config_path=tmp_path / "missing-config",
+        cache_root=tmp_path / "cache",
+    )
+    node_id = "typescript:src/widget.tsx::Card"
+
+    result = service.study(node_id)
+    annotations = {
+        (
+            annotation.language,
+            annotation.concept,
+            annotation.lineno,
+            annotation.snippet,
+        )
+        for annotation in graph.concept_annotations
+        if annotation.node_id == node_id
+    }
+    notes = {
+        (note["language"], note["concept"], note["line"], note["snippet"])
+        for note in result["lens"]  # type: ignore[union-attr]
+    }
+
+    assert notes == annotations
+    assert {note["concept"] for note in result["lens"]} >= {  # type: ignore[union-attr]
+        "arrow-function",
+        "destructuring",
+        "jsx",
+        "type-annotation",
+    }
+    assert all(
+        note["citation"] == f"src/widget.tsx:{note['line']}"
         for note in result["lens"]  # type: ignore[union-attr]
     )
 
