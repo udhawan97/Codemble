@@ -281,6 +281,62 @@ assert.deepEqual(
   "adapters without a picker fixture stay ready for existing callers",
 );
 
+// Picker phase: unpicked server → recents → scale rescope → select → ready.
+const pickerAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [
+          { name: "big", path: "/home/u/big" },
+          { name: "demo", path: "/home/u/demo" },
+        ],
+      },
+      "/home/u/big": {
+        path: "/home/u/big",
+        parent: "/home/u",
+        entries: [{ name: "api", path: "/home/u/big/api" }],
+      },
+    },
+    recents: [{ project_root: "/home/u/demo", understood_count: 2 }],
+    selections: {
+      "/home/u/big": {
+        state: "scale",
+        file_count: 420,
+        scale_cap: 300,
+        root: "/home/u/big",
+        suggestions: [{ path: "api", file_count: 300 }],
+      },
+      "/home/u/demo": { state: "ready" },
+    },
+  },
+});
+const pickerSession = createLearnerSession({ adapter: pickerAdapter, clock });
+await pickerSession.start();
+let pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "picking");
+assert.equal(pickerSnapshot.picker.path, "/home/u");
+assert.equal(pickerSnapshot.picker.recents[0].understood_count, 2);
+
+await pickerSession.dispatch({ type: "BROWSE_PICKER", path: "/home/u/big" });
+assert.equal(pickerSession.getSnapshot().picker.path, "/home/u/big");
+
+await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/big" });
+pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "picking");
+assert.equal(pickerSnapshot.picker.scale.file_count, 420);
+assert.equal(pickerSnapshot.picker.path, "/home/u/big");
+assert.equal(pickerSnapshot.picker.busy, false);
+
+await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "ready");
+assert.equal(pickerSnapshot.picker, null);
+assert.equal(pickerSnapshot.graph, graph);
+pickerSession.dispose();
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",
