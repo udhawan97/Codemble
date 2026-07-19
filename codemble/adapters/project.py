@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import replace
 from pathlib import Path
 
 from codemble.adapters.base import AdapterParseError, Graph, LanguageAdapter, Node
 from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
-from codemble.graph.layout import layout_graph
+from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 
 class ProjectParseError(AdapterParseError):
@@ -110,60 +109,19 @@ def _compose_graphs(
                 )
             file_hashes[file] = digest
 
-    node_by_id = {node.id: node for node in nodes}
-    candidates = tuple(
-        node.id
-        for node in sorted(
-            (node for node in nodes if node.entrypoint_rank is not None),
-            key=lambda node: (node.entrypoint_rank, node.id),  # type: ignore[arg-type]
-        )
-    )
-    if entrypoint is not None and entrypoint not in candidates:
-        choices = ", ".join(candidates) or "none"
-        raise ProjectParseError(
-            f"entrypoint is not parser-ranked: {entrypoint} (candidates: {choices})"
-        )
-    rank_zero = [
-        candidate
-        for candidate in candidates
-        if node_by_id[candidate].entrypoint_rank == 0
-    ]
-    selected_entrypoint = entrypoint or (rank_zero[0] if len(rank_zero) == 1 else None)
-
-    composed = Graph(
-        nodes=tuple(sorted(nodes, key=lambda node: node.id)),
-        edges=tuple(
-            sorted(
-                set(edges),
-                key=lambda edge: (
-                    edge.src,
-                    edge.dst,
-                    edge.kind,
-                    edge.lineno,
-                    edge.certain,
-                    edge.external,
-                ),
-            )
-        ),
-        entrypoint_candidates=candidates,
+    draft = Graph(
+        nodes=tuple(nodes),
+        edges=tuple(edges),
+        entrypoint_candidates=(),
         project_root=str(project_root),
-        file_hashes=dict(sorted(file_hashes.items())),
-        selected_entrypoint=selected_entrypoint,
-        concept_annotations=tuple(
-            sorted(
-                set(annotations),
-                key=lambda item: (
-                    item.language,
-                    item.node_id,
-                    item.lineno,
-                    item.concept,
-                    item.end_lineno,
-                ),
-            )
-        ),
-        partial_files=tuple(sorted(partial_files)),
+        file_hashes=file_hashes,
+        concept_annotations=tuple(annotations),
+        partial_files=tuple(partial_files),
     )
-    return layout_graph(replace(composed, regions=(), region_edges=()))
+    try:
+        return finalize_graph(draft, entrypoint=entrypoint)
+    except GraphFinalizationError as error:
+        raise ProjectParseError(str(error)) from error
 
 
 __all__ = ["ProjectParseError", "ProjectParser"]

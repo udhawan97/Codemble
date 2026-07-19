@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Changed
+- Centralized graph canonicalization, Home selection, centrality, annotation
+  normalization, edge deduplication, and deterministic layout behind one graph
+  finalization interface shared by every language adapter and project composition.
+
 ## [0.2.0] - 2026-07-19
 
 ### Added
