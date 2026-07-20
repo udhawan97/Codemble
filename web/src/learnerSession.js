@@ -41,6 +41,9 @@ export function createLearnerSession({
     picker: null,
     mode: "expert",
     llmStatus: null,
+    explanation: null,
+    explanationLoading: false,
+    explanationError: "",
   });
   let lifecycle = 0;
   let modeLifecycle = 0;
@@ -51,6 +54,7 @@ export function createLearnerSession({
   let entrypointController = null;
   let pickerController = null;
   let modeController = null;
+  let explanationController = null;
   let illuminationTimer = null;
 
   function getSnapshot() {
@@ -299,6 +303,9 @@ export function createLearnerSession({
         level: LEVELS.SYSTEM,
         studyData: null,
         studyError: "",
+        explanation: null,
+        explanationError: "",
+        explanationLoading: false,
       });
     } else if (snapshot.level === LEVELS.SYSTEM) {
       commit({ level: LEVELS.GALAXY });
@@ -328,7 +335,13 @@ export function createLearnerSession({
     commit({ languageFocus: language });
     if (previousNodeId && snapshot.selectedNode?.id !== previousNodeId) {
       cancelStudy();
-      commit({ studyData: null, studyError: "" });
+      commit({
+        studyData: null,
+        studyError: "",
+        explanation: null,
+        explanationError: "",
+        explanationLoading: false,
+      });
     }
   }
 
@@ -347,6 +360,10 @@ export function createLearnerSession({
       if (modeController === controller && !isAbortError(requestError)) {
         commit({ mode: previous });
       }
+      return undefined;
+    }
+    if (snapshot.level === LEVELS.STUDY && snapshot.selectedNode) {
+      return loadExplanation(snapshot.selectedNode.id);
     }
     return undefined;
   }
@@ -356,6 +373,7 @@ export function createLearnerSession({
     studyController = new AbortController();
     const controller = studyController;
     commit({ studyData: null, studyError: "" });
+    void loadExplanation(nodeId);
     try {
       const studyData = await adapter.loadStudy(nodeId, { signal: controller.signal });
       if (
@@ -384,6 +402,40 @@ export function createLearnerSession({
   function cancelStudy() {
     abortController(studyController);
     studyController = null;
+    abortController(explanationController);
+    explanationController = null;
+  }
+
+  async function loadExplanation(nodeId) {
+    abortController(explanationController);
+    explanationController = new AbortController();
+    const controller = explanationController;
+    commit({ explanation: null, explanationError: "", explanationLoading: true });
+    try {
+      const explanation = await adapter.fetchExplanation(nodeId, snapshot.mode, {
+        signal: controller.signal,
+      });
+      if (
+        controller.signal.aborted ||
+        snapshot.level !== LEVELS.STUDY ||
+        snapshot.selectedNode?.id !== nodeId
+      ) {
+        return;
+      }
+      commit({ explanation, explanationLoading: false });
+    } catch (requestError) {
+      if (
+        explanationController === controller &&
+        !controller.signal.aborted &&
+        !isAbortError(requestError) &&
+        snapshot.selectedNode?.id === nodeId
+      ) {
+        commit({
+          explanationError: errorMessage(requestError),
+          explanationLoading: false,
+        });
+      }
+    }
   }
 
   async function openChecks() {
@@ -498,6 +550,7 @@ export function createLearnerSession({
       entrypointController,
       pickerController,
       modeController,
+      explanationController,
     ]) {
       abortController(controller);
     }
@@ -508,6 +561,7 @@ export function createLearnerSession({
     entrypointController = null;
     pickerController = null;
     modeController = null;
+    explanationController = null;
     if (illuminationTimer !== null) {
       clock.clearTimeout(illuminationTimer);
       illuminationTimer = null;
@@ -580,6 +634,13 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
     fetchLlmStatus(options = {}) {
       return request("/api/llm/status", "Model status", options);
     },
+    fetchExplanation(nodeId, mode, options = {}) {
+      return request(
+        `/api/node/${encodeURIComponent(nodeId)}/explanation?mode=${encodeURIComponent(mode)}`,
+        "Explanation request",
+        options,
+      );
+    },
     loadPickerState(options = {}) {
       return request("/api/picker/state", "Picker state", options);
     },
@@ -623,6 +684,7 @@ export function createInMemoryLearnerSessionAdapter({
   picker = null,
   mode = "easy",
   llmStatus = null,
+  explanations = {},
 }) {
   let currentGraph = graph;
   let currentMode = mode;
@@ -683,6 +745,10 @@ export function createInMemoryLearnerSessionAdapter({
           },
         }
       );
+    },
+    async fetchExplanation(nodeId, mode, options = {}) {
+      throwIfAborted(options.signal);
+      return requiredFixture(explanations, `${nodeId}:${mode}`, "explanation");
     },
     async loadPickerState(options = {}) {
       throwIfAborted(options.signal);

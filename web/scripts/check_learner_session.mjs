@@ -51,6 +51,12 @@ const adapter = createInMemoryLearnerSessionAdapter({
     },
   },
   entrypoints: { "python:app.py:run": understoodGraph },
+  explanations: {
+    "python:app.py:run:easy": { status: "ready", summary: { text: "easy voice" } },
+    "python:app.py:run:expert": { status: "ready", summary: { text: "expert voice" } },
+    "typescript:main.ts:main:easy": { status: "no_key", message: "Add a key." },
+    "typescript:main.ts:main:expert": { status: "no_key", message: "Add a key." },
+  },
   mode: "easy",
   llmStatus: {
     configured_provider: null,
@@ -97,6 +103,21 @@ snapshot = session.getSnapshot();
 assert.equal(snapshot.level, LEVELS.STUDY);
 assert.equal(snapshot.studyData.node.id, "python:app.py:run");
 assert(snapshot.studiedNodeIds.has("python:app.py:run"));
+assert.equal(snapshot.explanationLoading, false);
+assert.equal(snapshot.explanationError, "");
+assert.equal(snapshot.explanation.summary.text, "easy voice");
+
+await session.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(
+  session.getSnapshot().explanation.summary.text,
+  "expert voice",
+  "changing voice while studying re-narrates the same node",
+);
+await session.dispatch({ type: "SET_MODE", mode: "easy" });
+
+await session.dispatch({ type: "RETREAT" });
+assert.equal(session.getSnapshot().explanation, null, "leaving study drops its narration");
+await session.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
 
 await session.dispatch({ type: "SET_LANGUAGE_FOCUS", language: "python" });
 await session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: "typescript:main.ts:main" });
@@ -486,6 +507,34 @@ assert.equal(
   "llmStatus from the same preferences response still applies",
 );
 raceModeSession.dispose();
+
+// A failing narration request must leave the structural evidence untouched.
+const narrationFailureAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  studies: { "python:app.py:run": study },
+});
+const narrationFailureSession = createLearnerSession({
+  adapter: {
+    ...narrationFailureAdapter,
+    fetchExplanation() {
+      return Promise.reject(new Error("Explanation request returned 502."));
+    },
+  },
+  clock,
+});
+await narrationFailureSession.start();
+await narrationFailureSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await narrationFailureSession.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
+const narrationSnapshot = narrationFailureSession.getSnapshot();
+assert.equal(narrationSnapshot.explanation, null);
+assert.equal(narrationSnapshot.explanationLoading, false);
+assert.equal(narrationSnapshot.explanationError, "Explanation request returned 502.");
+assert.equal(
+  narrationSnapshot.studyData.node.id,
+  "python:app.py:run",
+  "narration failure never removes parser evidence",
+);
+narrationFailureSession.dispose();
 
 function makeGraph({ understood = false } = {}) {
   return {
