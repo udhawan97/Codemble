@@ -39,6 +39,12 @@ export function createLearnerSession({
     litRegionId: null,
     languageFocus: "all",
     picker: null,
+    layer: "galaxy",
+    layerChosen: false,
+    mapTab: "architecture",
+    mapData: null,
+    mapError: "",
+    coachmarksSeen: false,
     mode: "expert",
     llmStatus: null,
     explanation: null,
@@ -54,6 +60,7 @@ export function createLearnerSession({
   let submissionController = null;
   let entrypointController = null;
   let pickerController = null;
+  let mapController = null;
   let modeController = null;
   let explanationController = null;
   let resetController = null;
@@ -146,15 +153,13 @@ export function createLearnerSession({
       (async () => adapter.fetchLlmStatus({ signal: controller.signal }))(),
     ]);
     if (requestLifecycle !== lifecycle || controller.signal.aborted) return;
-    const patch = {};
     // A same-project setMode call (in flight or already committed) is a newer
     // truth than this fetch, which was issued before it: never let it clobber
     // the learner's choice. llmStatus is unrelated to mode and always applies.
     if (modeResult.status === "fulfilled" && requestModeLifecycle === modeLifecycle) {
-      patch.mode = modeResult.value.mode;
+      applyMode(modeResult.value.mode);
     }
-    if (statusResult.status === "fulfilled") patch.llmStatus = statusResult.value;
-    if (Object.keys(patch).length > 0) commit(patch);
+    if (statusResult.status === "fulfilled") commit({ llmStatus: statusResult.value });
   }
 
   async function startPicker(controller, requestLifecycle) {
@@ -335,6 +340,14 @@ export function createLearnerSession({
         return selectProject(event.path);
       case "RESET_PROJECT":
         return resetProject();
+      case "SET_LAYER":
+        return setLayer(event.layer);
+      case "SET_MAP_TAB":
+        commit({ mapTab: event.tab });
+        return undefined;
+      case "DISMISS_COACHMARKS":
+        commit({ coachmarksSeen: true });
+        return undefined;
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
@@ -413,6 +426,17 @@ export function createLearnerSession({
     }
   }
 
+  // Phase A's mode load (loadPreferences) and SET_MODE both funnel through
+  // here so a mode value is never committed without also settling the
+  // layer: an explicit SET_LAYER (layerChosen) always wins, otherwise the
+  // mode picks the learner's default layer.
+  function applyMode(mode) {
+    commit({
+      mode,
+      layer: snapshot.layerChosen ? snapshot.layer : mode === "easy" ? "map" : "galaxy",
+    });
+  }
+
   async function setMode(mode) {
     if (mode !== "easy" && mode !== "expert") return undefined;
     const previous = snapshot.mode;
@@ -421,12 +445,12 @@ export function createLearnerSession({
     abortController(modeController);
     modeController = new AbortController();
     const controller = modeController;
-    commit({ mode });
+    applyMode(mode);
     try {
       await adapter.putMode(mode, { signal: controller.signal });
     } catch (requestError) {
       if (modeController === controller && !isAbortError(requestError)) {
-        commit({ mode: previous });
+        applyMode(previous);
       }
       return undefined;
     }
@@ -605,6 +629,34 @@ export function createLearnerSession({
     }
   }
 
+  async function setLayer(layer) {
+    commit({ layer, layerChosen: true });
+    if (layer === "map" && !snapshot.mapData) return loadMap();
+    return undefined;
+  }
+
+  async function loadMap() {
+    abortController(mapController);
+    mapController = new AbortController();
+    const controller = mapController;
+    commit({ mapError: "" });
+    try {
+      const mapData = await adapter.fetchMap({ signal: controller.signal });
+      if (!controller.signal.aborted) commit({ mapData, mapError: "" });
+      return mapData;
+    } catch (requestError) {
+      if (
+        mapController === controller &&
+        !controller.signal.aborted &&
+        !isAbortError(requestError)
+      ) {
+        // Scoped to the map layer on purpose: the galaxy must stay usable.
+        commit({ mapError: errorMessage(requestError), mapData: null });
+      }
+      return undefined;
+    }
+  }
+
   function illuminateRegion(regionId) {
     if (illuminationTimer !== null) clock.clearTimeout(illuminationTimer);
     commit({ litRegionId: regionId });
@@ -623,6 +675,7 @@ export function createLearnerSession({
       submissionController,
       entrypointController,
       pickerController,
+      mapController,
       modeController,
       explanationController,
       resetController,
@@ -635,6 +688,7 @@ export function createLearnerSession({
     submissionController = null;
     entrypointController = null;
     pickerController = null;
+    mapController = null;
     modeController = null;
     explanationController = null;
     resetController = null;
@@ -661,6 +715,9 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
   return Object.freeze({
     loadGraph(options = {}) {
       return request("/api/graph", "Graph request", options);
+    },
+    fetchMap(options = {}) {
+      return request("/api/map", "Map request", options);
     },
     loadStudy(nodeId, options = {}) {
       return request(
@@ -767,6 +824,7 @@ export function createInMemoryLearnerSessionAdapter({
   mode = "easy",
   llmStatus = null,
   explanations = {},
+  map = null,
 }) {
   let currentGraph = graph;
   let currentMode = mode;
@@ -776,6 +834,11 @@ export function createInMemoryLearnerSessionAdapter({
     async loadGraph(options = {}) {
       throwIfAborted(options.signal);
       return currentGraph;
+    },
+    async fetchMap(options = {}) {
+      throwIfAborted(options.signal);
+      if (map === null) throw new Error("No in-memory map fixture.");
+      return map;
     },
     async loadStudy(nodeId, options = {}) {
       throwIfAborted(options.signal);
@@ -881,6 +944,7 @@ function deriveSnapshot(state) {
     }
   }
   const studiedNodeIds = state.studiedNodeIds;
+  const hint = focusedGraph ? nearestUnlitRegion(focusedGraph, state.mode) : null;
   return {
     ...state,
     focusedGraph,
@@ -896,6 +960,56 @@ function deriveSnapshot(state) {
     focusedStudiedCount: focusedGraph
       ? focusedGraph.nodes.filter((node) => studiedNodeIds.has(node.id)).length
       : 0,
+    hint,
+  };
+}
+
+// Deterministic graph truth: the nearest unlit region to Home counted in route
+// hops, ties broken by region id. Routes are walked undirected because a route
+// connects two modules regardless of which one imports the other. No model,
+// no heuristic, no stored state -- recomputed from the graph on every snapshot.
+function nearestUnlitRegion(graph, mode) {
+  if (mode !== "easy") return null;
+  const unlit = graph.regions.filter((region) => !region.understood);
+  if (!unlit.length) return null;
+  const home = graph.regions.find((region) => region.home);
+  const hops = new Map();
+  if (home) {
+    const neighbours = new Map();
+    for (const edge of graph.region_edges) {
+      if (!neighbours.has(edge.src)) neighbours.set(edge.src, []);
+      if (!neighbours.has(edge.dst)) neighbours.set(edge.dst, []);
+      neighbours.get(edge.src).push(edge.dst);
+      neighbours.get(edge.dst).push(edge.src);
+    }
+    hops.set(home.id, 0);
+    const queue = [home.id];
+    while (queue.length) {
+      const current = queue.shift();
+      for (const next of (neighbours.get(current) ?? []).slice().sort()) {
+        if (!hops.has(next)) {
+          hops.set(next, hops.get(current) + 1);
+          queue.push(next);
+        }
+      }
+    }
+  }
+  const nearest = unlit
+    .map((region) => ({
+      regionId: region.id,
+      hops: hops.has(region.id) ? hops.get(region.id) : Infinity,
+    }))
+    .sort(
+      (left, right) => left.hops - right.hops || left.regionId.localeCompare(right.regionId),
+    )[0];
+  return {
+    ...nearest,
+    reason:
+      nearest.hops === 0
+        ? "Home is not lit yet."
+        : Number.isFinite(nearest.hops)
+          ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
+          : "No import route reaches it from Home.",
   };
 }
 

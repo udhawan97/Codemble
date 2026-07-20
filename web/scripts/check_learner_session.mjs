@@ -480,6 +480,119 @@ assert.equal(raceSnapshot.status, "ready");
 assert.equal(raceSnapshot.picker, null);
 raceSession.dispose();
 
+// Phase B: layer, map tab, map data, coach-marks, and the derived hint.
+const mapPayload = {
+  schema_version: 1,
+  architecture: { home: "app.py", boxes: [], edges: [], groups: [], unreachable: [] },
+  workflow: { root: null, nodes: [], unreachable: [] },
+};
+// Home (app.py) is understood so it cannot shadow main.ts as the nearest
+// unlit region -- the fixture default `mode: "easy"` on
+// createInMemoryLearnerSessionAdapter would otherwise also flip this
+// session's default layer to "map" before the first assertion below, so
+// mode is pinned to "expert" explicitly.
+const layerSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({
+      graph: makeGraph({ understood: true }),
+      mode: "expert",
+    }),
+    async fetchMap() {
+      return mapPayload;
+    },
+  },
+  clock,
+});
+await layerSession.start();
+assert.equal(
+  layerSession.getSnapshot().layer,
+  "galaxy",
+  "expert mode lands on the galaxy",
+);
+assert.equal(layerSession.getSnapshot().mapTab, "architecture");
+assert.equal(layerSession.getSnapshot().coachmarksSeen, false);
+
+await layerSession.dispatch({ type: "SET_LAYER", layer: "map" });
+let layerSnapshot = layerSession.getSnapshot();
+assert.equal(layerSnapshot.layer, "map");
+assert.equal(layerSnapshot.mapData, mapPayload, "switching to map fetches it once");
+assert.equal(layerSnapshot.mapError, "");
+
+await layerSession.dispatch({ type: "SET_MAP_TAB", tab: "workflow" });
+assert.equal(layerSession.getSnapshot().mapTab, "workflow");
+
+await layerSession.dispatch({ type: "DISMISS_COACHMARKS" });
+assert.equal(layerSession.getSnapshot().coachmarksSeen, true);
+
+// The hint is expert-mode-silent and graph-derived.
+assert.equal(layerSession.getSnapshot().hint, null, "expert mode shows no hint");
+await layerSession.dispatch({ type: "SET_MODE", mode: "easy" });
+layerSnapshot = layerSession.getSnapshot();
+assert.equal(layerSnapshot.layer, "map", "an explicit layer choice survives a mode flip");
+assert.equal(
+  layerSnapshot.hint.regionId,
+  "main.ts",
+  "the hint is the nearest unlit region to Home",
+);
+assert.equal(layerSnapshot.hint.hops, Infinity, "an unrouted region still reports its distance");
+layerSession.dispose();
+
+// Easy mode defaults to the map layer when the learner has not chosen one.
+// makeGraph's `understood` flag only marks the Home region (app.py); mark
+// main.ts understood too so this graph is genuinely fully understood.
+const fullyUnderstoodGraph = makeGraph({ understood: true });
+fullyUnderstoodGraph.regions[1].understood = true;
+fullyUnderstoodGraph.nodes[1].understood = true;
+const easySession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph: fullyUnderstoodGraph }),
+    async fetchMap() {
+      return mapPayload;
+    },
+    async fetchMode() {
+      return { mode: "easy" };
+    },
+  },
+  clock,
+});
+await easySession.start();
+assert.equal(easySession.getSnapshot().layer, "map", "easy mode lands on the map");
+assert.equal(
+  easySession.getSnapshot().hint,
+  null,
+  "a fully understood project has nothing to hint at",
+);
+easySession.dispose();
+
+// A map failure is scoped to the map layer and never breaks the galaxy.
+const mapFailureSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph }),
+    async fetchMap() {
+      throw new Error("map unavailable");
+    },
+  },
+  clock,
+});
+await mapFailureSession.start();
+await mapFailureSession.dispatch({ type: "SET_LAYER", layer: "map" });
+const failureSnapshot = mapFailureSession.getSnapshot();
+assert.equal(failureSnapshot.mapError, "map unavailable");
+assert.equal(failureSnapshot.mapData, null);
+assert.equal(failureSnapshot.status, "ready", "a map failure never downs the session");
+mapFailureSession.dispose();
+
+// The HTTP adapter hits the documented URL.
+const mapCalls = [];
+const mapHttp = createHttpLearnerSessionAdapter(async (url) => {
+  mapCalls.push(url);
+  return { ok: true, async json() { return mapPayload; } };
+});
+assert.deepEqual(await mapHttp.fetchMap(), mapPayload);
+assert.deepEqual(mapCalls, ["/api/map"]);
+
+console.log("phase B layer + map contracts passed");
+
 // A failing mode write reverts the optimistic value: mode is a preference,
 // never truth, so the UI must not claim a setting the server refused.
 const modeFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "easy" });
