@@ -109,6 +109,7 @@ export default defineConfig({
             { label: "Build log: M9 TS/JS Lens", slug: "progress/m9-typescript-lens" },
             { label: "Build log: M10 polyglot release", slug: "progress/m10-polyglot-release" },
             { label: "Build log: M12 the living cosmos", slug: "progress/m12-galaxy-look" },
+            { label: "Build log: M13 scale", slug: "progress/m13-scale" },
           ],
         },
       ],

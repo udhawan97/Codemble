@@ -197,11 +197,24 @@ orbits, the 2D Map layer, and the living-cosmos visual overhaul) have both
 since shipped, and were released together as **v0.4.0** (tag `v0.4.0`, published
 to PyPI, verified end to end from a clean `uvx codemble==0.4.0` install: the
 wheel's SPA bundle is byte-identical to the tag, all 27 regions draw unclipped,
-and the galaxy renders deep space with no console errors). Phase C (~1,000-file
-scale with staged parse progress) has not started — there is still no threaded
-parse or parse-progress screen, and the scale cap remains ~300 files. Its plan
-is written and ready at
-`docs/superpowers/plans/2026-07-19-galaxy-ux-phase-c.md` (12 tasks).
+and the galaxy renders deep space with no console errors). Phase C (M13:
+~1,000-file scale with staged parse progress) has since shipped from that
+plan: parsing now runs on a worker thread behind a `202`-accepted picker
+select and a polled `GET /api/picker/progress` through five honest stages,
+cancellation is checked between files and a crashed worker reports as an
+in-app error rather than a hung server, the scale cap moved 300 → 1,000 with
+the over-cap prompt offering clickable busiest scopes plus a home-jailed typed
+path, a one-pass check index replaced the per-region edge scans
+(byte-identical suites, pinned by a golden fixture before the refactor),
+`/api/graph` and `/api/map` responses are now cached with invalidation on
+light-up, Home change, and binding, and a Clear this project's progress
+control was added to the star chart. A dedicated verification pass at a
+realistic ~1,000-file project then found the `resolving` stage — the slowest
+one — showed no moving signal for most of the wait; the fix narrates its real
+sub-steps instead of leaving the screen static, and a parser hotspot found
+alongside it (an O(definitions × modules) module-resolution scan in the Python
+adapter) was fixed too, together taking real parse wall-clock on a 1,000-file
+Python project from roughly 11.5s to roughly 7.5s with byte-identical output.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -349,6 +362,24 @@ hash file content, never coordinates, so the orbit relayout did not re-dim any
 region; reduced motion always yields the finished lit state with zero
 animation.
 
+### M13 — Galaxy UX Phase C: scale ✅ (2026-07-20)
+- [x] Threaded parse behind `202` select, `GET /api/picker/progress`, and a
+      staged loading screen with real file counts
+- [x] Cancellation checked between files; a crashed worker becomes an error
+      state, never a hung server
+- [x] Scale cap 300 → 1,000; clickable busiest scopes plus a jailed path field;
+      suggestions in the non-TTY CLI refusal
+- [x] One per-bind check index replacing the per-region edge scans, pinned by a
+      golden suite fixture
+- [x] Cached `/api/graph` and `/api/map` documents invalidated on light-up,
+      Home, and binding
+- [x] Terminal stage lines for `codemble <path>`; reset-progress control
+
+**Acceptance:** a ~1,000-file project parses with live progress and reaches an
+interactive galaxy; re-fetching the graph does not re-sort the world; the scale
+prompt is actionable entirely in-app; generated check suites are byte-identical
+to before the index change.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
@@ -411,6 +442,9 @@ animation.
 | 2026-07-20 | Bloom resolution is capped with `composer.setPixelRatio(1)`, not the `UnrealBloomPass` constructor | `EffectComposer.setSize` forwards the canvas size to every pass on resize, overwriting the constructor's `resolution`. The pixel ratio is the cap that survives |
 | 2026-07-20 | **Corrects the row above**: bloom is capped by wrapping the bloom pass's own `setSize`, and the composer keeps the renderer's pixel ratio | The pixel ratio *did* cap bloom, but `EffectComposer.setSize` multiplies it into `renderTarget1/2` and every pass, so the whole scene rendered at 1x and upscaled — measured 1280x611 scene passes on a 2560x1221 buffer at dpr 2. Wrapping the one pass caps the one expensive thing: scene now 2560x1221, bloom mip 0 800x382 (1280x611 uncapped), `?benchmark` at 951 nodes unchanged at 928.8 → 961.5 fps median |
 | 2026-07-20 | **Corrects "binding is one-shot"** (2026-07-19 picker row): binding is one-*at-a-time*. `serve_project` attaches `PickerConfig(browse_root=Path.home())` too, so a `codemble <path>` run also exposes the picker endpoints after a reset, and browse then enumerates non-hidden directories under `$HOME` | The Switch project control has to work without a process restart, which is what that config is for — but the earlier row still claimed a permanent 409 for the path-opened flow, and this file is the source of truth. The home jail and the Host-header allowlist are unchanged; only the "one-shot" claim was false. An app built with no `PickerConfig` at all remains genuinely one-shot and refuses reset |
+| 2026-07-20 | Progress reporting is a thread-scoped per-file hook (`note_file_parsed`) bound by `ProjectParser`, not a new `LanguageAdapter` parameter | The public adapter seam must stay unchanged for Phase 2 languages; one hook site per adapter also gives cancellation its exact "between files" meaning |
+| 2026-07-20 | Phase C adds `DELETE /api/progress`, the `CLEAR_PROGRESS` session event, and a `clearProgress` adapter method beyond the shared contract's Phase C rows | The contract's Phase C rows covered parse progress only, while the no-reset-progress-control gap is mapped to Phase C by the spec; recorded here rather than silently widened |
+| 2026-07-20 | Generated check suites are pinned by a committed golden fixture before any performance work touches `checks/service.py` | The Correctness Contract makes suite drift top-severity, and a refactor that changes an answer is invisible without a byte-level pin |
 
 ## Non-Goals — do NOT build (point here when asked)
 
@@ -451,7 +485,7 @@ animation.
 
 ## Edge cases & limits
 
-- >~300 supported source files → prompt to scope to a subdirectory (LOD arrives Phase 2)
+- >~1,000 supported source files → prompt to scope to a subdirectory (LOD arrives Phase 2)
 - No clear entrypoint → ranked candidates; user picks Home
 - Syntax errors / partial parses → parse what you can, flag the rest, never crash
 - Missing/invalid key → galaxy + structure + checks work; explanations show "add your key"

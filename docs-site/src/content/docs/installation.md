@@ -114,9 +114,10 @@ prose explanations need a model.
 
 ## Limits that fail honestly
 
-- More than 300 supported source files: run
-  `codemble --path ./project/subdirectory`; the picker prompts for the same
-  busiest-first subdirectory choice in the UI.
+- More than 1,000 supported source files: run
+  `codemble --path ./project/subdirectory`; the picker offers the same
+  busiest-first scopes as clickable buttons, plus a typed path field. Both stay
+  inside your home directory.
 - Ambiguous startup: choose Home in the app or pass a parser-ranked node with
   `--entrypoint NODE_ID`.
 - Syntax error: the file remains visible as **Unchartable**, with raw source;

@@ -8,8 +8,8 @@ happened.
 
 ## Protect your project
 
-- Use a local project with at most 300 supported source files, or choose a smaller
-  subdirectory when Codemble prompts (`--path` from the CLI).
+- Use a local project with at most 1,000 supported source files, or choose a
+  smaller subdirectory when Codemble prompts (`--path` from the CLI).
 - Do not paste source code, API keys, credentials, or private project names into
   feedback. Codemble itself runs locally and has no telemetry.
 - An LLM key is optional. The galaxy, source, Lens, checks, and lighting work

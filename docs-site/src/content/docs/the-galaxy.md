@@ -28,6 +28,18 @@ brightness ramp stops below the amber a lit star uses. Brightness counts the
 distinct places that call a structure, not how many call sites they contain —
 a helper hammered in one loop is not more depended-on than a shared utility.
 
+## While a large project loads
+
+Parsing runs on a background thread, so the browser stays responsive. The
+loading screen names the stage it is in — finding files, reading each file,
+connecting imports and calls, building checks, placing the galaxy — with a
+real file count while files are being read. The stages after that advance by
+naming the real sub-step running rather than a count, because none of them has
+a per-file total to report honestly. If the parse fails, you land back on the
+picker with the parser's own error message and a one-click retry for the same
+folder — no need to restart Codemble. Cancelling works the same way: it
+returns you to the picker and stops the parse at the next file boundary.
+
 ## Light that means something
 
 The sky is lit rather than drawn. Every star carries a halo generated on a
