@@ -2,16 +2,27 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { LEVELS, galaxyData, nodeLabel, systemData } from "./graphData.js";
+import { LEVELS, galaxyData, linkLabel, nodeLabel, systemData } from "./graphData.js";
 
 const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
 
-export function GalaxyCanvas({ graph, level, region, selectedNode, onAdvance, onRetreat }) {
+export function GalaxyCanvas({
+  graph,
+  level,
+  region,
+  selectedNode,
+  hoverNodeId,
+  onHoverNode,
+  onAdvance,
+  onRetreat,
+}) {
   const hostRef = useRef(null);
   const rendererRef = useRef(null);
   const advanceRef = useRef(onAdvance);
   const retreatRef = useRef(onRetreat);
+  const hoverRef = useRef(onHoverNode);
+  const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
   const wheelLockRef = useRef(0);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
@@ -26,7 +37,34 @@ export function GalaxyCanvas({ graph, level, region, selectedNode, onAdvance, on
   useEffect(() => {
     advanceRef.current = onAdvance;
     retreatRef.current = onRetreat;
-  }, [onAdvance, onRetreat]);
+    hoverRef.current = onHoverNode;
+  }, [onAdvance, onRetreat, onHoverNode]);
+
+  function nodeColor(node) {
+    const { activeId, neighborIds } = highlightRef.current;
+    if (!activeId) return node.color;
+    if (node.id === activeId) return palette.orbit;
+    return neighborIds.has(node.id) ? node.color : palette.faded;
+  }
+
+  function linkColor(link) {
+    const { activeId, neighborIds } = highlightRef.current;
+    const base = link.certain ? palette.route : palette.routePossible;
+    if (!activeId) return base;
+    const source = linkEndId(link.source);
+    const target = linkEndId(link.target);
+    if (source === activeId || target === activeId) return palette.orbit;
+    return neighborIds.has(source) && neighborIds.has(target) ? base : palette.faded;
+  }
+
+  function linkWidth(link) {
+    const { activeId } = highlightRef.current;
+    const base = Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25);
+    if (!activeId) return base;
+    const source = linkEndId(link.source);
+    const target = linkEndId(link.target);
+    return source === activeId || target === activeId ? base + 0.9 : base;
+  }
 
   useEffect(() => {
     const host = hostRef.current;
@@ -47,17 +85,22 @@ export function GalaxyCanvas({ graph, level, region, selectedNode, onAdvance, on
         .nodeId("id")
         .nodeLabel(nodeLabel)
         .nodeVal("val")
-        .nodeColor("color")
+        .nodeColor(nodeColor)
         .nodeRelSize(NODE_REL_SIZE)
         .nodeResolution(8)
         .nodeOpacity(0.82)
         .nodeThreeObject((node) => makeMarker(node, palette))
         .nodeThreeObjectExtend(true)
-        .linkColor("color")
+        .linkColor(linkColor)
+        .linkLabel(linkLabel)
         .linkOpacity(0.32)
-        .linkWidth((link) => Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25))
+        .linkWidth(linkWidth)
+        .linkHoverPrecision(4)
+        .linkDirectionalArrowRelPos(1)
+        .linkDirectionalArrowColor(linkColor)
         .onNodeHover((node) => {
           host.style.cursor = node ? "pointer" : "default";
+          hoverRef.current(node?.id ?? null);
         })
         .onNodeClick((node) => advanceRef.current(node));
       const hideNavigationHint = requestAnimationFrame(() => {
@@ -87,7 +130,8 @@ export function GalaxyCanvas({ graph, level, region, selectedNode, onAdvance, on
     if (!renderer) return;
     renderer
       .nodeResolution(data.nodes.length >= 900 ? 4 : 8)
-      .nodeOpacity(level === LEVELS.STUDY ? 0.16 : 0.82)
+      // Arrows only where an edge means a direction the learner can act on.
+      .linkDirectionalArrowLength(level === LEVELS.GALAXY ? 0 : 3.2)
       .graphData(data);
     if (level === LEVELS.GALAXY) {
       renderer.cameraPosition({ x: 0, y: 105, z: 310 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
@@ -96,6 +140,30 @@ export function GalaxyCanvas({ graph, level, region, selectedNode, onAdvance, on
     }
     setFocusedIndex(0);
   }, [data, level]);
+
+  useEffect(() => {
+    // At study level the selection is the subject even without a pointer, so
+    // its connections stay legible instead of the scene fading to 0.16.
+    const activeId = hoverNodeId ?? (level === LEVELS.STUDY ? selectedNode?.id ?? null : null);
+    const neighborIds = new Set();
+    if (activeId) {
+      for (const link of data.links) {
+        const source = linkEndId(link.source);
+        const target = linkEndId(link.target);
+        if (source === activeId) neighborIds.add(target);
+        if (target === activeId) neighborIds.add(source);
+      }
+    }
+    highlightRef.current = { activeId, neighborIds };
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    // Re-setting an accessor to itself is the library's own refresh idiom.
+    renderer
+      .nodeColor(renderer.nodeColor())
+      .linkColor(renderer.linkColor())
+      .linkWidth(renderer.linkWidth())
+      .linkDirectionalArrowColor(renderer.linkDirectionalArrowColor());
+  }, [data, hoverNodeId, level, selectedNode?.id]);
 
   useEffect(() => {
     const benchmarking = new URLSearchParams(window.location.search).has("benchmark");
@@ -203,6 +271,11 @@ function makeMarker(node, palette) {
   return group;
 }
 
+// The force layout swaps link endpoints from ids to node objects in place.
+function linkEndId(end) {
+  return typeof end === "object" && end !== null ? end.id : end;
+}
+
 // A custom property hands back its authored text, so a token written as
 // color-mix() reaches WebGL as a string three.js cannot parse and renders black.
 // Painting it once turns any CSS colour the browser understands into plain rgb.
@@ -230,6 +303,9 @@ function readPalette() {
     nodeDim: value("--cm-node-unlit"),
     route: value("--cm-hairline"),
     routePossible: value("--cm-route-possible"),
+    // Everything outside the current selection or hover recedes to this;
+    // it stays a plain value so readPalette can hand WebGL real rgb().
+    faded: value("--cm-hairline-soft"),
     star: value("--cm-star-high"),
   });
 }

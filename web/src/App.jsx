@@ -165,6 +165,8 @@ export function App() {
           level={level}
           region={region}
           selectedNode={selectedNode}
+          hoverNodeId={hoverNodeId}
+          onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
           onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
           onRetreat={() => session.dispatch({ type: "RETREAT" })}
         />

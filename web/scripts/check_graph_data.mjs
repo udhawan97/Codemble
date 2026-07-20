@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildConceptChart,
   languageFocusGraph,
+  linkLabel,
   projectLanguageOptions,
 } from "../src/graphData.js";
 
@@ -72,6 +73,25 @@ assert.deepEqual(
     ["python", "async-await", 0, 0],
     ["typescript", "async-await", 1, 1],
   ],
+);
+
+assert.equal(
+  linkLabel({ src: "app.main", dst: "pkg.run", kind: "call", certain: true, lineno: 12 }),
+  "app.main → pkg.run · call · certain · line 12",
+);
+assert.equal(
+  linkLabel({ src: "app.main", dst: "pkg.run", kind: "call", certain: false, lineno: 12 }),
+  "app.main → pkg.run · call · possible call · line 12",
+  "an approximate call edge must say so in its tooltip",
+);
+assert.equal(
+  linkLabel({ src: "app", dst: "pkg", kind: "import", certain: false, lineno: 3 }),
+  "app → pkg · import · possible import · line 3",
+);
+assert.equal(
+  linkLabel({ src: "app", dst: "pkg", weight: 2, certain: true }),
+  "app → pkg · import route · certain · 2 imports",
+  "galaxy-level region edges carry a weight instead of a line number",
 );
 
 console.log("graph-data contracts passed");

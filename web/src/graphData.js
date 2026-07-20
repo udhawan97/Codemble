@@ -176,6 +176,22 @@ export function nodeLabel(node) {
   return `${node.name} · ${role} · ${node.loc} LOC${home}${uncertainty}`;
 }
 
+export function linkLabel(link) {
+  const relation =
+    link.kind === "import" ? "import" : link.kind === "call" ? "call" : "import route";
+  const certainty = link.certain
+    ? "certain"
+    : relation === "call"
+      ? "possible call"
+      : "possible import";
+  const weight =
+    typeof link.weight === "number"
+      ? ` · ${link.weight} ${link.weight === 1 ? "import" : "imports"}`
+      : "";
+  const where = typeof link.lineno === "number" ? ` · line ${link.lineno}` : "";
+  return `${link.src} → ${link.dst} · ${relation} · ${certainty}${weight}${where}`;
+}
+
 function sizeFromLoc(loc, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, Math.sqrt(Math.max(1, loc)) * 1.15));
 }
