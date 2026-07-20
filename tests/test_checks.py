@@ -225,6 +225,24 @@ def test_a_persisted_home_outside_the_parser_ranking_is_never_restored(
 
     assert restarted.graph().selected_entrypoint is None
 
+    # A never-existed id is one edge case; a real node the parser simply never
+    # ranked as an entrypoint is the one the guard actually exists for. A
+    # mutant that checks `graph.nodes` membership instead of
+    # `entrypoint_candidates` would restore this one, since "shared" is a
+    # genuine node -- only the ranking says it can't be Home. The fixture
+    # project has one unambiguous rank-0 candidate ("app"), which
+    # `finalize_graph` auto-selects, so force the "no Home chosen yet" state
+    # the guard actually runs under -- exactly like an ambiguous reparse --
+    # while keeping the fixture's real parser-derived nodes and candidates.
+    fixture_graph = replace(PythonAstAdapter().parse(FIXTURE), selected_entrypoint=None)
+    assert "shared" in {node.id for node in fixture_graph.nodes}
+    assert "shared" not in fixture_graph.entrypoint_candidates
+    ProgressStore(fixture_graph, progress_root).set_selected_entrypoint("shared")
+
+    fixture_restarted = CheckService(fixture_graph, ProgressStore(fixture_graph, progress_root))
+
+    assert fixture_restarted.graph().selected_entrypoint is None
+
 
 def test_an_explicit_home_outranks_a_persisted_one(tmp_path: Path) -> None:
     project = tmp_path / "project"

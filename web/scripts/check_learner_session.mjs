@@ -167,13 +167,35 @@ await session.dispatch({ type: "DISMISS_ENTRYPOINT" });
 assert.equal(session.getSnapshot().entrypointDismissed, true);
 assert.equal(session.getSnapshot().entrypointOpen, false);
 
+// Regression: CHANGE_HOME must clear a *genuine* STUDY state, not just find
+// fields that were already empty. Drive all the way into STUDY with the
+// chart open first, so each assertion below would fail if the handler
+// stopped clearing that field.
 await session.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await session.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
+await session.dispatch({ type: "SHOW_CHART" });
+let studySnapshot = session.getSnapshot();
+assert.equal(studySnapshot.level, LEVELS.STUDY, "setup reached a genuine study state");
+assert.equal(studySnapshot.selectedNode?.id, "python:app.py:run");
+assert.equal(studySnapshot.studyData?.node.id, "python:app.py:run");
+assert.equal(studySnapshot.explanation?.summary.text, "easy voice");
+assert.equal(studySnapshot.showChart, true);
+
 await session.dispatch({ type: "CHANGE_HOME" });
 let homeSnapshot = session.getSnapshot();
 assert.equal(homeSnapshot.entrypointOpen, true, "Change Home reopens the picker");
 assert.equal(homeSnapshot.level, LEVELS.GALAXY, "Home is a galaxy-level decision");
-assert.equal(homeSnapshot.selectedNode, null);
-assert.equal(homeSnapshot.showChart, false);
+assert.equal(homeSnapshot.selectedNode, null, "Change Home clears the selected node");
+assert.equal(homeSnapshot.studyData, null, "Change Home clears study data");
+assert.equal(homeSnapshot.studyError, "", "Change Home clears study error");
+assert.equal(homeSnapshot.explanation, null, "Change Home clears the narration");
+assert.equal(homeSnapshot.explanationError, "", "Change Home clears the narration error");
+assert.equal(
+  homeSnapshot.explanationLoading,
+  false,
+  "Change Home clears the narration loading flag",
+);
+assert.equal(homeSnapshot.showChart, false, "Change Home closes the star chart");
 await session.dispatch({ type: "DISMISS_ENTRYPOINT" });
 await session.dispatch({ type: "SHOW_CHART" });
 assert.equal(session.getSnapshot().showChart, true);
