@@ -44,3 +44,18 @@ is written only after every offered check in the region passes. Each region is
 bound to a deterministic signature of its current parser file hashes. On the
 next run, matching regions light and changed regions stay dim; no background
 watcher or network service is involved.
+
+## Right answers say so
+
+A correct answer is confirmed in place — "Correct. That answer is fixed by the
+parser graph." — before the next question loads. A wrong answer still shows the
+graph's answer and the evidence behind it.
+
+## Why a region can stay dim forever
+
+Every question Codemble asks is answered by the parser graph, and every question
+must offer at least one wrong option. A region with no certain relationship
+gives Codemble nothing to build a question from, so it stays dim and says so.
+Lighting it anyway would mean the amber said something untrue about what you
+understand. Import that module somewhere, or call something inside it, and its
+checks appear.

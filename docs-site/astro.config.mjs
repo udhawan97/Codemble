@@ -81,6 +81,7 @@ export default defineConfig({
           label: "Playing Codemble",
           items: [
             { label: "The galaxy", slug: "the-galaxy" },
+            { label: "The study panel", slug: "study-panel" },
             { label: "Checks & lighting", slug: "checks-and-lighting" },
             { label: "The star chart", slug: "star-chart" },
           ],

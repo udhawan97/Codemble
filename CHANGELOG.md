@@ -5,6 +5,53 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- The study panel now shows what the parser knows before any model is asked: a
+  plain-language or expert structural summary that needs no key, no network,
+  and no provider.
+- Grounded narration finally reaches the panel. The explanation endpoint had
+  shipped but was never called, so the narration block always rendered empty.
+- A Connections section lists every parser relationship into and out of the
+  selected structure — direction, certainty, and a `file:line` citation per
+  row — with a small diagram of callers, this structure, and callees. Clicking
+  a row opens that structure's study.
+- An Easy/Expert toggle in the header. Easy uses plain language for narration,
+  check questions, panel labels, and the legend; Expert keeps full terminology.
+  The choice persists and never touches graph truth, coordinates, progress, or
+  how a check is scored.
+- Switch project: a header control releases the current project and returns to
+  the picker, so a second project no longer needs a terminal.
+- Change Home: the entrypoint picker can be reopened at any time, and the Home
+  you select is remembered for the next run of the same project.
+- Guidance when no model is configured, including how to narrate entirely
+  locally with Ollama, driven by what is actually installed and running.
+- Correct check answers now get an affirmation, not just silence.
+- A complete legend: size, brightness, amber-understood, unchartable files, and
+  certain versus possible relationships.
+- Edge arrowheads below the galaxy level, hover tooltips on every edge, and
+  hover/selection highlighting that brightens the selected structure's
+  connections and fades the rest.
+- A `<noscript>` message and a React error boundary, so a render failure
+  explains itself and offers a reload instead of showing a blank page.
+
+### Changed
+- The study panel leads with the structural summary and narration, then
+  connections, then source and lens notes.
+- The study level keeps the selected structure's connections visible instead of
+  dimming the whole scene.
+- A region with no safe check now explains that Codemble refuses to ask a
+  question the graph cannot answer, rather than only stating that none exists.
+- The zero-candidate Home screen no longer tells you to restart with a CLI
+  flag; every option is in the app.
+- The star chart labels studied counts "this session", which is what they have
+  always measured.
+
+### Fixed
+- The partial-parse notice rode a code path that never executed; it now renders
+  with the narration block, and the structural summary states it as well.
+- A failed graph load offered only "Restart Codemble and reload this page"; it
+  now retries in place.
+
 ## [0.3.1] - 2026-07-19
 
 ### Changed
