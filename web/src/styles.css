@@ -1548,3 +1548,164 @@ button:focus-visible,
   opacity: 0.6;
   cursor: progress;
 }
+
+/* --- Layer switcher + 2D map ---------------------------------------------- */
+.layer-switcher {
+  display: inline-flex;
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  overflow: hidden;
+}
+
+.layer-switcher button {
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  border: 0;
+  background: transparent;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.layer-switcher button[aria-pressed="true"] {
+  background: var(--cm-orbit-low);
+  color: var(--cm-ink);
+}
+
+.map-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-md);
+  background: var(--cm-ground);
+  overflow: hidden;
+}
+
+.map-tabs {
+  display: flex;
+  gap: var(--cm-space-xs);
+  flex: 0 0 auto;
+}
+
+.map-tabs button {
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.map-tabs button[aria-pressed="true"] {
+  border-color: var(--cm-orbit);
+  color: var(--cm-ink);
+}
+
+.map-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.architecture-map,
+.workflow-tree {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+}
+
+.architecture-map__edges line,
+.workflow-tree__edges path {
+  stroke: var(--cm-hairline);
+  stroke-width: 1.2;
+  fill: none;
+}
+
+.architecture-map__edges line.is-cycle {
+  stroke: var(--cm-route-possible);
+}
+
+.architecture-map__box rect {
+  fill: var(--cm-ground-2);
+  stroke: var(--cm-hairline);
+}
+
+.architecture-map__box .box-tint {
+  stroke: none;
+}
+
+.architecture-map__box text {
+  fill: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: 13px;
+}
+
+.architecture-map__box .box-meta {
+  fill: var(--cm-ink-3);
+  font-size: 11px;
+}
+
+.architecture-map__box[data-understood="true"] rect:first-child {
+  stroke: var(--cm-star-high);
+}
+
+.architecture-map__box[data-home="true"] rect:first-child {
+  stroke-width: 2;
+}
+
+.architecture-map__box[data-reachable="false"] rect:first-child {
+  stroke-dasharray: 4 3;
+}
+
+.architecture-map__box:focus-visible rect:first-child,
+.workflow-tree__row:focus-visible circle {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 2px;
+}
+
+.architecture-map__box,
+.workflow-tree__row {
+  cursor: pointer;
+}
+
+.workflow-tree__row circle {
+  fill: var(--cm-ink-3);
+}
+
+.workflow-tree__row[data-understood="true"] circle {
+  fill: var(--cm-star-high);
+}
+
+.workflow-tree__row[data-cut] circle {
+  fill: var(--cm-route-possible);
+}
+
+.workflow-tree__row text {
+  fill: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: 13px;
+}
+
+.workflow-tree__row .row-meta {
+  fill: var(--cm-ink-3);
+  font-size: 11px;
+}
+
+.map-note,
+.map-loading {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.map-state {
+  margin: auto;
+  max-width: 46ch;
+  text-align: center;
+  color: var(--cm-ink-2);
+}

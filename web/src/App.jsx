@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
+import { MapView } from "./MapView.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
   LEVELS,
@@ -40,12 +41,17 @@ export function App() {
     focusedGraph,
     focusedStudiedCount,
     graph,
+    hint,
     hoverNodeId,
     languageFocus,
     languageOptions,
+    layer,
     level,
     litRegionId,
     llmStatus,
+    mapData,
+    mapError,
+    mapTab,
     mode,
     pendingDawnRegionId,
     picker,
@@ -147,6 +153,11 @@ export function App() {
           <SwitchProject onConfirm={() => session.dispatch({ type: "RESET_PROJECT" })} />
         </div>
         <div className="rail-controls">
+          <LayerSwitcher
+            layer={layer}
+            mode={mode}
+            onChange={(next) => session.dispatch({ type: "SET_LAYER", layer: next })}
+          />
           <LanguageFocus
             options={languageOptions}
             value={languageFocus}
@@ -165,18 +176,38 @@ export function App() {
         <StarChart chart={chart} studiedCount={focusedStudiedCount} />
       ) : (
       <section className="map-stage" aria-label="Parser-proven project map">
-        <GalaxyCanvas
-          graph={focusedGraph}
-          level={level}
-          region={region}
-          selectedNode={selectedNode}
-          hoverNodeId={hoverNodeId}
-          pendingDawnRegionId={pendingDawnRegionId}
-          onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
-          onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
-          onRetreat={() => session.dispatch({ type: "RETREAT" })}
-          onDawnConsumed={(regionId) => session.dispatch({ type: "CONSUME_DAWN", regionId })}
-        />
+        {layer === "map" ? (
+          <MapView
+            data={mapData}
+            mapTab={mapTab}
+            mode={mode}
+            error={mapError}
+            onSelectTab={(tab) => session.dispatch({ type: "SET_MAP_TAB", tab })}
+            onSelectRegion={(regionId) =>
+              session.dispatch({
+                type: "ADVANCE",
+                node: focusedGraph.regions.find((region) => region.id === regionId),
+              })
+            }
+            onSelectNode={(nodeId) =>
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
+            }
+            onRetry={() => session.dispatch({ type: "SET_LAYER", layer: "map" })}
+          />
+        ) : (
+          <GalaxyCanvas
+            graph={focusedGraph}
+            level={level}
+            region={region}
+            selectedNode={selectedNode}
+            hoverNodeId={hoverNodeId}
+            pendingDawnRegionId={pendingDawnRegionId}
+            onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
+            onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
+            onRetreat={() => session.dispatch({ type: "RETREAT" })}
+            onDawnConsumed={(regionId) => session.dispatch({ type: "CONSUME_DAWN", regionId })}
+          />
+        )}
         <aside className="map-legend" aria-label="Galaxy legend">
           <span>
             <i className="legend-dot legend-dot--dim legend-dot--small" />
@@ -208,7 +239,7 @@ export function App() {
             {mode === "easy" ? "Possible connection" : "Possible relationship"}
           </span>
         </aside>
-        {level === LEVELS.GALAXY ? (
+        {layer === "galaxy" && level === LEVELS.GALAXY ? (
           <section className="orientation-copy">
             <h1>
               {focusedGraph.regions.length}{" "}
@@ -390,6 +421,26 @@ function PickerScreen({ picker, onBrowse, onSelect }) {
         </button>
       </section>
     </main>
+  );
+}
+
+function LayerSwitcher({ layer, mode, onChange }) {
+  return (
+    <nav className="layer-switcher" aria-label="View layer">
+      {[
+        { id: "galaxy", label: "Galaxy" },
+        { id: "map", label: mode === "easy" ? "Diagram" : "Map" },
+      ].map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          aria-pressed={layer === option.id}
+          onClick={() => onChange(option.id)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
