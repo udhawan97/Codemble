@@ -353,3 +353,31 @@ def test_an_explicit_home_outranks_a_persisted_one(tmp_path: Path) -> None:
     restarted = CheckService(explicit, ProgressStore(explicit, progress_root))
 
     assert restarted.graph().selected_entrypoint == "alpha"
+
+
+def test_check_generation_walks_every_edge_once(tmp_path: Path) -> None:
+    """Per-region full-edge scans are the bind freeze at ~1,000 files.
+
+    Binding generated every region's suite by re-scanning ``graph.edges`` up
+    to four times per region, so the learner waited on O(regions x edges)
+    while the galaxy stayed blank.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    passes = 0
+
+    class _CountingEdges(tuple):  # noqa: SLOT001 - a plain tuple is the point
+        """A real tuple that records how many times a consumer walked it."""
+
+        def __iter__(self):  # type: ignore[no-untyped-def]
+            nonlocal passes
+            passes += 1
+            return super().__iter__()
+
+    counted = replace(graph, edges=_CountingEdges(graph.edges))
+    # The store is built from the uncounted graph, so every recorded pass
+    # belongs to check generation and none to progress hydration.
+    CheckService(counted, ProgressStore(graph, tmp_path))
+
+    assert len(graph.regions) > 1
+    assert passes == 1

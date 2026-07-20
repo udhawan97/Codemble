@@ -61,10 +61,7 @@ class CheckService:
     def __init__(self, graph: Graph, progress: ProgressStore | None = None) -> None:
         self._progress = progress or ProgressStore(graph)
         self._graph = _restored_entrypoint(graph, self._progress)
-        self._checks = {
-            region.id: generate_checks(self._graph, region.id)
-            for region in self._graph.regions
-        }
+        self._checks = _suites(self._graph)
         self._passed: dict[str, set[str]] = {}
 
     @property
@@ -88,10 +85,7 @@ class CheckService:
 
         self._graph = with_entrypoint(self._graph, node_id)
         self._progress.set_selected_entrypoint(node_id)
-        self._checks = {
-            region.id: generate_checks(self._graph, region.id)
-            for region in self._graph.regions
-        }
+        self._checks = _suites(self._graph)
         return self.graph()
 
     def for_region(self, region_id: str) -> dict[str, object]:
@@ -168,26 +162,89 @@ def _restored_entrypoint(graph: Graph, progress: ProgressStore) -> Graph:
     return with_entrypoint(graph, saved)
 
 
+class _CheckIndex:
+    """One O(nodes + edges) pass over the graph that every region reads.
+
+    Generating each region's suite independently re-scanned ``graph.edges``
+    up to four times, so binding a project cost O(regions x edges) before the
+    galaxy could render.  Every bucket below is filled in ``graph.edges``
+    order, which is what the per-region scans saw, so the stable sorts and
+    ``min`` calls downstream break ties exactly as they did before.
+    """
+
+    __slots__ = (
+        "graph",
+        "nodes",
+        "region_ids",
+        "all_ids",
+        "ids_by_kind",
+        "calls_out_by_region",
+        "calls_in_by_region",
+        "imports_into",
+        "imports_out",
+        "ranked_entrypoints",
+    )
+
+    def __init__(self, graph: Graph) -> None:
+        self.graph = graph
+        self.nodes: dict[str, Node] = {node.id: node for node in graph.nodes}
+        self.region_ids = frozenset(region.id for region in graph.regions)
+        self.all_ids = tuple(sorted(self.nodes))
+        by_kind: dict[str, list[str]] = {}
+        for node in self.nodes.values():
+            by_kind.setdefault(node.kind, []).append(node.id)
+        self.ids_by_kind = {kind: tuple(sorted(ids)) for kind, ids in by_kind.items()}
+        self.calls_out_by_region: dict[str, dict[str, list[Edge]]] = {}
+        self.calls_in_by_region: dict[str, dict[str, list[Edge]]] = {}
+        self.imports_into: dict[str, list[Edge]] = {}
+        self.imports_out: dict[str, list[Edge]] = {}
+        for edge in graph.edges:
+            if not edge.certain or edge.external:
+                continue
+            if edge.kind == "call":
+                source = self.nodes.get(edge.src)
+                target = self.nodes.get(edge.dst)
+                if source is None or target is None:
+                    continue
+                self.calls_out_by_region.setdefault(source.region, {}).setdefault(
+                    edge.src, []
+                ).append(edge)
+                self.calls_in_by_region.setdefault(target.region, {}).setdefault(
+                    edge.dst, []
+                ).append(edge)
+            elif edge.kind == "import":
+                if edge.src in self.nodes:
+                    self.imports_into.setdefault(edge.dst, []).append(edge)
+                if edge.dst in self.nodes:
+                    self.imports_out.setdefault(edge.src, []).append(edge)
+        self.ranked_entrypoints = [
+            candidate
+            for candidate in graph.entrypoint_candidates
+            if candidate in self.nodes
+        ]
+
+
+def _suites(graph: Graph) -> dict[str, tuple[Check, ...]]:
+    """Generate every region's suite from a single shared index."""
+
+    index = _CheckIndex(graph)
+    return {region.id: _region_checks(index, region.id) for region in graph.regions}
+
+
 def generate_checks(graph: Graph, region_id: str) -> tuple[Check, ...]:
     """Build up to four stable questions from parser-owned evidence."""
 
-    if not any(region.id == region_id for region in graph.regions):
-        raise UnknownCheckError(region_id)
-    nodes = {node.id: node for node in graph.nodes}
-    checks: list[Check] = []
+    return _region_checks(_CheckIndex(graph), region_id)
 
-    first_call = _first_call_check(graph, region_id, nodes)
-    if first_call:
-        checks.append(first_call)
-    importer = _importer_check(graph, region_id, nodes)
-    if importer:
-        checks.append(importer)
-    impact = _impact_check(graph, region_id, nodes)
-    if impact:
-        checks.append(impact)
-    entrypoint = _entrypoint_check(graph, region_id, nodes)
-    if entrypoint:
-        checks.append(entrypoint)
+
+def _region_checks(index: _CheckIndex, region_id: str) -> tuple[Check, ...]:
+    if region_id not in index.region_ids:
+        raise UnknownCheckError(region_id)
+    checks: list[Check] = []
+    for build in (_first_call_check, _importer_check, _impact_check, _entrypoint_check):
+        check = build(index, region_id)
+        if check:
+            checks.append(check)
     return tuple(check for check in checks if _proves_understanding(check))
 
 
@@ -197,28 +254,15 @@ def _proves_understanding(check: Check) -> bool:
     return bool({option.id for option in check.options} - set(check.answer_ids))
 
 
-def _first_call_check(
-    graph: Graph, region_id: str, nodes: dict[str, Node]
-) -> Check | None:
-    calls_by_source: dict[str, list[Edge]] = {}
-    for edge in graph.edges:
-        source = nodes.get(edge.src)
-        if (
-            edge.kind == "call"
-            and edge.certain
-            and not edge.external
-            and source is not None
-            and source.region == region_id
-            and edge.dst in nodes
-        ):
-            calls_by_source.setdefault(edge.src, []).append(edge)
+def _first_call_check(index: _CheckIndex, region_id: str) -> Check | None:
+    calls_by_source = index.calls_out_by_region.get(region_id)
     if not calls_by_source:
         return None
     source_id = sorted(calls_by_source)[0]
     edge = min(calls_by_source[source_id], key=lambda item: (item.lineno, item.dst))
     answers = (edge.dst,)
     return _check(
-        graph,
+        index,
         region_id,
         "first-call",
         source_id,
@@ -227,30 +271,20 @@ def _first_call_check(
             "expert": f"Which structure does {source_id} call first?",
         },
         answers,
-        _node_options(nodes, answers, kind="function"),
-        (f"{nodes[source_id].file}:{edge.lineno}",),
+        _node_options(index, answers, kind="function"),
+        (f"{index.nodes[source_id].file}:{edge.lineno}",),
     )
 
 
-def _importer_check(
-    graph: Graph, region_id: str, nodes: dict[str, Node]
-) -> Check | None:
+def _importer_check(index: _CheckIndex, region_id: str) -> Check | None:
     incoming = sorted(
-        (
-            edge
-            for edge in graph.edges
-            if edge.kind == "import"
-            and edge.certain
-            and not edge.external
-            and edge.dst == region_id
-            and edge.src in nodes
-        ),
+        index.imports_into.get(region_id, ()),
         key=lambda edge: (edge.src, edge.lineno),
     )
     if incoming:
         answers = tuple(sorted({edge.src for edge in incoming}))
         return _check(
-            graph,
+            index,
             region_id,
             "direct-importer",
             region_id,
@@ -259,20 +293,12 @@ def _importer_check(
                 "expert": f"Which project module imports {region_id} directly?",
             },
             answers,
-            _node_options(nodes, answers, kind="module"),
-            tuple(f"{nodes[edge.src].file}:{edge.lineno}" for edge in incoming),
+            _node_options(index, answers, kind="module"),
+            tuple(f"{index.nodes[edge.src].file}:{edge.lineno}" for edge in incoming),
         )
 
     outgoing = sorted(
-        (
-            edge
-            for edge in graph.edges
-            if edge.kind == "import"
-            and edge.certain
-            and not edge.external
-            and edge.src == region_id
-            and edge.dst in nodes
-        ),
+        index.imports_out.get(region_id, ()),
         key=lambda edge: (edge.lineno, edge.dst),
     )
     if not outgoing:
@@ -280,7 +306,7 @@ def _importer_check(
     first = outgoing[0]
     answers = (first.dst,)
     return _check(
-        graph,
+        index,
         region_id,
         "direct-importer",
         region_id,
@@ -289,28 +315,18 @@ def _importer_check(
             "expert": f"Which project module does {region_id} import first?",
         },
         answers,
-        _node_options(nodes, answers, kind="module"),
-        (f"{nodes[region_id].file}:{first.lineno}",),
+        _node_options(index, answers, kind="module"),
+        (f"{index.nodes[region_id].file}:{first.lineno}",),
     )
 
 
-def _impact_check(
-    graph: Graph, region_id: str, nodes: dict[str, Node]
-) -> Check | None:
-    callers_by_target: dict[str, list[Edge]] = {}
-    for edge in graph.edges:
-        target = nodes.get(edge.dst)
-        if (
-            edge.kind == "call"
-            and edge.certain
-            and not edge.external
-            and target is not None
-            and target.region == region_id
-            and edge.src in nodes
-        ):
-            callers_by_target.setdefault(edge.dst, []).append(edge)
+def _impact_check(index: _CheckIndex, region_id: str) -> Check | None:
+    callers_by_target = index.calls_in_by_region.get(region_id)
     if not callers_by_target:
         return None
+    # Distinct callers, never call sites: a private helper called five times
+    # from one function must not outrank a utility called from three modules.
+    # Matches Node.centrality; see codemble/graph/finalize.py.
     target_id = sorted(
         callers_by_target,
         key=lambda candidate: (
@@ -321,7 +337,7 @@ def _impact_check(
     callers = sorted(callers_by_target[target_id], key=lambda edge: (edge.src, edge.lineno))
     answers = tuple(sorted({edge.src for edge in callers}))
     return _check(
-        graph,
+        index,
         region_id,
         "removal-impact",
         target_id,
@@ -333,22 +349,22 @@ def _impact_check(
             ),
         },
         answers,
-        _node_options(nodes, answers, kind="function"),
-        tuple(f"{nodes[edge.src].file}:{edge.lineno}" for edge in callers),
+        _node_options(index, answers, kind="function"),
+        tuple(f"{index.nodes[edge.src].file}:{edge.lineno}" for edge in callers),
     )
 
 
-def _entrypoint_check(
-    graph: Graph, region_id: str, nodes: dict[str, Node]
-) -> Check | None:
-    ranked = [candidate for candidate in graph.entrypoint_candidates if candidate in nodes]
-    selected = graph.selected_entrypoint
-    if not ranked or selected is None or nodes[selected].region != region_id:
+def _entrypoint_check(index: _CheckIndex, region_id: str) -> Check | None:
+    ranked = index.ranked_entrypoints
+    selected = index.graph.selected_entrypoint
+    if not ranked or selected is None or index.nodes[selected].region != region_id:
         return None
     answers = (selected,)
-    pool = ranked + [node.id for node in graph.nodes if node.id not in ranked]
+    # The old pool was the ranked candidates followed by every other node, and
+    # _options only ever consumed sorted(set(pool)) -- which is exactly every
+    # node id, already sorted and unique on the index.
     return _check(
-        graph,
+        index,
         region_id,
         "entrypoint",
         selected,
@@ -357,24 +373,28 @@ def _entrypoint_check(
             "expert": "Which parser-ranked structure is selected as Home for this run?",
         },
         answers,
-        _options(nodes, answers, pool),
-        (f"{nodes[selected].file}:{nodes[selected].lineno}",),
+        _options(index, answers, index.all_ids),
+        (f"{index.nodes[selected].file}:{index.nodes[selected].lineno}",),
     )
 
 
 def _node_options(
-    nodes: dict[str, Node], answers: tuple[str, ...], *, kind: str
+    index: _CheckIndex, answers: tuple[str, ...], *, kind: str
 ) -> tuple[CheckOption, ...]:
-    pool = [node.id for node in nodes.values() if node.kind == kind]
+    pool = index.ids_by_kind.get(kind, ())
     if len(set(pool) | set(answers)) < 2:
-        pool = list(nodes)
-    return _options(nodes, answers, pool)
+        pool = index.all_ids
+    return _options(index, answers, pool)
 
 
 def _options(
-    nodes: dict[str, Node], answers: tuple[str, ...], pool: list[str]
+    index: _CheckIndex, answers: tuple[str, ...], pool: tuple[str, ...]
 ) -> tuple[CheckOption, ...]:
     """Offer every answer plus wrong options, or nothing if none exist.
+
+    ``pool`` arrives from the index already sorted and unique, so this walks it
+    directly and stops once the ceiling is reached; the previous
+    ``sorted(set(pool))`` re-sorted every node id on every check.
 
     The ceiling must clear ``len(answers)``; capping at four alone offered a
     multi-answer check no wrong option, so selecting everything always passed.
@@ -382,16 +402,20 @@ def _options(
 
     candidates = list(answers)
     ceiling = max(4, len(answers) + _MINIMUM_DISTRACTORS)
-    for candidate in sorted(set(pool)):
-        if candidate not in candidates and len(candidates) < ceiling:
+    for candidate in pool:
+        if len(candidates) >= ceiling:
+            break
+        if candidate not in candidates:
             candidates.append(candidate)
     if len(candidates) == len(answers):
         return ()
-    return tuple(CheckOption(candidate, nodes[candidate].id) for candidate in candidates)
+    return tuple(
+        CheckOption(candidate, index.nodes[candidate].id) for candidate in candidates
+    )
 
 
 def _check(
-    graph: Graph,
+    index: _CheckIndex,
     region_id: str,
     kind: CheckKind,
     subject: str,
@@ -401,7 +425,7 @@ def _check(
     evidence: tuple[str, ...],
 ) -> Check:
     check_id = hashlib.sha256(
-        f"{graph.schema_version}|{region_id}|{kind}|{subject}".encode()
+        f"{index.graph.schema_version}|{region_id}|{kind}|{subject}".encode()
     ).hexdigest()[:16]
     return Check(
         id=check_id,
