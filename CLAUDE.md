@@ -226,7 +226,11 @@ teach the layer the learner is actually on, the audience gate and coach-marks
 no longer stack as two modals, the no-entrypoint Map tabs stop pointing at a
 Change Home button that isn't shown, language focus now filters the Map as a
 frontend projection, and a parse `bind` that outlasts a cancel can no longer
-rebind a released project.
+rebind a released project. Phase C plus that gap-fix wave shipped as **v0.5.0**;
+the parse work collided with an independent implementation of the same three
+foundational commits on `main`, reconciled by taking the branch's verified
+superset while preserving main's unique `CODEMBLE_DATA_DIR`/config-isolation
+fix, which lived in files the branch never touched.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
