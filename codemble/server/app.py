@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from codemble import __version__
 from codemble.adapters.base import Graph
+from codemble.graph import build_map
 from codemble.adapters.project import (
     ProjectParseError,
     ProjectParser,
@@ -226,6 +227,13 @@ def create_app(
     def get_graph() -> dict[str, object]:
         checks, _ = _services()
         return checks.graph().to_dict()
+
+    @app.get("/api/map")
+    def get_map() -> dict[str, object]:
+        # The hydrated graph, so lit regions and the selected Home in the 2D map
+        # can never disagree with the galaxy the learner just came from.
+        checks, _ = _services()
+        return build_map(checks.graph())
 
     @app.post("/api/entrypoint")
     def select_entrypoint(selection: EntrypointSelection) -> dict[str, object]:

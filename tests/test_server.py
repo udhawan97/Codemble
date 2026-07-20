@@ -10,10 +10,20 @@ from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
 from codemble.checks import CheckService, generate_checks
 from codemble.llm.study import StudyService
 from codemble.progress import ProgressStore
-from codemble.server.app import create_app
+from codemble.server.app import PickerConfig, create_app
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
+
+
+@pytest.fixture
+def client(tmp_path: Path) -> TestClient:
+    """A TestClient bound to the sampleproj fixture -- the shape every other
+    test in this file builds locally; shared here for tests that don't care
+    about a specific graph, just a bound project."""
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    return TestClient(create_app(graph, tmp_path / "missing"))
 
 
 def test_graph_and_source_endpoints_are_grounded(tmp_path: Path) -> None:
@@ -574,3 +584,28 @@ def test_selected_home_is_restored_for_the_next_run_of_the_same_project(
     )
 
     assert restarted.get("/api/graph").json()["selected_entrypoint"] == "beta"
+
+
+def test_map_endpoint_serves_both_deterministic_layouts(client) -> None:  # type: ignore[no-untyped-def]
+    first = client.get("/api/map")
+    second = client.get("/api/map")
+
+    assert first.status_code == 200
+    assert first.json() == second.json()
+    payload = first.json()
+    assert payload["schema_version"] == 1
+    assert payload["architecture"]["home"] == "app"
+    assert payload["workflow"]["root"] == "app"
+    assert {box["id"] for box in payload["architecture"]["boxes"]} == {
+        region["id"] for region in client.get("/api/graph").json()["regions"]
+    }
+
+
+def test_map_endpoint_refuses_before_a_project_is_bound() -> None:
+    app = create_app(picker=PickerConfig(browse_root=Path.home()))
+
+    with TestClient(app) as unbound:
+        response = unbound.get("/api/map")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "No project selected yet."

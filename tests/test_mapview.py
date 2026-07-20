@@ -117,3 +117,25 @@ def test_a_graph_without_home_marks_every_region_unreachable(tmp_path: Path) -> 
     assert payload["workflow"]["root"] is None
     assert payload["workflow"]["nodes"] == []
     assert payload["workflow"]["unreachable"] == ["solo", "solo.work"]
+
+
+def test_workflow_survives_a_deep_unbranching_call_chain(tmp_path: Path) -> None:
+    # Regression: the inner walk() in _workflow used to recurse once per call
+    # hop, so a deep, unbranching chain blew CPython's default recursion limit
+    # (empirically: 700-deep built fine, 1021-deep raised RecursionError).
+    # 1500 sits comfortably past that failure point.
+    depth = 1500
+    body = [f"def f{i}() -> None:\n    f{i + 1}()\n\n\n" for i in range(depth - 1)]
+    body.append(f"def f{depth - 1}() -> None:\n    pass\n\n\n")
+    body.append('if __name__ == "__main__":\n    f0()\n')
+    (tmp_path / "chain.py").write_text("".join(body), encoding="utf-8")
+
+    workflow = build_map(PythonAstAdapter().parse(tmp_path))["workflow"]
+
+    assert workflow["root"] == "chain"
+    assert workflow["depth_count"] == depth + 1
+    assert len(workflow["nodes"]) == depth + 1
+    assert workflow["unreachable"] == []
+    last = next(row for row in workflow["nodes"] if row["id"] == f"chain.f{depth - 1}")
+    assert last["depth"] == depth
+    assert last["cut"] is None

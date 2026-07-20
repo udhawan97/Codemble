@@ -196,35 +196,33 @@ def _workflow(graph: Graph) -> dict[str, object]:
         )
         emitted.add(node_id)
 
-    # Recursion depth is bounded by the visit-once rule below: a node expands at
-    # most once, so the stack can never exceed the number of graph nodes.
-    def walk(
-        node_id: str,
-        depth: int,
-        parent: str | None,
-        certain: bool,
-        relation: str,
-        ancestors: frozenset[str],
-    ) -> None:
-        emit(node_id, depth, parent, certain, relation, None)
-        for target, target_certain, target_relation in children(node_id):
+    # Iterative (explicit stack), mirroring _back_edges below, so a deep,
+    # unbranching call/defines chain cannot exhaust the interpreter stack.
+    def walk(root: str) -> None:
+        emit(root, 0, None, True, "root", None)
+        # Each frame is (node_id, depth, ancestors, pending children left to
+        # visit, reversed so pop() yields them in original order) -- the same
+        # per-frame "resume list" _back_edges uses.
+        stack = [(root, 0, frozenset({root}), list(reversed(children(root))))]
+        while stack:
+            node_id, depth, ancestors, pending = stack[-1]
+            if not pending:
+                stack.pop()
+                continue
+            target, target_certain, target_relation = pending.pop()
             if target in ancestors:
                 emit(target, depth + 1, node_id, target_certain, target_relation, "cycle")
             elif target in emitted:
                 emit(target, depth + 1, node_id, target_certain, target_relation, "repeat")
             else:
-                walk(
-                    target,
-                    depth + 1,
-                    node_id,
-                    target_certain,
-                    target_relation,
-                    ancestors | {target},
+                emit(target, depth + 1, node_id, target_certain, target_relation, None)
+                stack.append(
+                    (target, depth + 1, ancestors | {target}, list(reversed(children(target))))
                 )
 
     root = graph.selected_entrypoint if graph.selected_entrypoint in nodes else None
     if root is not None:
-        walk(root, 0, None, True, "root", frozenset({root}))
+        walk(root)
 
     depth_count = max((int(row["depth"]) for row in rows), default=-1) + 1
     return {
