@@ -28,3 +28,6 @@ logs/
 .idea/
 .vscode/
 _to_delete/
+
+# Subagent-driven-development scratch coordination (not product truth)
+.superpowers/
