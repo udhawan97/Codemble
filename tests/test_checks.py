@@ -133,8 +133,8 @@ def test_the_two_voices_ask_the_same_question_of_the_same_answer() -> None:
         for check in generate_checks(graph, region.id):
             public = check.public(passed=False)
             assert public["prompt_voices"] == check.prompt
-            assert public["prompt"] == check.prompt["easy"], (
-                "the legacy string keeps the shipped SPA rendering until phase 4"
+            assert "prompt" not in public, (
+                "phase 4 retired the legacy string; prompt_voices is now the only source"
             )
             assert public["multiple"] == (len(check.answer_ids) > 1)
             offered = {option["id"] for option in public["options"]}

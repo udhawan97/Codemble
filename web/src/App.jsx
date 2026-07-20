@@ -195,6 +195,7 @@ export function App() {
           <CheckPanel
             suite={checkData}
             error={checkError}
+            mode={mode}
             onClose={() => session.dispatch({ type: "CLOSE_CHECKS" })}
             onSubmit={(checkId, selectedIds) =>
               session.dispatch({ type: "SUBMIT_CHECK", checkId, selectedIds })
@@ -388,7 +389,7 @@ function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
   );
 }
 
-function CheckPanel({ suite, error, onClose, onSubmit }) {
+function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   const current = suite?.checks.find((check) => !check.passed) ?? null;
   const passed = suite?.checks.filter((check) => check.passed).length ?? 0;
   const [selected, setSelected] = useState(() => new Set());
@@ -465,7 +466,7 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
             <progress value={passed} max={suite.checks.length} />
           </div>
           <fieldset>
-            <legend>{current.prompt}</legend>
+            <legend>{current.prompt_voices[mode]}</legend>
             {current.multiple ? <p>Select every answer supported by the graph.</p> : null}
             <div className="check-options">
               {current.options.map((option) => (
@@ -528,7 +529,7 @@ function StudyPanel({ node, study, error, explanation, explanationError, mode, o
             </section>
           ) : null}
           <SourceExcerpt source={study.source} />
-          <LensNotes lens={study.lens} language={node.language} />
+          <LensNotes lens={study.lens} language={node.language} mode={mode} />
           <StructuralSummary structural={study.structural} mode={mode} />
           <Explanation
             explanation={explanation}
@@ -558,7 +559,7 @@ function StructuralSummary({ structural, mode }) {
   );
 }
 
-function LensNotes({ lens, language }) {
+function LensNotes({ lens, language, mode }) {
   if (!lens?.length) return null;
   return (
     <section className="lens-study" aria-labelledby="lens-heading">
@@ -574,7 +575,7 @@ function LensNotes({ lens, language }) {
               <Citation citation={note.citation} fallbackLine={note.line} />
             </div>
             <div>
-              <p>{note.note}</p>
+              <p>{note.note_voices[mode]}</p>
               <code>{note.snippet}</code>
             </div>
           </article>

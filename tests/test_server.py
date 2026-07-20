@@ -104,7 +104,7 @@ def test_entrypoint_api_accepts_only_parser_ranked_candidates(tmp_path: Path) ->
     assert len(beta_checks) == 1
     assert beta_checks[0]["kind"] == "entrypoint"
     assert "selected as Home" in beta_checks[0]["prompt_voices"]["expert"]
-    assert beta_checks[0]["prompt"] == beta_checks[0]["prompt_voices"]["easy"]
+    assert "prompt" not in beta_checks[0]
     assert client.get("/api/regions/alpha/checks").json()["checks"] == []
     assert client.post("/api/entrypoint", json={"node_id": "missing"}).status_code == 422
 
