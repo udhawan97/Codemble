@@ -46,7 +46,6 @@ class Check:
         return {
             "id": self.id,
             "kind": self.kind,
-            "prompt": self.prompt["easy"],
             "prompt_voices": self.prompt,
             "multiple": len(self.answer_ids) > 1,
             "options": [

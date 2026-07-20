@@ -140,8 +140,8 @@ def test_typescript_lens_notes_equal_language_tagged_parser_annotations(
         assert set(note["note_voices"]) == {"easy", "expert"}
         assert note["note_voices"]["easy"].strip()
         assert note["note_voices"]["expert"].strip()
-        assert note["note"] == note["note_voices"]["easy"], (
-            "the legacy string keeps the shipped SPA rendering until phase 4"
+        assert "note" not in note, (
+            "phase 4 retired the legacy string; note_voices is now the only source"
         )
 
 
@@ -161,8 +161,8 @@ def test_every_lens_note_carries_both_voices(tmp_path: Path) -> None:
         assert set(note["note_voices"]) == {"easy", "expert"}
         assert note["note_voices"]["easy"].strip()
         assert note["note_voices"]["expert"].strip()
-        assert note["note"] == note["note_voices"]["easy"], (
-            "the legacy string keeps the shipped SPA rendering until phase 4"
+        assert "note" not in note, (
+            "phase 4 retired the legacy string; note_voices is now the only source"
         )
 
 

@@ -104,7 +104,7 @@ def test_entrypoint_api_accepts_only_parser_ranked_candidates(tmp_path: Path) ->
     assert len(beta_checks) == 1
     assert beta_checks[0]["kind"] == "entrypoint"
     assert "selected as Home" in beta_checks[0]["prompt_voices"]["expert"]
-    assert beta_checks[0]["prompt"] == beta_checks[0]["prompt_voices"]["easy"]
+    assert "prompt" not in beta_checks[0]
     assert client.get("/api/regions/alpha/checks").json()["checks"] == []
     assert client.post("/api/entrypoint", json={"node_id": "missing"}).status_code == 422
 
@@ -221,6 +221,52 @@ def test_changing_mode_does_not_re_dim_a_region(
     assert after == before
     app_region = next(region for region in after["regions"] if region["id"] == "app")
     assert app_region["understood"] is True
+
+
+def test_mode_reports_unchosen_until_a_choice_is_made(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/mode").json() == {"mode": "easy", "chosen": False}
+
+    put_response = client.put("/api/mode", json={"mode": "expert"})
+
+    assert put_response.json() == {"mode": "expert", "chosen": True}
+    assert client.get("/api/mode").json() == {"mode": "expert", "chosen": True}
+
+
+def test_choosing_the_default_mode_still_counts_as_a_choice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A learner who explicitly picks 'easy' (the default) must not look like
+
+    nobody has chosen yet — that's the whole reason `chosen` exists.
+    """
+
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    put_response = client.put("/api/mode", json={"mode": "easy"})
+
+    assert put_response.json() == {"mode": "easy", "chosen": True}
+    assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
+
+
+def test_a_malformed_progress_file_reports_unchosen_mode_instead_of_raising(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph)
+    progress.path.parent.mkdir(parents=True, exist_ok=True)
+    progress.path.write_text("not json", encoding="utf-8")
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/mode").json() == {"mode": "easy", "chosen": False}
 
 
 def test_unpicked_app_reports_state_and_guards_project_api(tmp_path: Path) -> None:

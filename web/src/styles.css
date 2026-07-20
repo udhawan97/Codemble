@@ -35,7 +35,8 @@ output {
 
 button:focus-visible,
 [href]:focus-visible,
-[tabindex]:focus-visible {
+[tabindex]:focus-visible,
+input:focus-visible {
   outline: 2px solid var(--cm-orbit);
   outline-offset: 3px;
 }
@@ -225,6 +226,145 @@ button:focus-visible,
 
   .language-focus button[aria-pressed="true"]:hover {
     background: var(--cm-orbit-low);
+    color: var(--cm-orbit);
+  }
+}
+
+/* Persistent audience toggle. Ruri only — kohaku means understanding, and
+   this is navigation, not progress. Its own header row (rather than
+   crowding the rail-action button) so it never fights that button for
+   space at 320px. */
+.mode-toggle {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--cm-space-sm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mode-toggle__label {
+  flex: 0 0 auto;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mode-toggle__options {
+  display: flex;
+  min-width: max-content;
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+}
+
+.mode-toggle__options label {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--cm-space-2xs);
+  padding-inline: var(--cm-space-sm);
+  border-inline-end: 1px solid var(--cm-hairline);
+  color: var(--cm-ink-2);
+  cursor: pointer;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.mode-toggle__options label:last-child {
+  border-inline-end: 0;
+}
+
+.mode-toggle__options label:has(input:checked) {
+  background: var(--cm-orbit-low);
+  color: var(--cm-orbit);
+}
+
+.mode-toggle__options input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--cm-orbit);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mode-toggle__options label:hover {
+    background: var(--cm-ground-2);
+    color: var(--cm-ink);
+  }
+
+  .mode-toggle__options label:has(input:checked):hover {
+    background: var(--cm-orbit-low);
+    color: var(--cm-orbit);
+  }
+}
+
+/* First-run audience gate. Native <dialog> gives focus containment and
+   top-layer stacking for free — no custom scrim or focus trap to maintain.
+   No close affordance: cancel is intercepted below so there is no way to
+   dismiss this without choosing. */
+.mode-gate {
+  width: min(26rem, calc(100% - var(--cm-space-xl)));
+  max-height: min(86%, 30rem);
+  margin: auto;
+  overflow: auto;
+  padding: var(--cm-space-lg);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink);
+  animation: panel-enter var(--cm-dur-reveal) var(--cm-ease) both;
+}
+
+.mode-gate::backdrop {
+  background: var(--cm-scrim);
+}
+
+.mode-gate h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-xl);
+  font-style: normal;
+  line-height: 1.15;
+}
+
+.mode-gate p {
+  max-width: 42ch;
+  margin: var(--cm-space-sm) 0 0;
+  color: var(--cm-ink-2);
+}
+
+.mode-gate__options {
+  display: grid;
+  margin-block-start: var(--cm-space-lg);
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.mode-gate__options button {
+  min-height: 52px;
+  padding: var(--cm-space-sm) 0;
+  border: 0;
+  border-block-end: 1px solid var(--cm-hairline);
+  background: transparent;
+  color: var(--cm-ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+}
+
+.mode-gate__options button:last-child {
+  border-block-end: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mode-gate__options button:hover {
     color: var(--cm-orbit);
   }
 }
@@ -1275,7 +1415,8 @@ button:focus-visible,
   }
 
   .study-preview,
-  .check-panel {
+  .check-panel,
+  .mode-gate {
     animation-name: panel-enter-reduced;
   }
 
@@ -1408,4 +1549,46 @@ button:focus-visible,
 .picker-select:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+
+/* Density modes, keyed off data-mode on .app-shell (set from the learner's
+   audience choice). Every rule above already sizes and spaces itself from
+   the --cm-text and --cm-space tokens, so re-declaring those tokens in this
+   one scope is enough to widen type and rhythm everywhere at once — no
+   per-component overrides needed. Colour is untouched, so the existing
+   4.5:1 audit on both grounds (tokens.css) still holds exactly. Expert mode
+   declares nothing here: it is today's density, unchanged. */
+.app-shell[data-mode="easy"] {
+  --cm-text-xs: 0.8125rem;
+  --cm-text-sm: 0.9375rem;
+  --cm-text-base: 1.125rem;
+  --cm-text-lg: 1.375rem;
+  --cm-space-sm: 1rem;
+  --cm-space-md: 1.375rem;
+  --cm-space-lg: 2.5rem;
+  font-size: var(--cm-text-base);
+  line-height: 1.7;
+}
+
+/* Shorter measure on the surfaces a learner actually reads at length. */
+.app-shell[data-mode="easy"] .orientation-copy p,
+.app-shell[data-mode="easy"] .study-preview p,
+.app-shell[data-mode="easy"] .grounded-explanation > p,
+.app-shell[data-mode="easy"] .study-notice p,
+.app-shell[data-mode="easy"] .evidence-list p,
+.app-shell[data-mode="easy"] .lens-note p,
+.app-shell[data-mode="easy"] .active-check fieldset > p,
+.app-shell[data-mode="easy"] .check-state p,
+.app-shell[data-mode="easy"] .check-complete p,
+.app-shell[data-mode="easy"] .check-loading {
+  max-width: 46ch;
+}
+
+/* Plainer labels: drop the small-caps technical styling on the two chrome
+   labels this shell has, so they read as plain words instead of console
+   markings. */
+.app-shell[data-mode="easy"] .language-focus__label,
+.app-shell[data-mode="easy"] .mode-toggle__label {
+  text-transform: none;
+  letter-spacing: normal;
 }

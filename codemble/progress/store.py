@@ -66,6 +66,12 @@ class ProgressStore:
         value = payload.get("mode")
         return value if value in {"easy", "expert"} else "easy"
 
+    def mode_chosen(self) -> bool:
+        """Return whether the learner has explicitly chosen an audience mode."""
+
+        payload = self._read()
+        return payload.get("mode") in {"easy", "expert"}
+
     def set_mode(self, mode: str) -> None:
         """Persist the audience mode beside progress without touching signatures."""
 
