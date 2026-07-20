@@ -385,7 +385,9 @@ export function App() {
                   ? // On the Map, a module is one box: its internal structures
                     // aren't drawn here, only in the Galaxy. Say so plainly
                     // rather than let the click look like it revealed nothing.
-                    `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect; the ${mode === "easy" ? "“What runs first”" : "Workflow"} tab shows what this one runs and calls.`
+                    // Only claim what is true for every module — an unreachable
+                    // one has no rows in the Workflow tab, so never promise it.
+                    `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect, not what is inside them.`
                   : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
             </p>
             <button
