@@ -523,25 +523,16 @@ button:focus-visible,
   font-family: var(--cm-font-display);
 }
 
-.partial-study {
-  padding: var(--cm-space-md);
-  border-inline-start: 2px solid var(--cm-route-possible);
-  background: var(--cm-ground);
+.structural-summary p {
+  max-width: 62ch;
+  margin: var(--cm-space-sm) 0 0;
+  color: var(--cm-ink);
 }
 
-.partial-study h2,
-.partial-study p {
-  margin: 0;
-}
-
-.partial-study h2 {
-  font-family: var(--cm-font-display);
-  font-size: var(--cm-text-lg);
-}
-
-.partial-study p {
-  margin-block-start: var(--cm-space-sm);
-  color: var(--cm-ink-2);
+.load-state .check-primary,
+.study-notice .check-primary {
+  justify-self: start;
+  margin-block-start: var(--cm-space-md);
 }
 
 .study-preview {

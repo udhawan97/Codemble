@@ -33,14 +33,21 @@ export function App() {
     checkError,
     entrypointDismissed,
     entrypointError,
+    entrypointOpen,
     error,
+    explanation,
+    explanationError,
+    explanationLoading,
     focusedGraph,
     focusedStudiedCount,
     graph,
+    hoverNodeId,
     languageFocus,
     languageOptions,
     level,
     litRegionId,
+    llmStatus,
+    mode,
     picker,
     projectName,
     region,
@@ -221,8 +228,16 @@ export function App() {
             node={selectedNode}
             study={studyData}
             error={studyError}
+            mode={mode}
+            explanation={explanation}
+            explanationLoading={explanationLoading}
+            explanationError={explanationError}
+            llmStatus={llmStatus}
             onSelectNode={(nodeId) =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
+            }
+            onRetryNarration={() =>
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: selectedNode.id })
             }
           />
         ) : null}
