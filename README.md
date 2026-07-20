@@ -33,7 +33,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/assets/demo.gif" alt="Codemble maps a project, enters Home, runs graph-derived checks, and lights the system" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/assets/demo.gif" alt="Codemble maps a project, switches between the galaxy and the map, runs graph-derived checks, and lights a system" width="960">
 </p>
 
 > [!IMPORTANT]
@@ -90,7 +90,7 @@ export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY=sk-...
 | Step | What Codemble does | What you gain |
 | --- | --- | --- |
 | **1. Chart** | Parses your project without running its code or package scripts | A deterministic map made from source evidence |
-| **2. Navigate** | Guides you from galaxy → system → study on scripted camera rails | Orientation without getting lost in free flight |
+| **2. Navigate** | Two layers over one graph: a 3D galaxy on scripted camera rails, and a flat map of architecture and workflow | Orientation without getting lost in free flight |
 | **3. Study** | Shows the real source, exact line numbers, neighbors, and parser-detected language idioms | Context tied to code you can inspect |
 | **4. Prove** | Generates and scores checks from the graph—never from the model | A region lights only when understanding is demonstrated |
 | **5. Return** | Saves progress locally; changing one file re-dims only its module | A living map that stays honest as the project changes |
@@ -107,7 +107,9 @@ of your own code becomes a sky you understand.
 | The Home system | The selected parser-ranked entrypoint |
 | A route or edge | An import or call; approximate calls are labeled **possible** |
 | Size | Lines of code |
-| Brightness | Structural centrality |
+| Brightness and glow | Structural centrality |
+| Nebula tint | Language |
+| Orbit ring | Call depth — the inner ring runs first |
 | Dim → lit | Not yet proven → understood |
 
 Python-only, JavaScript-only, TypeScript-only, and mixed projects share the same
@@ -154,8 +156,9 @@ the optional prose narration is unavailable.
   `--entrypoint NODE_ID`.
 - **Broken source:** syntax errors remain visible; Codemble maps safe partial
   evidence instead of crashing or inventing the missing structure.
-- **Rendering:** WebGL is required. There is intentionally no misleading 2D
-  fallback in this release.
+- **Rendering:** the 3D galaxy needs WebGL. If your machine cannot draw it, the
+  Map layer still works — it is plain SVG over the same parser evidence, not a
+  degraded guess.
 
 ## Help test the release
 

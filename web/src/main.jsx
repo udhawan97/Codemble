@@ -7,14 +7,52 @@ import "@fontsource/shippori-mincho/latin-700.css";
 import "@fontsource/jetbrains-mono/latin-400.css";
 import "@fontsource/jetbrains-mono/latin-500.css";
 
-import { StrictMode } from "react";
+import { Component, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App.jsx";
 import "./styles.css";
 
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { message: "" };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { message: error instanceof Error ? error.message : String(error) };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // errorInfo carries the React component stack, which is the only thing in
+    // this report that says *where* the render died -- dropping the second
+    // argument left every boundary hit unlocatable in the console.
+    console.error("Codemble stopped rendering:", error, errorInfo?.componentStack);
+  }
+
+  render() {
+    if (!this.state.message) return this.props.children;
+    return (
+      <main className="load-state" role="alert">
+        <h1>The galaxy stopped rendering.</h1>
+        <p>{this.state.message}</p>
+        <p>Your progress is saved on this machine; reloading re-reads it.</p>
+        <button
+          className="check-primary"
+          type="button"
+          onClick={() => window.location.reload()}
+        >
+          Reload Codemble
+        </button>
+      </main>
+    );
+  }
+}
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </StrictMode>,
 );

@@ -5,6 +5,82 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- The study panel now shows what the parser knows before any model is asked: a
+  plain-language or expert structural summary that needs no key, no network,
+  and no provider.
+- Grounded narration finally reaches the panel. The explanation endpoint had
+  shipped but was never called, so the narration block always rendered empty.
+- A Connections section lists every parser relationship into and out of the
+  selected structure — direction, certainty, and a `file:line` citation per
+  row — with a small diagram of callers, this structure, and callees. Clicking
+  a row opens that structure's study.
+- An Easy/Expert toggle in the header. Easy uses plain language for narration,
+  check questions, panel labels, and the legend; Expert keeps full terminology.
+  The choice persists and never touches graph truth, coordinates, progress, or
+  how a check is scored.
+- Switch project: a header control releases the current project and returns to
+  the picker, so a second project no longer needs a terminal.
+- Change Home: the entrypoint picker can be reopened at any time, and the Home
+  you select is remembered for the next run of the same project.
+- Guidance when no model is configured, including how to narrate entirely
+  locally with Ollama, driven by what is actually installed and running.
+- Correct check answers now get an affirmation, not just silence.
+- A complete legend: size, brightness, amber-understood, unchartable files, and
+  certain versus possible relationships.
+- Edge arrowheads below the galaxy level, hover tooltips on every edge, and
+  hover/selection highlighting that brightens the selected structure's
+  connections and fades the rest.
+- A `<noscript>` message and a React error boundary, so a render failure
+  explains itself and offers a reload instead of showing a blank page.
+- A second **Map** layer sits beside the galaxy, switchable from the header. Its
+  Architecture tab lays modules out by directory and by import distance from
+  Home; its Workflow tab walks the call tree from your entrypoint. Both layouts
+  are computed by the parser-backed graph layer and served by a new
+  `GET /api/map`, so the map and the galaxy can never disagree.
+- The Map layer renders without WebGL, so a machine that cannot draw the galaxy
+  can still read the project.
+- First-run coach-marks explain what you see, how to move, and what lights
+  stars. Dismissing them is a local UI preference, not progress.
+- Easy mode now lands on the Map, hides everything but the selected structure's
+  connections, and shows a hint chip naming the nearest unlit region to Home.
+  The hint is counted in import routes from the graph; no model chooses it.
+- The breadcrumb is clickable. The legend adds a swatch per language and now
+  matches whichever layer is on screen: possible relationships dash on the Map
+  and stay colour-only in the galaxy.
+
+### Changed
+- The study panel leads with the structural summary and narration, then
+  connections, then source and lens notes.
+- The study level keeps the selected structure's connections visible instead of
+  dimming the whole scene.
+- A region with no safe check now explains that Codemble refuses to ask a
+  question the graph cannot answer, rather than only stating that none exists.
+- The zero-candidate Home screen no longer tells you to restart with a CLI
+  flag; every option is in the app.
+- The star chart labels studied counts "this session", which is what they have
+  always measured.
+- The galaxy gained depth: every node carries a canvas-generated halo, lit stars
+  bloom, each system sits in a faint language-tinted nebula, and a background
+  starfield is seeded from the project's own file hashes — the same code always
+  produces the same sky.
+- Passing a region's checks now triggers a ~1.2s "nebula dawn": amber washes
+  across that system's fog and its star flares. `prefers-reduced-motion` gets
+  the finished lit state with no animation at all.
+- System orbits are laid out by call depth from the module's entry node instead
+  of by member index, so an inner ring means "this runs first". Structures no
+  call reaches keep the outermost ring rather than being placed by guesswork.
+  Layout coordinates changed once; saved progress is unaffected because region
+  signatures are derived from file hashes, not coordinates.
+- Drifting particles mark **certain** call edges only in the galaxy. A possible
+  call stays still, so motion can never imply proof.
+
+### Fixed
+- The partial-parse notice rode a code path that never executed; it now renders
+  with the narration block, and the structural summary states it as well.
+- A failed graph load offered only "Restart Codemble and reload this page"; it
+  now retries in place.
+
 ## [0.3.1] - 2026-07-19
 
 ### Changed

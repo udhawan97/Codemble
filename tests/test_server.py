@@ -10,10 +10,20 @@ from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
 from codemble.checks import CheckService, generate_checks
 from codemble.llm.study import StudyService
 from codemble.progress import ProgressStore
-from codemble.server.app import create_app
+from codemble.server.app import PickerConfig, create_app
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
+
+
+@pytest.fixture
+def client(tmp_path: Path) -> TestClient:
+    """A TestClient bound to the sampleproj fixture -- the shape every other
+    test in this file builds locally; shared here for tests that don't care
+    about a specific graph, just a bound project."""
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    return TestClient(create_app(graph, tmp_path / "missing"))
 
 
 def test_graph_and_source_endpoints_are_grounded(tmp_path: Path) -> None:
@@ -540,3 +550,140 @@ def test_foreign_host_headers_are_rejected(tmp_path: Path) -> None:
 
     assert rebinding.status_code == 400
     assert client.get("/api/graph").status_code == 200
+
+
+def test_picker_reset_unbinds_and_re_arms_the_picker(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+
+    first = client.post("/api/picker/reset", json={"confirmed": True})
+    second = client.post("/api/picker/reset", json={"confirmed": True})
+
+    assert first.status_code == 200
+    assert first.json() == {"state": "unpicked"}
+    assert second.status_code == 200
+    assert second.json() == {"state": "unpicked"}
+    assert client.get("/api/picker/state").json() == {"state": "unpicked"}
+    assert client.get("/api/graph").status_code == 409
+    assert client.get("/api/picker/browse").status_code == 200
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+    assert client.get("/api/graph").status_code == 200
+
+
+def test_picker_reset_refuses_a_body_a_cross_site_form_could_send(tmp_path: Path) -> None:
+    # Releasing the project is the only state change a no-body POST could reach,
+    # so a page on another origin could once unbind a learner's project with a
+    # plain <form>.  Requiring JSON puts it behind the same preflight as every
+    # other write here.  Nuisance, not disclosure -- but a one-field fix.
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+
+    formish = client.post(
+        "/api/picker/reset",
+        content="confirmed=true",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    empty = client.post("/api/picker/reset")
+
+    assert formish.status_code == 422
+    assert empty.status_code == 422
+    # The project it tried to release is untouched.
+    assert client.get("/api/graph").status_code == 200
+    assert client.post("/api/picker/reset", json={"confirmed": True}).status_code == 200
+    assert client.get("/api/graph").status_code == 409
+
+
+def test_picker_reset_works_for_a_path_opened_project_that_carries_a_picker(
+    tmp_path: Path,
+) -> None:
+    from codemble.server.app import PickerConfig
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+
+    assert client.get("/api/graph").status_code == 200
+    assert client.post(
+        "/api/picker/reset", json={"confirmed": True}
+    ).json() == {"state": "unpicked"}
+    assert client.get("/api/graph").status_code == 409
+    assert client.get("/api/picker/browse").status_code == 200
+
+
+def test_picker_reset_refuses_an_app_built_without_a_picker(tmp_path: Path) -> None:
+    # Unbinding here would strand the process with no way to pick anything,
+    # so refusing is the honest answer rather than a 200 that breaks the app.
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    response = client.post("/api/picker/reset", json={"confirmed": True})
+
+    assert response.status_code == 409
+    assert client.get("/api/graph").status_code == 200
+
+
+def test_selected_home_is_restored_for_the_next_run_of_the_same_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    first = TestClient(
+        create_app(PythonAstAdapter().parse(project), tmp_path / "missing")
+    )
+    assert first.get("/api/graph").json()["selected_entrypoint"] is None
+    assert first.post("/api/entrypoint", json={"node_id": "beta"}).status_code == 200
+
+    restarted = TestClient(
+        create_app(PythonAstAdapter().parse(project), tmp_path / "missing")
+    )
+
+    assert restarted.get("/api/graph").json()["selected_entrypoint"] == "beta"
+
+
+def test_map_endpoint_serves_both_deterministic_layouts(client) -> None:  # type: ignore[no-untyped-def]
+    first = client.get("/api/map")
+    second = client.get("/api/map")
+
+    assert first.status_code == 200
+    assert first.json() == second.json()
+    payload = first.json()
+    assert payload["schema_version"] == 1
+    assert payload["architecture"]["home"] == "app"
+    assert payload["workflow"]["root"] == "app"
+    assert {box["id"] for box in payload["architecture"]["boxes"]} == {
+        region["id"] for region in client.get("/api/graph").json()["regions"]
+    }
+
+
+def test_map_endpoint_refuses_before_a_project_is_bound() -> None:
+    app = create_app(picker=PickerConfig(browse_root=Path.home()))
+
+    with TestClient(app) as unbound:
+        response = unbound.get("/api/map")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "No project selected yet."

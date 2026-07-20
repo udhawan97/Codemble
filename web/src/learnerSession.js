@@ -30,6 +30,7 @@ export function createLearnerSession({
     studyData: null,
     studyError: "",
     explanation: null,
+    explanationLoading: false,
     explanationError: "",
     showChart: false,
     studiedNodeIds: new Set(),
@@ -39,13 +40,26 @@ export function createLearnerSession({
     entrypointDismissed: false,
     entrypointError: "",
     litRegionId: null,
+    pendingDawnRegionId: null,
     languageFocus: "all",
     picker: null,
+    layer: "galaxy",
+    layerChosen: false,
+    mapTab: "architecture",
+    mapData: null,
+    mapError: "",
+    // Read once, here, and written only by DISMISS_COACHMARKS below. This is
+    // the single owner: the component used to read localStorage during render
+    // while this field held a second, non-authoritative copy, so whatever a
+    // test asserted about this one said nothing about what the UI did.
+    coachmarksSeen: readCoachmarksSeen(),
+    llmStatus: null,
+    hoverNodeId: null,
     mode: "easy",
     // Three states, not two: null means hydration hasn't resolved yet
     // (unknown), false means the backend confirmed nobody has ever chosen,
     // true means chosen (by the learner, or resolved after a mode-fetch
-    // failure — see loadProjectGraph). Collapsing null into false was the
+    // failure — see loadPreferences). Collapsing null into false was the
     // root cause of the first-run gate flashing over returning learners.
     modeChosen: null,
   });
@@ -58,6 +72,9 @@ export function createLearnerSession({
   let submissionController = null;
   let entrypointController = null;
   let pickerController = null;
+  let mapController = null;
+  let modeController = null;
+  let resetController = null;
   let illuminationTimer = null;
 
   function getSnapshot() {
@@ -74,17 +91,18 @@ export function createLearnerSession({
     let next = deriveSnapshot({ ...previous, ...patch });
     const navigationChanged =
       next.level !== previous.level || next.region?.id !== previous.region?.id;
-    if (navigationChanged && !preserveChecks) {
-      abortController(checksController);
-      abortController(submissionController);
-      checksController = null;
-      submissionController = null;
-      next = deriveSnapshot({
-        ...next,
-        showChecks: false,
-        checkData: null,
-        checkError: "",
-      });
+    if (navigationChanged) {
+      const navigationPatch = { hoverNodeId: null };
+      if (!preserveChecks) {
+        abortController(checksController);
+        abortController(submissionController);
+        checksController = null;
+        submissionController = null;
+        navigationPatch.showChecks = false;
+        navigationPatch.checkData = null;
+        navigationPatch.checkError = "";
+      }
+      next = deriveSnapshot({ ...next, ...navigationPatch });
     }
     snapshot = Object.freeze(next);
     for (const listener of listeners) listener();
@@ -118,51 +136,64 @@ export function createLearnerSession({
     try {
       const graph = await adapter.loadGraph({ signal: controller.signal });
       if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
-      commit({ status: "ready", graph, region: defaultRegion(graph), error: "" });
+      commit({
+        status: "ready",
+        graph,
+        region: defaultRegion(graph),
+        error: "",
+        entrypointDismissed: Boolean(graph.selected_entrypoint),
+      });
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
         commit({ status: "error", error: errorMessage(requestError) });
       }
     }
-    // Mode is a per-project preference the backend can only serve once a
-    // project is bound, so it hydrates here rather than earlier in start() —
-    // and a failure here must never block the galaxy that just loaded above.
+    // Outside the try on purpose, and never awaited into it: preferences are
+    // a per-project concern the backend can only serve once a project is
+    // bound, so they hydrate here rather than in start() — but a failure on
+    // either side must never block or masquerade as the other.
+    await loadPreferences(controller, requestLifecycle);
+    return snapshot;
+  }
+
+  async function loadPreferences(controller, requestLifecycle) {
+    // allSettled, not all: mode and provider status are preferences. A failing
+    // one must never blank the other and must never surface as a graph error.
+    // Each call is wrapped in an async thunk so an adapter that throws
+    // synchronously (rather than rejecting a promise) still settles instead of
+    // escaping allSettled and being mistaken for a graph load failure.
     const requestModeLifecycle = modeLifecycle;
-    // requestModeLifecycle catches a SET_MODE dispatched while this fetch
-    // was in flight: setMode bumps modeLifecycle synchronously, so a
+    const [modeResult, statusResult] = await Promise.allSettled([
+      (async () => adapter.loadMode({ signal: controller.signal }))(),
+      (async () => adapter.fetchLlmStatus({ signal: controller.signal }))(),
+    ]);
+    if (requestLifecycle !== lifecycle || controller.signal.aborted) return;
+    // A same-project setMode call (in flight or already committed) is a newer
+    // truth than this fetch, which was issued before it: never let it clobber
+    // the learner's choice. setMode bumps modeLifecycle synchronously, so a
     // mismatch here means the learner already made an explicit choice that
-    // must win no matter which of the two requests resolves first.
-    const modeRequestIsCurrent = () =>
-      requestLifecycle === lifecycle && requestModeLifecycle === modeLifecycle;
-    // Resolves the unknown (null) state when the response can't be trusted —
-    // a thrown request, or a payload with a mode value the renderer doesn't
-    // understand. Leaving it null forever would leave ModeControl rendering
-    // nothing for the rest of the session, so it resolves to known-and-
-    // chosen rather than known-and-never-chosen: the worse failure is
-    // flashing the first-run gate over a *returning* learner, who could then
-    // silently overwrite their real stored mode by clicking through it — the
-    // exact bug this fix exists to prevent. A genuine first-timer only
-    // loses the friendly first-run framing for this one reload and still has
-    // the always-available header toggle to pick a mode explicitly.
-    function resolveUnknownModeAfterFailure() {
-      if (modeRequestIsCurrent() && snapshot.modeChosen === null) {
+    // must win no matter which of the two requests resolves first. llmStatus
+    // is unrelated to mode and always applies.
+    if (requestModeLifecycle === modeLifecycle) {
+      const stored = modeResult.status === "fulfilled" ? modeResult.value : null;
+      const validMode = stored?.mode === "easy" || stored?.mode === "expert";
+      if (validMode) {
+        applyMode(stored.mode, stored.chosen === true);
+      } else if (snapshot.modeChosen === null) {
+        // Resolves the unknown (null) state when the response can't be
+        // trusted — a thrown request, or a payload with a mode value the
+        // renderer doesn't understand. Leaving it null forever would leave
+        // ModeControl rendering nothing for the rest of the session, so it
+        // resolves to known-and-chosen rather than known-and-never-chosen:
+        // the worse failure is flashing the first-run gate over a *returning*
+        // learner, who could then silently overwrite their real stored mode by
+        // clicking through it — the exact bug this fix exists to prevent. A
+        // genuine first-timer only loses the friendly first-run framing for
+        // this one reload and still has the always-available header toggle.
         commit({ modeChosen: true });
       }
     }
-    try {
-      const stored = await adapter.loadMode({ signal: controller.signal });
-      const validMode = stored?.mode === "easy" || stored?.mode === "expert";
-      if (modeRequestIsCurrent()) {
-        if (validMode) {
-          commit({ mode: stored.mode, modeChosen: stored.chosen === true });
-        } else {
-          resolveUnknownModeAfterFailure();
-        }
-      }
-    } catch {
-      resolveUnknownModeAfterFailure();
-    }
-    return snapshot;
+    if (statusResult.status === "fulfilled") commit({ llmStatus: statusResult.value });
   }
 
   async function startPicker(controller, requestLifecycle) {
@@ -248,10 +279,65 @@ export function createLearnerSession({
     }
   }
 
+  async function resetProject() {
+    abortController(resetController);
+    resetController = new AbortController();
+    const controller = resetController;
+    // Deliberately uncaught, like submitCheck: a refused reset is a control
+    // failure the header shows inline, not a reason to blank the galaxy.
+    await adapter.resetProject({ signal: controller.signal });
+    if (controller.signal.aborted) return snapshot;
+    cancelStudy();
+    abortController(entrypointController);
+    entrypointController = null;
+    // Like entrypointController above: an in-flight map fetch belongs to the
+    // released project. Abort it here and re-check lifecycle inside loadMap
+    // -- abort alone would miss an adapter that resolves instead of rejecting.
+    abortController(mapController);
+    mapController = null;
+    // The mode toggle and Switch project sit in the same always-rendered
+    // header, so a mode write can still be in flight when the project is
+    // released. Its rollback belongs to the project that is going away: left
+    // alone, a later failure commits the previous project's mode -- and, when
+    // that mode defaults to the Map layer, a spurious map fetch -- into the
+    // next project's already-loading session.
+    abortController(modeController);
+    modeController = null;
+    commit({
+      graph: null,
+      region: null,
+      selectedNode: null,
+      level: LEVELS.GALAXY,
+      studyData: null,
+      studyError: "",
+      explanation: null,
+      explanationError: "",
+      explanationLoading: false,
+      showChart: false,
+      studiedNodeIds: new Set(),
+      showChecks: false,
+      checkData: null,
+      checkError: "",
+      entrypointDismissed: false,
+      entrypointError: "",
+      litRegionId: null,
+      pendingDawnRegionId: null,
+      languageFocus: "all",
+      llmStatus: null,
+      picker: null,
+      mapData: null,
+      mapError: "",
+    });
+    return start();
+  }
+
   async function dispatch(event) {
     switch (event.type) {
       case "ADVANCE":
         return advance(event.node);
+      case "ADVANCE_REGION":
+        advanceRegion(event.regionId);
+        return undefined;
       case "RETREAT":
         retreat();
         return undefined;
@@ -259,6 +345,14 @@ export function createLearnerSession({
         return selectStudyNode(event.nodeId);
       case "SET_LANGUAGE_FOCUS":
         setLanguageFocus(event.language);
+        return undefined;
+      case "SET_MODE":
+        return setMode(event.mode);
+      case "HOVER_NODE":
+        // Pointer motion fires this constantly; only a real change may notify.
+        if (snapshot.hoverNodeId !== (event.nodeId ?? null)) {
+          commit({ hoverNodeId: event.nodeId ?? null });
+        }
         return undefined;
       case "SHOW_CHART":
         commit({ showChart: true });
@@ -273,24 +367,89 @@ export function createLearnerSession({
         return undefined;
       case "SUBMIT_CHECK":
         return submitCheck(event.checkId, event.selectedIds);
+      case "CONSUME_DAWN":
+        consumeDawn(event.regionId);
+        return undefined;
       case "SELECT_ENTRYPOINT":
         return selectEntrypoint(event.nodeId);
       case "DISMISS_ENTRYPOINT":
         commit({ entrypointDismissed: true });
         return undefined;
+      case "CHANGE_HOME":
+        cancelStudy();
+        commit({
+          entrypointDismissed: false,
+          entrypointError: "",
+          level: LEVELS.GALAXY,
+          selectedNode: null,
+          showChart: false,
+          studyData: null,
+          studyError: "",
+          explanation: null,
+          explanationError: "",
+          explanationLoading: false,
+        });
+        return undefined;
       case "BROWSE_PICKER":
         return browsePickerFolder(event.path);
       case "SELECT_PROJECT":
         return selectProject(event.path);
-      case "SET_MODE":
-        return setMode(event.mode);
+      case "RESET_PROJECT":
+        return resetProject();
+      case "SET_LAYER":
+        return setLayer(event.layer);
+      case "SET_MAP_TAB":
+        commit({ mapTab: event.tab });
+        return undefined;
+      case "DISMISS_COACHMARKS":
+        writeCoachmarksSeen();
+        commit({ coachmarksSeen: true });
+        return undefined;
+      case "SET_LEVEL_GALAXY":
+        cancelStudy();
+        commit({ level: LEVELS.GALAXY, selectedNode: null });
+        return undefined;
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
   }
 
+  // Region entry by id, for callers that hold a region *name* rather than a
+  // node from the rendered scene: the 2D map (which draws every module the
+  // parser found, focus or no focus) and the Easy-mode hint chip. Resolving the
+  // id here rather than in React is what keeps a focused-out box from handing
+  // `undefined` to advance() -- and it keeps the renderer free of graph lookups.
+  function advanceRegion(regionId) {
+    // Searched against the whole graph, never the focused projection: the
+    // learner named a module that really exists, so the honest answer is to go
+    // there. A focus that hides it widens to that module's language, exactly as
+    // selectStudyNode already does for a cross-language node. The alternative --
+    // an inert box that looks and announces like a button -- would be a control
+    // that lies about being live.
+    const region = snapshot.graph?.regions.find((candidate) => candidate.id === regionId);
+    if (!region) return;
+    cancelStudy();
+    commit({
+      languageFocus:
+        snapshot.languageFocus !== "all" && region.language !== snapshot.languageFocus
+          ? region.language
+          : snapshot.languageFocus,
+      region,
+      selectedNode: null,
+      level: LEVELS.SYSTEM,
+      studyData: null,
+      studyError: "",
+      explanation: null,
+      explanationError: "",
+      explanationLoading: false,
+    });
+  }
+
   async function advance(node) {
-    if (!snapshot.focusedGraph) return;
+    // A missing node is a caller bug, not a learner-visible failure: dropping it
+    // keeps the galaxy on screen instead of tearing it down into the error
+    // boundary. Every id-based caller goes through advanceRegion above.
+    if (!snapshot.focusedGraph || !node) return;
     if (snapshot.level === LEVELS.GALAXY) {
       const nextRegion =
         snapshot.focusedGraph.regions.find((candidate) => candidate.id === node.id) ?? node;
@@ -324,6 +483,7 @@ export function createLearnerSession({
         studyError: "",
         explanation: null,
         explanationError: "",
+        explanationLoading: false,
       });
     } else if (snapshot.level === LEVELS.SYSTEM) {
       commit({ level: LEVELS.GALAXY });
@@ -353,28 +513,76 @@ export function createLearnerSession({
     commit({ languageFocus: language });
     if (previousNodeId && snapshot.selectedNode?.id !== previousNodeId) {
       cancelStudy();
-      commit({ studyData: null, studyError: "", explanation: null, explanationError: "" });
+      commit({
+        studyData: null,
+        studyError: "",
+        explanation: null,
+        explanationError: "",
+        explanationLoading: false,
+      });
     }
   }
 
+  // Mode hydration (loadPreferences) and SET_MODE both funnel through here so
+  // a mode value is never committed without also settling the layer -- an
+  // explicit SET_LAYER (layerChosen) always wins, otherwise the mode picks the
+  // learner's default layer -- and never without settling modeChosen, whose
+  // three states the first-run gate reads directly.
+  function applyMode(mode, chosen) {
+    const layer = snapshot.layerChosen ? snapshot.layer : mode === "easy" ? "map" : "galaxy";
+    commit({ mode, layer, modeChosen: chosen });
+    // Landing on Map by mode default must fetch exactly like an explicit
+    // SET_LAYER does -- otherwise a learner already in Easy mode lands on a
+    // Map that stays in its loading state forever.
+    if (layer === "map") ensureMapLoaded();
+  }
+
   async function setMode(mode) {
-    if (mode !== "easy" && mode !== "expert") return;
-    if (snapshot.mode === mode && snapshot.modeChosen) return;
-    // Bump first so a mode hydration already in flight (loadProjectGraph)
+    if (mode !== "easy" && mode !== "expert") return undefined;
+    const previous = snapshot.mode;
+    const previousChosen = snapshot.modeChosen;
+    // Not a plain mode-equality check: confirming the current mode is exactly
+    // how a first-run learner leaves the never-chosen state, so the choice
+    // still has to be written when only modeChosen changes.
+    if (mode === previous && snapshot.modeChosen) return undefined;
+    // Bump first so a mode hydration already in flight (loadPreferences)
     // notices this explicit choice and skips its own commit on resolution.
     modeLifecycle += 1;
-    commit({ mode, modeChosen: true });
-    // Lens, checks, and the Tier 0 summary already carry both voices and
-    // switch locally from the existing payload — only narration is generated
-    // per mode, so only narration is worth a refetch here.
-    if (snapshot.level === LEVELS.STUDY && snapshot.selectedNode) {
-      await loadExplanation(snapshot.selectedNode.id);
-    }
+    abortController(modeController);
+    modeController = new AbortController();
+    const controller = modeController;
+    // Captured like loadProjectGraph/selectEntrypoint/loadMap do: resetProject
+    // aborts this controller, but an adapter that ignores the signal still
+    // settles, so the project generation has to be re-checked across the await
+    // as well. Both sides below belong to the project that issued the write.
+    const requestLifecycle = lifecycle;
+    applyMode(mode, true);
     try {
-      await adapter.saveMode(mode, {});
-    } catch {
-      // The snapshot already reflects the choice; a failed write is not fatal.
+      await adapter.saveMode(mode, { signal: controller.signal });
+    } catch (requestError) {
+      // Rolled back rather than left optimistically committed: a snapshot that
+      // silently disagrees with disk is the undetectable kind of wrong. Rolling
+      // back into a *different* project would be worse still, hence the
+      // lifecycle re-check beside the controller identity one.
+      if (
+        modeController === controller &&
+        requestLifecycle === lifecycle &&
+        !isAbortError(requestError)
+      ) {
+        applyMode(previous, previousChosen);
+      }
+      return undefined;
     }
+    if (requestLifecycle !== lifecycle || controller.signal.aborted) return undefined;
+    // Lens, checks, and the Tier 0 summary already carry both voices and
+    // switch locally from the existing payload -- only narration is generated
+    // per mode, so only narration is worth a refetch here. It runs after the
+    // write so a rolled-back choice never leaves the other voice's narration
+    // on screen.
+    if (snapshot.level === LEVELS.STUDY && snapshot.selectedNode) {
+      return loadExplanation(snapshot.selectedNode.id);
+    }
+    return undefined;
   }
 
   async function loadStudy(nodeId) {
@@ -382,6 +590,12 @@ export function createLearnerSession({
     studyController = new AbortController();
     const controller = studyController;
     commit({ studyData: null, studyError: "" });
+    // Started here and deliberately not awaited: narration runs *beside* the
+    // study fetch, so slow or absent narration never delays the source, lens,
+    // and structural summary. It is also outside the try below -- awaiting it
+    // there would let a narration failure commit `studyError`, mislabelling the
+    // one part of the panel that is allowed to fail as the part that is not.
+    void loadExplanation(nodeId);
     try {
       const studyData = await adapter.loadStudy(nodeId, { signal: controller.signal });
       if (
@@ -395,9 +609,6 @@ export function createLearnerSession({
         studyData,
         studiedNodeIds: new Set(snapshot.studiedNodeIds).add(studyData.node.id),
       });
-      // A separate, deliberately unguarded request: slow or absent narration
-      // must never delay the source, lens, and structural summary above.
-      await loadExplanation(nodeId);
     } catch (requestError) {
       if (
         studyController === controller &&
@@ -421,18 +632,21 @@ export function createLearnerSession({
     abortController(explanationController);
     explanationController = new AbortController();
     const controller = explanationController;
-    commit({ explanation: null, explanationError: "" });
+    commit({ explanation: null, explanationError: "", explanationLoading: true });
     try {
       const explanation = await adapter.loadExplanation(nodeId, snapshot.mode, {
         signal: controller.signal,
       });
+      // Returns without clearing explanationLoading on purpose: a superseded
+      // request must not touch state the newer request has already claimed.
       if (
-        !controller.signal.aborted &&
-        snapshot.level === LEVELS.STUDY &&
-        snapshot.selectedNode?.id === nodeId
+        controller.signal.aborted ||
+        snapshot.level !== LEVELS.STUDY ||
+        snapshot.selectedNode?.id !== nodeId
       ) {
-        commit({ explanation });
+        return;
       }
+      commit({ explanation, explanationLoading: false });
     } catch (requestError) {
       if (
         explanationController === controller &&
@@ -440,7 +654,10 @@ export function createLearnerSession({
         !isAbortError(requestError) &&
         snapshot.selectedNode?.id === nodeId
       ) {
-        commit({ explanationError: errorMessage(requestError) });
+        commit({
+          explanationError: errorMessage(requestError),
+          explanationLoading: false,
+        });
       }
     }
   }
@@ -514,6 +731,7 @@ export function createLearnerSession({
   }
 
   async function selectEntrypoint(nodeId) {
+    const requestLifecycle = lifecycle;
     abortController(entrypointController);
     entrypointController = new AbortController();
     const controller = entrypointController;
@@ -522,13 +740,18 @@ export function createLearnerSession({
       const graph = await adapter.selectEntrypoint(nodeId, {
         signal: controller.signal,
       });
-      if (!controller.signal.aborted) {
-        commit({ graph, region: defaultRegion(graph), entrypointError: "" });
-      }
+      if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
+      commit({
+        graph,
+        region: defaultRegion(graph),
+        entrypointError: "",
+        entrypointDismissed: true,
+      });
       return graph;
     } catch (requestError) {
       if (
         entrypointController === controller &&
+        requestLifecycle === lifecycle &&
         !controller.signal.aborted &&
         !isAbortError(requestError)
       ) {
@@ -538,13 +761,68 @@ export function createLearnerSession({
     }
   }
 
+  async function setLayer(layer) {
+    commit({ layer, layerChosen: true });
+    if (layer === "map") return ensureMapLoaded();
+    return undefined;
+  }
+
+  // Shared by setLayer and applyMode so landing on Map always fetches
+  // exactly once: skip when the data is already cached, skip when a fetch
+  // for it is genuinely still in flight, otherwise (including a retry after
+  // a failed attempt, where mapController is set but mapError is not empty)
+  // start the one map-loading concern's single AbortController.
+  function ensureMapLoaded() {
+    if (snapshot.mapData) return undefined;
+    const inFlight = mapController && !mapController.signal.aborted && !snapshot.mapError;
+    return inFlight ? undefined : loadMap();
+  }
+
+  async function loadMap() {
+    const requestLifecycle = lifecycle;
+    abortController(mapController);
+    mapController = new AbortController();
+    const controller = mapController;
+    commit({ mapError: "" });
+    try {
+      const mapData = await adapter.fetchMap({ signal: controller.signal });
+      if (requestLifecycle === lifecycle && !controller.signal.aborted) {
+        commit({ mapData, mapError: "" });
+      }
+      return mapData;
+    } catch (requestError) {
+      if (
+        mapController === controller &&
+        requestLifecycle === lifecycle &&
+        !controller.signal.aborted &&
+        !isAbortError(requestError)
+      ) {
+        // Scoped to the map layer on purpose: the galaxy must stay usable.
+        commit({ mapError: errorMessage(requestError), mapData: null });
+      }
+      return undefined;
+    }
+  }
+
   function illuminateRegion(regionId) {
     if (illuminationTimer !== null) clock.clearTimeout(illuminationTimer);
-    commit({ litRegionId: regionId });
+    commit({ litRegionId: regionId, pendingDawnRegionId: regionId });
     illuminationTimer = clock.setTimeout(() => {
       illuminationTimer = null;
       if (snapshot.litRegionId === regionId) commit({ litRegionId: null });
     }, 520);
+  }
+
+  // The dawn's pending flag is deliberately not on the toast's timer above:
+  // returning to the galaxy can take over a second (measured), well past the
+  // toast's 520ms window. It is discarded by consumption, not by a clock --
+  // GalaxyCanvas calls this the moment it actually attempts to play the dawn
+  // (see CONSUME_DAWN), which happens at most once, because every route to a
+  // *different* system passes back through Galaxy level first. A light-up
+  // the learner abandons entirely (switches or resets the project) is
+  // discarded by resetProject() below instead of lingering for the next one.
+  function consumeDawn(regionId) {
+    if (snapshot.pendingDawnRegionId === regionId) commit({ pendingDawnRegionId: null });
   }
 
   function dispose() {
@@ -557,6 +835,9 @@ export function createLearnerSession({
       submissionController,
       entrypointController,
       pickerController,
+      mapController,
+      modeController,
+      resetController,
     ]) {
       abortController(controller);
     }
@@ -567,6 +848,9 @@ export function createLearnerSession({
     submissionController = null;
     entrypointController = null;
     pickerController = null;
+    mapController = null;
+    modeController = null;
+    resetController = null;
     if (illuminationTimer !== null) {
       clock.clearTimeout(illuminationTimer);
       illuminationTimer = null;
@@ -590,6 +874,9 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
   return Object.freeze({
     loadGraph(options = {}) {
       return request("/api/graph", "Graph request", options);
+    },
+    fetchMap(options = {}) {
+      return request("/api/map", "Map request", options);
     },
     loadStudy(nodeId, options = {}) {
       return request(
@@ -643,6 +930,19 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ mode }),
       });
     },
+    fetchLlmStatus(options = {}) {
+      return request("/api/llm/status", "Model status", options);
+    },
+    resetProject(options = {}) {
+      return request("/api/picker/reset", "Project reset", {
+        ...options,
+        method: "POST",
+        // A body, so the one state-changing endpoint that a cross-site form
+        // could once reach is now JSON-only like its siblings.
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmed: true }),
+      });
+    },
     loadPickerState(options = {}) {
       return request("/api/picker/state", "Picker state", options);
     },
@@ -685,6 +985,8 @@ export function createInMemoryLearnerSessionAdapter({
   submissions = {},
   entrypoints = {},
   picker = null,
+  llmStatus = null,
+  map = null,
   mode,
   modeChosen: initialModeChosen = false,
 }) {
@@ -697,6 +999,11 @@ export function createInMemoryLearnerSessionAdapter({
     async loadGraph(options = {}) {
       throwIfAborted(options.signal);
       return currentGraph;
+    },
+    async fetchMap(options = {}) {
+      throwIfAborted(options.signal);
+      if (map === null) throw new Error("No in-memory map fixture.");
+      return map;
     },
     async loadStudy(nodeId, options = {}) {
       throwIfAborted(options.signal);
@@ -739,6 +1046,21 @@ export function createInMemoryLearnerSessionAdapter({
       modeChosen = true;
       return { mode: nextMode, chosen: true };
     },
+    async fetchLlmStatus(options = {}) {
+      throwIfAborted(options.signal);
+      return (
+        llmStatus ?? {
+          configured_provider: null,
+          configured_model: null,
+          ollama: {
+            running: false,
+            installed_models: [],
+            recommended: "gemma4:12b",
+            fallback: "qwen3:8b",
+          },
+        }
+      );
+    },
     async loadPickerState(options = {}) {
       throwIfAborted(options.signal);
       return pickerPhase && !pickerPhase.selected
@@ -758,6 +1080,11 @@ export function createInMemoryLearnerSessionAdapter({
       const result = requiredFixture(pickerPhase.selections, path, "picker selection");
       if (result.state === "ready") pickerPhase.selected = true;
       return result;
+    },
+    async resetProject(options = {}) {
+      throwIfAborted(options.signal);
+      if (pickerPhase) pickerPhase.selected = false;
+      return { state: "unpicked" };
     },
   });
 }
@@ -783,9 +1110,11 @@ function deriveSnapshot(state) {
     }
   }
   const studiedNodeIds = state.studiedNodeIds;
+  const hint = focusedGraph ? nearestUnlitRegion(focusedGraph, state.mode) : null;
   return {
     ...state,
     focusedGraph,
+    entrypointOpen: Boolean(graph) && !state.entrypointDismissed,
     level,
     region,
     selectedNode,
@@ -797,7 +1126,91 @@ function deriveSnapshot(state) {
     focusedStudiedCount: focusedGraph
       ? focusedGraph.nodes.filter((node) => studiedNodeIds.has(node.id)).length
       : 0,
+    hint,
   };
+}
+
+// Deterministic graph truth: the nearest unlit region to Home counted in route
+// hops, ties broken by region id. Routes are walked undirected because a route
+// connects two modules regardless of which one imports the other. No model,
+// no heuristic, no stored state -- recomputed from the graph on every snapshot.
+function nearestUnlitRegion(graph, mode) {
+  if (mode !== "easy") return null;
+  const unlit = graph.regions.filter((region) => !region.understood);
+  if (!unlit.length) return null;
+  const home = graph.regions.find((region) => region.home);
+  const hops = new Map();
+  if (home) {
+    const neighbours = new Map();
+    for (const edge of graph.region_edges) {
+      if (!neighbours.has(edge.src)) neighbours.set(edge.src, []);
+      if (!neighbours.has(edge.dst)) neighbours.set(edge.dst, []);
+      neighbours.get(edge.src).push(edge.dst);
+      neighbours.get(edge.dst).push(edge.src);
+    }
+    hops.set(home.id, 0);
+    const queue = [home.id];
+    while (queue.length) {
+      const current = queue.shift();
+      for (const next of (neighbours.get(current) ?? []).slice().sort()) {
+        if (!hops.has(next)) {
+          hops.set(next, hops.get(current) + 1);
+          queue.push(next);
+        }
+      }
+    }
+  }
+  const nearest = unlit
+    .map((region) => ({
+      regionId: region.id,
+      hops: hops.has(region.id) ? hops.get(region.id) : Infinity,
+    }))
+    .sort(
+      (left, right) => left.hops - right.hops || left.regionId.localeCompare(right.regionId),
+    )[0];
+  return {
+    ...nearest,
+    reason:
+      nearest.hops === 0
+        ? "Home is not lit yet."
+        : Number.isFinite(nearest.hops)
+          ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
+          : "No import route reaches it from Home.",
+  };
+}
+
+// A UI preference, not progress: it belongs in localStorage, never in
+// ~/.codemble/, which is reserved for what the learner has actually proven.
+// A blocked or absent storage API must never stop the learner from continuing,
+// so both directions fail soft -- the cost is re-seeing onboarding once.
+const COACHMARK_KEY = "codemble.coachmarks.seen";
+
+// Guarded on `document` rather than on localStorage itself: under Node the mere
+// property access emits an experimental-feature warning, which would put noise
+// in every harness run for a store that only exists in a browser anyway.
+function browserStorage() {
+  if (typeof document === "undefined") return null;
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readCoachmarksSeen() {
+  try {
+    return browserStorage()?.getItem(COACHMARK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCoachmarksSeen() {
+  try {
+    browserStorage()?.setItem(COACHMARK_KEY, "1");
+  } catch {
+    // Storage refused; the session field still hides it for this session.
+  }
 }
 
 function abortController(controller) {

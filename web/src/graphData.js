@@ -106,6 +106,21 @@ function shortLanguageLabel(language) {
   return languageLabel(language);
 }
 
+// Language gets its own visual channel (nebula tint) so it never competes with
+// brightness, which belongs to centrality and understanding. Unknown languages
+// return null and render no fog rather than borrowing another language's hue.
+export function nebulaTintKey(language) {
+  if (language === "python") return "nebPython";
+  if (language === "javascript") return "nebJs";
+  if (language === "typescript") return "nebTs";
+  return null;
+}
+
+// Summed over a region's members, so the top step stays where it was.
+const REGION_BRIGHT_AT = 5;
+// Distinct callers of one structure. See brightness() below.
+const NODE_BRIGHT_AT = 2;
+
 export function galaxyData(graph, palette) {
   return {
     nodes: graph.regions.map((region) => ({
@@ -120,13 +135,15 @@ export function galaxyData(graph, palette) {
         ? palette.star
         : graph.nodes.some((node) => node.region === region.id && node.partial)
           ? palette.routePossible
-          : brightness(region.centrality, palette),
+          : brightness(region.centrality, palette, REGION_BRIGHT_AT),
+      focusDim: false,
     })),
     links: graph.region_edges.map((edge) => ({
       ...edge,
       source: edge.src,
       target: edge.dst,
       color: edge.certain ? palette.route : palette.routePossible,
+      focusDim: false,
     })),
   };
 }
@@ -134,6 +151,23 @@ export function galaxyData(graph, palette) {
 export function systemData(graph, regionId, palette, { selectedId = null } = {}) {
   const members = graph.nodes.filter((node) => node.region === regionId);
   const memberIds = new Set(members.map((node) => node.id));
+  const callEdges = graph.edges.filter(
+    (edge) =>
+      edge.kind === "call" &&
+      !edge.external &&
+      memberIds.has(edge.src) &&
+      memberIds.has(edge.dst),
+  );
+  // Presentation of an already-computed edge list, not layout: which nodes the
+  // selection touches. Study level fades the rest instead of dimming the whole
+  // scene, so the selected node's connections stay readable.
+  const connected = new Set(selectedId ? [selectedId] : []);
+  if (selectedId) {
+    for (const edge of callEdges) {
+      if (edge.src === selectedId) connected.add(edge.dst);
+      if (edge.dst === selectedId) connected.add(edge.src);
+    }
+  }
   return {
     nodes: members.map((node) => ({
       ...node,
@@ -145,23 +179,18 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
         ? palette.star
         : node.partial
           ? palette.routePossible
-          : brightness(node.centrality, palette),
+          : brightness(node.centrality, palette, NODE_BRIGHT_AT),
       selected: node.id === selectedId,
+      focusDim: Boolean(selectedId) && !connected.has(node.id),
     })),
-    links: graph.edges
-      .filter(
-        (edge) =>
-          edge.kind === "call" &&
-          !edge.external &&
-          memberIds.has(edge.src) &&
-          memberIds.has(edge.dst),
-      )
-      .map((edge) => ({
-        ...edge,
-        source: edge.src,
-        target: edge.dst,
-        color: edge.certain ? palette.route : palette.routePossible,
-      })),
+    links: callEdges.map((edge) => ({
+      ...edge,
+      source: edge.src,
+      target: edge.dst,
+      color: edge.certain ? palette.route : palette.routePossible,
+      focusDim:
+        Boolean(selectedId) && edge.src !== selectedId && edge.dst !== selectedId,
+    })),
   };
 }
 
@@ -176,12 +205,35 @@ export function nodeLabel(node) {
   return `${node.name} · ${role} · ${node.loc} LOC${home}${uncertainty}`;
 }
 
+export function linkLabel(link) {
+  const relation =
+    link.kind === "import" ? "import" : link.kind === "call" ? "call" : "import route";
+  const certainty = link.certain
+    ? "certain"
+    : relation === "call"
+      ? "possible call"
+      : "possible import";
+  const weight =
+    typeof link.weight === "number"
+      ? ` · ${link.weight} ${link.weight === 1 ? "import" : "imports"}`
+      : "";
+  const where = typeof link.lineno === "number" ? ` · line ${link.lineno}` : "";
+  return `${link.src} → ${link.dst} · ${relation} · ${certainty}${weight}${where}`;
+}
+
 function sizeFromLoc(loc, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, Math.sqrt(Math.max(1, loc)) * 1.15));
 }
 
-function brightness(centrality, palette) {
-  if (centrality >= 5) return palette.nodeBright;
+// Two very different domains share this ramp, so each names its own top step.
+// A region's centrality is the SUM over its members (0..86 on this repo); a
+// single structure's is its count of DISTINCT callers (0..26, and 96% of nodes
+// sit at 0-2). One threshold cannot serve both: at >= 5 only 4% of nodes ever
+// reached the bright step, so at system level the legend promised a ramp the
+// scene did not draw. Per-node the steps now read exactly as the legend says --
+// nothing calls it, one place calls it, several places call it.
+function brightness(centrality, palette, brightAt) {
+  if (centrality >= brightAt) return palette.nodeBright;
   if (centrality >= 1) return palette.node;
   return palette.nodeDim;
 }

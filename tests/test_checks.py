@@ -81,6 +81,51 @@ def test_every_check_offers_at_least_one_wrong_option(tmp_path: Path) -> None:
             )
 
 
+def test_removal_impact_targets_the_most_depended_on_structure(tmp_path: Path) -> None:
+    """Call sites are evidence; distinct callers are the measure of impact.
+
+    Ranking by call sites let a private helper called five times from one
+    function outrank a utility called from three modules, so the question
+    shipped with a single correct answer — the weakest form of "what depends
+    on this?". The decoy sorts first alphabetically, so passing this test
+    requires the ranking, not the tiebreak.
+    """
+
+    project = tmp_path / "impact"
+    project.mkdir()
+    (project / "helpers.py").write_text(
+        'def cache_key() -> str:\n    return "k"\n\n\ndef log() -> None:\n    pass\n',
+        encoding="utf-8",
+    )
+    (project / "noisy.py").write_text(
+        "import helpers\n\n\ndef spam() -> None:\n" + "    helpers.cache_key()\n" * 5,
+        encoding="utf-8",
+    )
+    (project / "alpha.py").write_text(
+        "import helpers\n\n\ndef go() -> None:\n    helpers.log()\n    helpers.log()\n",
+        encoding="utf-8",
+    )
+    for name in ("beta", "gamma"):
+        (project / f"{name}.py").write_text(
+            "import helpers\n\n\ndef go() -> None:\n    helpers.log()\n", encoding="utf-8"
+        )
+    graph = PythonAstAdapter().parse(project)
+
+    impact = next(
+        check
+        for check in generate_checks(graph, "helpers")
+        if check.kind == "removal-impact"
+    )
+
+    assert impact.answer_ids == ("alpha.go", "beta.go", "gamma.go"), (
+        "helpers.log has three distinct callers; helpers.cache_key has one "
+        "caller across five call sites"
+    )
+    assert "helpers.log" in impact.prompt["expert"]
+    assert len(impact.evidence) == 4, "every call site stays cited, including both in alpha"
+    assert sum("alpha.py" in item for item in impact.evidence) == 2
+
+
 def test_editing_one_file_redims_only_its_region(tmp_path: Path) -> None:
     project = tmp_path / "project"
     shutil.copytree(FIXTURE, project)
@@ -185,3 +230,77 @@ def test_check_is_hashable_and_prompt_still_affects_equality() -> None:
     reworded = replace(check, prompt={"easy": "different wording", "expert": "different wording"})
     assert reworded != check, "hash=False must not weaken equality"
     assert hash(reworded) == hash(check), "prompt must stay excluded from the hash"
+
+
+def test_home_choice_survives_a_restart(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    progress_root = tmp_path / "progress"
+    graph = PythonAstAdapter().parse(project)
+    assert graph.selected_entrypoint is None
+
+    CheckService(graph, ProgressStore(graph, progress_root)).select_entrypoint("beta")
+    restarted = CheckService(graph, ProgressStore(graph, progress_root))
+    hydrated = restarted.graph()
+
+    assert hydrated.selected_entrypoint == "beta"
+    assert next(region for region in hydrated.regions if region.id == "beta").home is True
+
+
+def test_a_persisted_home_outside_the_parser_ranking_is_never_restored(
+    tmp_path: Path,
+) -> None:
+    """A saved id the parser no longer ranks must be dropped, not invented back."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    progress_root = tmp_path / "progress"
+    graph = PythonAstAdapter().parse(project)
+    ProgressStore(graph, progress_root).set_selected_entrypoint("deleted.module")
+
+    restarted = CheckService(graph, ProgressStore(graph, progress_root))
+
+    assert restarted.graph().selected_entrypoint is None
+
+    # A never-existed id is one edge case; a real node the parser simply never
+    # ranked as an entrypoint is the one the guard actually exists for. A
+    # mutant that checks `graph.nodes` membership instead of
+    # `entrypoint_candidates` would restore this one, since "shared" is a
+    # genuine node -- only the ranking says it can't be Home. The fixture
+    # project has one unambiguous rank-0 candidate ("app"), which
+    # `finalize_graph` auto-selects, so force the "no Home chosen yet" state
+    # the guard actually runs under -- exactly like an ambiguous reparse --
+    # while keeping the fixture's real parser-derived nodes and candidates.
+    fixture_graph = replace(PythonAstAdapter().parse(FIXTURE), selected_entrypoint=None)
+    assert "shared" in {node.id for node in fixture_graph.nodes}
+    assert "shared" not in fixture_graph.entrypoint_candidates
+    ProgressStore(fixture_graph, progress_root).set_selected_entrypoint("shared")
+
+    fixture_restarted = CheckService(fixture_graph, ProgressStore(fixture_graph, progress_root))
+
+    assert fixture_restarted.graph().selected_entrypoint is None
+
+
+def test_an_explicit_home_outranks_a_persisted_one(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    progress_root = tmp_path / "progress"
+    graph = PythonAstAdapter().parse(project)
+    ProgressStore(graph, progress_root).set_selected_entrypoint("beta")
+    explicit = PythonAstAdapter().parse(project, entrypoint="alpha")
+
+    restarted = CheckService(explicit, ProgressStore(explicit, progress_root))
+
+    assert restarted.graph().selected_entrypoint == "alpha"

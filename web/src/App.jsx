@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
+import { CoachMarks, HintChip } from "./GuidanceLayer.jsx";
+import { MapView } from "./MapView.jsx";
 import { ModeControl } from "./ModeControl.jsx";
+import { StudyPanel } from "./StudyPanel.jsx";
 import {
   LEVELS,
   conceptTitle,
@@ -31,20 +34,30 @@ export function App() {
     chart,
     checkData,
     checkError,
-    entrypointDismissed,
+    coachmarksSeen,
     entrypointError,
+    entrypointOpen,
     error,
     explanation,
     explanationError,
+    explanationLoading,
     focusedGraph,
     focusedStudiedCount,
     graph,
+    hint,
+    hoverNodeId,
     languageFocus,
     languageOptions,
+    layer,
     level,
     litRegionId,
+    llmStatus,
+    mapData,
+    mapError,
+    mapTab,
     mode,
     modeChosen,
+    pendingDawnRegionId,
     picker,
     projectName,
     region,
@@ -60,7 +73,11 @@ export function App() {
     return (
       <main className="load-state" role="alert">
         <h1>The graph did not load.</h1>
-        <p>{error} Restart Codemble and reload this page.</p>
+        <p>{error}</p>
+        <p>Your progress is stored on this machine and is not affected.</p>
+        <button className="check-primary" type="button" onClick={() => session.start()}>
+          Try again
+        </button>
       </main>
     );
   }
@@ -97,73 +114,213 @@ export function App() {
             <span>{projectName}</span>
           </div>
         </div>
-        <p className="location" aria-live="polite">
-          {showChart
-            ? "Star chart"
-            : level === LEVELS.GALAXY
-              ? `Galaxy · Home ${graph.selected_entrypoint ? (defaultRegion(graph)?.id ?? "unresolved") : "unselected"}`
-              : region.id}
-          {!showChart && level === LEVELS.STUDY && selectedNode ? ` / ${selectedNode.name}` : ""}
-          {languageFocus !== "all" ? ` · ${languageLabel(languageFocus)} focus` : ""}
-        </p>
-        {showChart ? (
-          <button
-            className="rail-action"
-            type="button"
-            onClick={() => session.dispatch({ type: "HIDE_CHART" })}
-          >
-            Return to galaxy
-          </button>
-        ) : level !== LEVELS.GALAXY ? (
-          <button
-            className="rail-action"
-            type="button"
-            onClick={() => session.dispatch({ type: "RETREAT" })}
-          >
-            {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
-          </button>
-        ) : (
-          <button
-            className="rail-action"
-            type="button"
-            onClick={() => session.dispatch({ type: "SHOW_CHART" })}
-          >
-            Star chart
-          </button>
-        )}
-        <LanguageFocus
-          options={languageOptions}
-          value={languageFocus}
-          onChange={(language) =>
-            session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
-          }
-        />
-        <ModeControl
-          mode={mode}
-          modeChosen={modeChosen}
-          onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
-        />
+        <nav className="location" aria-label="Breadcrumb" aria-live="polite">
+          {showChart ? (
+            <span aria-current="page">Star chart</span>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={level === LEVELS.GALAXY}
+                aria-current={level === LEVELS.GALAXY ? "page" : undefined}
+                onClick={() => session.dispatch({ type: "SET_LEVEL_GALAXY" })}
+              >
+                Galaxy
+              </button>
+              {level === LEVELS.GALAXY ? (
+                <small>
+                  {" · Home "}
+                  {graph.selected_entrypoint
+                    ? (defaultRegion(graph)?.id ?? "unresolved")
+                    : "unselected"}
+                </small>
+              ) : (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <button
+                    type="button"
+                    disabled={level === LEVELS.SYSTEM}
+                    aria-current={level === LEVELS.SYSTEM ? "page" : undefined}
+                    onClick={() => session.dispatch({ type: "RETREAT" })}
+                  >
+                    {region.id}
+                  </button>
+                </>
+              )}
+              {level === LEVELS.STUDY && selectedNode ? (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <span aria-current="page">{selectedNode.name}</span>
+                </>
+              ) : null}
+              {languageFocus !== "all" ? (
+                <small>{" · "}{languageLabel(languageFocus)} focus</small>
+              ) : null}
+            </>
+          )}
+        </nav>
+        <div className="rail-actions">
+          {showChart ? (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "HIDE_CHART" })}
+            >
+              Return to galaxy
+            </button>
+          ) : level !== LEVELS.GALAXY ? (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "RETREAT" })}
+            >
+              {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
+            </button>
+          ) : (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "SHOW_CHART" })}
+            >
+              Star chart
+            </button>
+          )}
+          {graph.entrypoint_candidates.length ? (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "CHANGE_HOME" })}
+            >
+              Change Home
+            </button>
+          ) : null}
+          <SwitchProject onConfirm={() => session.dispatch({ type: "RESET_PROJECT" })} />
+        </div>
+        <div className="rail-controls">
+          <LayerSwitcher
+            layer={layer}
+            mode={mode}
+            onChange={(next) => session.dispatch({ type: "SET_LAYER", layer: next })}
+          />
+          <LanguageFocus
+            options={languageOptions}
+            value={languageFocus}
+            onChange={(language) =>
+              session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
+            }
+          />
+          <ModeControl
+            mode={mode}
+            modeChosen={modeChosen}
+            onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
+          />
+        </div>
       </header>
 
       {showChart ? (
         <StarChart chart={chart} studiedCount={focusedStudiedCount} />
       ) : (
       <section className="map-stage" aria-label="Parser-proven project map">
-        <GalaxyCanvas
-          graph={focusedGraph}
-          level={level}
-          region={region}
-          selectedNode={selectedNode}
-          onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
-          onRetreat={() => session.dispatch({ type: "RETREAT" })}
-        />
-        <aside className="map-legend" aria-label="Galaxy legend">
-          <span><i className="legend-dot legend-dot--dim" /> Not studied</span>
-          <span><i className="legend-dot legend-dot--lit" /> Understood</span>
-          <span><i className="legend-dot legend-dot--partial" /> Unchartable</span>
-          <span><i className="legend-route" /> Parser edge</span>
+        {layer === "map" ? (
+          <MapView
+            data={mapData}
+            mapTab={mapTab}
+            mode={mode}
+            error={mapError}
+            onSelectTab={(tab) => session.dispatch({ type: "SET_MAP_TAB", tab })}
+            onSelectRegion={(regionId) =>
+              session.dispatch({ type: "ADVANCE_REGION", regionId })
+            }
+            onSelectNode={(nodeId) =>
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
+            }
+            onRetry={() => session.dispatch({ type: "SET_LAYER", layer: "map" })}
+          />
+        ) : (
+          <GalaxyCanvas
+            graph={focusedGraph}
+            level={level}
+            region={region}
+            selectedNode={selectedNode}
+            hoverNodeId={hoverNodeId}
+            pendingDawnRegionId={pendingDawnRegionId}
+            mode={mode}
+            onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
+            onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
+            onRetreat={() => session.dispatch({ type: "RETREAT" })}
+            onDawnConsumed={(regionId) => session.dispatch({ type: "CONSUME_DAWN", regionId })}
+          />
+        )}
+        {/* The legend describes the layer that is actually on screen. Size and
+            brightness are 3D-only encodings: mapview.py fixes _BOX_WIDTH and
+            _BOX_HEIGHT as constants, draws workflow rows as fixed-radius
+            circles, and never sends centrality at all -- so claiming them on
+            the Map would describe an encoding the renderer does not draw,
+            which is precisely the kind of wrong a learner cannot detect.
+            Language tint is drawn on architecture boxes but not on workflow
+            rows, so it follows the tab as well as the layer -- and in the
+            galaxy it is a nebula, which makeMarker only adds for
+            `node.kind === "region"`. Regions exist at GALAXY level only
+            (NodeKind is module/class/function), so at system and study level
+            the sky carries no tint at all and the rows must go. A learner in a
+            mixed project reads "no fog here" as "no language evidence here". */}
+        <aside
+          className="map-legend"
+          aria-label={layer === "map" ? "Map legend" : "Galaxy legend"}
+        >
+          {layer === "galaxy" ? (
+            <>
+              <span>
+                <i className="legend-size" />
+                Size · {mode === "easy" ? "how much code" : "lines of code"}
+              </span>
+              <span>
+                <i className="legend-brightness" />
+                Brighter · {mode === "easy" ? "used in more places" : "more distinct callers"}
+              </span>
+            </>
+          ) : null}
+          <span>
+            <i className="legend-dot legend-dot--dim" />
+            Dim · {mode === "easy" ? "not proven yet" : "not understood"}
+          </span>
+          <span>
+            <i className="legend-dot legend-dot--lit" />
+            Amber · {mode === "easy" ? "you proved you understand it" : "understood"}
+          </span>
+          <span>
+            <i className="legend-dot legend-dot--partial" />
+            {mode === "easy" ? "Could not be read" : "Unchartable · syntax error"}
+          </span>
+          <span>
+            <i className="legend-route" />
+            {mode === "easy" ? "Certain connection" : "Parser edge · certain"}
+          </span>
+          <span>
+            {/* Uncertainty renders as a distinct colour in the 3D galaxy (no
+                dash support in 3d-force-graph) but as a dash in the 2D SVG
+                map -- the swatch must match whichever layer is on screen. */}
+            <i
+              className={
+                layer === "map"
+                  ? "legend-route legend-route--possible legend-route--dashed"
+                  : "legend-route legend-route--possible"
+              }
+            />
+            {mode === "easy" ? "Possible connection" : "Possible relationship"}
+          </span>
+          {(layer === "galaxy" && level === LEVELS.GALAXY) ||
+          (layer === "map" && mapTab === "architecture")
+            ? languageOptions
+                .filter((option) => option.id !== "all")
+                .map((option) => (
+                  <span key={option.id}>
+                    <i className={`legend-tint legend-tint--${option.id}`} /> {option.label}
+                  </span>
+                ))
+            : null}
         </aside>
-        {level === LEVELS.GALAXY ? (
+        {layer === "galaxy" && level === LEVELS.GALAXY ? (
           <section className="orientation-copy">
             <h1>
               {focusedGraph.regions.length}{" "}
@@ -173,7 +330,7 @@ export function App() {
                   : "systems"
                 : `${languageLabel(languageFocus)} ${focusedGraph.regions.length === 1 ? "system" : "systems"}`} from real source.
             </h1>
-            <p>Choose a system. Size follows lines of code; brightness follows call centrality.</p>
+            <p>Choose a system. Size follows lines of code; brightness follows how many places call it.</p>
             {focusedGraph.partial_files.length ? (
               <p className="partial-summary">
                 {focusedGraph.partial_files.length} {focusedGraph.partial_files.length === 1 ? "file is" : "files are"} unchartable because {focusedGraph.partial_files.length === 1 ? "its" : "their"} language parser reported a syntax error.
@@ -213,10 +370,11 @@ export function App() {
             }
           />
         ) : null}
-        {!graph.selected_entrypoint && !entrypointDismissed && level === LEVELS.GALAXY ? (
+        {entrypointOpen && level === LEVELS.GALAXY ? (
           <EntrypointPicker
             candidates={graph.entrypoint_candidates}
             nodes={graph.nodes}
+            selectedEntrypoint={graph.selected_entrypoint}
             error={entrypointError}
             onSelect={(nodeId) =>
               session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId })
@@ -235,14 +393,26 @@ export function App() {
             node={selectedNode}
             study={studyData}
             error={studyError}
-            explanation={explanation}
-            explanationError={explanationError}
             mode={mode}
+            explanation={explanation}
+            explanationLoading={explanationLoading}
+            explanationError={explanationError}
+            llmStatus={llmStatus}
             onSelectNode={(nodeId) =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
             }
+            onRetryNarration={() =>
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: selectedNode.id })
+            }
           />
         ) : null}
+        {!coachmarksSeen ? (
+          <CoachMarks onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })} />
+        ) : null}
+        <HintChip
+          hint={hint}
+          onStudy={(regionId) => session.dispatch({ type: "ADVANCE_REGION", regionId })}
+        />
       </section>
       )}
 
@@ -342,6 +512,26 @@ function PickerScreen({ picker, onBrowse, onSelect }) {
   );
 }
 
+function LayerSwitcher({ layer, mode, onChange }) {
+  return (
+    <nav className="layer-switcher" aria-label="View layer">
+      {[
+        { id: "galaxy", label: "Galaxy" },
+        { id: "map", label: mode === "easy" ? "Diagram" : "Map" },
+      ].map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          aria-pressed={layer === option.id}
+          onClick={() => onChange(option.id)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function LanguageFocus({ options, value, onChange }) {
   if (options.length <= 2) return null;
   return (
@@ -366,7 +556,84 @@ function LanguageFocus({ options, value, onChange }) {
   );
 }
 
-function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
+function SwitchProject({ onConfirm }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState("");
+  const triggerRef = useRef(null);
+  const groupRef = useRef(null);
+  const wasConfirmingRef = useRef(false);
+
+  // The trigger button and the confirm group are mutually exclusive branches,
+  // so the trigger unmounts (its ref goes null) before a cancel can focus it.
+  // Defer the refocus to an effect, which runs after React remounts it.
+  useEffect(() => {
+    if (confirming) {
+      groupRef.current?.focus();
+    } else if (wasConfirmingRef.current) {
+      triggerRef.current?.focus();
+    }
+    wasConfirmingRef.current = confirming;
+  }, [confirming]);
+
+  function cancel() {
+    setConfirming(false);
+    setFailure("");
+  }
+
+  async function confirm() {
+    setBusy(true);
+    setFailure("");
+    try {
+      await onConfirm();
+    } catch (resetError) {
+      setFailure(resetError.message);
+      setBusy(false);
+    }
+  }
+
+  if (!confirming) {
+    return (
+      <button
+        className="rail-action"
+        type="button"
+        ref={triggerRef}
+        onClick={() => setConfirming(true)}
+      >
+        Switch project
+      </button>
+    );
+  }
+  return (
+    <div
+      className="switch-project"
+      role="group"
+      aria-label="Switch project"
+      tabIndex={-1}
+      ref={groupRef}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !busy) cancel();
+      }}
+    >
+      <p>Progress is saved per project, so this galaxy comes back lit.</p>
+      {failure ? (
+        <p className="switch-project__error" role="alert">
+          {failure}
+        </p>
+      ) : null}
+      <div>
+        <button className="rail-action" type="button" disabled={busy} onClick={confirm}>
+          {busy ? "Releasing…" : "Switch"}
+        </button>
+        <button className="rail-action" type="button" disabled={busy} onClick={cancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSelect, onContinue }) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   return (
     <aside className="entrypoint-picker" aria-labelledby="entrypoint-heading">
@@ -377,7 +644,7 @@ function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
       <p>
         {candidates.length
           ? "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
-          : "Explore the parsed map without Home, or restart with an explicit --entrypoint after adding a recognized startup structure."}
+          : "No file here declares a startup structure the parser recognises, and Codemble will not guess one. Explore the map without Home — every system, check, explanation, and lens note still works."}
       </p>
       {candidates.length ? (
         <div className="entrypoint-candidates">
@@ -394,7 +661,7 @@ function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
       ) : null}
       {error ? <p className="entrypoint-error" role="alert">{error}</p> : null}
       <button className="entrypoint-continue" type="button" onClick={onContinue}>
-        Explore without Home
+        {selectedEntrypoint ? "Keep current Home" : "Explore without Home"}
       </button>
     </aside>
   );
@@ -405,6 +672,7 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   const passed = suite?.checks.filter((check) => check.passed).length ?? 0;
   const [selected, setSelected] = useState(() => new Set());
   const [feedback, setFeedback] = useState(null);
+  const [affirmation, setAffirmation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -415,6 +683,7 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   }, [current?.id]);
 
   function choose(optionId, multiple) {
+    setAffirmation("");
     setSelected((existing) => {
       if (!multiple) return new Set([optionId]);
       const next = new Set(existing);
@@ -431,7 +700,15 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
     setSubmitError("");
     try {
       const result = await onSubmit(current.id, [...selected]);
-      setFeedback(result);
+      // A correct answer advances `current`, which resets `feedback` — so the
+      // affirmation lives in its own slot or it would vanish before it is read.
+      if (result.correct) {
+        setAffirmation(result.message);
+        setFeedback(null);
+      } else {
+        setAffirmation("");
+        setFeedback(result);
+      }
     } catch (requestError) {
       setSubmitError(requestError.message);
     } finally {
@@ -455,7 +732,9 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
           <p>{error || submitError} The galaxy remains available.</p>
         </div>
       ) : null}
-      {!suite && !error ? <p className="check-loading">Deriving answers from parser edges…</p> : null}
+      {!suite && !error ? (
+        <p className="check-loading" role="status">Deriving answers from parser edges…</p>
+      ) : null}
       {suite?.region_understood ? (
         <div className="check-complete" aria-live="polite">
           <span className="check-complete__star" aria-hidden="true">✦</span>
@@ -467,7 +746,13 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
       {suite && !suite.region_understood && suite.checks.length === 0 ? (
         <div className="check-state">
           <h2>No safe check yet.</h2>
-          <p>This region has no certain graph relationship Codemble can test without guessing.</p>
+          <p>
+            Every question here is answered by the parser graph, and this region
+            has no certain relationship Codemble can build one from. It stays dim
+            rather than lighting on a question that would prove nothing. Import
+            this module somewhere, or call something inside it, and its checks
+            appear.
+          </p>
         </div>
       ) : null}
       {current && !suite.region_understood ? (
@@ -476,6 +761,11 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
             <span>Check {passed + 1} of {suite.checks.length}</span>
             <progress value={passed} max={suite.checks.length} />
           </div>
+          {affirmation ? (
+            <p className="check-affirmation" role="status">
+              <span aria-hidden="true">✦</span> {affirmation}
+            </p>
+          ) : null}
           <fieldset>
             <legend>{current.prompt_voices[mode]}</legend>
             {current.multiple ? <p>Select every answer supported by the graph.</p> : null}
@@ -510,92 +800,6 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   );
 }
 
-function StudyPanel({ node, study, error, explanation, explanationError, mode, onSelectNode }) {
-  return (
-    <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
-      <header className="study-preview__header">
-        <p className="study-preview__path">{node.file}:{node.lineno}</p>
-        <h1>{node.name}</h1>
-        <dl>
-          <div><dt>Kind</dt><dd>{node.kind}</dd></div>
-          <div><dt>Span</dt><dd>{node.loc} lines</dd></div>
-          <div><dt>Calls in</dt><dd>{node.centrality}</dd></div>
-          <div><dt>Resolution</dt><dd>{node.partial ? "Partial parse" : "Parser-proven"}</dd></div>
-        </dl>
-      </header>
-
-      {error ? (
-        <section className="study-notice" role="alert">
-          <h2>Study data did not load.</h2>
-          <p>{error} The parser map is still available.</p>
-        </section>
-      ) : null}
-      {!study && !error ? <p className="study-loading">Reading parser evidence…</p> : null}
-      {study ? (
-        <div className="study-content">
-          {node.partial ? (
-            <section className="partial-study" role="status">
-              <h2>Unchartable beyond this source.</h2>
-              <p>The language parser reported a syntax error, so Codemble kept the file visible but did not invent structures or relationships inside it.</p>
-            </section>
-          ) : null}
-          <SourceExcerpt source={study.source} />
-          <LensNotes lens={study.lens} language={node.language} mode={mode} />
-          <StructuralSummary structural={study.structural} mode={mode} />
-          <Explanation
-            explanation={explanation}
-            explanationError={explanationError}
-            node={node}
-            onSelectNode={onSelectNode}
-          />
-        </div>
-      ) : null}
-    </aside>
-  );
-}
-
-function StructuralSummary({ structural, mode }) {
-  // The Tier 0 floor: graph facts through fixed templates, no model involved.
-  // It ships in the same /study response as the source and lens above, so it
-  // is never subject to narration's own loading/error/no-key states below it.
-  if (!structural) return null;
-  return (
-    <section className="structural-summary" aria-labelledby="structural-heading">
-      <div className="study-section-heading">
-        <h2 id="structural-heading">Structural summary</h2>
-        <span>No model required</span>
-      </div>
-      <p>{structural[mode]}</p>
-    </section>
-  );
-}
-
-function LensNotes({ lens, language, mode }) {
-  if (!lens?.length) return null;
-  return (
-    <section className="lens-study" aria-labelledby="lens-heading">
-      <div className="study-section-heading">
-        <h2 id="lens-heading">{conceptTitle(language)} lens</h2>
-        <span>{lens.length} detected</span>
-      </div>
-      <div className="lens-notes">
-        {lens.map((note) => (
-          <article className="lens-note" key={`${note.concept}-${note.line}-${note.snippet}`}>
-            <div>
-              <h3>{note.title}</h3>
-              <Citation citation={note.citation} fallbackLine={note.line} />
-            </div>
-            <div>
-              <p>{note.note_voices[mode]}</p>
-              <code>{note.snippet}</code>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function StarChart({ chart, studiedCount }) {
   const understood = chart.filter((item) => item.understood_nodes > 0).length;
   return (
@@ -608,7 +812,7 @@ function StarChart({ chart, studiedCount }) {
         </p>
         <dl>
           <div><dt>Concepts encountered</dt><dd>{chart.length}</dd></div>
-          <div><dt>Structures studied</dt><dd>{studiedCount}</dd></div>
+          <div><dt>Studied this session</dt><dd>{studiedCount}</dd></div>
           <div><dt>Concepts understood</dt><dd>{understood}</dd></div>
         </dl>
       </header>
@@ -623,7 +827,7 @@ function StarChart({ chart, studiedCount }) {
               <span style={{ width: `${item.nodes ? (item.understood_nodes / item.nodes) * 100 : 0}%` }} />
             </div>
             <dl>
-              <div><dt>Studied</dt><dd>{item.studied_nodes}/{item.nodes}</dd></div>
+              <div><dt>Studied (session)</dt><dd>{item.studied_nodes}/{item.nodes}</dd></div>
               <div><dt>Understood</dt><dd>{item.understood_nodes}/{item.nodes}</dd></div>
             </dl>
           </article>
@@ -631,108 +835,4 @@ function StarChart({ chart, studiedCount }) {
       </div>
     </section>
   );
-}
-
-function SourceExcerpt({ source }) {
-  return (
-    <section className="source-study" aria-labelledby="source-heading">
-      <div className="study-section-heading">
-        <h2 id="source-heading">Real source</h2>
-        <span>{source.file}:{source.start_line}–{source.end_line}</span>
-      </div>
-      <ol className="source-code" start={source.start_line} aria-label={`Source excerpt from ${source.file}`}>
-        {source.lines.map((line) => (
-          <li key={line.number} id={`source-L${line.number}`} data-line={line.number}>
-            <code>{line.text || " "}</code>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function Explanation({ explanation, explanationError, node, onSelectNode }) {
-  if (!explanation) {
-    if (explanationError) {
-      return (
-        <section className="study-notice" role="alert" aria-labelledby="explanation-heading">
-          <h2 id="explanation-heading">Narration did not load.</h2>
-          <p>{explanationError} The source and parser evidence above remain available.</p>
-        </section>
-      );
-    }
-    return <p className="study-loading">Fetching narration…</p>;
-  }
-  if (explanation.status === "no_key") {
-    return (
-      <section className="study-notice" aria-labelledby="explanation-heading">
-        <h2 id="explanation-heading">Structure works without a model.</h2>
-        <p>{explanation.message}</p>
-        <p>Only explanation prose is unavailable; the source and parser evidence above remain authoritative.</p>
-      </section>
-    );
-  }
-  if (explanation.status === "error") {
-    return (
-      <section className="study-notice" role="alert" aria-labelledby="explanation-heading">
-        <h2 id="explanation-heading">The explanation was withheld.</h2>
-        <p>{explanation.message}</p>
-        <p>Codemble will not display provider output that falls outside parser evidence.</p>
-      </section>
-    );
-  }
-  if (explanation.status === "partial") {
-    return (
-      <section className="study-notice" aria-labelledby="explanation-heading">
-        <h2 id="explanation-heading">Narration stays off for partial source.</h2>
-        <p>{explanation.message}</p>
-      </section>
-    );
-  }
-  return (
-    <section className="grounded-explanation" aria-labelledby="explanation-heading">
-      <div className="study-section-heading">
-        <h2 id="explanation-heading">Grounded explanation</h2>
-        <span>{explanation.cached ? "Local cache" : explanation.provider}</span>
-      </div>
-      <p>
-        {explanation.summary.text}{" "}
-        <Citation citation={explanation.summary.citation} fallbackLine={node.lineno} />
-      </p>
-      <h3>Walkthrough</h3>
-      <ul className="evidence-list">
-        {explanation.walkthrough.map((item) => (
-          <li key={`${item.citation}-${item.text}`}>
-            <p>{item.text}</p>
-            <Citation citation={item.citation} fallbackLine={item.line} />
-          </li>
-        ))}
-      </ul>
-      {explanation.relationships.length ? (
-        <>
-          <h3>Parser relationships</h3>
-          <ul className="evidence-list">
-            {explanation.relationships.map((item) => (
-              <li key={`${item.node_id}-${item.text}`}>
-                <strong>{item.certain ? item.node_id : `Possible: ${item.node_id}`}</strong>
-                <p>{item.text}</p>
-                <button
-                  className="source-citation source-citation--button"
-                  type="button"
-                  onClick={() => onSelectNode(item.node_id)}
-                >
-                  Study {item.citation}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-    </section>
-  );
-}
-
-function Citation({ citation, fallbackLine }) {
-  const parsedLine = Number(citation.split(":").at(-1)) || fallbackLine;
-  return <a className="source-citation" href={`#source-L${parsedLine}`}>{citation}</a>;
 }

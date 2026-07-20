@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from codemble import __version__
 from codemble.adapters.base import Graph
+from codemble.graph import build_map
 from codemble.adapters.project import (
     ProjectParseError,
     ProjectParser,
@@ -49,6 +50,20 @@ class ModeSelection(BaseModel):
     mode: Literal["easy", "expert"]
 
 
+class ProjectRelease(BaseModel):
+    """Confirmation that the bound project should be released.
+
+    The field exists to make this endpoint JSON-only.  A cross-site HTML form
+    can POST without any script, but only as form-encoded, multipart, or
+    text/plain -- none of which parse as this body, so validation refuses them
+    before the handler runs, and a cross-origin JSON POST needs a preflight the
+    browser will not grant.  Every other state-changing endpoint already had
+    that protection by virtue of taking a body; reset was the one that did not.
+    """
+
+    confirmed: Literal[True]
+
+
 @dataclass(frozen=True)
 class PickerConfig:
     """Filesystem scope and parse settings for the in-app project picker."""
@@ -58,7 +73,15 @@ class PickerConfig:
 
 
 class _ProjectState:
-    """One-shot binding from picker selection to live project services."""
+    """The one project this server is currently serving, if any.
+
+    Binding is one-*at-a-time*, not one-shot: ``POST /api/picker/reset`` unbinds
+    so the header's Switch project control can re-arm the picker without a
+    process restart, and ``serve_project`` attaches a ``PickerConfig`` for
+    exactly that reason.  An app built with no ``PickerConfig`` at all is the
+    only genuinely one-shot case -- there, reset refuses rather than stranding
+    the process with nothing to pick.
+    """
 
     def __init__(self) -> None:
         self.checks: CheckService | None = None
@@ -71,6 +94,16 @@ class _ProjectState:
     def bind(self, graph: Graph) -> None:
         self.studies = StudyService.from_environment(graph)
         self.checks = CheckService(graph)
+
+    def unbind(self) -> None:
+        """Drop the bound project so the picker can arm again.
+
+        Progress is already on disk per project root, so releasing the live
+        services loses nothing a re-select cannot restore.
+        """
+
+        self.checks = None
+        self.studies = None
 
 
 def create_app(
@@ -101,6 +134,20 @@ def create_app(
     @app.get("/api/picker/state")
     def get_picker_state() -> dict[str, str]:
         return {"state": "ready" if state.bound else "unpicked"}
+
+    @app.post("/api/picker/reset")
+    def reset_picker(release: ProjectRelease) -> dict[str, str]:
+        # `release` is never read: validating it is the whole point (see
+        # ProjectRelease). A request that reaches this line already proved it
+        # carried a JSON body, which a cross-site form cannot send.
+        del release
+        if picker is None:
+            raise HTTPException(
+                status_code=409,
+                detail="This project was opened without a picker; restart Codemble to switch.",
+            )
+        state.unbind()
+        return {"state": "unpicked"}
 
     @app.get("/api/llm/status")
     def get_llm_status() -> dict[str, object]:
@@ -206,6 +253,13 @@ def create_app(
     def get_graph() -> dict[str, object]:
         checks, _ = _services()
         return checks.graph().to_dict()
+
+    @app.get("/api/map")
+    def get_map() -> dict[str, object]:
+        # The hydrated graph, so lit regions and the selected Home in the 2D map
+        # can never disagree with the galaxy the learner just came from.
+        checks, _ = _services()
+        return build_map(checks.graph())
 
     @app.post("/api/entrypoint")
     def select_entrypoint(selection: EntrypointSelection) -> dict[str, object]:

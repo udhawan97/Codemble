@@ -51,6 +51,23 @@ const adapter = createInMemoryLearnerSessionAdapter({
     },
   },
   entrypoints: { "python:app.py:run": understoodGraph },
+  explanations: {
+    "python:app.py:run:easy": { status: "ready", summary: { text: "easy voice" } },
+    "python:app.py:run:expert": { status: "ready", summary: { text: "expert voice" } },
+    "typescript:main.ts:main:easy": { status: "no_key", message: "Add a key." },
+    "typescript:main.ts:main:expert": { status: "no_key", message: "Add a key." },
+  },
+  mode: "easy",
+  llmStatus: {
+    configured_provider: null,
+    configured_model: null,
+    ollama: {
+      running: true,
+      installed_models: ["gemma4:12b"],
+      recommended: "gemma4:12b",
+      fallback: "qwen3:8b",
+    },
+  },
 });
 const session = createLearnerSession({ adapter, clock });
 let notifications = 0;
@@ -70,6 +87,18 @@ assert.deepEqual(snapshot.languageOptions.map((option) => option.id), [
   "python",
   "typescript",
 ]);
+assert.equal(snapshot.mode, "easy", "the session adopts the server's persisted mode");
+assert.equal(snapshot.llmStatus.ollama.recommended, "gemma4:12b");
+
+await session.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(session.getSnapshot().mode, "expert");
+assert.deepEqual(
+  await adapter.loadMode(),
+  { mode: "expert", chosen: true },
+  "PUT reached the adapter, and writing a mode records it as chosen",
+);
+await session.dispatch({ type: "SET_MODE", mode: "easy" });
+assert.equal(session.getSnapshot().mode, "easy");
 
 await session.dispatch({ type: "ADVANCE", node: graph.regions[0] });
 assert.equal(session.getSnapshot().level, LEVELS.SYSTEM);
@@ -78,6 +107,21 @@ snapshot = session.getSnapshot();
 assert.equal(snapshot.level, LEVELS.STUDY);
 assert.equal(snapshot.studyData.node.id, "python:app.py:run");
 assert(snapshot.studiedNodeIds.has("python:app.py:run"));
+assert.equal(snapshot.explanationLoading, false);
+assert.equal(snapshot.explanationError, "");
+assert.equal(snapshot.explanation.summary.text, "easy voice");
+
+await session.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(
+  session.getSnapshot().explanation.summary.text,
+  "expert voice",
+  "changing voice while studying re-narrates the same node",
+);
+await session.dispatch({ type: "SET_MODE", mode: "easy" });
+
+await session.dispatch({ type: "RETREAT" });
+assert.equal(session.getSnapshot().explanation, null, "leaving study drops its narration");
+await session.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
 
 await session.dispatch({ type: "SET_LANGUAGE_FOCUS", language: "python" });
 await session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: "typescript:main.ts:main" });
@@ -106,15 +150,82 @@ assert.equal(snapshot.checkData, passedChecks);
 assert.equal(snapshot.graph, understoodGraph);
 assert.equal(snapshot.region.understood, true);
 assert.equal(snapshot.litRegionId, "app.py");
+assert.equal(
+  snapshot.pendingDawnRegionId,
+  "app.py",
+  "a light-up also queues a pending dawn, independent of the toast",
+);
 assert.equal(pendingTimers.size, 1);
 pendingTimers.values().next().value();
 assert.equal(session.getSnapshot().litRegionId, null);
+assert.equal(
+  session.getSnapshot().pendingDawnRegionId,
+  "app.py",
+  "the pending dawn outlives the toast's 520ms timer -- it is consumed when the dawn actually runs, never timed out",
+);
+
+// A stale CONSUME_DAWN for some other region id (e.g. a race with a newer
+// light-up) must leave this pending dawn alone.
+await session.dispatch({ type: "CONSUME_DAWN", regionId: "does-not-match" });
+assert.equal(
+  session.getSnapshot().pendingDawnRegionId,
+  "app.py",
+  "a mismatched CONSUME_DAWN leaves the real pending dawn untouched",
+);
+await session.dispatch({ type: "CONSUME_DAWN", regionId: "app.py" });
+assert.equal(
+  session.getSnapshot().pendingDawnRegionId,
+  null,
+  "CONSUME_DAWN clears the pending dawn once GalaxyCanvas has claimed it",
+);
 
 await session.dispatch({ type: "RETREAT" });
+assert.equal(
+  session.getSnapshot().entrypointOpen,
+  true,
+  "a graph with no selected Home opens the picker on load",
+);
 await session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId: "python:app.py:run" });
 assert.equal(session.getSnapshot().graph, understoodGraph);
+assert.equal(
+  session.getSnapshot().entrypointOpen,
+  false,
+  "choosing Home closes the picker",
+);
 await session.dispatch({ type: "DISMISS_ENTRYPOINT" });
 assert.equal(session.getSnapshot().entrypointDismissed, true);
+assert.equal(session.getSnapshot().entrypointOpen, false);
+
+// Regression: CHANGE_HOME must clear a *genuine* STUDY state, not just find
+// fields that were already empty. Drive all the way into STUDY with the
+// chart open first, so each assertion below would fail if the handler
+// stopped clearing that field.
+await session.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await session.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
+await session.dispatch({ type: "SHOW_CHART" });
+let studySnapshot = session.getSnapshot();
+assert.equal(studySnapshot.level, LEVELS.STUDY, "setup reached a genuine study state");
+assert.equal(studySnapshot.selectedNode?.id, "python:app.py:run");
+assert.equal(studySnapshot.studyData?.node.id, "python:app.py:run");
+assert.equal(studySnapshot.explanation?.summary.text, "easy voice");
+assert.equal(studySnapshot.showChart, true);
+
+await session.dispatch({ type: "CHANGE_HOME" });
+let homeSnapshot = session.getSnapshot();
+assert.equal(homeSnapshot.entrypointOpen, true, "Change Home reopens the picker");
+assert.equal(homeSnapshot.level, LEVELS.GALAXY, "Home is a galaxy-level decision");
+assert.equal(homeSnapshot.selectedNode, null, "Change Home clears the selected node");
+assert.equal(homeSnapshot.studyData, null, "Change Home clears study data");
+assert.equal(homeSnapshot.studyError, "", "Change Home clears study error");
+assert.equal(homeSnapshot.explanation, null, "Change Home clears the narration");
+assert.equal(homeSnapshot.explanationError, "", "Change Home clears the narration error");
+assert.equal(
+  homeSnapshot.explanationLoading,
+  false,
+  "Change Home clears the narration loading flag",
+);
+assert.equal(homeSnapshot.showChart, false, "Change Home closes the star chart");
+await session.dispatch({ type: "DISMISS_ENTRYPOINT" });
 await session.dispatch({ type: "SHOW_CHART" });
 assert.equal(session.getSnapshot().showChart, true);
 await session.dispatch({ type: "HIDE_CHART" });
@@ -123,6 +234,38 @@ assert(notifications > 0);
 
 unsubscribe();
 session.dispose();
+
+// Regression: a pending dawn must not survive a project reset -- it is
+// discarded, not carried into whatever project the learner picks next.
+const dawnResetSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({
+    graph,
+    checks: { "app.py": firstChecks },
+    submissions: {
+      "app.py:calls": {
+        result: { correct: true, region_understood: true },
+        graph: understoodGraph,
+        checks: passedChecks,
+      },
+    },
+  }),
+  clock,
+});
+await dawnResetSession.start();
+await dawnResetSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await dawnResetSession.dispatch({
+  type: "SUBMIT_CHECK",
+  checkId: "calls",
+  selectedIds: ["python:app.py:run"],
+});
+assert.equal(dawnResetSession.getSnapshot().pendingDawnRegionId, "app.py");
+await dawnResetSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  dawnResetSession.getSnapshot().pendingDawnRegionId,
+  null,
+  "a project reset discards a pending dawn instead of carrying it into the next project",
+);
+dawnResetSession.dispose();
 
 // Audience mode: hydrates from the adapter, and SET_MODE persists the choice.
 const modeSession = createLearnerSession({
@@ -713,6 +856,23 @@ pickerSnapshot = pickerSession.getSnapshot();
 assert.equal(pickerSnapshot.status, "ready");
 assert.equal(pickerSnapshot.picker, null);
 assert.equal(pickerSnapshot.graph, graph);
+
+await pickerSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await pickerSession.dispatch({ type: "RESET_PROJECT" });
+pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "picking", "reset returns the learner to the picker");
+assert.equal(pickerSnapshot.graph, null);
+assert.equal(pickerSnapshot.region, null);
+assert.equal(pickerSnapshot.selectedNode, null);
+assert.equal(pickerSnapshot.level, LEVELS.GALAXY);
+assert.equal(pickerSnapshot.studiedNodeIds.size, 0);
+assert.equal(pickerSnapshot.explanation, null);
+assert.equal(pickerSnapshot.llmStatus, null);
+assert.equal(pickerSnapshot.picker.path, "/home/u");
+
+await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(pickerSession.getSnapshot().status, "ready", "a project can be re-picked");
+
 pickerSession.dispose();
 
 // Regression: a browse during an in-flight selection must not wedge picker.busy.
@@ -758,6 +918,637 @@ raceSnapshot = raceSession.getSnapshot();
 assert.equal(raceSnapshot.status, "ready");
 assert.equal(raceSnapshot.picker, null);
 raceSession.dispose();
+
+// Phase B: layer, map tab, map data, coach-marks, and the derived hint.
+const mapPayload = {
+  schema_version: 1,
+  architecture: { home: "app.py", boxes: [], edges: [], groups: [], unreachable: [] },
+  workflow: { root: null, nodes: [], unreachable: [] },
+};
+// Home (app.py) is understood so it cannot shadow main.ts as the nearest
+// unlit region -- the fixture default `mode: "easy"` on
+// createInMemoryLearnerSessionAdapter would otherwise also flip this
+// session's default layer to "map" before the first assertion below, so
+// mode is pinned to "expert" explicitly.
+const layerSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({
+      graph: makeGraph({ understood: true }),
+      mode: "expert",
+    }),
+    async fetchMap() {
+      return mapPayload;
+    },
+  },
+  clock,
+});
+await layerSession.start();
+assert.equal(
+  layerSession.getSnapshot().layer,
+  "galaxy",
+  "expert mode lands on the galaxy",
+);
+assert.equal(layerSession.getSnapshot().mapTab, "architecture");
+assert.equal(layerSession.getSnapshot().coachmarksSeen, false);
+
+await layerSession.dispatch({ type: "SET_LAYER", layer: "map" });
+let layerSnapshot = layerSession.getSnapshot();
+assert.equal(layerSnapshot.layer, "map");
+assert.equal(layerSnapshot.mapData, mapPayload, "switching to map fetches it once");
+assert.equal(layerSnapshot.mapError, "");
+
+await layerSession.dispatch({ type: "SET_MAP_TAB", tab: "workflow" });
+assert.equal(layerSession.getSnapshot().mapTab, "workflow");
+
+await layerSession.dispatch({ type: "DISMISS_COACHMARKS" });
+assert.equal(layerSession.getSnapshot().coachmarksSeen, true);
+assert.equal(
+  layerSession.getSnapshot().coachmarksSeen,
+  true,
+  "dismissing coach-marks is sticky within a session",
+);
+await layerSession.dispatch({ type: "SET_LAYER", layer: "galaxy" });
+assert.equal(
+  layerSession.getSnapshot().coachmarksSeen,
+  true,
+  "coach-marks never return after a layer change",
+);
+
+// The hint is expert-mode-silent and graph-derived.
+assert.equal(layerSession.getSnapshot().hint, null, "expert mode shows no hint");
+await layerSession.dispatch({ type: "SET_MODE", mode: "easy" });
+layerSnapshot = layerSession.getSnapshot();
+// The most recent explicit choice is now "galaxy" (dispatched above to prove
+// coach-marks survive a layer change), so that -- not the earlier "map" --
+// is what must survive this mode flip.
+assert.equal(layerSnapshot.layer, "galaxy", "an explicit layer choice survives a mode flip");
+assert.equal(
+  layerSnapshot.hint.regionId,
+  "main.ts",
+  "the hint is the nearest unlit region to Home",
+);
+assert.equal(layerSnapshot.hint.hops, Infinity, "an unrouted region still reports its distance");
+layerSession.dispose();
+
+// Easy mode defaults to the map layer when the learner has not chosen one.
+// makeGraph's `understood` flag only marks the Home region (app.py); mark
+// main.ts understood too so this graph is genuinely fully understood.
+const fullyUnderstoodGraph = makeGraph({ understood: true });
+fullyUnderstoodGraph.regions[1].understood = true;
+fullyUnderstoodGraph.nodes[1].understood = true;
+let easyMapFetchCount = 0;
+const easySession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph: fullyUnderstoodGraph }),
+    async fetchMap() {
+      easyMapFetchCount += 1;
+      return mapPayload;
+    },
+    async loadMode() {
+      return { mode: "easy", chosen: true };
+    },
+  },
+  clock,
+});
+await easySession.start();
+assert.equal(easySession.getSnapshot().layer, "map", "easy mode lands on the map");
+// Regression (carried-over fix): applyMode() used to set layer:"map" for a
+// persisted Easy mode without ever calling loadMap(), so a learner whose
+// mode was already Easy on load landed on a Map stuck loading forever.
+assert.equal(
+  easySession.getSnapshot().mapData,
+  mapPayload,
+  "a persisted easy mode must load the map itself, not strand the learner on a permanent loading state",
+);
+assert.equal(
+  easySession.getSnapshot().mapError,
+  "",
+  "the map that loaded from the mode default carries no error",
+);
+assert.equal(
+  easyMapFetchCount,
+  1,
+  "landing on the map by mode default fetches it exactly once, never a duplicate",
+);
+assert.equal(
+  easySession.getSnapshot().hint,
+  null,
+  "a fully understood project has nothing to hint at",
+);
+easySession.dispose();
+
+// A map failure is scoped to the map layer and never breaks the galaxy.
+const mapFailureSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph }),
+    async fetchMap() {
+      throw new Error("map unavailable");
+    },
+  },
+  clock,
+});
+await mapFailureSession.start();
+await mapFailureSession.dispatch({ type: "SET_LAYER", layer: "map" });
+const failureSnapshot = mapFailureSession.getSnapshot();
+assert.equal(failureSnapshot.mapError, "map unavailable");
+assert.equal(failureSnapshot.mapData, null);
+assert.equal(failureSnapshot.status, "ready", "a map failure never downs the session");
+mapFailureSession.dispose();
+
+// The HTTP adapter hits the documented URL.
+const mapCalls = [];
+const mapHttp = createHttpLearnerSessionAdapter(async (url) => {
+  mapCalls.push(url);
+  return { ok: true, async json() { return mapPayload; } };
+});
+assert.deepEqual(await mapHttp.fetchMap(), mapPayload);
+assert.deepEqual(mapCalls, ["/api/map"]);
+
+console.log("phase B layer + map contracts passed");
+
+// A failing mode write reverts the optimistic value: mode is a preference,
+// never truth, so the UI must not claim a setting the server refused.
+const modeFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "easy" });
+const modeFailureSession = createLearnerSession({
+  adapter: {
+    ...modeFailureAdapter,
+    saveMode() {
+      throw new Error("mode write refused");
+    },
+  },
+  clock,
+});
+await modeFailureSession.start();
+assert.equal(modeFailureSession.getSnapshot().mode, "easy");
+await modeFailureSession.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(
+  modeFailureSession.getSnapshot().mode,
+  "easy",
+  "a refused mode write rolls back to the last server-confirmed value",
+);
+modeFailureSession.dispose();
+
+// A failing status read must not blank the mode that loaded beside it.
+const statusFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "expert" });
+const statusFailureSession = createLearnerSession({
+  adapter: {
+    ...statusFailureAdapter,
+    fetchLlmStatus() {
+      throw new Error("status unavailable");
+    },
+  },
+  clock,
+});
+await statusFailureSession.start();
+assert.equal(statusFailureSession.getSnapshot().mode, "expert");
+assert.equal(statusFailureSession.getSnapshot().llmStatus, null);
+assert.equal(statusFailureSession.getSnapshot().status, "ready");
+statusFailureSession.dispose();
+
+// Regression: a same-project mode change that races the preferences load
+// must win over the stale loadMode value it raced with, and llmStatus from
+// that same response must still apply.
+let resolveRaceStatus;
+const raceStatus = new Promise((resolve) => {
+  resolveRaceStatus = resolve;
+});
+let notifyStatusRequested;
+const statusRequested = new Promise((resolve) => {
+  notifyStatusRequested = resolve;
+});
+const preferencesRaceAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "expert" });
+const preferencesRaceSession = createLearnerSession({
+  adapter: {
+    ...preferencesRaceAdapter,
+    fetchLlmStatus() {
+      notifyStatusRequested();
+      return raceStatus;
+    },
+  },
+  clock,
+});
+const preferencesRaceStart = preferencesRaceSession.start();
+await statusRequested;
+await preferencesRaceSession.dispatch({ type: "SET_MODE", mode: "easy" });
+resolveRaceStatus({
+  configured_provider: null,
+  configured_model: null,
+  ollama: {
+    running: true,
+    installed_models: ["gemma4:12b"],
+    recommended: "gemma4:12b",
+    fallback: "qwen3:8b",
+  },
+});
+await preferencesRaceStart;
+assert.equal(
+  preferencesRaceSession.getSnapshot().mode,
+  "easy",
+  "a mode change that races the preferences load wins over the stale loadMode value",
+);
+assert.equal(
+  preferencesRaceSession.getSnapshot().llmStatus.ollama.recommended,
+  "gemma4:12b",
+  "llmStatus from the same preferences response still applies",
+);
+preferencesRaceSession.dispose();
+
+// A failing narration request must leave the structural evidence untouched.
+const narrationFailureAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  studies: { "python:app.py:run": study },
+});
+const narrationFailureSession = createLearnerSession({
+  adapter: {
+    ...narrationFailureAdapter,
+    loadExplanation() {
+      return Promise.reject(new Error("Explanation request returned 502."));
+    },
+  },
+  clock,
+});
+await narrationFailureSession.start();
+await narrationFailureSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await narrationFailureSession.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
+const narrationSnapshot = narrationFailureSession.getSnapshot();
+assert.equal(narrationSnapshot.explanation, null);
+assert.equal(narrationSnapshot.explanationLoading, false);
+assert.equal(narrationSnapshot.explanationError, "Explanation request returned 502.");
+assert.equal(
+  narrationSnapshot.studyData.node.id,
+  "python:app.py:run",
+  "narration failure never removes parser evidence",
+);
+narrationFailureSession.dispose();
+
+// A refused reset must surface to the caller and leave the project bound.
+const refusedResetAdapter = createInMemoryLearnerSessionAdapter({ graph });
+const refusedResetSession = createLearnerSession({
+  adapter: {
+    ...refusedResetAdapter,
+    resetProject() {
+      throw new Error("Project reset returned 409.");
+    },
+  },
+  clock,
+});
+await refusedResetSession.start();
+await assert.rejects(
+  () => refusedResetSession.dispatch({ type: "RESET_PROJECT" }),
+  /Project reset returned 409\./,
+);
+assert.equal(
+  refusedResetSession.getSnapshot().graph,
+  graph,
+  "a refused reset leaves the bound project exactly as it was",
+);
+refusedResetSession.dispose();
+
+// Regression: a stale SELECT_ENTRYPOINT response arriving after RESET_PROJECT
+// must not resurrect the old project. resetProject() must abort
+// entrypointController like cancelStudy() aborts study/explanation, and
+// selectEntrypoint() must check lifecycle like loadProjectGraph/loadPreferences.
+let resolveStaleEntrypoint;
+const staleEntrypoint = new Promise((resolve) => {
+  resolveStaleEntrypoint = resolve;
+});
+const entrypointRaceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const entrypointRaceSession = createLearnerSession({
+  adapter: { ...entrypointRaceBaseAdapter, selectEntrypoint: () => staleEntrypoint },
+  clock,
+});
+await entrypointRaceSession.start();
+await entrypointRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(entrypointRaceSession.getSnapshot().status, "ready");
+
+const staleEntrypointRequest = entrypointRaceSession.dispatch({
+  type: "SELECT_ENTRYPOINT",
+  nodeId: "python:app.py:run",
+});
+await entrypointRaceSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  entrypointRaceSession.getSnapshot().status,
+  "picking",
+  "reset returns to the picker while the entrypoint request is still in flight",
+);
+
+resolveStaleEntrypoint(understoodGraph);
+await staleEntrypointRequest;
+const entrypointRaceSnapshot = entrypointRaceSession.getSnapshot();
+assert.equal(
+  entrypointRaceSnapshot.status,
+  "picking",
+  "a stale entrypoint response must not move the session off the picker",
+);
+assert.equal(
+  entrypointRaceSnapshot.graph,
+  null,
+  "a stale entrypoint response after reset must not resurrect the old project's graph",
+);
+entrypointRaceSession.dispose();
+
+// Regression: RESET_PROJECT must clear map-layer state too, not just
+// graph/study/entrypoint state -- otherwise project A's architecture and
+// workflow trees stay in mapData after the learner switches to project B.
+const mapClearBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  mode: "expert",
+  map: mapPayload,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const mapClearSession = createLearnerSession({ adapter: mapClearBaseAdapter, clock });
+await mapClearSession.start();
+await mapClearSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+await mapClearSession.dispatch({ type: "SET_LAYER", layer: "map" });
+assert.equal(
+  mapClearSession.getSnapshot().mapData,
+  mapPayload,
+  "setup: project A's map really loaded before reset",
+);
+
+await mapClearSession.dispatch({ type: "RESET_PROJECT" });
+const mapClearSnapshot = mapClearSession.getSnapshot();
+assert.equal(mapClearSnapshot.status, "picking", "reset returns to the picker");
+assert.equal(mapClearSnapshot.mapData, null, "reset clears the previous project's map data");
+assert.equal(mapClearSnapshot.mapError, "", "reset clears any previous map error too");
+mapClearSession.dispose();
+
+// Regression: a map fetch that was in flight for the old project at reset
+// time must not be able to commit into the new session when it later
+// resolves -- same class of bug as the SELECT_ENTRYPOINT race above.
+// resetProject() must abort mapController like it aborts entrypointController,
+// and loadMap() must check lifecycle like loadProjectGraph/selectEntrypoint,
+// because an adapter that ignores the abort signal still resolves.
+let resolveLateMap;
+const lateMap = new Promise((resolve) => {
+  resolveLateMap = resolve;
+});
+const mapRaceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  mode: "expert",
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const mapRaceSession = createLearnerSession({
+  adapter: { ...mapRaceBaseAdapter, fetchMap: () => lateMap },
+  clock,
+});
+await mapRaceSession.start();
+await mapRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(mapRaceSession.getSnapshot().status, "ready");
+
+const staleMapRequest = mapRaceSession.dispatch({ type: "SET_LAYER", layer: "map" });
+await mapRaceSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  mapRaceSession.getSnapshot().status,
+  "picking",
+  "reset returns to the picker while the map request is still in flight",
+);
+assert.equal(mapRaceSession.getSnapshot().mapData, null);
+
+resolveLateMap(mapPayload);
+await staleMapRequest;
+assert.equal(
+  mapRaceSession.getSnapshot().mapData,
+  null,
+  "a stale map response after reset must not resurrect the old project's map",
+);
+mapRaceSession.dispose();
+
+// Regression: the mode toggle and Switch project sit in the same always-
+// rendered header, so a learner can flip Easy/Expert and confirm the switch
+// before PUT /api/mode answers. If that write then fails, setMode's rollback
+// belongs to the project that is gone -- committing it would push the previous
+// project's mode into the new session, and because Easy defaults to the Map
+// layer it would also fire a second, spurious map fetch. resetProject() must
+// abort modeController like it aborts entrypointController/mapController, and
+// setMode() must re-check lifecycle across the await, because an adapter that
+// ignores the abort signal still settles.
+let rejectStaleMode;
+const staleMode = new Promise((_resolve, reject) => {
+  rejectStaleMode = reject;
+});
+const modeRaceFetchedMaps = [];
+const modeRaceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  mode: "easy",
+  map: mapPayload,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const modeRaceSession = createLearnerSession({
+  adapter: {
+    ...modeRaceBaseAdapter,
+    saveMode: () => staleMode,
+    fetchMap(options) {
+      modeRaceFetchedMaps.push(options);
+      return modeRaceBaseAdapter.fetchMap(options);
+    },
+  },
+  clock,
+});
+await modeRaceSession.start();
+await modeRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(
+  modeRaceSession.getSnapshot().mode,
+  "easy",
+  "setup: project A hydrated Easy, which lands the learner on the Map layer",
+);
+assert.equal(modeRaceSession.getSnapshot().layer, "map");
+assert.equal(modeRaceFetchedMaps.length, 1, "setup: Easy fetched project A's map once");
+
+const staleModeRequest = modeRaceSession.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(
+  modeRaceSession.getSnapshot().mode,
+  "expert",
+  "setup: the mode applies optimistically while the write is in flight",
+);
+await modeRaceSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  modeRaceSession.getSnapshot().status,
+  "picking",
+  "reset returns to the picker while the mode write is still in flight",
+);
+
+rejectStaleMode(new Error("Mode write returned 500."));
+await staleModeRequest;
+const modeRaceSnapshot = modeRaceSession.getSnapshot();
+assert.equal(
+  modeRaceSnapshot.mode,
+  "expert",
+  "a failed mode write for the released project must not roll its mode into the next one",
+);
+assert.equal(
+  modeRaceSnapshot.modeChosen,
+  true,
+  "nor may it resurrect the released project's never-chosen state",
+);
+assert.equal(
+  modeRaceSnapshot.layer,
+  "galaxy",
+  "nor drag the new session onto the previous project's default layer",
+);
+assert.equal(
+  modeRaceFetchedMaps.length,
+  1,
+  "and the rolled-back layer must not fire a second map fetch after reset",
+);
+modeRaceSession.dispose();
+
+// A project that already carries a Home must not greet the learner with the
+// picker; the affordance is opt-in from the header instead.
+const homeGraph = { ...makeGraph(), selected_entrypoint: "python:app.py:run" };
+const seededHomeSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph: homeGraph }),
+  clock,
+});
+await seededHomeSession.start();
+assert.equal(seededHomeSession.getSnapshot().entrypointDismissed, true);
+assert.equal(seededHomeSession.getSnapshot().entrypointOpen, false);
+await seededHomeSession.dispatch({ type: "CHANGE_HOME" });
+assert.equal(seededHomeSession.getSnapshot().entrypointOpen, true);
+seededHomeSession.dispose();
+
+// Hover is view state: it must survive redundant events cheaply and must never
+// outlive the view it described.
+const hoverSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph }),
+  clock,
+});
+await hoverSession.start();
+assert.equal(hoverSession.getSnapshot().hoverNodeId, null);
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: "app.py" });
+assert.equal(hoverSession.getSnapshot().hoverNodeId, "app.py");
+const hoverBefore = hoverSession.getSnapshot();
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: "app.py" });
+assert.equal(
+  hoverSession.getSnapshot(),
+  hoverBefore,
+  "a repeated hover does not produce a new snapshot",
+);
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: null });
+assert.equal(hoverSession.getSnapshot().hoverNodeId, null);
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: "app.py" });
+await hoverSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+assert.equal(
+  hoverSession.getSnapshot().hoverNodeId,
+  null,
+  "moving between levels drops the stale hover target",
+);
+hoverSession.dispose();
+
+// Regression: the 2D map draws every module the parser found, including ones
+// the current language focus hides, so a box can name a region that is absent
+// from the focused projection. Resolving that id in React handed `undefined` to
+// ADVANCE, which dereferenced `node.id` straight into the error boundary --
+// and Easy mode *defaults* to the map layer, so this was one click deep.
+const focusedOutSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph }),
+  clock,
+});
+await focusedOutSession.start();
+await focusedOutSession.dispatch({ type: "SET_LANGUAGE_FOCUS", language: "python" });
+assert.deepEqual(
+  focusedOutSession.getSnapshot().focusedGraph.regions.map((region) => region.id),
+  ["app.py"],
+  "the focus really does hide the TypeScript region",
+);
+await focusedOutSession.dispatch({ type: "ADVANCE_REGION", regionId: "main.ts" });
+let focusedOutSnapshot = focusedOutSession.getSnapshot();
+assert.equal(focusedOutSnapshot.region.id, "main.ts", "the named region is entered");
+assert.equal(focusedOutSnapshot.level, LEVELS.SYSTEM);
+assert.equal(
+  focusedOutSnapshot.languageFocus,
+  "typescript",
+  "the focus widens to the module the learner named, as SELECT_STUDY_NODE does",
+);
+assert.equal(focusedOutSnapshot.error, "", "no failure reaches the learner");
+// An id no region carries is a caller bug, not a crash.
+await focusedOutSession.dispatch({ type: "ADVANCE_REGION", regionId: "nope.py" });
+assert.equal(focusedOutSession.getSnapshot().region.id, "main.ts");
+// The same guard on the node-object path: ADVANCE must survive a missing node.
+await focusedOutSession.dispatch({ type: "ADVANCE", node: undefined });
+focusedOutSnapshot = focusedOutSession.getSnapshot();
+assert.equal(focusedOutSnapshot.region.id, "main.ts");
+assert.equal(focusedOutSnapshot.level, LEVELS.SYSTEM);
+focusedOutSession.dispose();
+
+// Regression: a merge left both a parallel (`void`) and a sequential (`await`)
+// narration fetch in loadStudy. Two requests per study open meant call 2 aborted
+// call 1, silently killing the parallel behaviour and double-hitting the
+// provider. Exactly one request per open, and it must not wait for the study.
+let explanationCalls = 0;
+let studyResolved = false;
+const narrationOnceSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({
+      graph,
+      studies: { "python:app.py:run": study },
+      explanations: { "python:app.py:run:easy": { summary: { text: "easy voice" } } },
+    }),
+    async loadStudy(nodeId) {
+      await Promise.resolve();
+      studyResolved = true;
+      return study;
+    },
+    async loadExplanation() {
+      explanationCalls += 1;
+      assert.equal(
+        studyResolved,
+        false,
+        "narration starts beside the study fetch, not after it",
+      );
+      return { summary: { text: "easy voice" } };
+    },
+  },
+  clock,
+});
+await narrationOnceSession.start();
+await narrationOnceSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await narrationOnceSession.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
+assert.equal(explanationCalls, 1, "one study open issues exactly one narration request");
+narrationOnceSession.dispose();
 
 function makeGraph({ understood = false } = {}) {
   return {

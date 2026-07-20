@@ -81,6 +81,7 @@ export default defineConfig({
           label: "Playing Codemble",
           items: [
             { label: "The galaxy", slug: "the-galaxy" },
+            { label: "The study panel", slug: "study-panel" },
             { label: "Checks & lighting", slug: "checks-and-lighting" },
             { label: "The star chart", slug: "star-chart" },
           ],
@@ -107,6 +108,7 @@ export default defineConfig({
             { label: "Build log: M8 TS/JS structure", slug: "progress/m8-typescript" },
             { label: "Build log: M9 TS/JS Lens", slug: "progress/m9-typescript-lens" },
             { label: "Build log: M10 polyglot release", slug: "progress/m10-polyglot-release" },
+            { label: "Build log: M12 the living cosmos", slug: "progress/m12-galaxy-look" },
           ],
         },
       ],

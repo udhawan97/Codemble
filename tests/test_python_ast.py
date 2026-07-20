@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -178,6 +179,10 @@ def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignor
     second_regions = {region.id: region for region in second.regions}
     nodes = {node.id: node for node in graph.nodes}
 
+    def orbit_radius(node_id: str) -> float:
+        node = nodes[node_id]
+        return round(math.hypot(node.system_x, node.system_z), 3)
+
     assert regions == second_regions
     assert len({(region.x, region.y, region.z) for region in graph.regions}) == len(
         graph.regions
@@ -185,9 +190,84 @@ def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignor
     assert regions["app"].home is True
     assert regions["app"].node_count == 2
     assert regions["pkg.service"].node_count == 4
-    assert nodes["app"].system_x == 0.0
-    assert (nodes["app.main"].system_x, nodes["app.main"].system_z) != (0.0, 0.0)
     assert any(route.src == "cli" and route.dst == "app" for route in graph.region_edges)
+
+    # Orbits are call depth from the system's entry node, not member index.
+    # The module node holds the origin; ring 1 is 34.0 out, each ring +24.0.
+    assert orbit_radius("app") == 0.0
+    assert orbit_radius("pkg.service") == 0.0
+    assert orbit_radius("app.main") == 34.0
+    # Service.run calls Service.finish, so finish orbits one ring further out.
+    assert orbit_radius("pkg.service.Service") == 34.0
+    assert orbit_radius("pkg.service.Service.run") == 34.0
+    assert orbit_radius("pkg.service.Service.finish") == 58.0
+    # greet -> normalize, and duplicate is called by nobody in the region.
+    assert orbit_radius("pkg.util.greet") == 34.0
+    assert orbit_radius("pkg.util.duplicate") == 34.0
+    assert orbit_radius("pkg.util.normalize") == 58.0
+    assert orbit_radius("shared.choose") == 34.0
+    assert orbit_radius("shared.duplicate") == 58.0
+    assert {node.id: (node.system_x, node.system_y, node.system_z) for node in graph.nodes} == {
+        node.id: (node.system_x, node.system_y, node.system_z) for node in second.nodes
+    }
+
+
+def test_a_possible_call_never_decides_orbit_depth(tmp_path: Path) -> None:
+    """An unproven call must not pull a node into a deeper ring.
+
+    ``sampleproj`` has no intra-region uncertain call edge, so the
+    ``not edge.certain`` filter in ``layout.py``'s ``_call_depths`` was live but
+    untested: deleting it left the whole suite green while the galaxy silently
+    asserted a call depth the parser never proved.  Its twin in ``mapview.py``
+    is covered by ``test_mapview.py``; this is the layout half.
+    """
+
+    (tmp_path / "workmod.py").write_text(
+        "class Box:\n"
+        "    def helper(self) -> None:\n"
+        "        pass\n"
+        "\n"
+        "\n"
+        "def caller() -> None:\n"
+        "    helper()\n"
+        "\n"
+        "\n"
+        'if __name__ == "__main__":\n'
+        "    caller()\n",
+        encoding="utf-8",
+    )
+
+    graph = PythonAstAdapter().parse(tmp_path)
+    nodes = {node.id: node for node in graph.nodes}
+
+    def orbit_radius(node_id: str) -> float:
+        node = nodes[node_id]
+        return round(math.hypot(node.system_x, node.system_z), 3)
+
+    # The premise: `helper()` is unqualified and resolved only by whole-project
+    # name lookup, so the parser records it as possible, and both ends sit in
+    # the same region -- exactly the edge _call_depths must refuse to act on.
+    calls_into_helper = [
+        (edge.src, edge.certain)
+        for edge in graph.edges
+        if edge.kind == "call" and edge.dst == "workmod.Box.helper"
+    ]
+    assert calls_into_helper == [("workmod.caller", False)]
+    assert nodes["workmod.caller"].region == nodes["workmod.Box.helper"].region == "workmod"
+
+    # Ring 1 is 34.0 from the origin, each ring a further 24.0.  Box.helper is
+    # a root because nothing PROVEN calls it; placing it at 58.0 would draw a
+    # call depth that exists only in a guess.
+    assert orbit_radius("workmod.caller") == 34.0
+    assert orbit_radius("workmod.Box.helper") == 34.0
+
+    # The uncertain edge itself must stay in the graph, just powerless.
+    assert any(
+        edge.src == "workmod.caller"
+        and edge.dst == "workmod.Box.helper"
+        and not edge.certain
+        for edge in graph.edges
+    )
 
 
 def test_ambiguous_rank_zero_entrypoints_require_an_explicit_choice(

@@ -68,4 +68,10 @@ regions when graph JSON is requested; stale signatures simply remain dim.
 ## Stack
 
 Python 3.11+ · FastAPI · tree-sitter · Vite + React · `3d-force-graph` (three.js) ·
-Anthropic / OpenAI (bring your own key) · local JSON persistence.
+plain SVG for the 2D map · Anthropic / OpenAI (bring your own key) · local JSON
+persistence.
+
+Both the 3D galaxy coordinates and the 2D map layouts are computed in
+`codemble/graph/` and served as data — `GET /api/graph` and `GET /api/map`. The
+renderer places what the graph already decided. That is why "same code → same
+sky" holds, and why adding a second renderer needed no second source of truth.

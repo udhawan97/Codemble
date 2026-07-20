@@ -31,3 +31,6 @@ _to_delete/
 
 # graphify knowledge graph (build artifact, regenerate with: graphify update .)
 graphify-out/
+
+# Subagent-driven-development scratch coordination (not product truth)
+.superpowers/

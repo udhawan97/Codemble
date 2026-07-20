@@ -58,7 +58,7 @@ input:focus-visible {
   display: grid;
   min-width: 0;
   max-width: 100%;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: var(--cm-space-sm) var(--cm-space-md);
   padding: var(--cm-space-sm) max(var(--cm-space-md), env(safe-area-inset-right))
@@ -106,7 +106,7 @@ input:focus-visible {
 
 .location {
   grid-column: 1 / -1;
-  grid-row: 2;
+  grid-row: 3;
   margin: 0;
 }
 
@@ -154,9 +154,54 @@ input:focus-visible {
   color: var(--cm-star);
 }
 
-.language-focus {
+.rail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: var(--cm-space-sm);
   grid-column: 1 / -1;
-  grid-row: 3;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.rail-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cm-space-md);
+  grid-column: 1 / -1;
+  grid-row: 4;
+  min-width: 0;
+}
+
+.switch-project {
+  display: grid;
+  gap: var(--cm-space-xs);
+  padding: var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+}
+
+.switch-project p {
+  max-width: 26ch;
+  margin: 0;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.switch-project__error {
+  color: var(--cm-error) !important;
+}
+
+.switch-project > div {
+  display: flex;
+  gap: var(--cm-space-xs);
+}
+
+.language-focus {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -501,7 +546,8 @@ input:focus-visible {
   inset-inline-end: var(--cm-space-md);
   inset-block-start: var(--cm-space-md);
   display: none;
-  gap: var(--cm-space-md);
+  grid-template-columns: repeat(2, auto);
+  gap: var(--cm-space-2xs) var(--cm-space-md);
   padding: var(--cm-space-sm) var(--cm-space-md);
   border: 1px solid var(--cm-hairline);
   border-radius: var(--cm-radius);
@@ -540,6 +586,13 @@ input:focus-visible {
 .legend-route {
   width: var(--cm-space-md);
   border-block-start: 1px solid var(--cm-ink-3);
+}
+
+/* Declared after .legend-route: both are single-class selectors, so equal
+   specificity falls back to source order, and .legend-route's shorthand also
+   sets border-block-start-color. This rule must stay last to win the cascade. */
+.legend-route--possible {
+  border-block-start-color: var(--cm-route-possible);
 }
 
 .partial-summary {
@@ -663,25 +716,85 @@ input:focus-visible {
   font-family: var(--cm-font-display);
 }
 
-.partial-study {
-  padding: var(--cm-space-md);
-  border-inline-start: 2px solid var(--cm-route-possible);
-  background: var(--cm-ground);
+.structural-summary p {
+  max-width: 62ch;
+  margin: var(--cm-space-sm) 0 0;
+  color: var(--cm-ink);
 }
 
-.partial-study h2,
-.partial-study p {
-  margin: 0;
+.mini-constellation {
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+  margin-block-start: var(--cm-space-md);
 }
 
-.partial-study h2 {
-  font-family: var(--cm-font-display);
-  font-size: var(--cm-text-lg);
+.mini-constellation line {
+  stroke: var(--cm-hairline);
+  stroke-width: 1;
 }
 
-.partial-study p {
-  margin-block-start: var(--cm-space-sm);
+.mini-constellation circle {
+  fill: var(--cm-ink-3);
+}
+
+.mini-constellation__self {
+  fill: var(--cm-orbit);
+}
+
+.connections h3 {
+  margin: var(--cm-space-lg) 0 0;
   color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.connection-list {
+  margin: var(--cm-space-xs) 0 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.connection-list button {
+  display: grid;
+  width: 100%;
+  min-height: 52px;
+  gap: var(--cm-space-2xs);
+  padding: var(--cm-space-sm) 0;
+  border: 0;
+  border-block-end: 1px solid var(--cm-hairline);
+  background: transparent;
+  color: var(--cm-ink);
+  cursor: pointer;
+  text-align: start;
+}
+
+.connection-name {
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+}
+
+.connection-meta {
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .connection-list button:hover .connection-name {
+    color: var(--cm-orbit);
+  }
+}
+
+.load-state .check-primary,
+.study-notice .check-primary {
+  justify-self: start;
+  margin-block-start: var(--cm-space-md);
 }
 
 .study-preview {
@@ -892,6 +1005,18 @@ input:focus-visible {
 
 .check-feedback span {
   overflow-wrap: anywhere;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.check-affirmation {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cm-space-xs);
+  margin: 0 0 var(--cm-space-lg);
+  padding-inline-start: var(--cm-space-sm);
+  border-inline-start: 2px solid var(--cm-star);
+  color: var(--cm-star-high);
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
 }
@@ -1346,7 +1471,12 @@ input:focus-visible {
     justify-self: end;
   }
 
-  .language-focus {
+  .rail-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .rail-controls {
     grid-row: 2;
     justify-self: center;
   }
@@ -1401,7 +1531,7 @@ input:focus-visible {
 
 @media (min-width: 60rem) {
   .map-legend {
-    display: flex;
+    display: grid;
   }
 }
 
@@ -1549,6 +1679,320 @@ input:focus-visible {
 .picker-select:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+
+/* --- Layer switcher + 2D map ---------------------------------------------- */
+.layer-switcher {
+  display: inline-flex;
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  overflow: hidden;
+}
+
+.layer-switcher button {
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  border: 0;
+  background: transparent;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.layer-switcher button[aria-pressed="true"] {
+  background: var(--cm-orbit-low);
+  color: var(--cm-ink);
+}
+
+.map-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-md);
+  background: var(--cm-ground);
+  overflow: hidden;
+}
+
+.map-tabs {
+  display: flex;
+  gap: var(--cm-space-xs);
+  flex: 0 0 auto;
+}
+
+.map-tabs button {
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.map-tabs button[aria-pressed="true"] {
+  border-color: var(--cm-orbit);
+  color: var(--cm-ink);
+}
+
+.map-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.architecture-map,
+.workflow-tree {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+}
+
+.architecture-map__edges line,
+.workflow-tree__edges path {
+  stroke: var(--cm-hairline);
+  stroke-width: 1.2;
+  fill: none;
+}
+
+.architecture-map__edges line.is-cycle {
+  stroke: var(--cm-route-possible);
+}
+
+.architecture-map__box rect {
+  fill: var(--cm-ground-2);
+  stroke: var(--cm-hairline);
+}
+
+.architecture-map__box .box-tint {
+  stroke: none;
+}
+
+.architecture-map__box text {
+  fill: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: 13px;
+}
+
+.architecture-map__box .box-meta {
+  fill: var(--cm-ink-3);
+  font-size: 11px;
+}
+
+/* Declared before the understood rule on purpose: equal specificity means
+   source order decides, and a region that is both partial and understood
+   should still read as understood on the outline. The corner flag drawn by
+   MapView carries "partial" on its own channel either way, so the two facts
+   never compete for one property. */
+.architecture-map__box[data-partial="true"] rect:first-of-type {
+  stroke: var(--cm-route-possible);
+}
+
+.architecture-map__box .box-partial {
+  fill: var(--cm-route-possible);
+  stroke: none;
+}
+
+.architecture-map__box[data-understood="true"] rect:first-of-type {
+  stroke: var(--cm-star-high);
+}
+
+.architecture-map__box[data-home="true"] rect:first-of-type {
+  stroke-width: 2;
+}
+
+.architecture-map__box[data-reachable="false"] rect:first-of-type {
+  stroke-dasharray: 4 3;
+}
+
+.architecture-map__box:focus-visible rect:first-of-type,
+.workflow-tree__row:focus-visible circle {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 2px;
+}
+
+.architecture-map__box,
+.workflow-tree__row {
+  cursor: pointer;
+}
+
+.workflow-tree__row circle {
+  fill: var(--cm-ink-3);
+}
+
+.workflow-tree__row[data-partial="true"] circle {
+  fill: var(--cm-route-possible);
+}
+
+.workflow-tree__row[data-cut] circle {
+  fill: var(--cm-route-possible);
+}
+
+/* Last of the three at equal specificity, so understanding wins the cascade:
+   a repeated or cycle-cut row that the learner HAS proven must keep its amber.
+   The cut itself is never colour-only -- the row says "shown above" or
+   "loops back" in its own text and aria-label. */
+.workflow-tree__row[data-understood="true"] circle {
+  fill: var(--cm-star-high);
+}
+
+.workflow-tree__row text {
+  fill: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: 13px;
+}
+
+.workflow-tree__row .row-meta {
+  fill: var(--cm-ink-3);
+  font-size: 11px;
+}
+
+.map-note,
+.map-loading {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.map-state {
+  margin: auto;
+  max-width: 46ch;
+  text-align: center;
+  color: var(--cm-ink-2);
+}
+
+.hint-chip {
+  position: absolute;
+  z-index: var(--cm-z-raised);
+  inset-inline-start: var(--cm-space-md);
+  inset-block-end: var(--cm-space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+}
+
+.hint-chip small {
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.hint-chip button {
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-orbit);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.location button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cm-orbit);
+  font: inherit;
+  cursor: pointer;
+}
+
+.location button[disabled] {
+  color: var(--cm-ink-2);
+  cursor: default;
+}
+
+.location button:not([disabled]):hover {
+  text-decoration: underline;
+}
+
+/* A modal <dialog> in the top layer, like .mode-gate: `inset` and `margin`
+   place it, not the absolute positioning it used as an <aside>. It keeps its
+   low, out-of-the-way seat near the foot of the stage. */
+.coach-marks {
+  inset-block: auto var(--cm-space-lg);
+  inset-inline: 0;
+  width: min(38ch, calc(100% - var(--cm-space-lg)));
+  margin-inline: auto;
+  padding: var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink);
+}
+
+.coach-marks::backdrop {
+  background: var(--cm-scrim);
+}
+
+.coach-marks__progress {
+  margin: 0 0 var(--cm-space-2xs);
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.coach-marks h1 {
+  margin: 0 0 var(--cm-space-xs);
+  font-size: var(--cm-text-lg);
+}
+
+.coach-marks__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cm-space-sm);
+  margin-block-start: var(--cm-space-md);
+}
+
+.coach-skip {
+  border: 0;
+  background: transparent;
+  color: var(--cm-ink-3);
+  cursor: pointer;
+}
+
+/* Legend swatches. The tint tokens are tuned to clear 4.5:1 on --cm-ground-2,
+   which is this panel's own background. */
+.legend-tint {
+  display: inline-block;
+  width: var(--cm-space-sm);
+  height: var(--cm-space-sm);
+  border-radius: 2px;
+}
+
+.legend-tint--python { background: var(--cm-neb-python); }
+.legend-tint--javascript { background: var(--cm-neb-js); }
+.legend-tint--typescript { background: var(--cm-neb-ts); }
+
+/* Opt-in dash, applied only for the 2D map swatch (see App.jsx): the galaxy
+   is a distinct COLOUR only (3d-force-graph cannot dash a link), so
+   .legend-route--possible itself must stay colour-only above or the same
+   legend would misdescribe whichever layer has no dash. */
+.legend-route--dashed {
+  border-block-start-style: dashed;
+}
+
+.legend-size {
+  display: inline-block;
+  width: var(--cm-space-md);
+  height: var(--cm-space-sm);
+  border-radius: 50%;
+  background: var(--cm-ink-3);
+}
+
+.legend-brightness {
+  display: inline-block;
+  width: var(--cm-space-md);
+  height: var(--cm-space-sm);
+  background: linear-gradient(90deg, var(--cm-node-unlit), var(--cm-ink-2));
 }
 
 /* Density modes, keyed off data-mode on .app-shell (set from the learner's

@@ -53,17 +53,25 @@ entrypoint is ambiguous, Codemble shows only parser-ranked candidates and you
 pick. The CLI equivalent is `--entrypoint module.qualname`; an unranked value
 is rejected rather than guessed.
 
-## 4. Zoom in
+## 4. Choose a layer, then zoom in
 
-The camera moves on rails through three levels. In a mixed project, use the
-**Focus** control to show All, Python, JavaScript, or TypeScript systems. Focus
-is only a view: it does not alter coordinates, progress, or graph evidence.
+The header switches between two layers. **Galaxy** is the 3D view; its camera
+moves on rails through three levels. **Map** is a flat diagram with two tabs.
+Easy mode starts on the Map, Expert starts on the Galaxy, and you can switch at
+any time. In a mixed project, use the **Focus** control to show All, Python,
+JavaScript, or TypeScript. Focus and layer are only views: neither alters
+coordinates, progress, or graph evidence.
 
-| Level | What you see | What it's for |
+| Galaxy level | What you see | What it's for |
 | --- | --- | --- |
 | **Galaxy** | Source modules as star systems, imports as routes | Orientation |
-| **System** | Functions and classes as planets in tidy orbits, call edges | Structure |
+| **System** | Functions and classes in call-depth orbits — the inner ring runs first | Structure |
 | **Study** | Real source with line numbers and a validated, cached explanation | Learning |
+
+| Map tab | What you see | What it's for |
+| --- | --- | --- |
+| **Architecture** | Modules as boxes, grouped by folder, layered by import distance from Home | Seeing how the project fits together |
+| **Workflow** | The call tree from your entrypoint, depth by depth | Seeing what runs first |
 
 No API key is required to inspect source and parser relationships. With a key,
 Codemble sends only the selected source context directly to your configured

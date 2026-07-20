@@ -38,3 +38,8 @@ separate evidence even though their display names match.
 In a mixed project, the chart follows the current language focus. This changes
 only the rows and session counts you are viewing; the underlying project graph
 and persisted understanding remain intact when you return to **All**.
+
+"Studied" counts the structures you have opened **in this session** and resets
+when you reload — that is deliberate. Opening a file is not evidence that you
+understood it, so only "Understood", which comes from passing graph-derived
+checks, is persisted.
