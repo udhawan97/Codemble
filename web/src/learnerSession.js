@@ -3,6 +3,7 @@ import {
   buildConceptChart,
   defaultRegion,
   languageFocusGraph,
+  languageFocusMap,
   projectLanguageOptions,
 } from "./graphData.js";
 
@@ -1340,6 +1341,10 @@ function deriveSnapshot(state) {
   return {
     ...state,
     focusedGraph,
+    // The Map's language projection lives here beside focusedGraph, not in
+    // React, so the renderer stays a pure consumer: focus means the same thing
+    // on both layers, and coordinates stay backend-owned.
+    focusedMapData: languageFocusMap(state.mapData, state.languageFocus),
     entrypointOpen: Boolean(graph) && !state.entrypointDismissed,
     level,
     region,

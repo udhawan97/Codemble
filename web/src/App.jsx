@@ -49,6 +49,7 @@ export function App() {
     explanationError,
     explanationLoading,
     focusedGraph,
+    focusedMapData,
     focusedStudiedCount,
     graph,
     hint,
@@ -59,7 +60,6 @@ export function App() {
     level,
     litRegionId,
     llmStatus,
-    mapData,
     mapError,
     mapTab,
     mode,
@@ -255,9 +255,10 @@ export function App() {
       <section className="map-stage" aria-label="Parser-proven project map">
         {layer === "map" ? (
           <MapView
-            data={mapData}
+            data={focusedMapData}
             mapTab={mapTab}
             mode={mode}
+            hasEntrypointCandidates={graph.entrypoint_candidates.length > 0}
             error={mapError}
             onSelectTab={(tab) => session.dispatch({ type: "SET_MAP_TAB", tab })}
             onSelectRegion={(regionId) =>
@@ -438,8 +439,15 @@ export function App() {
             }
           />
         ) : null}
-        {!coachmarksSeen ? (
-          <CoachMarks onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })} />
+        {/* Gated on modeChosen === true so the audience gate (shown while
+            modeChosen === false) resolves first and onboarding follows it as
+            one sequence: on a genuine first run both are native <dialog>s and
+            would otherwise stack, the gate's backdrop over the coach-marks. */}
+        {modeChosen === true && !coachmarksSeen ? (
+          <CoachMarks
+            layer={layer}
+            onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })}
+          />
         ) : null}
         <HintChip
           hint={hint}

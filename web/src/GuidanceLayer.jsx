@@ -19,7 +19,13 @@ export function HintChip({ hint, onStudy }) {
   );
 }
 
-const STEPS = [
+// The onboarding must describe the screen the learner is actually on. Easy
+// mode lands on the Map, Expert on the Galaxy (learnerSession.applyMode), so
+// the steps are keyed on the current layer: teaching scroll/camera/arrow-keys
+// to a learner looking at a 2D diagram was guidance for a screen they aren't
+// on. Both arrays are the same three beats -- what you see, how to move, what
+// lights up -- so the flow (and the step count) reads identically either way.
+const GALAXY_STEPS = [
   {
     title: "What you see",
     body: "Every star system is one file. Size is how much code it holds; brightness is how many places in your project call it.",
@@ -31,6 +37,21 @@ const STEPS = [
   {
     title: "What lights stars",
     body: "A system lights up only after you answer questions drawn from your own code. Nothing lights up just by looking at it.",
+  },
+];
+
+const MAP_STEPS = [
+  {
+    title: "What you see",
+    body: "Every box is one file, placed by how your imports connect them. A dashed link is a relationship the parser could not fully prove.",
+  },
+  {
+    title: "How to move",
+    body: "Click a box to study that module. The tabs above show how it fits together and what runs first. Switch to the Galaxy anytime to fly through the same code.",
+  },
+  {
+    title: "What lights up",
+    body: "A module lights up only after you answer questions drawn from your own code. Nothing lights up just by looking at it.",
   },
 ];
 
@@ -46,9 +67,13 @@ const STEPS = [
  * them, so onboarding sat behind the entire header rail in tab order and
  * Escape fell through to the canvas and retreated a level instead.
  */
-export function CoachMarks({ onDismiss }) {
+export function CoachMarks({ layer, onDismiss }) {
   const [step, setStep] = useState(0);
   const dialogRef = useRef(null);
+  // Keyed on the layer the learner is actually on. The dialog is modal
+  // (showModal traps focus and inerts the header), so the layer cannot change
+  // mid-onboarding; both arrays hold the same number of steps regardless.
+  const STEPS = layer === "map" ? MAP_STEPS : GALAXY_STEPS;
   const current = STEPS[step];
 
   // Open before paint, so it is never briefly visible as a closed dialog.

@@ -38,6 +38,7 @@ export function MapView({
   data,
   mapTab,
   mode,
+  hasEntrypointCandidates,
   error,
   onSelectTab,
   onSelectRegion,
@@ -76,16 +77,22 @@ export function MapView({
         <ArchitectureMap
           architecture={data.architecture}
           mode={mode}
+          hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectRegion={onSelectRegion}
         />
       ) : (
-        <WorkflowTree workflow={data.workflow} mode={mode} onSelectNode={onSelectNode} />
+        <WorkflowTree
+          workflow={data.workflow}
+          mode={mode}
+          hasEntrypointCandidates={hasEntrypointCandidates}
+          onSelectNode={onSelectNode}
+        />
       )}
     </section>
   );
 }
 
-function ArchitectureMap({ architecture, mode, onSelectRegion }) {
+function ArchitectureMap({ architecture, mode, hasEntrypointCandidates, onSelectRegion }) {
   const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
   const padding = 32;
   return (
@@ -174,8 +181,13 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
         <p className="map-note">
           No Home is selected, so these layers run from the modules nothing else
           imports rather than from your entrypoint. Both are read from your imports,
-          not guessed. Pick your starting point with “Change Home” to see the same
-          modules layered by what the project runs first.
+          not guessed.{" "}
+          {hasEntrypointCandidates
+            ? // Candidates exist, so the "Change Home" control is rendered.
+              "Pick your starting point with “Change Home” to see the same modules layered by what the project runs first."
+            : // No candidates, so no "Change Home" button is rendered -- point at
+              // the real reason instead of a control that isn't there.
+              "This project has no parser-recognisable entrypoint, so there is no “runs first” order to layer by instead."}
         </p>
       )}
       {architecture.unreachable.length ? (
@@ -190,14 +202,28 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
   );
 }
 
-function WorkflowTree({ workflow, mode, onSelectNode }) {
+function WorkflowTree({ workflow, mode, hasEntrypointCandidates, onSelectNode }) {
   if (!workflow.root) {
-    return (
+    // Two ways to reach an empty workflow. With candidates, a Home just hasn't
+    // been chosen and the "Change Home" control exists to fix it -- keep the
+    // original instruction. Without candidates, the parser found no entrypoint
+    // at all, the button isn't rendered, and there is no "runs first" order to
+    // show, so say that instead of pointing at a button that isn't there.
+    return hasEntrypointCandidates ? (
       <div className="map-state">
         <h2>No Home is selected.</h2>
         <p>
           The workflow tree starts at your entrypoint. Pick Home and this tab will
           show what runs first, then what that calls.
+        </p>
+      </div>
+    ) : (
+      <div className="map-state">
+        <h2>No “runs first” order to show.</h2>
+        <p>
+          This project has no parser-recognisable entrypoint — nothing here declares
+          a startup structure Codemble recognises, and it will not guess one. The
+          other tab still maps how your modules import each other.
         </p>
       </div>
     );

@@ -35,6 +35,48 @@ export function languageFocusGraph(graph, language) {
   };
 }
 
+// The Map's frontend language projection, the flat-layer twin of
+// languageFocusGraph above. A focus drops every box, row, and edge that
+// belongs to another language and leaves the survivors at their
+// backend-computed coordinates: a hole where a filtered box stood is honest,
+// but nothing may move, resize, or re-layout -- those numbers stay
+// backend-owned. Same node.language test the galaxy focus uses, so the two
+// layers hide exactly the same modules.
+export function languageFocusMap(mapData, language) {
+  if (!mapData || !language || language === "all") return mapData;
+  const architecture = mapData.architecture;
+  const boxes = architecture.boxes.filter((box) => box.language === language);
+  const keptBoxIds = new Set(boxes.map((box) => box.id));
+  const workflow = mapData.workflow;
+  const prefix = `${language}:`;
+  return {
+    ...mapData,
+    architecture: {
+      ...architecture,
+      boxes,
+      // An edge whose endpoint box was dropped is dropped too, never redrawn to
+      // a new anchor: an orphaned edge is an honest hole, an invented one lies.
+      edges: architecture.edges.filter(
+        (edge) => keptBoxIds.has(edge.src) && keptBoxIds.has(edge.dst),
+      ),
+      // Every region is drawn as a box, so the same kept-set keeps the
+      // "no import route from Home" note's count true under the focus.
+      unreachable: architecture.unreachable.filter((id) => keptBoxIds.has(id)),
+    },
+    workflow: {
+      ...workflow,
+      // Rows carry their node's language; a focused row whose parent row was
+      // dropped simply loses its connector (WorkflowTree derives edges from
+      // row.parent and returns null when the parent is gone) and stays put.
+      nodes: workflow.nodes.filter((row) => row.language === language),
+      // Unreached rows are never emitted, so they carry no language field here.
+      // Node ids are minted `<language>:<file>:<symbol>` -- the same invariant
+      // the galaxy focus keys off -- so the prefix is their honest language test.
+      unreachable: workflow.unreachable.filter((id) => id.startsWith(prefix)),
+    },
+  };
+}
+
 export function projectLanguageOptions(graph) {
   const counts = new Map();
   for (const region of graph.regions) {
