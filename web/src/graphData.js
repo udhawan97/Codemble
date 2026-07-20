@@ -106,6 +106,16 @@ function shortLanguageLabel(language) {
   return languageLabel(language);
 }
 
+// Language gets its own visual channel (nebula tint) so it never competes with
+// brightness, which belongs to centrality and understanding. Unknown languages
+// return null and render no fog rather than borrowing another language's hue.
+export function nebulaTintKey(language) {
+  if (language === "python") return "nebPython";
+  if (language === "javascript") return "nebJs";
+  if (language === "typescript") return "nebTs";
+  return null;
+}
+
 export function galaxyData(graph, palette) {
   return {
     nodes: graph.regions.map((region) => ({

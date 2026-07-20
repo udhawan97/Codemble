@@ -2,7 +2,8 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { LEVELS, galaxyData, linkLabel, nodeLabel, systemData } from "./graphData.js";
+import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
+import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 
 const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
@@ -24,6 +25,8 @@ export function GalaxyCanvas({
   const hoverRef = useRef(onHoverNode);
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
   const wheelLockRef = useRef(0);
+  const dressingRef = useRef(null);
+  const focusedIdRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
   const palette = useMemo(readPalette, []);
@@ -76,6 +79,8 @@ export function GalaxyCanvas({
     }
 
     try {
+      const dressing = createDressing(palette);
+      dressingRef.current = dressing;
       const renderer = ForceGraph3D()(host)
         .backgroundColor(palette.ground)
         .showNavInfo(false)
@@ -89,7 +94,7 @@ export function GalaxyCanvas({
         .nodeRelSize(NODE_REL_SIZE)
         .nodeResolution(8)
         .nodeOpacity(0.82)
-        .nodeThreeObject((node) => makeMarker(node, palette))
+        .nodeThreeObject((node) => makeMarker(node, palette, dressing, focusedIdRef.current))
         .nodeThreeObjectExtend(true)
         .linkColor(linkColor)
         .linkLabel(linkLabel)
@@ -116,6 +121,8 @@ export function GalaxyCanvas({
         resize.disconnect();
         cancelAnimationFrame(hideNavigationHint);
         renderer.pauseAnimation();
+        dressing.dispose();
+        dressingRef.current = null;
         host.replaceChildren();
         rendererRef.current = null;
       };
@@ -140,6 +147,31 @@ export function GalaxyCanvas({
     }
     setFocusedIndex(0);
   }, [data, level]);
+
+  useEffect(() => {
+    focusedIdRef.current = data.nodes[focusedIndex]?.id ?? null;
+    rendererRef.current?.refresh();
+  }, [data.nodes, focusedIndex]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return undefined;
+    const scene = renderer.scene();
+    const previous = scene.getObjectByName("codemble-starfield");
+    if (previous) {
+      scene.remove(previous);
+      previous.geometry.dispose();
+      previous.material.dispose();
+    }
+    // Seeded by the project's own file hashes: same code, same sky, every run.
+    const starfield = createStarfield(seedFromHashes(graph.file_hashes), palette);
+    scene.add(starfield);
+    return () => {
+      scene.remove(starfield);
+      starfield.geometry.dispose();
+      starfield.material.dispose();
+    };
+  }, [graph.file_hashes, palette]);
 
   useEffect(() => {
     // At study level the selection is the subject even without a pointer, so
@@ -248,10 +280,16 @@ export function GalaxyCanvas({
   );
 }
 
-function makeMarker(node, palette) {
-  if (!node.home && !node.selected) return null;
+function makeMarker(node, palette, dressing, focusedId) {
   const group = new THREE.Group();
   const radius = Math.cbrt(node.val ?? 1) * NODE_REL_SIZE;
+  // Dimmed nodes keep their true colour and lose their glow. Dimming by
+  // removing light rather than shifting hue keeps a lit star recognisably lit.
+  if (!node.focusDim) group.add(dressing.halo(node, radius));
+  if (node.kind === "region") {
+    const tint = nebulaTintKey(node.language);
+    if (tint) group.add(dressing.nebula(palette[tint], radius * 14));
+  }
   if (node.home) {
     const homeRing = new THREE.Mesh(
       new THREE.TorusGeometry(radius * 1.7, Math.max(0.18, radius * 0.07), 8, 36),
@@ -268,6 +306,7 @@ function makeMarker(node, palette) {
     selectedRing.rotation.x = Math.PI / 2.8;
     group.add(selectedRing);
   }
+  if (node.id === focusedId) group.add(dressing.reticle(radius));
   return group;
 }
 
