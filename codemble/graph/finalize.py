@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from dataclasses import replace
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph
@@ -18,14 +17,16 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
 
     edges = tuple(sorted(set(graph.edges), key=_edge_key))
     node_ids = {node.id for node in graph.nodes}
-    indegree = Counter(
-        edge.dst
-        for edge in edges
-        if edge.kind == "call" and not edge.external and edge.dst in node_ids
-    )
+    callers_by_target: dict[str, set[str]] = {}
+    for edge in edges:
+        if edge.kind == "call" and not edge.external and edge.dst in node_ids:
+            callers_by_target.setdefault(edge.dst, set()).add(edge.src)
     nodes = tuple(
         sorted(
-            (replace(node, centrality=indegree[node.id]) for node in graph.nodes),
+            (
+                replace(node, centrality=len(callers_by_target.get(node.id, ())))
+                for node in graph.nodes
+            ),
             key=lambda node: node.id,
         )
     )

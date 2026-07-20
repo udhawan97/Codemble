@@ -81,6 +81,51 @@ def test_every_check_offers_at_least_one_wrong_option(tmp_path: Path) -> None:
             )
 
 
+def test_removal_impact_targets_the_most_depended_on_structure(tmp_path: Path) -> None:
+    """Call sites are evidence; distinct callers are the measure of impact.
+
+    Ranking by call sites let a private helper called five times from one
+    function outrank a utility called from three modules, so the question
+    shipped with a single correct answer — the weakest form of "what depends
+    on this?". The decoy sorts first alphabetically, so passing this test
+    requires the ranking, not the tiebreak.
+    """
+
+    project = tmp_path / "impact"
+    project.mkdir()
+    (project / "helpers.py").write_text(
+        'def cache_key() -> str:\n    return "k"\n\n\ndef log() -> None:\n    pass\n',
+        encoding="utf-8",
+    )
+    (project / "noisy.py").write_text(
+        "import helpers\n\n\ndef spam() -> None:\n" + "    helpers.cache_key()\n" * 5,
+        encoding="utf-8",
+    )
+    (project / "alpha.py").write_text(
+        "import helpers\n\n\ndef go() -> None:\n    helpers.log()\n    helpers.log()\n",
+        encoding="utf-8",
+    )
+    for name in ("beta", "gamma"):
+        (project / f"{name}.py").write_text(
+            "import helpers\n\n\ndef go() -> None:\n    helpers.log()\n", encoding="utf-8"
+        )
+    graph = PythonAstAdapter().parse(project)
+
+    impact = next(
+        check
+        for check in generate_checks(graph, "helpers")
+        if check.kind == "removal-impact"
+    )
+
+    assert impact.answer_ids == ("alpha.go", "beta.go", "gamma.go"), (
+        "helpers.log has three distinct callers; helpers.cache_key has one "
+        "caller across five call sites"
+    )
+    assert "helpers.log" in impact.prompt["expert"]
+    assert len(impact.evidence) == 4, "every call site stays cited, including both in alpha"
+    assert sum("alpha.py" in item for item in impact.evidence) == 2
+
+
 def test_editing_one_file_redims_only_its_region(tmp_path: Path) -> None:
     project = tmp_path / "project"
     shutil.copytree(FIXTURE, project)

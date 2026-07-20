@@ -173,7 +173,7 @@ export function App() {
                   : "systems"
                 : `${languageLabel(languageFocus)} ${focusedGraph.regions.length === 1 ? "system" : "systems"}`} from real source.
             </h1>
-            <p>Choose a system. Size follows lines of code; brightness follows call centrality.</p>
+            <p>Choose a system. Size follows lines of code; brightness follows how many places call it.</p>
             {focusedGraph.partial_files.length ? (
               <p className="partial-summary">
                 {focusedGraph.partial_files.length} {focusedGraph.partial_files.length === 1 ? "file is" : "files are"} unchartable because {focusedGraph.partial_files.length === 1 ? "its" : "their"} language parser reported a syntax error.
@@ -519,7 +519,7 @@ function StudyPanel({ node, study, error, explanation, explanationError, mode, o
         <dl>
           <div><dt>Kind</dt><dd>{node.kind}</dd></div>
           <div><dt>Span</dt><dd>{node.loc} lines</dd></div>
-          <div><dt>Calls in</dt><dd>{node.centrality}</dd></div>
+          <div><dt>Callers</dt><dd>{node.centrality}</dd></div>
           <div><dt>Resolution</dt><dd>{node.partial ? "Partial parse" : "Parser-proven"}</dd></div>
         </dl>
       </header>

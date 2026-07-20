@@ -69,6 +69,45 @@ def test_finalization_owns_canonical_graph_truth_and_layout() -> None:
     ]
 
 
+def test_centrality_counts_distinct_callers_not_call_sites() -> None:
+    """Brightness must mean "how much depends on this", not "how often it is called".
+
+    A private helper hammered three times inside one function outranked a
+    utility two modules share, so the busiest loop in a project read as its
+    most important structure. Region centrality sums its members, so the same
+    distortion reached the galaxy view.
+    """
+
+    draft = Graph(
+        nodes=(
+            _node("app", region="app", rank=0),
+            _node("app.spam", region="app"),
+            _node("app.alpha", region="app"),
+            _node("app.beta", region="app"),
+            _node("lib", region="lib"),
+            _node("lib.hot", region="lib"),
+            _node("lib.shared", region="lib"),
+        ),
+        edges=(
+            Edge("app.spam", "lib.hot", "call", True, 2),
+            Edge("app.spam", "lib.hot", "call", True, 3),
+            Edge("app.spam", "lib.hot", "call", True, 4),
+            Edge("app.alpha", "lib.shared", "call", True, 2),
+            Edge("app.beta", "lib.shared", "call", True, 2),
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"app.py": "a", "lib.py": "b"},
+    )
+
+    graph = finalize_graph(draft)
+    centrality = {node.id: node.centrality for node in graph.nodes}
+
+    assert centrality["lib.hot"] == 1, "three call sites from one function is one caller"
+    assert centrality["lib.shared"] == 2, "two modules each calling once is two callers"
+    assert next(region for region in graph.regions if region.id == "lib").centrality == 3
+
+
 def test_finalization_rejects_a_home_without_parser_evidence() -> None:
     draft = Graph(
         nodes=(_node("app", region="app", rank=0),),

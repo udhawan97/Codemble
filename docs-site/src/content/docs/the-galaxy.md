@@ -15,7 +15,7 @@ from the parsed structure of your code:
 | Route between systems | An import |
 | Edge between planets | A call (uncertain calls are labeled "possible call") |
 | Size | Lines of code |
-| Brightness | How often it's called (centrality) |
+| Brightness | How many distinct places call it (centrality) |
 | Color | Language |
 | Lit / dim | Understood / not yet |
 
