@@ -11,11 +11,14 @@ projects. Human first-run evidence is still being collected separately.
 ## Requirements
 
 - **Python 3.11+**
-- A modern browser with WebGL (the galaxy is rendered locally in your browser)
+- A modern browser. WebGL is needed for the 3D galaxy, which renders locally in
+  your browser; without it the 2D Map layer still works, because it is plain SVG
+  over the same graph
 - **[uv](https://docs.astral.sh/uv/)** — install it first; it fetches and runs
   Codemble without touching your system Python
 
-An Anthropic or OpenAI key is optional and enables only explanation prose.
+An Anthropic or OpenAI key is optional and enables only explanation prose. A
+local Ollama can narrate instead, with nothing leaving your machine.
 
 ## Install and run
 
@@ -78,10 +81,36 @@ model    = "claude-sonnet-5"   # optional; provider default shown
 Your code is parsed **locally**. The only network calls are the LLM requests
 you configured, sent directly from your machine to your provider.
 
-## No key? Still useful
+## Or no key at all: narrate locally
 
-Without a key you still get the full galaxy, source, parser relationships,
-language lens, and checks — only the prose explanations need the model.
+If you would rather nothing left your machine, point Codemble at a local
+[Ollama](https://ollama.com):
+
+```bash
+ollama pull gemma4:12b
+export CODEMBLE_PROVIDER=ollama
+export CODEMBLE_OLLAMA_MODEL=gemma4:12b   # optional; this is the default
+```
+
+The equivalent config keys are `provider = "ollama"`, `ollama_model`, and
+`ollama_host`. This is always an explicit choice — Codemble never detects a
+local model and switches to it for you — and the host is refused at startup
+unless it is plain `http` on loopback, so "local" cannot quietly stop being
+local. Local output passes exactly the same grounding validation as a cloud
+provider's.
+
+:::caution[Read this before trusting a small local model]
+Grounding validation catches an *invented* identifier. It cannot catch a wrong
+claim about a real one, and smaller local models make that second kind of
+mistake more often. The structural summary, source, Lens, and checks are
+model-free and stay trustworthy either way.
+:::
+
+## No model? Still useful
+
+Without any provider you still get the full galaxy and Map, the structural
+summary, source, parser relationships, language lens, and checks — only the
+prose explanations need a model.
 
 ## Limits that fail honestly
 

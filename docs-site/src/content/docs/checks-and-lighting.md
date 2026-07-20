@@ -34,7 +34,11 @@ certainty is not offered.
 
 ## Lighting rules
 
-- Pass a region's checks → its stars light **permanently**.
+- Pass a region's checks → its stars light **permanently**. Back at galaxy
+  level that system plays a 1.2-second **nebula dawn** — amber washing out
+  through its halo and fog and receding. The lit state is saved before the
+  animation runs, so the dawn marks a fact rather than delivering it, and
+  `prefers-reduced-motion` skips straight to the finished lit state.
 - Progress is saved locally and survives restarts.
 - Edit a file → only that region re-dims. Understanding is re-earned where the
   code actually changed, never globally revoked.

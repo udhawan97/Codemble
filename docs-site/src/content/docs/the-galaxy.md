@@ -26,12 +26,37 @@ brightness ramp stops below the amber a lit star uses. Brightness counts the
 distinct places that call a structure, not how many call sites they contain —
 a helper hammered in one loop is not more depended-on than a shared utility.
 
+## Light that means something
+
+The sky is lit rather than drawn. Every star carries a halo generated on a
+canvas at runtime, and a bloom pass is tuned so the amber of an understood
+system blooms hard while the unlit ramp barely registers — brightness in this
+sky is a claim, so it is spent where a claim exists.
+
+The background starfield is not decoration either. It is generated from a seed
+derived from your project's own file hashes, so the same code always produces
+the same sky. At galaxy level, Python, JavaScript, and TypeScript systems sit
+in a faint language-tinted nebula; a system in any other language renders no
+fog at all rather than borrowing a colour that would imply evidence Codemble
+does not have.
+
+When you pass a region's checks, the next time you are at galaxy level that
+system plays a 1.2-second **nebula dawn**: amber washes out across its halo and
+fog, then recedes. The lit state is already saved before the animation runs, so
+it celebrates a fact rather than delivering one. Under
+`prefers-reduced-motion` the dawn is skipped entirely and you get the finished
+lit state — not a faster animation, none at all.
+
+Keyboard focus carries a visible reticle in the 3D scene as well as a live text
+readout, so arrow-key navigation is never a guess about where you are.
+
 ## Semantic zoom, not free flight
 
 Free-flight 3D looks fun in demos and is where comprehension goes to die.
 Codemble's camera moves on rails between three levels — galaxy for orientation,
 system for structure, study for learning — with scripted fly-to transitions.
-Reading never happens "in space": the study panel dims the scene behind it.
+Reading never happens "in space": the study panel takes the foreground, and the
+sky behind it recedes to the structure you are reading and its connections.
 
 ## Two layers, one truth
 
@@ -71,10 +96,15 @@ import or a call, whether the parser is certain, and the line it was seen on. A
 relationship the parser could not prove reads "possible call" or "possible
 import" and is drawn in the uncertainty colour — never as fact.
 
-Hover or select a structure and its connections brighten to the interaction
-blue while its neighbours hold their colour and everything else recedes. In the
-study level the selected structure stays highlighted with its connections, so
-the panel and the sky agree about what you are reading.
+Hover or select a structure and it and its edges take the interaction blue while
+its neighbours hold their own colour and everything else recedes. In the study
+level the selected structure stays highlighted with its connections, so the
+panel and the sky agree about what you are reading. In Easy mode the unrelated
+edges are hidden outright rather than faded.
+
+Drifting particles travel a call edge the parser proved, below the galaxy level
+where call edges exist. A possible call stays still, so motion can never imply
+proof — and under `prefers-reduced-motion` nothing drifts at all.
 
 The legend in the corner names every encoding: size, brightness, amber for
 understood, the unchartable colour for syntax-error files, one swatch per
@@ -87,6 +117,7 @@ same things in plain language.
 the picker; progress is stored per project, so the galaxy comes back lit. This
 works whether you started from the picker or passed a path.
 
-**Change Home** reopens the entrypoint picker at any time. The Home you choose
-is remembered for the next run of the same project, and a saved choice the
-parser no longer ranks is dropped rather than restored.
+**Change Home** reopens the entrypoint picker whenever the parser ranked at
+least one candidate. The Home you choose is remembered for the next run of the
+same project, and a saved choice the parser no longer ranks is dropped rather
+than restored.

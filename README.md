@@ -11,8 +11,9 @@
 
 <p align="center">
   Codemble is a local-first learning game for projects built with Claude Code,
-  Codex, and other coding agents. It maps real parser evidence into a 3D galaxy,
-  then lights each region only after you prove you understand it.
+  Codex, and other coding agents. It maps real parser evidence into a 3D galaxy
+  and a flat architecture map, then lights each region only after you prove you
+  understand it.
 </p>
 
 <p align="center"><strong>Your project · Your key · Your machine · No invented structure</strong></p>
@@ -75,12 +76,20 @@ Codemble opens your browser — pick your project folder there. To skip the
 picker, pass a path: `codemble ./your-ai-built-project`.
 
 The wheel already contains the web app, so Node.js is not required. No API key
-is needed for the galaxy, source viewer, language Lens, checks, lighting, or
-saved progress. Add your own Anthropic or OpenAI key only if you want grounded
-prose explanations:
+is needed for the galaxy, the map, the structural summary, source viewer,
+language Lens, checks, lighting, or saved progress. Add your own Anthropic or
+OpenAI key only if you want grounded prose explanations:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY=sk-...
+```
+
+Prefer to send nothing anywhere? Point Codemble at a local
+[Ollama](https://ollama.com) instead — same grounding validation, loopback only,
+never automatic:
+
+```bash
+ollama pull gemma4:12b && export CODEMBLE_PROVIDER=ollama
 ```
 
 [Installation, configuration, and troubleshooting →](https://udhawan97.github.io/Codemble/installation/)
@@ -98,6 +107,40 @@ export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY=sk-...
 No XP. No streaks. No leaderboard. The visible reward is the useful one: more
 of your own code becomes a sky you understand.
 
+## Two layers over one graph
+
+Codemble draws the same parser evidence two ways, switchable in the header. The
+map cannot show you a relationship the galaxy does not have — both layouts are
+computed in the graph layer and served as data.
+
+| Layer | What it is | When it helps |
+| --- | --- | --- |
+| **Galaxy** | 3D, camera on rails through galaxy → system → study | Orientation, and the shape of the whole project |
+| **Map · Architecture** | Modules as boxes, grouped by folder, layered by import distance from Home | Seeing how the project fits together |
+| **Map · Workflow** | The call tree from your entrypoint, depth by depth | Seeing what runs first |
+
+The Map is plain SVG, so it still works on a machine that cannot draw WebGL.
+
+## Open a structure, read what the parser knows first
+
+The study panel builds itself outward from the most certain evidence: a
+structural summary written from parser facts alone — no key, no network, no
+model — then grounded narration if you configured a provider, then every
+connection into and out of the structure with its direction, its certainty, and
+a `file:line` you can click, then the real source and the language Lens notes.
+
+Sections other than the narration never involve a model at all.
+
+## Easy or Expert
+
+A header toggle changes how Codemble talks to you and how much it puts on
+screen: plain language, larger type, the Map by default, and a hint chip naming
+the nearest unlit region to Home — counted in import hops over the graph, not
+chosen by a model. It never changes graph truth, coordinates, progress, or how a
+check is scored.
+
+You can also switch project or change Home without leaving the app.
+
 ## Read the galaxy
 
 | In the galaxy | In your project |
@@ -107,10 +150,17 @@ of your own code becomes a sky you understand.
 | The Home system | The selected parser-ranked entrypoint |
 | A route or edge | An import or call; approximate calls are labeled **possible** |
 | Size | Lines of code |
-| Brightness and glow | Structural centrality |
-| Nebula tint | Language |
+| Brightness and glow | How many **distinct** structures call it |
+| Nebula tint | Language, at galaxy level |
 | Orbit ring | Call depth — the inner ring runs first |
+| Drifting particles | A call the parser proved; a possible call stays still |
 | Dim → lit | Not yet proven → understood |
+
+Understanding owns the top of the brightness range: the unlit ramp stops below
+the amber a lit star uses, so a busy module you have not proven can never
+outshine one you have. Pass a region's checks and that system plays a short
+amber "nebula dawn" — after the light is already saved, so the animation marks
+a fact rather than delivering one.
 
 Python-only, JavaScript-only, TypeScript-only, and mixed projects share the same
 graph contract. Language focus changes only what you are looking at; it never
@@ -126,7 +176,9 @@ mistake. Accuracy therefore outranks spectacle:
   identifiers and relationships.
 - Language Lens notes appear only where a parser detected the construct.
 - Check answers come from the graph, never an LLM.
-- Approximate relationships stay visibly uncertain.
+- Approximate relationships stay visibly uncertain — a distinct colour and no
+  drifting particles in the 3D galaxy, a genuinely dashed line in the 2D map,
+  and the legend swatch follows whichever layer is on screen.
 - Provider output that fails grounding validation is withheld instead of being
   softened into a guess.
 
@@ -138,12 +190,13 @@ A wrong explanation is a highest-severity bug—[report it without mercy](https:
 | Stays on your machine | Leaves only when you ask |
 | --- | --- |
 | Project discovery and parsing | The bounded Study context sent to your configured provider |
-| Graph, language Lens, and checks | A request triggered only when you open Study |
+| Graph, structural summary, language Lens, and checks | A request triggered only when you open Study |
 | Local server and packaged web app | Nothing in the background |
 | Progress and explanation cache in `~/.codemble/` | No accounts, telemetry, or Codemble cloud |
+| Narration too, if you choose a local Ollama | Nothing at all in that case |
 
-No key? Codemble remains a complete parser-backed map and learning game; only
-the optional prose narration is unavailable.
+No model at all? Codemble remains a complete parser-backed map and learning
+game; only the optional prose narration is unavailable.
 
 ## Boundaries that keep the map truthful
 

@@ -5,51 +5,100 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-20
+
+The galaxy read as flat spheres on a plain background, connections were hard to
+follow at any zoom level, and once a project was bound the only way to open a
+different one was killing the server. This release lands the redesign, adds a
+second way to look at the same graph, and puts what the parser already knew on
+screen.
+
 ### Added
+- A second **Map** layer beside the galaxy, switchable from the header. Its
+  *Architecture* tab lays modules out as boxes grouped by directory and layered
+  by import distance from Home; its *Workflow* tab walks the call tree from your
+  entrypoint, where the first hop is the `defines` relation the parser recorded
+  and deeper hops are `calls`. Both layouts are computed by the parser-backed
+  graph layer and served by a new `GET /api/map`, so the map and the galaxy can
+  never disagree.
+- The Map layer is plain SVG and needs no WebGL, so a machine that cannot draw
+  the galaxy can still read the project.
 - The study panel now shows what the parser knows before any model is asked: a
-  plain-language or expert structural summary that needs no key, no network,
-  and no provider.
+  structural summary rendered from parser facts through fixed templates, with no
+  key, no network, and no provider involved.
 - Grounded narration finally reaches the panel. The explanation endpoint had
   shipped but was never called, so the narration block always rendered empty.
 - A Connections section lists every parser relationship into and out of the
-  selected structure — direction, certainty, and a `file:line` citation per
-  row — with a small diagram of callers, this structure, and callees. Clicking
-  a row opens that structure's study.
-- An Easy/Expert toggle in the header. Easy uses plain language for narration,
-  check questions, panel labels, and the legend; Expert keeps full terminology.
-  The choice persists and never touches graph truth, coordinates, progress, or
-  how a check is scored.
+  selected structure, grouped inbound and outbound, each row stating direction,
+  certainty, and a `file:line` citation for where that structure is defined —
+  plus a small SVG diagram of callers, this structure, and callees. Clicking a
+  row opens that structure's study.
+- Local narration through Ollama, so a learner with no API key can still get
+  grounded prose without their source leaving the machine. It is explicit
+  opt-in (`CODEMBLE_PROVIDER=ollama`, or `provider = "ollama"` in
+  `~/.codemble/config`) with no auto-detection, the host is refused at
+  construction unless it is plain `http` on loopback, no credential is ever
+  sent, and the output passes exactly the same grounding validation as a cloud
+  provider. Honest caveat: that validation catches an invented identifier, not
+  a wrong claim about a real one, and smaller local models make the second kind
+  of mistake more often.
+- Guidance when no model is configured, including the local Ollama path, driven
+  by whether a loopback Ollama is actually reachable and which models it has.
+- An Easy/Expert audience toggle in the header. Easy uses plain language for
+  narration, check questions, panel labels, Lens notes, and the legend; Expert
+  keeps full terminology. The choice persists per project and never changes
+  graph truth, coordinates, progress, or how a check is scored.
+- Easy mode opens on the Map, hides galaxy links unrelated to the selected
+  structure, and shows a hint chip naming the nearest unlit region to Home. The
+  hint is counted in import-route hops over the graph; no model chooses it.
 - Switch project: a header control releases the current project and returns to
   the picker, so a second project no longer needs a terminal.
-- Change Home: the entrypoint picker can be reopened at any time, and the Home
-  you select is remembered for the next run of the same project.
-- Guidance when no model is configured, including how to narrate entirely
-  locally with Ollama, driven by what is actually installed and running.
-- Correct check answers now get an affirmation, not just silence.
-- A complete legend: size, brightness, amber-understood, unchartable files, and
-  certain versus possible relationships.
-- Edge arrowheads below the galaxy level, hover tooltips on every edge, and
-  hover/selection highlighting that brightens the selected structure's
-  connections and fades the rest.
-- A `<noscript>` message and a React error boundary, so a render failure
-  explains itself and offers a reload instead of showing a blank page.
-- A second **Map** layer sits beside the galaxy, switchable from the header. Its
-  Architecture tab lays modules out by directory and by import distance from
-  Home; its Workflow tab walks the call tree from your entrypoint. Both layouts
-  are computed by the parser-backed graph layer and served by a new
-  `GET /api/map`, so the map and the galaxy can never disagree.
-- The Map layer renders without WebGL, so a machine that cannot draw the galaxy
-  can still read the project.
+- Change Home: the entrypoint picker can be reopened whenever the parser ranked
+  at least one candidate, and the Home you select is remembered for the next run
+  of the same project.
+- Edge arrowheads below the galaxy level, hover tooltips on every edge naming
+  both structures, the relationship, its certainty and the line it was seen on,
+  and hover/selection highlighting.
 - First-run coach-marks explain what you see, how to move, and what lights
   stars. Dismissing them is a local UI preference, not progress.
-- Easy mode now lands on the Map, hides everything but the selected structure's
-  connections, and shows a hint chip naming the nearest unlit region to Home.
-  The hint is counted in import routes from the graph; no model chooses it.
-- The breadcrumb is clickable. The legend adds a swatch per language and now
-  matches whichever layer is on screen: possible relationships dash on the Map
-  and stay colour-only in the galaxy.
+- A clickable breadcrumb, and a legend naming dim, amber-understood, unchartable
+  syntax-error files, certain versus possible relationships, and one swatch per
+  language. It describes only the encodings the layer on screen actually draws:
+  size and brightness are galaxy-only, language tint appears at galaxy level and
+  on the Architecture tab, and the possible-relationship swatch dashes on the Map
+  to match the SVG while staying colour-only for the galaxy.
+- Correct check answers now get an affirmation, not just silence.
+- A `<noscript>` message and a React error boundary, so a render failure
+  explains itself and offers a reload instead of showing a blank page.
 
 ### Changed
+- The galaxy gained depth: nodes carry a canvas-generated halo, an
+  `UnrealBloomPass` is tuned so lit amber blooms hard while the unlit ramp
+  barely registers, and a background starfield is seeded by hashing the
+  project's own file hashes — the same code always produces the same sky.
+- At galaxy level, Python, JavaScript and TypeScript systems sit in a faint
+  language-tinted nebula. A system in any other language renders no fog rather
+  than borrowing another language's hue.
+- Keyboard focus in the galaxy now carries a visible reticle as well as its
+  live text readout.
+- Passing a region's checks plays a 1.2s "nebula dawn" the next time you are at
+  galaxy level: amber washes across that system's halo and fog and recedes. The
+  lit state is already committed before it runs, so the animation celebrates a
+  fact rather than delivering it. `prefers-reduced-motion` skips it entirely and
+  goes straight to the finished lit state.
+- System orbits are laid out by call depth instead of by member index, so an
+  inner ring means "this runs first". Ring 1 is what the module's entry node
+  calls directly plus every member no sibling calls; members no certain call
+  reaches keep the outermost ring rather than being placed by guesswork. Only
+  certain calls decide placement. Layout coordinates changed once; saved
+  progress is unaffected because region signatures derive from file hashes, not
+  coordinates.
+- Drifting particles mark **certain** call edges only, at system and study
+  level. A possible call stays still, so motion can never imply proof.
+  `prefers-reduced-motion` stops them too.
+- Centrality now counts the distinct structures that call a node, not the call
+  sites they contain, so a helper hammered from one loop no longer outshines a
+  shared utility. The study panel's label follows: "Callers", not "Calls in".
 - The study panel leads with the structural summary and narration, then
   connections, then source and lens notes.
 - The study level keeps the selected structure's connections visible instead of
@@ -60,26 +109,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   flag; every option is in the app.
 - The star chart labels studied counts "this session", which is what they have
   always measured.
-- The galaxy gained depth: every node carries a canvas-generated halo, lit stars
-  bloom, each system sits in a faint language-tinted nebula, and a background
-  starfield is seeded from the project's own file hashes — the same code always
-  produces the same sky.
-- Passing a region's checks now triggers a ~1.2s "nebula dawn": amber washes
-  across that system's fog and its star flares. `prefers-reduced-motion` gets
-  the finished lit state with no animation at all.
-- System orbits are laid out by call depth from the module's entry node instead
-  of by member index, so an inner ring means "this runs first". Structures no
-  call reaches keep the outermost ring rather than being placed by guesswork.
-  Layout coordinates changed once; saved progress is unaffected because region
-  signatures are derived from file hashes, not coordinates.
-- Drifting particles mark **certain** call edges only in the galaxy. A possible
-  call stays still, so motion can never imply proof.
 
 ### Fixed
 - The partial-parse notice rode a code path that never executed; it now renders
   with the narration block, and the structural summary states it as well.
 - A failed graph load offered only "Restart Codemble and reload this page"; it
   now retries in place.
+- Contributors only: pinned the docs site back to TypeScript 6.x. An automated
+  7.0.2 bump had broken the `astro check` CI gate, because TypeScript's native
+  7.x compiler does not yet expose the programmatic API that check relies on.
 
 ## [0.3.1] - 2026-07-19
 

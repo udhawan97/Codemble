@@ -15,8 +15,11 @@ outward:
    a `file:line` citation on every claim. Codemble refuses to display provider
    output that names anything outside the parsed graph.
 3. **Connections** — every relationship the parser observed into and out of this
-   structure. Each row states direction, whether the relationship is certain or
-   only possible, and where it was seen. Click any row to study that structure.
+   structure, grouped inbound and outbound. Each row states direction, whether
+   the relationship is certain or only possible, and the `file:line` where the
+   *other* structure is defined, so you can go read it. Click any row to study
+   that structure. A small diagram above the list shows callers, this structure,
+   and callees at a glance.
 4. **Real source** — the exact lines, numbered, straight from your file.
 5. **The language lens** — idiom notes anchored to constructs the parser
    actually detected.
@@ -26,16 +29,23 @@ configured, they are all still there.
 
 ## Easy and Expert
 
-The header's **Mode** toggle changes wording only:
+The header's **Mode** toggle changes how Codemble talks to you, and how much it
+puts on screen at once:
 
 | | Easy | Expert |
 | --- | --- | --- |
 | Narration | Short sentences, every term explained in place | Concise, assumes fluency |
 | Check questions | "Which piece of code…" | "Which structure…" |
-| Labels | "Used by", "Possible connection" | "Calls in", "possible call" |
+| Labels | "Used by", "Possible connection" | "Callers", "Possible relationship" |
+| Lens notes | The idiom in plain words | The precise language mechanic |
+| Density | Opens on the Map, hides unrelated galaxy edges, larger type | Opens on the Galaxy, shows everything |
+
+Easy mode also shows a hint chip naming the nearest unlit region to Home,
+counted in import-route hops over the graph — no model picks it for you.
 
 Mode never changes the graph, the coordinates, your progress, or how a check is
-scored. It is remembered per project.
+scored: both question voices are generated up front and scoring compares option
+IDs, which have no voice at all. It is remembered per project.
 
 ## No key? Nothing important is missing
 

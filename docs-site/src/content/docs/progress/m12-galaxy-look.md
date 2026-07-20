@@ -28,16 +28,22 @@ ever saw. The Map is plain SVG: it draws possible relationships as genuinely
 dashed lines and needs no WebGL, so it still works where the galaxy cannot draw.
 
 The galaxy itself gained real depth. Every node now carries a canvas-generated
-halo (no image assets ship — the textures are drawn at runtime), lit stars
-bloom through the renderer's own compositor, and each system sits inside a
-faint nebula tinted by language. A background starfield is seeded from the
-project's own file hashes, so the same project always renders the same sky.
-Drifting particles now mark certain call edges only; a possible call stays
+halo (no image assets ship — the textures are drawn at runtime), and a bloom
+pass runs over the whole frame with its threshold set so understood amber
+blooms hard while the unlit brightness ramp barely registers: glow is a claim,
+so it is spent where a claim exists. At galaxy level each Python, JavaScript,
+or TypeScript system sits inside a faint nebula tinted by language — and a
+system in any other language renders no fog at all, because a borrowed hue
+would imply evidence the parser does not have. A background starfield is seeded
+from the project's own file hashes, so the same project always renders the same
+sky. Drifting particles now mark certain call edges only; a possible call stays
 visible but motionless, so motion can never imply proof the parser doesn't have.
-Passing a region's checks triggers a roughly 1.2-second "nebula dawn" — amber
-washing across that system's fog as its star flares — and a learner who has
-asked for reduced motion gets the finished, lit state instantly instead of a
-faster version of the same animation.
+Passing a region's checks triggers a 1.2-second "nebula dawn" the next time you
+are at galaxy level — amber washing out through that system's halo and fog and
+receding. The lit state is committed before the animation starts, so the dawn
+marks a fact rather than delivering one, and a learner who has asked for reduced
+motion gets the finished, lit state instantly instead of a faster version of the
+same animation.
 
 Easy mode now lands on the Map by default and Expert lands on the galaxy, but
 an explicit layer switch always wins over what the mode picked, in either
