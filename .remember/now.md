@@ -1,3 +1,3 @@
 
-## 16:25 | friendly-wizard-claude/galaxy-ux-phase-c
-Released v0.4.0 (galaxy UI), Phase C done (12 tasks: threading, caching, loading, 1K-file scale; 207 tests, merge-safe), Important parse-bind race found, v0.5.0 pending.
+## 18:02 | friendly-wizard-claude/galaxy-ux-phase-c
+Merged phase-c to main via per-file reconciliation (preserved LLM-config fix), released v0.5.0 with gap fixes, PyPI/CI verified green.
