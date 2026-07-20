@@ -1848,6 +1848,24 @@ input:focus-visible {
   font-size: 11px;
 }
 
+/* Selection wears the interaction accent (--cm-orbit), never the amber
+   understanding accent -- amber means understood only. Both signals compose
+   with the understood ones rather than replacing them: the box outline sits
+   outside its (possibly amber) stroke, and the row ring uses the circle's
+   otherwise-unused stroke channel, so an understood region that is also
+   selected still reads as understood. Driven by a persistent data-selected
+   attribute, not :focus-visible, because a pointer click must show it and
+   focus-visible stays dark for the mouse -- the exact bug this fixes. */
+.architecture-map__box[data-selected="true"] rect:first-of-type {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 3px;
+}
+
+.workflow-tree__row[data-selected="true"] circle {
+  stroke: var(--cm-orbit);
+  stroke-width: 2;
+}
+
 .map-note,
 .map-loading {
   flex: 0 0 auto;

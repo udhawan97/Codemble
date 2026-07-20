@@ -258,6 +258,10 @@ export function App() {
             data={focusedMapData}
             mapTab={mapTab}
             mode={mode}
+            // Only once a region is actually the drill-down (SYSTEM/STUDY): at
+            // GALAXY level `region` is just the default Home, which the learner
+            // has not chosen, so highlighting it would fake a selection.
+            selectedRegionId={level === LEVELS.GALAXY ? undefined : region?.id}
             hasEntrypointCandidates={graph.entrypoint_candidates.length > 0}
             error={mapError}
             onSelectTab={(tab) => session.dispatch({ type: "SET_MAP_TAB", tab })}
@@ -377,7 +381,12 @@ export function App() {
             <p>
               {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
                 ? `${region.node_count} source ${region.node_count === 1 ? "file remains" : "files remain"} visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
-                : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
+                : layer === "map"
+                  ? // On the Map, a module is one box: its internal structures
+                    // aren't drawn here, only in the Galaxy. Say so plainly
+                    // rather than let the click look like it revealed nothing.
+                    `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect; the ${mode === "easy" ? "“What runs first”" : "Workflow"} tab shows what this one runs and calls.`
+                  : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
             </p>
             <button
               className="check-launch"
