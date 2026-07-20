@@ -1789,19 +1789,33 @@ input:focus-visible {
   font-size: 11px;
 }
 
-.architecture-map__box[data-understood="true"] rect:first-child {
+/* Declared before the understood rule on purpose: equal specificity means
+   source order decides, and a region that is both partial and understood
+   should still read as understood on the outline. The corner flag drawn by
+   MapView carries "partial" on its own channel either way, so the two facts
+   never compete for one property. */
+.architecture-map__box[data-partial="true"] rect:first-of-type {
+  stroke: var(--cm-route-possible);
+}
+
+.architecture-map__box .box-partial {
+  fill: var(--cm-route-possible);
+  stroke: none;
+}
+
+.architecture-map__box[data-understood="true"] rect:first-of-type {
   stroke: var(--cm-star-high);
 }
 
-.architecture-map__box[data-home="true"] rect:first-child {
+.architecture-map__box[data-home="true"] rect:first-of-type {
   stroke-width: 2;
 }
 
-.architecture-map__box[data-reachable="false"] rect:first-child {
+.architecture-map__box[data-reachable="false"] rect:first-of-type {
   stroke-dasharray: 4 3;
 }
 
-.architecture-map__box:focus-visible rect:first-child,
+.architecture-map__box:focus-visible rect:first-of-type,
 .workflow-tree__row:focus-visible circle {
   outline: 2px solid var(--cm-orbit);
   outline-offset: 2px;
@@ -1814,6 +1828,10 @@ input:focus-visible {
 
 .workflow-tree__row circle {
   fill: var(--cm-ink-3);
+}
+
+.workflow-tree__row[data-partial="true"] circle {
+  fill: var(--cm-route-possible);
 }
 
 .workflow-tree__row[data-understood="true"] circle {

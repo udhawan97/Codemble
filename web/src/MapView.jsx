@@ -126,7 +126,7 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
             transform={`translate(${box.x} ${box.y})`}
             role="button"
             tabIndex={0}
-            aria-label={`${box.label}, ${box.node_count} structures, ${box.loc} lines${box.understood ? ", understood" : ", not yet understood"}${box.home ? ", Home" : ""}${box.reachable ? "" : ", no import route from Home"}`}
+            aria-label={`${box.label}, ${box.node_count} structures, ${box.loc} lines${box.understood ? ", understood" : ", not yet understood"}${box.home ? ", Home" : ""}${box.reachable ? "" : ", no import route from Home"}${box.partial ? ", unchartable, syntax error" : ""}`}
             onClick={() => onSelectRegion(box.id)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
@@ -137,9 +137,21 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
           >
             {/* Native hover tooltip; the full label is also always in
                 aria-label above regardless of what the glyphs below fit. */}
-            <title>{box.label}</title>
+            <title>{box.label}{box.partial ? " — unchartable, syntax error" : ""}</title>
             <rect width={box.width} height={box.height} rx="3" />
             <rect className="box-tint" width="4" height={box.height} fill={tintFor(box.language)} />
+            {/* A corner flag, not just a colour: the box outline already
+                carries understood (colour), Home (width), and reachability
+                (dash), so a fourth signal on the same property would collide
+                -- and a syntax error must stay perceivable without colour
+                vision. The words are in <title> and aria-label above; the
+                meta line below is already full at this fixed box width. */}
+            {box.partial ? (
+              <path
+                className="box-partial"
+                d={`M ${box.width - 16} 2 L ${box.width - 2} 2 L ${box.width - 2} 16 Z`}
+              />
+            ) : null}
             <text x={BOX_LABEL_X} y="24">{fitBoxLabel(box.label, box.width)}</text>
             <text className="box-meta" x="14" y="42">
               {mode === "easy"
@@ -204,11 +216,12 @@ function WorkflowTree({ workflow, mode, onSelectNode }) {
             className="workflow-tree__row"
             data-understood={row.understood}
             data-cut={row.cut ?? undefined}
+            data-partial={row.partial}
             data-relation={row.relation}
             transform={`translate(${row.x} ${row.y})`}
             role="button"
             tabIndex={0}
-            aria-label={`${row.label} at ${row.file}:${row.lineno}${row.certain ? "" : ", possible call"}${row.cut === "cycle" ? ", repeats an earlier step" : ""}${row.cut === "repeat" ? ", already shown above" : ""}`}
+            aria-label={`${row.label} at ${row.file}:${row.lineno}${row.certain ? "" : ", possible call"}${row.cut === "cycle" ? ", repeats an earlier step" : ""}${row.cut === "repeat" ? ", already shown above" : ""}${row.partial ? ", unchartable, syntax error" : ""}`}
             onClick={() => onSelectNode(row.id)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
@@ -227,6 +240,10 @@ function WorkflowTree({ workflow, mode, onSelectNode }) {
                   : " — possible call"}
               {row.cut === "cycle" ? " — loops back" : ""}
               {row.cut === "repeat" ? " — shown above" : ""}
+              {/* Unlike the fixed-width architecture box, a tree row has room
+                  for the word, so partial says so in the same slot that
+                  already carries "possible call". */}
+              {row.partial ? (mode === "easy" ? " — could not be read" : " — unchartable") : ""}
             </text>
           </g>
         ))}

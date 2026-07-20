@@ -254,15 +254,30 @@ export function App() {
             onDawnConsumed={(regionId) => session.dispatch({ type: "CONSUME_DAWN", regionId })}
           />
         )}
-        <aside className="map-legend" aria-label="Galaxy legend">
-          <span>
-            <i className="legend-size" />
-            Size · {mode === "easy" ? "how much code" : "lines of code"}
-          </span>
-          <span>
-            <i className="legend-brightness" />
-            Brighter · {mode === "easy" ? "used in more places" : "more distinct callers"}
-          </span>
+        {/* The legend describes the layer that is actually on screen. Size and
+            brightness are 3D-only encodings: mapview.py fixes _BOX_WIDTH and
+            _BOX_HEIGHT as constants, draws workflow rows as fixed-radius
+            circles, and never sends centrality at all -- so claiming them on
+            the Map would describe an encoding the renderer does not draw,
+            which is precisely the kind of wrong a learner cannot detect.
+            Language tint is drawn on architecture boxes but not on workflow
+            rows, so it follows the tab as well as the layer. */}
+        <aside
+          className="map-legend"
+          aria-label={layer === "map" ? "Map legend" : "Galaxy legend"}
+        >
+          {layer === "galaxy" ? (
+            <>
+              <span>
+                <i className="legend-size" />
+                Size · {mode === "easy" ? "how much code" : "lines of code"}
+              </span>
+              <span>
+                <i className="legend-brightness" />
+                Brighter · {mode === "easy" ? "used in more places" : "more distinct callers"}
+              </span>
+            </>
+          ) : null}
           <span>
             <i className="legend-dot legend-dot--dim" />
             Dim · {mode === "easy" ? "not proven yet" : "not understood"}
@@ -292,13 +307,15 @@ export function App() {
             />
             {mode === "easy" ? "Possible connection" : "Possible relationship"}
           </span>
-          {languageOptions
-            .filter((option) => option.id !== "all")
-            .map((option) => (
-              <span key={option.id}>
-                <i className={`legend-tint legend-tint--${option.id}`} /> {option.label}
-              </span>
-            ))}
+          {layer === "galaxy" || mapTab === "architecture"
+            ? languageOptions
+                .filter((option) => option.id !== "all")
+                .map((option) => (
+                  <span key={option.id}>
+                    <i className={`legend-tint legend-tint--${option.id}`} /> {option.label}
+                  </span>
+                ))
+            : null}
         </aside>
         {layer === "galaxy" && level === LEVELS.GALAXY ? (
           <section className="orientation-copy">
