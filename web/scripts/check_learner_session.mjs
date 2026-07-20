@@ -331,29 +331,51 @@ sequencingSession.dispose();
 
 // Narration: navigating to a second node while the first node's narration is
 // still in flight must cancel it, so a late response never lands in the
-// wrong node's panel.
+// wrong node's panel. A's study data must resolve and hand off into its own
+// narration fetch before B is dispatched — dispatching B any earlier trips
+// the *study*-level guard inside loadStudy first, so loadExplanation(A) is
+// never even called and the narration guard this test is about goes
+// unexercised.
 let resolveLateExplanation;
 const lateExplanation = new Promise((resolve) => {
   resolveLateExplanation = resolve;
 });
+let signalExplanationRequested;
+const explanationRequested = new Promise((resolve) => {
+  signalExplanationRequested = resolve;
+});
+const explanationRaceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  studies: {
+    "python:app.py:run": study,
+    "typescript:main.ts:main": { ...study, node: graph.nodes[1] },
+  },
+  explanations: {
+    "typescript:main.ts:main:easy": { status: "ready", summary: { text: "Second node" } },
+  },
+});
 const explanationRaceSession = createLearnerSession({
-  adapter: createInMemoryLearnerSessionAdapter({
-    graph,
-    studies: {
-      "python:app.py:run": study,
-      "typescript:main.ts:main": { ...study, node: graph.nodes[1] },
+  adapter: {
+    ...explanationRaceBaseAdapter,
+    loadExplanation(nodeId, mode, options = {}) {
+      if (nodeId === "python:app.py:run") {
+        signalExplanationRequested();
+        return lateExplanation;
+      }
+      return explanationRaceBaseAdapter.loadExplanation(nodeId, mode, options);
     },
-    explanations: {
-      "python:app.py:run:easy": lateExplanation,
-      "typescript:main.ts:main:easy": { status: "ready", summary: { text: "Second node" } },
-    },
-  }),
+  },
 });
 await explanationRaceSession.start();
 const staleExplanationRequest = explanationRaceSession.dispatch({
   type: "SELECT_STUDY_NODE",
   nodeId: "python:app.py:run",
 });
+// Awaiting this signal (instead of guessing a tick count) guarantees A's
+// study data already committed and loadExplanation(A) is genuinely in
+// flight — the same deterministic-checkpoint pattern as modeRequested above
+// — before B is dispatched below.
+await explanationRequested;
 await explanationRaceSession.dispatch({
   type: "SELECT_STUDY_NODE",
   nodeId: "typescript:main.ts:main",
