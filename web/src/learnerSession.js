@@ -39,6 +39,8 @@ export function createLearnerSession({
     litRegionId: null,
     languageFocus: "all",
     picker: null,
+    mode: "expert",
+    llmStatus: null,
   });
   let lifecycle = 0;
   let graphController = null;
@@ -47,6 +49,7 @@ export function createLearnerSession({
   let submissionController = null;
   let entrypointController = null;
   let pickerController = null;
+  let modeController = null;
   let illuminationTimer = null;
 
   function getSnapshot() {
@@ -108,12 +111,30 @@ export function createLearnerSession({
       const graph = await adapter.loadGraph({ signal: controller.signal });
       if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
       commit({ status: "ready", graph, region: defaultRegion(graph), error: "" });
+      await loadPreferences(controller, requestLifecycle);
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
         commit({ status: "error", error: errorMessage(requestError) });
       }
     }
     return snapshot;
+  }
+
+  async function loadPreferences(controller, requestLifecycle) {
+    // allSettled, not all: mode and provider status are preferences. A failing
+    // one must never blank the other and must never surface as a graph error.
+    // Each call is wrapped in an async thunk so an adapter that throws
+    // synchronously (rather than rejecting a promise) still settles instead of
+    // escaping allSettled and being mistaken for a graph load failure.
+    const [modeResult, statusResult] = await Promise.allSettled([
+      (async () => adapter.fetchMode({ signal: controller.signal }))(),
+      (async () => adapter.fetchLlmStatus({ signal: controller.signal }))(),
+    ]);
+    if (requestLifecycle !== lifecycle || controller.signal.aborted) return;
+    const patch = {};
+    if (modeResult.status === "fulfilled") patch.mode = modeResult.value.mode;
+    if (statusResult.status === "fulfilled") patch.llmStatus = statusResult.value;
+    if (Object.keys(patch).length > 0) commit(patch);
   }
 
   async function startPicker(controller, requestLifecycle) {
@@ -211,6 +232,8 @@ export function createLearnerSession({
       case "SET_LANGUAGE_FOCUS":
         setLanguageFocus(event.language);
         return undefined;
+      case "SET_MODE":
+        return setMode(event.mode);
       case "SHOW_CHART":
         commit({ showChart: true });
         return undefined;
@@ -300,6 +323,24 @@ export function createLearnerSession({
       cancelStudy();
       commit({ studyData: null, studyError: "" });
     }
+  }
+
+  async function setMode(mode) {
+    if (mode !== "easy" && mode !== "expert") return undefined;
+    const previous = snapshot.mode;
+    if (mode === previous) return undefined;
+    abortController(modeController);
+    modeController = new AbortController();
+    const controller = modeController;
+    commit({ mode });
+    try {
+      await adapter.putMode(mode, { signal: controller.signal });
+    } catch (requestError) {
+      if (modeController === controller && !isAbortError(requestError)) {
+        commit({ mode: previous });
+      }
+    }
+    return undefined;
   }
 
   async function loadStudy(nodeId) {
@@ -448,6 +489,7 @@ export function createLearnerSession({
       submissionController,
       entrypointController,
       pickerController,
+      modeController,
     ]) {
       abortController(controller);
     }
@@ -457,6 +499,7 @@ export function createLearnerSession({
     submissionController = null;
     entrypointController = null;
     pickerController = null;
+    modeController = null;
     if (illuminationTimer !== null) {
       clock.clearTimeout(illuminationTimer);
       illuminationTimer = null;
@@ -515,6 +558,20 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ node_id: nodeId }),
       });
     },
+    fetchMode(options = {}) {
+      return request("/api/mode", "Mode request", options);
+    },
+    putMode(mode, options = {}) {
+      return request("/api/mode", "Mode update", {
+        ...options,
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+    },
+    fetchLlmStatus(options = {}) {
+      return request("/api/llm/status", "Model status", options);
+    },
     loadPickerState(options = {}) {
       return request("/api/picker/state", "Picker state", options);
     },
@@ -556,8 +613,11 @@ export function createInMemoryLearnerSessionAdapter({
   submissions = {},
   entrypoints = {},
   picker = null,
+  mode = "easy",
+  llmStatus = null,
 }) {
   let currentGraph = graph;
+  let currentMode = mode;
   const currentChecks = new Map(Object.entries(checks));
   const pickerPhase = picker ? { ...picker, selected: false } : null;
   return Object.freeze({
@@ -591,6 +651,30 @@ export function createInMemoryLearnerSessionAdapter({
       throwIfAborted(options.signal);
       currentGraph = requiredFixture(entrypoints, nodeId, "entrypoint graph");
       return currentGraph;
+    },
+    async fetchMode(options = {}) {
+      throwIfAborted(options.signal);
+      return { mode: currentMode };
+    },
+    async putMode(nextMode, options = {}) {
+      throwIfAborted(options.signal);
+      currentMode = nextMode;
+      return { mode: currentMode };
+    },
+    async fetchLlmStatus(options = {}) {
+      throwIfAborted(options.signal);
+      return (
+        llmStatus ?? {
+          configured_provider: null,
+          configured_model: null,
+          ollama: {
+            running: false,
+            installed_models: [],
+            recommended: "gemma4:12b",
+            fallback: "qwen3:8b",
+          },
+        }
+      );
     },
     async loadPickerState(options = {}) {
       throwIfAborted(options.signal);

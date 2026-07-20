@@ -51,6 +51,17 @@ const adapter = createInMemoryLearnerSessionAdapter({
     },
   },
   entrypoints: { "python:app.py:run": understoodGraph },
+  mode: "easy",
+  llmStatus: {
+    configured_provider: null,
+    configured_model: null,
+    ollama: {
+      running: true,
+      installed_models: ["gemma4:12b"],
+      recommended: "gemma4:12b",
+      fallback: "qwen3:8b",
+    },
+  },
 });
 const session = createLearnerSession({ adapter, clock });
 let notifications = 0;
@@ -70,6 +81,14 @@ assert.deepEqual(snapshot.languageOptions.map((option) => option.id), [
   "python",
   "typescript",
 ]);
+assert.equal(snapshot.mode, "easy", "the session adopts the server's persisted mode");
+assert.equal(snapshot.llmStatus.ollama.recommended, "gemma4:12b");
+
+await session.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(session.getSnapshot().mode, "expert");
+assert.deepEqual(await adapter.fetchMode(), { mode: "expert" }, "PUT reached the adapter");
+await session.dispatch({ type: "SET_MODE", mode: "easy" });
+assert.equal(session.getSnapshot().mode, "easy");
 
 await session.dispatch({ type: "ADVANCE", node: graph.regions[0] });
 assert.equal(session.getSnapshot().level, LEVELS.SYSTEM);
@@ -380,6 +399,45 @@ raceSnapshot = raceSession.getSnapshot();
 assert.equal(raceSnapshot.status, "ready");
 assert.equal(raceSnapshot.picker, null);
 raceSession.dispose();
+
+// A failing mode write reverts the optimistic value: mode is a preference,
+// never truth, so the UI must not claim a setting the server refused.
+const modeFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "easy" });
+const modeFailureSession = createLearnerSession({
+  adapter: {
+    ...modeFailureAdapter,
+    putMode() {
+      throw new Error("mode write refused");
+    },
+  },
+  clock,
+});
+await modeFailureSession.start();
+assert.equal(modeFailureSession.getSnapshot().mode, "easy");
+await modeFailureSession.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(
+  modeFailureSession.getSnapshot().mode,
+  "easy",
+  "a refused mode write rolls back to the last server-confirmed value",
+);
+modeFailureSession.dispose();
+
+// A failing status read must not blank the mode that loaded beside it.
+const statusFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "expert" });
+const statusFailureSession = createLearnerSession({
+  adapter: {
+    ...statusFailureAdapter,
+    fetchLlmStatus() {
+      throw new Error("status unavailable");
+    },
+  },
+  clock,
+});
+await statusFailureSession.start();
+assert.equal(statusFailureSession.getSnapshot().mode, "expert");
+assert.equal(statusFailureSession.getSnapshot().llmStatus, null);
+assert.equal(statusFailureSession.getSnapshot().status, "ready");
+statusFailureSession.dispose();
 
 function makeGraph({ understood = false } = {}) {
   return {
