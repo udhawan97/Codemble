@@ -439,6 +439,54 @@ assert.equal(statusFailureSession.getSnapshot().llmStatus, null);
 assert.equal(statusFailureSession.getSnapshot().status, "ready");
 statusFailureSession.dispose();
 
+// Regression: a same-project mode change that races the preferences load
+// must win over the stale fetchMode value it raced with, and llmStatus from
+// that same response must still apply.
+let resolveRaceStatus;
+const raceStatus = new Promise((resolve) => {
+  resolveRaceStatus = resolve;
+});
+let notifyStatusRequested;
+const statusRequested = new Promise((resolve) => {
+  notifyStatusRequested = resolve;
+});
+const raceModeBaseAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "expert" });
+const raceModeSession = createLearnerSession({
+  adapter: {
+    ...raceModeBaseAdapter,
+    fetchLlmStatus() {
+      notifyStatusRequested();
+      return raceStatus;
+    },
+  },
+  clock,
+});
+const raceModeStart = raceModeSession.start();
+await statusRequested;
+await raceModeSession.dispatch({ type: "SET_MODE", mode: "easy" });
+resolveRaceStatus({
+  configured_provider: null,
+  configured_model: null,
+  ollama: {
+    running: true,
+    installed_models: ["gemma4:12b"],
+    recommended: "gemma4:12b",
+    fallback: "qwen3:8b",
+  },
+});
+await raceModeStart;
+assert.equal(
+  raceModeSession.getSnapshot().mode,
+  "easy",
+  "a mode change that races the preferences load wins over the stale fetchMode value",
+);
+assert.equal(
+  raceModeSession.getSnapshot().llmStatus.ollama.recommended,
+  "gemma4:12b",
+  "llmStatus from the same preferences response still applies",
+);
+raceModeSession.dispose();
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",

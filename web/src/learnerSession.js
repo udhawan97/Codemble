@@ -43,6 +43,7 @@ export function createLearnerSession({
     llmStatus: null,
   });
   let lifecycle = 0;
+  let modeLifecycle = 0;
   let graphController = null;
   let studyController = null;
   let checksController = null;
@@ -126,13 +127,19 @@ export function createLearnerSession({
     // Each call is wrapped in an async thunk so an adapter that throws
     // synchronously (rather than rejecting a promise) still settles instead of
     // escaping allSettled and being mistaken for a graph load failure.
+    const requestModeLifecycle = modeLifecycle;
     const [modeResult, statusResult] = await Promise.allSettled([
       (async () => adapter.fetchMode({ signal: controller.signal }))(),
       (async () => adapter.fetchLlmStatus({ signal: controller.signal }))(),
     ]);
     if (requestLifecycle !== lifecycle || controller.signal.aborted) return;
     const patch = {};
-    if (modeResult.status === "fulfilled") patch.mode = modeResult.value.mode;
+    // A same-project setMode call (in flight or already committed) is a newer
+    // truth than this fetch, which was issued before it: never let it clobber
+    // the learner's choice. llmStatus is unrelated to mode and always applies.
+    if (modeResult.status === "fulfilled" && requestModeLifecycle === modeLifecycle) {
+      patch.mode = modeResult.value.mode;
+    }
     if (statusResult.status === "fulfilled") patch.llmStatus = statusResult.value;
     if (Object.keys(patch).length > 0) commit(patch);
   }
@@ -329,6 +336,7 @@ export function createLearnerSession({
     if (mode !== "easy" && mode !== "expert") return undefined;
     const previous = snapshot.mode;
     if (mode === previous) return undefined;
+    modeLifecycle += 1;
     abortController(modeController);
     modeController = new AbortController();
     const controller = modeController;
