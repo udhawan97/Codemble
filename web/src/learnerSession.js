@@ -241,6 +241,8 @@ export function createLearnerSession({
     await adapter.resetProject({ signal: controller.signal });
     if (controller.signal.aborted) return snapshot;
     cancelStudy();
+    abortController(entrypointController);
+    entrypointController = null;
     commit({
       graph: null,
       region: null,
@@ -544,6 +546,7 @@ export function createLearnerSession({
   }
 
   async function selectEntrypoint(nodeId) {
+    const requestLifecycle = lifecycle;
     abortController(entrypointController);
     entrypointController = new AbortController();
     const controller = entrypointController;
@@ -552,13 +555,13 @@ export function createLearnerSession({
       const graph = await adapter.selectEntrypoint(nodeId, {
         signal: controller.signal,
       });
-      if (!controller.signal.aborted) {
-        commit({ graph, region: defaultRegion(graph), entrypointError: "" });
-      }
+      if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
+      commit({ graph, region: defaultRegion(graph), entrypointError: "" });
       return graph;
     } catch (requestError) {
       if (
         entrypointController === controller &&
+        requestLifecycle === lifecycle &&
         !controller.signal.aborted &&
         !isAbortError(requestError)
       ) {

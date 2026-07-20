@@ -576,6 +576,62 @@ assert.equal(
 );
 refusedResetSession.dispose();
 
+// Regression: a stale SELECT_ENTRYPOINT response arriving after RESET_PROJECT
+// must not resurrect the old project. resetProject() must abort
+// entrypointController like cancelStudy() aborts study/explanation, and
+// selectEntrypoint() must check lifecycle like loadProjectGraph/loadPreferences.
+let resolveStaleEntrypoint;
+const staleEntrypoint = new Promise((resolve) => {
+  resolveStaleEntrypoint = resolve;
+});
+const entrypointRaceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const entrypointRaceSession = createLearnerSession({
+  adapter: { ...entrypointRaceBaseAdapter, selectEntrypoint: () => staleEntrypoint },
+  clock,
+});
+await entrypointRaceSession.start();
+await entrypointRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(entrypointRaceSession.getSnapshot().status, "ready");
+
+const staleEntrypointRequest = entrypointRaceSession.dispatch({
+  type: "SELECT_ENTRYPOINT",
+  nodeId: "python:app.py:run",
+});
+await entrypointRaceSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  entrypointRaceSession.getSnapshot().status,
+  "picking",
+  "reset returns to the picker while the entrypoint request is still in flight",
+);
+
+resolveStaleEntrypoint(understoodGraph);
+await staleEntrypointRequest;
+const entrypointRaceSnapshot = entrypointRaceSession.getSnapshot();
+assert.equal(
+  entrypointRaceSnapshot.status,
+  "picking",
+  "a stale entrypoint response must not move the session off the picker",
+);
+assert.equal(
+  entrypointRaceSnapshot.graph,
+  null,
+  "a stale entrypoint response after reset must not resurrect the old project's graph",
+);
+entrypointRaceSession.dispose();
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",
