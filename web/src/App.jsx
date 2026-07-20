@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
@@ -217,6 +217,7 @@ export function App() {
           <CheckPanel
             suite={checkData}
             error={checkError}
+            mode={mode}
             onClose={() => session.dispatch({ type: "CLOSE_CHECKS" })}
             onSubmit={(checkId, selectedIds) =>
               session.dispatch({ type: "SUBMIT_CHECK", checkId, selectedIds })
@@ -412,6 +413,26 @@ function SwitchProject({ onConfirm }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
+  const triggerRef = useRef(null);
+  const groupRef = useRef(null);
+  const wasConfirmingRef = useRef(false);
+
+  // The trigger button and the confirm group are mutually exclusive branches,
+  // so the trigger unmounts (its ref goes null) before a cancel can focus it.
+  // Defer the refocus to an effect, which runs after React remounts it.
+  useEffect(() => {
+    if (confirming) {
+      groupRef.current?.focus();
+    } else if (wasConfirmingRef.current) {
+      triggerRef.current?.focus();
+    }
+    wasConfirmingRef.current = confirming;
+  }, [confirming]);
+
+  function cancel() {
+    setConfirming(false);
+    setFailure("");
+  }
 
   async function confirm() {
     setBusy(true);
@@ -426,13 +447,27 @@ function SwitchProject({ onConfirm }) {
 
   if (!confirming) {
     return (
-      <button className="rail-action" type="button" onClick={() => setConfirming(true)}>
+      <button
+        className="rail-action"
+        type="button"
+        ref={triggerRef}
+        onClick={() => setConfirming(true)}
+      >
         Switch project
       </button>
     );
   }
   return (
-    <div className="switch-project" role="group" aria-label="Switch project">
+    <div
+      className="switch-project"
+      role="group"
+      aria-label="Switch project"
+      tabIndex={-1}
+      ref={groupRef}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !busy) cancel();
+      }}
+    >
       <p>Progress is saved per project, so this galaxy comes back lit.</p>
       {failure ? (
         <p className="switch-project__error" role="alert">
@@ -443,15 +478,7 @@ function SwitchProject({ onConfirm }) {
         <button className="rail-action" type="button" disabled={busy} onClick={confirm}>
           {busy ? "Releasing…" : "Switch"}
         </button>
-        <button
-          className="rail-action"
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            setConfirming(false);
-            setFailure("");
-          }}
-        >
+        <button className="rail-action" type="button" disabled={busy} onClick={cancel}>
           Cancel
         </button>
       </div>
@@ -493,11 +520,12 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
   );
 }
 
-function CheckPanel({ suite, error, onClose, onSubmit }) {
+function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   const current = suite?.checks.find((check) => !check.passed) ?? null;
   const passed = suite?.checks.filter((check) => check.passed).length ?? 0;
   const [selected, setSelected] = useState(() => new Set());
   const [feedback, setFeedback] = useState(null);
+  const [affirmation, setAffirmation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -508,6 +536,7 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
   }, [current?.id]);
 
   function choose(optionId, multiple) {
+    setAffirmation("");
     setSelected((existing) => {
       if (!multiple) return new Set([optionId]);
       const next = new Set(existing);
@@ -524,7 +553,15 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
     setSubmitError("");
     try {
       const result = await onSubmit(current.id, [...selected]);
-      setFeedback(result);
+      // A correct answer advances `current`, which resets `feedback` — so the
+      // affirmation lives in its own slot or it would vanish before it is read.
+      if (result.correct) {
+        setAffirmation(result.message);
+        setFeedback(null);
+      } else {
+        setAffirmation("");
+        setFeedback(result);
+      }
     } catch (requestError) {
       setSubmitError(requestError.message);
     } finally {
@@ -560,7 +597,13 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
       {suite && !suite.region_understood && suite.checks.length === 0 ? (
         <div className="check-state">
           <h2>No safe check yet.</h2>
-          <p>This region has no certain graph relationship Codemble can test without guessing.</p>
+          <p>
+            Every question here is answered by the parser graph, and this region
+            has no certain relationship Codemble can build one from. It stays dim
+            rather than lighting on a question that would prove nothing. Import
+            this module somewhere, or call something inside it, and its checks
+            appear.
+          </p>
         </div>
       ) : null}
       {current && !suite.region_understood ? (
@@ -569,8 +612,13 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
             <span>Check {passed + 1} of {suite.checks.length}</span>
             <progress value={passed} max={suite.checks.length} />
           </div>
+          {affirmation ? (
+            <p className="check-affirmation" role="status">
+              <span aria-hidden="true">✦</span> {affirmation}
+            </p>
+          ) : null}
           <fieldset>
-            <legend>{current.prompt}</legend>
+            <legend>{current.prompt_voices?.[mode] ?? current.prompt}</legend>
             {current.multiple ? <p>Select every answer supported by the graph.</p> : null}
             <div className="check-options">
               {current.options.map((option) => (
@@ -615,7 +663,7 @@ function StarChart({ chart, studiedCount }) {
         </p>
         <dl>
           <div><dt>Concepts encountered</dt><dd>{chart.length}</dd></div>
-          <div><dt>Structures studied</dt><dd>{studiedCount}</dd></div>
+          <div><dt>Studied this session</dt><dd>{studiedCount}</dd></div>
           <div><dt>Concepts understood</dt><dd>{understood}</dd></div>
         </dl>
       </header>
@@ -630,7 +678,7 @@ function StarChart({ chart, studiedCount }) {
               <span style={{ width: `${item.nodes ? (item.understood_nodes / item.nodes) * 100 : 0}%` }} />
             </div>
             <dl>
-              <div><dt>Studied</dt><dd>{item.studied_nodes}/{item.nodes}</dd></div>
+              <div><dt>Studied (session)</dt><dd>{item.studied_nodes}/{item.nodes}</dd></div>
               <div><dt>Understood</dt><dd>{item.understood_nodes}/{item.nodes}</dd></div>
             </dl>
           </article>

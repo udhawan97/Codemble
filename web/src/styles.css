@@ -201,8 +201,6 @@ button:focus-visible,
 }
 
 .language-focus {
-  grid-column: 1 / -1;
-  grid-row: 3;
   display: flex;
   min-width: 0;
   align-items: center;
@@ -859,6 +857,18 @@ button:focus-visible,
 
 .check-feedback span {
   overflow-wrap: anywhere;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.check-affirmation {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cm-space-xs);
+  margin: 0 0 var(--cm-space-lg);
+  padding-inline-start: var(--cm-space-sm);
+  border-inline-start: 2px solid var(--cm-star);
+  color: var(--cm-star-high);
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
 }
