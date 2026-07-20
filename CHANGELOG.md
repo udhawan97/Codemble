@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Changed
+- `CODEMBLE_DATA_DIR` now relocates **everything** Codemble keeps under your home
+  directory — saved progress, the narration cache, and the `config` file — rather
+  than progress alone. All three resolve through one helper, so pointing the
+  variable somewhere else moves them together. Unset, the default is unchanged:
+  `~/.codemble`.
+
+### Fixed
+- The test suite no longer reads the developer's `~/.codemble/config` or their
+  `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`. Every server test that built an app
+  without an explicit study service inherited whatever the machine had
+  configured, so the same test could construct a live provider locally and none
+  in CI. The two tests that request `/explanation` would then make a real, billed
+  API call and cache the reply under the developer's home directory.
+
 ## [0.4.0] - 2026-07-20
 
 The galaxy read as flat spheres on a plain background, connections were hard to
