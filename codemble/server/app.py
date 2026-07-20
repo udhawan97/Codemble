@@ -225,6 +225,7 @@ def create_app(
     if graph is not None:
         state.studies = study_service or StudyService.from_environment(graph)
         state.checks = check_service or CheckService(graph)
+        state.graph_json()
 
     def _services() -> tuple[CheckService, StudyService]:
         if state.checks is None or state.studies is None:

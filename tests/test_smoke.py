@@ -112,3 +112,103 @@ def test_the_non_tty_scale_error_names_the_busiest_scopes(
     assert "api (3)" in str(raised.value)
     assert "web (1)" in str(raised.value)
     assert "Re-run with `codemble --path PATH`" in str(raised.value)
+
+
+def test_terminal_progress_prints_every_stage_in_order() -> None:
+    from codemble.server.parse_job import STAGES
+    from codemble.server.runtime import TerminalProgress
+
+    lines: list[str] = []
+    reporter = TerminalProgress(write=lines.append, isatty=False)
+
+    reporter.stage("discovering")
+    reporter.files_total(2)
+    reporter.stage("parsing")
+    reporter.file_parsed()
+    reporter.file_parsed()
+    reporter.stage("resolving")
+    reporter.stage("checks")
+    reporter.stage("layout")
+
+    printed = "".join(lines)
+    for stage in STAGES:
+        assert stage in printed
+    assert printed.index("discovering") < printed.index("parsing")
+    assert printed.index("parsing") < printed.index("resolving")
+    assert printed.index("resolving") < printed.index("checks")
+    assert printed.index("checks") < printed.index("layout")
+
+
+def test_terminal_progress_only_redraws_the_counter_on_a_tty() -> None:
+    from codemble.server.runtime import TerminalProgress
+
+    quiet: list[str] = []
+    TerminalProgress(write=quiet.append, isatty=False).file_parsed()
+    loud: list[str] = []
+    loud_reporter = TerminalProgress(write=loud.append, isatty=True)
+    loud_reporter.files_total(4)
+    loud_reporter.stage("parsing")
+    loud_reporter.file_parsed()
+
+    assert "".join(quiet) == ""
+    assert "\r" in "".join(loud)
+    assert "1/4" in "".join(loud)
+
+
+def test_terminal_progress_swallows_a_repeated_stage() -> None:
+    """serve_project announces discovering; a Path parse announces it again."""
+
+    from codemble.server.runtime import TerminalProgress
+
+    lines: list[str] = []
+    reporter = TerminalProgress(write=lines.append, isatty=False)
+    reporter.stage("discovering")
+    reporter.stage("discovering")
+
+    assert len(lines) == 1
+
+
+def test_serve_project_reports_the_full_stage_sequence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from codemble.server import runtime
+
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    fixture = Path(__file__).parent / "fixtures" / "sampleproj"
+    lines: list[str] = []
+    monkeypatch.setattr(
+        runtime, "TerminalProgress", lambda **_kwargs: _StageRecorder(lines)
+    )
+    monkeypatch.setattr(runtime.uvicorn, "run", lambda *_a, **_k: None)
+
+    runtime.serve_project(fixture, open_browser=False)
+
+    # serve_project announces discovering, and ProjectParser.parse announces it
+    # again for a Path input; TerminalProgress collapses the repeat, so compare
+    # the deduplicated sequence.
+    deduped = [
+        stage
+        for index, stage in enumerate(lines)
+        if index == 0 or stage != lines[index - 1]
+    ]
+    assert deduped == [
+        "discovering",
+        "parsing",
+        "resolving",
+        "checks",
+        "layout",
+    ]
+
+
+class _StageRecorder:
+    def __init__(self, sink: list[str]) -> None:
+        self._sink = sink
+
+    def stage(self, stage: str) -> None:
+        self._sink.append(stage)
+
+    def files_total(self, total: int) -> None:
+        pass
+
+    def file_parsed(self) -> None:
+        pass
