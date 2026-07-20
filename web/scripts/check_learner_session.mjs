@@ -1453,6 +1453,93 @@ assert.equal(
 );
 homeMapRaceSession.dispose();
 
+// Regression: the Map's `understood` flags (mapview.py, per region and per
+// node) come from the same graph a passed check reloads, so a region that
+// just finished its checks invalidates the cached map exactly as a new Home
+// does above. Left uncleared, the galaxy lit the region while the Map --
+// Easy mode's default layer, the exact audience the light-up is the reward
+// for -- kept drawing it dim, with no error to notice.
+const understoodMapPayload = {
+  schema_version: 1,
+  architecture: { home: "app.py", boxes: [], edges: [], groups: [], unreachable: [] },
+  workflow: { root: null, nodes: [], unreachable: [] },
+};
+const checkMapFetches = [];
+const checkMapSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({
+      graph,
+      mode: "expert",
+      checks: { "app.py": firstChecks },
+      submissions: {
+        // A wrong answer: neither correct nor region_understood, so this
+        // must not spend a map refetch either.
+        "app.py:wrong": { result: { correct: false, region_understood: false } },
+        "app.py:calls": {
+          result: { correct: true, region_understood: true },
+          graph: understoodGraph,
+          checks: passedChecks,
+        },
+      },
+    }),
+    async fetchMap() {
+      checkMapFetches.push(true);
+      return checkMapFetches.length === 1 ? mapPayload : understoodMapPayload;
+    },
+  },
+  clock,
+});
+await checkMapSession.start();
+await checkMapSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await checkMapSession.dispatch({ type: "SET_LAYER", layer: "map" });
+assert.equal(
+  checkMapSession.getSnapshot().mapData,
+  mapPayload,
+  "setup: the not-yet-understood map really is on screen before any check is submitted",
+);
+
+await checkMapSession.dispatch({ type: "OPEN_CHECKS" });
+await checkMapSession.dispatch({ type: "SUBMIT_CHECK", checkId: "wrong", selectedIds: [] });
+assert.equal(
+  checkMapSession.getSnapshot().mapData,
+  mapPayload,
+  "a submission that does not finish the region must not refetch the map",
+);
+assert.equal(
+  checkMapFetches.length,
+  1,
+  "an answer that leaves the region unfinished pays for no extra map fetch",
+);
+
+await checkMapSession.dispatch({
+  type: "SUBMIT_CHECK",
+  checkId: "calls",
+  selectedIds: ["python:app.py:run"],
+});
+const checkMapSnapshot = checkMapSession.getSnapshot();
+assert.equal(
+  checkMapSnapshot.region.understood,
+  true,
+  "setup: the region really is understood now",
+);
+assert.notEqual(
+  checkMapSnapshot.mapData,
+  mapPayload,
+  "a region passing its checks must not leave the previous map payload on screen",
+);
+assert.equal(
+  checkMapSnapshot.mapData,
+  understoodMapPayload,
+  "the Map the learner is looking at is refetched once the region lights up",
+);
+assert.equal(checkMapSnapshot.mapError, "");
+assert.equal(
+  checkMapFetches.length,
+  2,
+  "a passed region refetches the visible map exactly once, never a duplicate",
+);
+checkMapSession.dispose();
+
 // Regression: the mode toggle and Switch project sit in the same always-
 // rendered header, so a learner can flip Easy/Expert and confirm the switch
 // before PUT /api/mode answers. If that write then fails, setMode's rollback

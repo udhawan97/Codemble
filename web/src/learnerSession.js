@@ -720,11 +720,24 @@ export function createLearnerSession({
     if (result.region_understood) {
       const graph = await adapter.loadGraph({ signal: controller.signal });
       if (!controller.signal.aborted && snapshot.region?.id === regionId) {
+        // The Map's understood flags (mapview.py, per region and per node) are
+        // computed from this same graph, so a region finishing its checks
+        // invalidates the cached map exactly like a new Home does in
+        // selectEntrypoint: abort any in-flight fetch for it, clear it
+        // always, and refetch only when Map is the layer on screen.
+        abortController(mapController);
+        mapController = null;
         commit(
-          { graph, region: graph.regions.find((candidate) => candidate.id === regionId) },
+          {
+            graph,
+            region: graph.regions.find((candidate) => candidate.id === regionId),
+            mapData: null,
+            mapError: "",
+          },
           { preserveChecks: true },
         );
         illuminateRegion(regionId);
+        if (snapshot.layer === "map") await ensureMapLoaded();
       }
     }
     return result;
