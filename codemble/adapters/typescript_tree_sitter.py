@@ -20,6 +20,7 @@ from codemble.adapters.base import (
     Node,
 )
 from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
+from codemble.adapters.parse_progress import note_file_parsed
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 _JAVASCRIPT_EXTENSIONS = frozenset({".js", ".jsx", ".mjs", ".cjs"})
@@ -344,7 +345,7 @@ def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
     relative = path.relative_to(project_root).as_posix()
     language = "javascript" if path.suffix.lower() in _JAVASCRIPT_EXTENSIONS else "typescript"
     parser = Parser(_language_for(path.suffix.lower()))
-    return _ParsedFile(
+    parsed = _ParsedFile(
         path=path,
         project_root=project_root,
         relative_path=relative,
@@ -355,6 +356,8 @@ def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
         digest=hashlib.sha256(raw).hexdigest(),
         tree=parser.parse(raw),
     )
+    note_file_parsed()
+    return parsed
 
 
 def _language_for(extension: str) -> Language:

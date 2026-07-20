@@ -193,3 +193,32 @@ def test_intake_scope_counts_orders_busiest_directories_first(tmp_path: Path) ->
     intake = ProjectParser().intake(tmp_path)
 
     assert intake.scope_counts() == (("api", 2), (".", 1), ("web", 1))
+
+
+def test_progress_reporting_leaves_the_language_adapter_seam_unchanged() -> None:
+    """Progress is bound around adapters, never threaded through their signatures."""
+
+    import inspect
+
+    from codemble.adapters.base import LanguageAdapter
+
+    assert list(inspect.signature(LanguageAdapter.discover).parameters) == [
+        "self",
+        "path",
+    ]
+    assert list(inspect.signature(LanguageAdapter.parse).parameters) == [
+        "self",
+        "path",
+        "entrypoint",
+    ]
+    assert list(inspect.signature(LanguageAdapter.parse_files).parameters) == [
+        "self",
+        "project_root",
+        "files",
+        "entrypoint",
+    ]
+    assert list(inspect.signature(LanguageAdapter.concepts).parameters) == [
+        "self",
+        "node",
+        "source",
+    ]

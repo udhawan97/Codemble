@@ -12,6 +12,7 @@ from pathlib import Path
 
 from codemble.adapters.base import AdapterParseError, ConceptAnnotation, Edge, Graph, Node
 from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
+from codemble.adapters.parse_progress import note_file_parsed
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 _APP_FACTORIES = {"FastAPI", "Flask", "Typer"}
@@ -488,7 +489,7 @@ def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
     except (SyntaxError, UnicodeDecodeError):
         source = raw.decode("utf-8", errors="replace")
         tree = None
-    return _ParsedFile(
+    parsed = _ParsedFile(
         path=path,
         relative_path=relative.as_posix(),
         module=_module_name(relative, project_root),
@@ -496,6 +497,8 @@ def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
         digest=digest,
         tree=tree,
     )
+    note_file_parsed()
+    return parsed
 
 
 def _module_name(relative: Path, project_root: Path) -> str:
