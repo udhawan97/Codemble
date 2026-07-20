@@ -827,3 +827,291 @@ def test_map_endpoint_refuses_before_a_project_is_bound() -> None:
 
     assert response.status_code == 409
     assert response.json()["detail"] == "No project selected yet."
+
+
+def test_graph_responses_are_cached_and_invalidated_by_light_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    checks = CheckService(graph, ProgressStore(graph, tmp_path / "progress"))
+    hydrations = 0
+    real_graph = checks.graph
+
+    def counting_graph():  # type: ignore[no-untyped-def]
+        nonlocal hydrations
+        hydrations += 1
+        return real_graph()
+
+    monkeypatch.setattr(checks, "graph", counting_graph)
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            StudyService(graph, cache_root=tmp_path / "cache"),
+            checks,
+        )
+    )
+
+    first = client.get("/api/graph").json()
+    second = client.get("/api/graph").json()
+    after_two_reads = hydrations
+
+    for check in generate_checks(graph, "app"):
+        client.post(
+            f"/api/regions/app/checks/{check.id}",
+            json={"selected_ids": list(check.answer_ids)},
+        )
+    lit = client.get("/api/graph").json()
+
+    assert first == second
+    assert after_two_reads == 1, "a second read must not re-hydrate or re-sort"
+    assert (
+        next(region for region in first["regions"] if region["id"] == "app")[
+            "understood"
+        ]
+        is False
+    )
+    assert (
+        next(region for region in lit["regions"] if region["id"] == "app")["understood"]
+        is True
+    ), "a cached payload must never survive a region lighting up"
+
+
+def test_graph_cache_is_invalidated_by_entrypoint_selection(tmp_path: Path) -> None:
+    for module in ("alpha", "beta"):
+        (tmp_path / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n',
+            encoding="utf-8",
+        )
+    graph = PythonAstAdapter().parse(tmp_path)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    before = client.get("/api/graph").json()
+    client.post("/api/entrypoint", json={"node_id": "beta"})
+    after = client.get("/api/graph").json()
+
+    assert before["selected_entrypoint"] is None
+    assert after["selected_entrypoint"] == "beta"
+    assert next(region for region in after["regions"] if region["id"] == "beta")["home"]
+
+
+def test_graph_cache_is_dropped_when_the_project_is_reset(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=_inline_runner,
+        )
+    )
+    client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    assert client.get("/api/graph").status_code == 200
+
+    # The shipped reset endpoint requires a confirmed JSON body (added for
+    # CSRF safety after this plan was written); a bare bodyless POST 422s and
+    # never reaches unbind, which would make this test pass for the wrong
+    # reason. See phasec-adjustments.md.
+    client.post("/api/picker/reset", json={"confirmed": True})
+
+    assert client.get("/api/graph").status_code == 409
+
+
+def test_a_mode_change_serves_the_same_cached_graph(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    before = client.get("/api/graph").json()
+    client.put("/api/mode", json={"mode": "expert"})
+
+    assert client.get("/api/graph").json() == before
+
+
+def test_map_responses_are_cached_and_invalidated_by_light_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mirrors the /api/graph cache test above: Easy mode defaults to the Map
+    layer, so it carries the same never-serve-stale-light-up requirement."""
+
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    checks = CheckService(graph, ProgressStore(graph, tmp_path / "progress"))
+    hydrations = 0
+    real_graph = checks.graph
+
+    def counting_graph():  # type: ignore[no-untyped-def]
+        nonlocal hydrations
+        hydrations += 1
+        return real_graph()
+
+    monkeypatch.setattr(checks, "graph", counting_graph)
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            StudyService(graph, cache_root=tmp_path / "cache"),
+            checks,
+        )
+    )
+
+    first = client.get("/api/map").json()
+    second = client.get("/api/map").json()
+    after_two_reads = hydrations
+
+    for check in generate_checks(graph, "app"):
+        client.post(
+            f"/api/regions/app/checks/{check.id}",
+            json={"selected_ids": list(check.answer_ids)},
+        )
+    lit = client.get("/api/map").json()
+
+    assert first == second
+    assert after_two_reads == 1, "a second map read must not re-hydrate or re-layout"
+    assert (
+        next(box for box in first["architecture"]["boxes"] if box["id"] == "app")[
+            "understood"
+        ]
+        is False
+    )
+    assert (
+        next(box for box in lit["architecture"]["boxes"] if box["id"] == "app")[
+            "understood"
+        ]
+        is True
+    ), "a cached map payload must never survive a region lighting up"
+
+
+def test_map_cache_is_invalidated_by_entrypoint_selection(tmp_path: Path) -> None:
+    for module in ("alpha", "beta"):
+        (tmp_path / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n',
+            encoding="utf-8",
+        )
+    graph = PythonAstAdapter().parse(tmp_path)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    before = client.get("/api/map").json()
+    client.post("/api/entrypoint", json={"node_id": "beta"})
+    after = client.get("/api/map").json()
+
+    assert before["architecture"]["home"] is None
+    assert after["architecture"]["home"] == "beta"
+
+
+def test_map_cache_is_dropped_when_the_project_is_reset(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=_inline_runner,
+        )
+    )
+    client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    assert client.get("/api/map").status_code == 200
+
+    client.post("/api/picker/reset", json={"confirmed": True})
+
+    assert client.get("/api/map").status_code == 409
+
+
+def test_a_mode_change_serves_the_same_cached_map(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    before = client.get("/api/map").json()
+    client.put("/api/mode", json={"mode": "expert"})
+
+    assert client.get("/api/map").json() == before
+
+
+def test_graph_and_map_share_one_hydration_after_an_invalidation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """/api/graph and /api/map each cache their own serialized payload, but
+    both read the same underlying hydrated Graph. Reading both after a cold
+    start (or after any invalidation) must hydrate once total, not once per
+    endpoint -- otherwise a learner who opens the Map (Easy mode's default)
+    and then the galaxy pays hydration twice for one page load."""
+
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    checks = CheckService(graph, ProgressStore(graph, tmp_path / "progress"))
+    hydrations = 0
+    real_graph = checks.graph
+
+    def counting_graph():  # type: ignore[no-untyped-def]
+        nonlocal hydrations
+        hydrations += 1
+        return real_graph()
+
+    monkeypatch.setattr(checks, "graph", counting_graph)
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            StudyService(graph, cache_root=tmp_path / "cache"),
+            checks,
+        )
+    )
+
+    client.get("/api/graph")
+    client.get("/api/map")
+    client.get("/api/graph")
+    client.get("/api/map")
+
+    assert hydrations == 1, "graph and map must share one hydration, not one each"
+
+
+def test_rebinding_a_different_project_after_reset_serves_its_own_graph_and_map(
+    tmp_path: Path,
+) -> None:
+    """A stale cache surviving a reset is invisible to the learner: they
+    would see the previous project's graph and map after switching, with no
+    error. The plain reset -> 409 check above cannot catch this, because
+    ``_services()`` already 409s on ``checks is None`` regardless of what the
+    cache fields hold; only serving a *second*, different project proves the
+    cache was actually dropped rather than merely gated while unbound."""
+
+    from codemble.server.app import PickerConfig
+
+    first_project = tmp_path / "first"
+    first_project.mkdir()
+    (first_project / "alpha.py").write_text(
+        "def alpha() -> None:\n    pass\n", encoding="utf-8"
+    )
+    second_project = tmp_path / "second"
+    second_project.mkdir()
+    (second_project / "bravo.py").write_text(
+        "def bravo() -> None:\n    pass\n", encoding="utf-8"
+    )
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=tmp_path),
+            parse_runner=_inline_runner,
+        )
+    )
+
+    client.post("/api/picker/select", json={"path": str(first_project)})
+    first_graph = client.get("/api/graph").json()
+    first_map = client.get("/api/map").json()
+
+    client.post("/api/picker/reset", json={"confirmed": True})
+    client.post("/api/picker/select", json={"path": str(second_project)})
+    second_graph = client.get("/api/graph").json()
+    second_map = client.get("/api/map").json()
+
+    assert {region["id"] for region in first_graph["regions"]} == {"alpha"}
+    assert {region["id"] for region in second_graph["regions"]} == {"bravo"}
+    assert {box["id"] for box in first_map["architecture"]["boxes"]} == {"alpha"}
+    assert {box["id"] for box in second_map["architecture"]["boxes"]} == {"bravo"}
