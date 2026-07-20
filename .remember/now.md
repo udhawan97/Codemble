@@ -23,3 +23,13 @@ Designed galaxy-ui overhaul + 3-phase plan (A: wire narration/project-switch, B:
 Designed & executed audience-modes impl phases 1-4: easy/expert narration, Tier 0 deterministic summaries, Ollama integration; 3 PRs merged (#26-28), tests 58→134+, phases 5-6 (graphics/docs) pending.
 ## 20:27 | friendly-wizard-claude/galaxy-ui-redesign-4f9457
 Galaxy UI redesign spec (phases A: wire dark/mode/project-reset, B: bloom/nebulae/2D map, C: 1k scale) + contract committed; CLAUDE.md Decision Log updated; phase-plan writers dispatched; subagent exec pipeline ready; baseline 131 tests✓.
+## 20:29 | friendly-wizard-claude/work-planning-f2e933
+Audience-modes phases 1-4: easy/expert dual narration (Tier 0 + Ollama), UI mode toggle, first-run onboarding; 3 backend PRs merged (#26-28, 131✓); frontend phase 4 complete.
+## 20:32 | friendly-wizard-claude/galaxy-ui-redesign-4f9457
+Galaxy redesign spec approved: 3-phase plan (A→wire narration/mode/project-switch, B→bloom/nebulae/2D-maps/easy-expert, C→threading/1k-scale); impl plan writers in progress, 131 tests green.
+## 20:34 | friendly-wizard-claude/work-planning-f2e933
+Easy/Expert audience modes implemented across 4 backend phases (PRs #26–#28 merged, 131 tests): Tier 0 structural summaries, dual-voice lens/checks, cache-key fix for mode variations, Ollama provider (Gemma4:12b default), hydration race fix; phase 4 frontend modes in progress; 6 defects found/fixed via review gates (comprehension note false claim, easy-mode check wording, file:// bypass, call-site counting bug, cache collision, focus-stealing bug).
+## 20:39 | friendly-wizard-claude/galaxy-ui-redesign-4f9457
+Galaxy UX redesign interview locked 3 phases (backend wiring, 3D living-cosmos + 2D map layer, 1k-scale parse); 27-decision register; baseline green (131 tests); phase plan writers executing, Phase A subagent rollout next.
+## 20:49 | friendly-wizard-claude/work-planning-f2e933
+Audience-modes system design & exec: easy/expert explanation voices, local Ollama + cloud API narration, deterministic Tier 0 floor; backend phases 1-3 shipped (#26-28, 58→131 tests); phase 4 frontend building.
