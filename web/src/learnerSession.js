@@ -741,12 +741,30 @@ export function createLearnerSession({
         signal: controller.signal,
       });
       if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
+      // Both Map payloads are computed *from* Home -- Architecture layers the
+      // regions by import depth from it, Workflow is the call tree rooted at
+      // it -- so a new Home invalidates the cached map exactly as a project
+      // switch does. Left alone, the header named the new Home while the Map
+      // still drew the diagram built from the old one, with no error to notice.
+      // Aborted like resetProject does, and re-checked inside loadMap, because
+      // an adapter that ignores the signal still resolves.
+      abortController(mapController);
+      mapController = null;
       commit({
         graph,
         region: defaultRegion(graph),
         entrypointError: "",
         entrypointDismissed: true,
+        mapData: null,
+        mapError: "",
       });
+      // Cleared always, refetched only when the Map is the layer on screen:
+      // ensureMapLoaded() is the same single "landing on Map fetches exactly
+      // once" gate SET_LAYER and applyMode already share, so a learner on the
+      // galaxy pays nothing and picks the new map up when they switch, while
+      // one already looking at the Map is never stranded on a permanent
+      // loading state by the clear above.
+      if (snapshot.layer === "map") await ensureMapLoaded();
       return graph;
     } catch (requestError) {
       if (

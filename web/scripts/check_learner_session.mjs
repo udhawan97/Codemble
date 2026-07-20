@@ -1347,6 +1347,112 @@ assert.equal(
 );
 mapRaceSession.dispose();
 
+// Regression: both Map payloads are computed *from* Home -- Architecture
+// layers the regions by import depth from it, Workflow is the call tree rooted
+// at it -- so SELECT_ENTRYPOINT must invalidate the cached map exactly as
+// RESET_PROJECT does. Left alone, the header named the Home the learner had
+// just chosen while the Map still drew the diagram built from the old one, and
+// nothing told them the structure on screen no longer matched the project.
+const newHomeMapPayload = {
+  schema_version: 1,
+  architecture: { home: "main.ts", boxes: [], edges: [], groups: [], unreachable: [] },
+  workflow: { root: "typescript:main.ts:main", nodes: [], unreachable: [] },
+};
+const homeMapFetches = [];
+const homeMapSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({
+      graph,
+      mode: "expert",
+      entrypoints: { "python:app.py:run": understoodGraph },
+    }),
+    async fetchMap() {
+      homeMapFetches.push(true);
+      return homeMapFetches.length === 1 ? mapPayload : newHomeMapPayload;
+    },
+  },
+  clock,
+});
+await homeMapSession.start();
+await homeMapSession.dispatch({ type: "SET_LAYER", layer: "map" });
+assert.equal(
+  homeMapSession.getSnapshot().mapData,
+  mapPayload,
+  "setup: the old Home's map really is on screen before Home changes",
+);
+
+await homeMapSession.dispatch({
+  type: "SELECT_ENTRYPOINT",
+  nodeId: "python:app.py:run",
+});
+const homeMapSnapshot = homeMapSession.getSnapshot();
+assert.notEqual(
+  homeMapSnapshot.mapData,
+  mapPayload,
+  "a new Home must not leave the previous Home's diagram on the Map",
+);
+assert.equal(
+  homeMapSnapshot.mapData,
+  newHomeMapPayload,
+  "the Map the learner is looking at is refetched for the Home they just chose",
+);
+assert.equal(homeMapSnapshot.mapError, "");
+assert.equal(
+  homeMapFetches.length,
+  2,
+  "changing Home refetches the visible map exactly once, never a duplicate",
+);
+homeMapSession.dispose();
+
+// The other half of the same fix: a map fetch still in flight for the *old*
+// Home when the learner picks a new one must be aborted and must not commit
+// when it later resolves -- the same class as the RESET_PROJECT races above,
+// and the abort alone would miss an adapter that resolves instead of rejecting.
+let resolveOldHomeMap;
+const oldHomeMap = new Promise((resolve) => {
+  resolveOldHomeMap = resolve;
+});
+const homeMapRaceFetches = [];
+const homeMapRaceSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({
+      graph,
+      mode: "expert",
+      entrypoints: { "python:app.py:run": understoodGraph },
+    }),
+    fetchMap() {
+      homeMapRaceFetches.push(true);
+      return homeMapRaceFetches.length === 1
+        ? oldHomeMap
+        : Promise.resolve(newHomeMapPayload);
+    },
+  },
+  clock,
+});
+await homeMapRaceSession.start();
+const oldHomeMapRequest = homeMapRaceSession.dispatch({
+  type: "SET_LAYER",
+  layer: "map",
+});
+await homeMapRaceSession.dispatch({
+  type: "SELECT_ENTRYPOINT",
+  nodeId: "python:app.py:run",
+});
+assert.equal(
+  homeMapRaceSession.getSnapshot().mapData,
+  newHomeMapPayload,
+  "the new Home's map lands while the old Home's fetch is still outstanding",
+);
+
+resolveOldHomeMap(mapPayload);
+await oldHomeMapRequest;
+assert.equal(
+  homeMapRaceSession.getSnapshot().mapData,
+  newHomeMapPayload,
+  "a late map response for the previous Home must not repaint the new Home's Map",
+);
+homeMapRaceSession.dispose();
+
 // Regression: the mode toggle and Switch project sit in the same always-
 // rendered header, so a learner can flip Easy/Expert and confirm the switch
 // before PUT /api/mode answers. If that write then fails, setMode's rollback
