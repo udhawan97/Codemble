@@ -34,8 +34,14 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/assets/demo.gif" alt="Codemble maps a project, switches between the galaxy and the map, runs graph-derived checks, and lights a system" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: eighty dim star systems parsed from real source, with a legend, language focus buttons, and a notice that two files are unchartable because their parser reported a syntax error" width="960">
 </p>
+
+<p align="center"><sub>
+  Galaxy level. Every system is one module; size is lines of code, brightness is
+  how many distinct structures call it. Files the parser could not read stay
+  visible and say so.
+</sub></p>
 
 > [!IMPORTANT]
 > **Codemble is in its Phase 1 tester release.** It maps Python,
@@ -110,16 +116,6 @@ of your own code becomes a sky you understand.
 ## What it looks like
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: 80 dim star systems parsed from real source, with a legend, language focus buttons, and a notice that two files are unchartable because their parser reported a syntax error" width="900">
-</p>
-
-<p align="center"><sub>
-  Galaxy level. Every system is one module; size is lines of code, brightness is
-  how many distinct structures call it. Files the parser could not read stay
-  visible and say so.
-</sub></p>
-
-<p align="center">
   <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, showing its functions and classes in orbits with call edges and a keyboard focus reticle" width="900">
 </p>
 
@@ -132,8 +128,8 @@ of your own code becomes a sky you understand.
 </p>
 
 <p align="center"><sub>
-  Study. The structural summary, the connections, the source, and the Lens all
-  come from the parser — the panel above has no model configured at all.
+  Study. Everything on this panel except the narration comes from the parser —
+  and this one has no model configured at all.
 </sub></p>
 
 ## Two layers over one graph
