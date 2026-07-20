@@ -10,6 +10,13 @@ const FIRST_RUN_CHOICES = [
   { mode: "expert", label: "I build software" },
 ];
 
+// The persistent toggle is post-onboarding chrome, so the short mode names
+// are fine here even though they're banned above.
+const TOGGLE_OPTIONS = [
+  { mode: "easy", label: "Easy" },
+  { mode: "expert", label: "Expert" },
+];
+
 /**
  * Two states, one component:
  * - First run (`modeChosen === false`): a modal question. There is no way
@@ -79,28 +86,19 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
     <fieldset className="mode-toggle">
       <legend className="mode-toggle__label">Audience</legend>
       <div className="mode-toggle__options">
-        <label>
-          <input
-            type="radio"
-            name="audience-mode"
-            value="easy"
-            checked={mode === "easy"}
-            ref={mode === "easy" ? checkedRadioRef : undefined}
-            onChange={() => choose("easy")}
-          />
-          <span>Easy</span>
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="audience-mode"
-            value="expert"
-            checked={mode === "expert"}
-            ref={mode === "expert" ? checkedRadioRef : undefined}
-            onChange={() => choose("expert")}
-          />
-          <span>Expert</span>
-        </label>
+        {TOGGLE_OPTIONS.map((option) => (
+          <label key={option.mode}>
+            <input
+              type="radio"
+              name="audience-mode"
+              value={option.mode}
+              checked={mode === option.mode}
+              ref={mode === option.mode ? checkedRadioRef : undefined}
+              onChange={() => choose(option.mode)}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
       </div>
     </fieldset>
   );
