@@ -8,6 +8,12 @@ import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } f
 
 const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
+// 3d-force-graph mutates the scene on its own render tick, not the React
+// commit that flips `level` to GALAXY, so the newly-lit system's group may
+// not exist for a frame or two. A handful of retry frames covers that
+// without hanging forever if the target genuinely never appears (e.g. the
+// region is hidden by the current language focus).
+const MAX_DAWN_RETRY_FRAMES = 6;
 
 export function GalaxyCanvas({
   graph,
@@ -15,16 +21,20 @@ export function GalaxyCanvas({
   region,
   selectedNode,
   hoverNodeId,
-  litRegionId,
+  pendingDawnRegionId,
   onHoverNode,
   onAdvance,
   onRetreat,
+  onDawnConsumed,
 }) {
   const hostRef = useRef(null);
   const rendererRef = useRef(null);
   const advanceRef = useRef(onAdvance);
   const retreatRef = useRef(onRetreat);
   const hoverRef = useRef(onHoverNode);
+  const pendingDawnRef = useRef(pendingDawnRegionId);
+  const onDawnConsumedRef = useRef(onDawnConsumed);
+  const dawnStartedRef = useRef(null);
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
   const wheelLockRef = useRef(0);
   const dressingRef = useRef(null);
@@ -44,7 +54,9 @@ export function GalaxyCanvas({
     advanceRef.current = onAdvance;
     retreatRef.current = onRetreat;
     hoverRef.current = onHoverNode;
-  }, [onAdvance, onRetreat, onHoverNode]);
+    pendingDawnRef.current = pendingDawnRegionId;
+    onDawnConsumedRef.current = onDawnConsumed;
+  }, [onAdvance, onRetreat, onHoverNode, pendingDawnRegionId, onDawnConsumed]);
 
   function nodeColor(node) {
     const { activeId, neighborIds } = highlightRef.current;
@@ -195,15 +207,47 @@ export function GalaxyCanvas({
     };
   }, [graph.file_hashes, palette]);
 
+  // Keyed on `level` (not pendingDawnRegionId) so a normal galaxy-level
+  // re-render never re-triggers this: the region to play is read from a ref
+  // instead. That matters because this effect consumes the pending signal
+  // itself -- if `pendingDawnRegionId` were a dependency, clearing it would
+  // change that dependency and tear this same effect straight back down,
+  // cancelling the dawn a frame after starting it. dawnStartedRef then makes
+  // "exactly once" airtight even before that consume round-trip lands: a
+  // second GALAXY entry for the same region id is a guaranteed no-op.
   useEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer || !litRegionId) return undefined;
-    return runNebulaDawn({
-      scene: renderer.scene(),
-      regionId: litRegionId,
-      palette,
-    });
-  }, [litRegionId, palette]);
+    if (!renderer || level !== LEVELS.GALAXY) return undefined;
+    const regionId = pendingDawnRef.current;
+    if (!regionId || dawnStartedRef.current === regionId) return undefined;
+    dawnStartedRef.current = regionId;
+    onDawnConsumedRef.current?.(regionId);
+
+    let cancelled = false;
+    let stopDawn = () => {};
+    // requestAnimationFrame always calls its callback with a timestamp, so a
+    // default parameter (`frame = 0`) never applies on the first tick -- the
+    // retry count must be threaded through explicitly instead, or the very
+    // first check reads as "budget already exhausted" and the retry never
+    // actually retries.
+    const attempt = (frame) => {
+      if (cancelled) return;
+      const scene = renderer.scene();
+      const found = Boolean(scene.getObjectByName(`codemble-system-${regionId}`));
+      if (found || frame >= MAX_DAWN_RETRY_FRAMES) {
+        stopDawn = runNebulaDawn({ scene, regionId, palette });
+        return;
+      }
+      frameHandle = requestAnimationFrame(() => attempt(frame + 1));
+    };
+    let frameHandle = requestAnimationFrame(() => attempt(0));
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameHandle);
+      stopDawn();
+    };
+  }, [level, palette]);
 
   useEffect(() => {
     // At study level the selection is the subject even without a pointer, so

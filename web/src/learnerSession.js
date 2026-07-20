@@ -37,6 +37,7 @@ export function createLearnerSession({
     entrypointDismissed: false,
     entrypointError: "",
     litRegionId: null,
+    pendingDawnRegionId: null,
     languageFocus: "all",
     picker: null,
     layer: "galaxy",
@@ -274,6 +275,7 @@ export function createLearnerSession({
       entrypointDismissed: false,
       entrypointError: "",
       litRegionId: null,
+      pendingDawnRegionId: null,
       languageFocus: "all",
       llmStatus: null,
       picker: null,
@@ -314,6 +316,9 @@ export function createLearnerSession({
         return undefined;
       case "SUBMIT_CHECK":
         return submitCheck(event.checkId, event.selectedIds);
+      case "CONSUME_DAWN":
+        consumeDawn(event.regionId);
+        return undefined;
       case "SELECT_ENTRYPOINT":
         return selectEntrypoint(event.nodeId);
       case "DISMISS_ENTRYPOINT":
@@ -659,11 +664,23 @@ export function createLearnerSession({
 
   function illuminateRegion(regionId) {
     if (illuminationTimer !== null) clock.clearTimeout(illuminationTimer);
-    commit({ litRegionId: regionId });
+    commit({ litRegionId: regionId, pendingDawnRegionId: regionId });
     illuminationTimer = clock.setTimeout(() => {
       illuminationTimer = null;
       if (snapshot.litRegionId === regionId) commit({ litRegionId: null });
     }, 520);
+  }
+
+  // The dawn's pending flag is deliberately not on the toast's timer above:
+  // returning to the galaxy can take over a second (measured), well past the
+  // toast's 520ms window. It is discarded by consumption, not by a clock --
+  // GalaxyCanvas calls this the moment it actually attempts to play the dawn
+  // (see CONSUME_DAWN), which happens at most once, because every route to a
+  // *different* system passes back through Galaxy level first. A light-up
+  // the learner abandons entirely (switches or resets the project) is
+  // discarded by resetProject() below instead of lingering for the next one.
+  function consumeDawn(regionId) {
+    if (snapshot.pendingDawnRegionId === regionId) commit({ pendingDawnRegionId: null });
   }
 
   function dispose() {

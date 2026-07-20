@@ -146,9 +146,34 @@ assert.equal(snapshot.checkData, passedChecks);
 assert.equal(snapshot.graph, understoodGraph);
 assert.equal(snapshot.region.understood, true);
 assert.equal(snapshot.litRegionId, "app.py");
+assert.equal(
+  snapshot.pendingDawnRegionId,
+  "app.py",
+  "a light-up also queues a pending dawn, independent of the toast",
+);
 assert.equal(pendingTimers.size, 1);
 pendingTimers.values().next().value();
 assert.equal(session.getSnapshot().litRegionId, null);
+assert.equal(
+  session.getSnapshot().pendingDawnRegionId,
+  "app.py",
+  "the pending dawn outlives the toast's 520ms timer -- it is consumed when the dawn actually runs, never timed out",
+);
+
+// A stale CONSUME_DAWN for some other region id (e.g. a race with a newer
+// light-up) must leave this pending dawn alone.
+await session.dispatch({ type: "CONSUME_DAWN", regionId: "does-not-match" });
+assert.equal(
+  session.getSnapshot().pendingDawnRegionId,
+  "app.py",
+  "a mismatched CONSUME_DAWN leaves the real pending dawn untouched",
+);
+await session.dispatch({ type: "CONSUME_DAWN", regionId: "app.py" });
+assert.equal(
+  session.getSnapshot().pendingDawnRegionId,
+  null,
+  "CONSUME_DAWN clears the pending dawn once GalaxyCanvas has claimed it",
+);
 
 await session.dispatch({ type: "RETREAT" });
 assert.equal(
@@ -205,6 +230,38 @@ assert(notifications > 0);
 
 unsubscribe();
 session.dispose();
+
+// Regression: a pending dawn must not survive a project reset -- it is
+// discarded, not carried into whatever project the learner picks next.
+const dawnResetSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({
+    graph,
+    checks: { "app.py": firstChecks },
+    submissions: {
+      "app.py:calls": {
+        result: { correct: true, region_understood: true },
+        graph: understoodGraph,
+        checks: passedChecks,
+      },
+    },
+  }),
+  clock,
+});
+await dawnResetSession.start();
+await dawnResetSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await dawnResetSession.dispatch({
+  type: "SUBMIT_CHECK",
+  checkId: "calls",
+  selectedIds: ["python:app.py:run"],
+});
+assert.equal(dawnResetSession.getSnapshot().pendingDawnRegionId, "app.py");
+await dawnResetSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  dawnResetSession.getSnapshot().pendingDawnRegionId,
+  null,
+  "a project reset discards a pending dawn instead of carrying it into the next project",
+);
+dawnResetSession.dispose();
 
 let resolveLateStudy;
 const lateStudy = new Promise((resolve) => {

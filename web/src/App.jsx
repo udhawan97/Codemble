@@ -47,6 +47,7 @@ export function App() {
     litRegionId,
     llmStatus,
     mode,
+    pendingDawnRegionId,
     picker,
     projectName,
     region,
@@ -170,10 +171,11 @@ export function App() {
           region={region}
           selectedNode={selectedNode}
           hoverNodeId={hoverNodeId}
-          litRegionId={litRegionId}
+          pendingDawnRegionId={pendingDawnRegionId}
           onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
           onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
           onRetreat={() => session.dispatch({ type: "RETREAT" })}
+          onDawnConsumed={(regionId) => session.dispatch({ type: "CONSUME_DAWN", regionId })}
         />
         <aside className="map-legend" aria-label="Galaxy legend">
           <span>
