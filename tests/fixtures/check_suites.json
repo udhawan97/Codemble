@@ -1,0 +1,1240 @@
+{
+  "impact": {
+    "alpha": [
+      {
+        "answer_ids": [
+          "helpers.log"
+        ],
+        "evidence": [
+          "alpha.py:5"
+        ],
+        "id": "0da63bb88617d730",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "helpers.log",
+            "label": "helpers.log"
+          },
+          {
+            "id": "alpha.go",
+            "label": "alpha.go"
+          },
+          {
+            "id": "beta.go",
+            "label": "beta.go"
+          },
+          {
+            "id": "gamma.go",
+            "label": "gamma.go"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does alpha.go call first?",
+          "expert": "Which structure does alpha.go call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "helpers"
+        ],
+        "evidence": [
+          "alpha.py:1"
+        ],
+        "id": "15ea2df4b3eb51dc",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "helpers",
+            "label": "helpers"
+          },
+          {
+            "id": "alpha",
+            "label": "alpha"
+          },
+          {
+            "id": "beta",
+            "label": "beta"
+          },
+          {
+            "id": "gamma",
+            "label": "gamma"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files does alpha bring in first?",
+          "expert": "Which project module does alpha import first?"
+        }
+      }
+    ],
+    "beta": [
+      {
+        "answer_ids": [
+          "helpers.log"
+        ],
+        "evidence": [
+          "beta.py:5"
+        ],
+        "id": "2cae5301aa069f53",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "helpers.log",
+            "label": "helpers.log"
+          },
+          {
+            "id": "alpha.go",
+            "label": "alpha.go"
+          },
+          {
+            "id": "beta.go",
+            "label": "beta.go"
+          },
+          {
+            "id": "gamma.go",
+            "label": "gamma.go"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does beta.go call first?",
+          "expert": "Which structure does beta.go call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "helpers"
+        ],
+        "evidence": [
+          "beta.py:1"
+        ],
+        "id": "34c592ec400a169a",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "helpers",
+            "label": "helpers"
+          },
+          {
+            "id": "alpha",
+            "label": "alpha"
+          },
+          {
+            "id": "beta",
+            "label": "beta"
+          },
+          {
+            "id": "gamma",
+            "label": "gamma"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files does beta bring in first?",
+          "expert": "Which project module does beta import first?"
+        }
+      }
+    ],
+    "gamma": [
+      {
+        "answer_ids": [
+          "helpers.log"
+        ],
+        "evidence": [
+          "gamma.py:5"
+        ],
+        "id": "8e56190ed1558db1",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "helpers.log",
+            "label": "helpers.log"
+          },
+          {
+            "id": "alpha.go",
+            "label": "alpha.go"
+          },
+          {
+            "id": "beta.go",
+            "label": "beta.go"
+          },
+          {
+            "id": "gamma.go",
+            "label": "gamma.go"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does gamma.go call first?",
+          "expert": "Which structure does gamma.go call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "helpers"
+        ],
+        "evidence": [
+          "gamma.py:1"
+        ],
+        "id": "2d43406b06820e20",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "helpers",
+            "label": "helpers"
+          },
+          {
+            "id": "alpha",
+            "label": "alpha"
+          },
+          {
+            "id": "beta",
+            "label": "beta"
+          },
+          {
+            "id": "gamma",
+            "label": "gamma"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files does gamma bring in first?",
+          "expert": "Which project module does gamma import first?"
+        }
+      }
+    ],
+    "helpers": [
+      {
+        "answer_ids": [
+          "alpha",
+          "beta",
+          "gamma",
+          "noisy"
+        ],
+        "evidence": [
+          "alpha.py:1",
+          "beta.py:1",
+          "gamma.py:1",
+          "noisy.py:1"
+        ],
+        "id": "ee5002fa9e7f35b2",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "alpha",
+            "label": "alpha"
+          },
+          {
+            "id": "beta",
+            "label": "beta"
+          },
+          {
+            "id": "gamma",
+            "label": "gamma"
+          },
+          {
+            "id": "noisy",
+            "label": "noisy"
+          },
+          {
+            "id": "helpers",
+            "label": "helpers"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files brings in helpers directly?",
+          "expert": "Which project module imports helpers directly?"
+        }
+      },
+      {
+        "answer_ids": [
+          "alpha.go",
+          "beta.go",
+          "gamma.go"
+        ],
+        "evidence": [
+          "alpha.py:5",
+          "alpha.py:6",
+          "beta.py:5",
+          "gamma.py:5"
+        ],
+        "id": "5bc8c8f6252275bf",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "alpha.go",
+            "label": "alpha.go"
+          },
+          {
+            "id": "beta.go",
+            "label": "beta.go"
+          },
+          {
+            "id": "gamma.go",
+            "label": "gamma.go"
+          },
+          {
+            "id": "helpers.cache_key",
+            "label": "helpers.cache_key"
+          },
+          {
+            "id": "helpers.log",
+            "label": "helpers.log"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses helpers.log directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on helpers.log and could break if it disappeared?"
+        }
+      }
+    ],
+    "noisy": [
+      {
+        "answer_ids": [
+          "helpers.cache_key"
+        ],
+        "evidence": [
+          "noisy.py:5"
+        ],
+        "id": "e31fabd2b6e9a4f3",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "helpers.cache_key",
+            "label": "helpers.cache_key"
+          },
+          {
+            "id": "alpha.go",
+            "label": "alpha.go"
+          },
+          {
+            "id": "beta.go",
+            "label": "beta.go"
+          },
+          {
+            "id": "gamma.go",
+            "label": "gamma.go"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does noisy.spam call first?",
+          "expert": "Which structure does noisy.spam call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "helpers"
+        ],
+        "evidence": [
+          "noisy.py:1"
+        ],
+        "id": "ccf38c8f39e1afd8",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "helpers",
+            "label": "helpers"
+          },
+          {
+            "id": "alpha",
+            "label": "alpha"
+          },
+          {
+            "id": "beta",
+            "label": "beta"
+          },
+          {
+            "id": "gamma",
+            "label": "gamma"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files does noisy bring in first?",
+          "expert": "Which project module does noisy import first?"
+        }
+      }
+    ]
+  },
+  "polyglot": {
+    "javascript:src/legacy.js": [
+      {
+        "answer_ids": [
+          "javascript:src/local.js::legacyHelper"
+        ],
+        "evidence": [
+          "src/legacy.js:4"
+        ],
+        "id": "e0bf9dc95fd0df35",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "javascript:src/local.js::legacyHelper",
+            "label": "javascript:src/local.js::legacyHelper"
+          },
+          {
+            "id": "javascript:src/legacy.js::run",
+            "label": "javascript:src/legacy.js::run"
+          },
+          {
+            "id": "typescript:src/broken.ts::visible",
+            "label": "typescript:src/broken.ts::visible"
+          },
+          {
+            "id": "typescript:src/main.ts::main",
+            "label": "typescript:src/main.ts::main"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does javascript:src/legacy.js::run call first?",
+          "expert": "Which structure does javascript:src/legacy.js::run call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "javascript:src/local.js"
+        ],
+        "evidence": [
+          "src/legacy.js:1"
+        ],
+        "id": "5c5cb8674b1f3723",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "javascript:src/local.js",
+            "label": "javascript:src/local.js"
+          },
+          {
+            "id": "javascript:src/legacy.js",
+            "label": "javascript:src/legacy.js"
+          },
+          {
+            "id": "typescript:src/broken.ts",
+            "label": "typescript:src/broken.ts"
+          },
+          {
+            "id": "typescript:src/main.ts",
+            "label": "typescript:src/main.ts"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files does javascript:src/legacy.js bring in first?",
+          "expert": "Which project module does javascript:src/legacy.js import first?"
+        }
+      }
+    ],
+    "javascript:src/local.js": [
+      {
+        "answer_ids": [
+          "javascript:src/legacy.js"
+        ],
+        "evidence": [
+          "src/legacy.js:1"
+        ],
+        "id": "b54cd0b46fc97d97",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "javascript:src/legacy.js",
+            "label": "javascript:src/legacy.js"
+          },
+          {
+            "id": "javascript:src/local.js",
+            "label": "javascript:src/local.js"
+          },
+          {
+            "id": "typescript:src/broken.ts",
+            "label": "typescript:src/broken.ts"
+          },
+          {
+            "id": "typescript:src/main.ts",
+            "label": "typescript:src/main.ts"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files brings in javascript:src/local.js directly?",
+          "expert": "Which project module imports javascript:src/local.js directly?"
+        }
+      },
+      {
+        "answer_ids": [
+          "javascript:src/legacy.js::run"
+        ],
+        "evidence": [
+          "src/legacy.js:4"
+        ],
+        "id": "d848e814cbcc3f2c",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "javascript:src/legacy.js::run",
+            "label": "javascript:src/legacy.js::run"
+          },
+          {
+            "id": "javascript:src/local.js::legacyHelper",
+            "label": "javascript:src/local.js::legacyHelper"
+          },
+          {
+            "id": "typescript:src/broken.ts::visible",
+            "label": "typescript:src/broken.ts::visible"
+          },
+          {
+            "id": "typescript:src/main.ts::main",
+            "label": "typescript:src/main.ts::main"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses javascript:src/local.js::legacyHelper directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on javascript:src/local.js::legacyHelper and could break if it disappeared?"
+        }
+      }
+    ],
+    "typescript:src/broken.ts": [],
+    "typescript:src/main.ts": [
+      {
+        "answer_ids": [
+          "typescript:src/main.ts"
+        ],
+        "evidence": [
+          "src/main.ts:1"
+        ],
+        "id": "64d9d4e4dd1b9343",
+        "kind": "entrypoint",
+        "options": [
+          {
+            "id": "typescript:src/main.ts",
+            "label": "typescript:src/main.ts"
+          },
+          {
+            "id": "javascript:src/legacy.js",
+            "label": "javascript:src/legacy.js"
+          },
+          {
+            "id": "javascript:src/legacy.js::run",
+            "label": "javascript:src/legacy.js::run"
+          },
+          {
+            "id": "javascript:src/local.js",
+            "label": "javascript:src/local.js"
+          }
+        ],
+        "prompt": {
+          "easy": "Which part of your code does the program start from?",
+          "expert": "Which parser-ranked structure is selected as Home for this run?"
+        }
+      }
+    ],
+    "typescript:src/reexport.ts": [],
+    "typescript:src/util.ts": [
+      {
+        "answer_ids": [
+          "typescript:src/util.ts::normalize"
+        ],
+        "evidence": [
+          "src/util.ts:23"
+        ],
+        "id": "fdb79351a16cf448",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "typescript:src/util.ts::normalize",
+            "label": "typescript:src/util.ts::normalize"
+          },
+          {
+            "id": "javascript:src/legacy.js::run",
+            "label": "javascript:src/legacy.js::run"
+          },
+          {
+            "id": "javascript:src/local.js::legacyHelper",
+            "label": "javascript:src/local.js::legacyHelper"
+          },
+          {
+            "id": "typescript:src/broken.ts::visible",
+            "label": "typescript:src/broken.ts::visible"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does typescript:src/util.ts::Formatter.format call first?",
+          "expert": "Which structure does typescript:src/util.ts::Formatter.format call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "typescript:src/util.ts::Formatter.format",
+          "typescript:src/util.ts::helper"
+        ],
+        "evidence": [
+          "src/util.ts:23",
+          "src/util.ts:18"
+        ],
+        "id": "1c157e69fbd8bff3",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "typescript:src/util.ts::Formatter.format",
+            "label": "typescript:src/util.ts::Formatter.format"
+          },
+          {
+            "id": "typescript:src/util.ts::helper",
+            "label": "typescript:src/util.ts::helper"
+          },
+          {
+            "id": "javascript:src/legacy.js::run",
+            "label": "javascript:src/legacy.js::run"
+          },
+          {
+            "id": "javascript:src/local.js::legacyHelper",
+            "label": "javascript:src/local.js::legacyHelper"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses typescript:src/util.ts::normalize directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on typescript:src/util.ts::normalize and could break if it disappeared?"
+        }
+      }
+    ],
+    "typescript:src/widget.tsx": []
+  },
+  "sampleproj": {
+    "ambiguous": [],
+    "api": [],
+    "app": [
+      {
+        "answer_ids": [
+          "pkg.service.Service"
+        ],
+        "evidence": [
+          "app.py:9"
+        ],
+        "id": "080de81ec617780e",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "pkg.service.Service",
+            "label": "pkg.service.Service"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does app.main call first?",
+          "expert": "Which structure does app.main call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "cli"
+        ],
+        "evidence": [
+          "cli.py:1"
+        ],
+        "id": "6abe6f84e6d5979f",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "cli",
+            "label": "cli"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          },
+          {
+            "id": "app",
+            "label": "app"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files brings in app directly?",
+          "expert": "Which project module imports app directly?"
+        }
+      },
+      {
+        "answer_ids": [
+          "cli.launch"
+        ],
+        "evidence": [
+          "cli.py:5"
+        ],
+        "id": "1ac65a0ef0b6be20",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "pkg.helpers.log",
+            "label": "pkg.helpers.log"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses app.main directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on app.main and could break if it disappeared?"
+        }
+      },
+      {
+        "answer_ids": [
+          "app"
+        ],
+        "evidence": [
+          "app.py:1"
+        ],
+        "id": "fd3a35d545b75c5d",
+        "kind": "entrypoint",
+        "options": [
+          {
+            "id": "app",
+            "label": "app"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          }
+        ],
+        "prompt": {
+          "easy": "Which part of your code does the program start from?",
+          "expert": "Which parser-ranked structure is selected as Home for this run?"
+        }
+      }
+    ],
+    "broken": [],
+    "cli": [
+      {
+        "answer_ids": [
+          "app.main"
+        ],
+        "evidence": [
+          "cli.py:5"
+        ],
+        "id": "9fb4c5bade1c1cea",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          },
+          {
+            "id": "pkg.helpers.log",
+            "label": "pkg.helpers.log"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does cli.launch call first?",
+          "expert": "Which structure does cli.launch call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "app"
+        ],
+        "evidence": [
+          "cli.py:1"
+        ],
+        "id": "70d6f06a4248dc5d",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "app",
+            "label": "app"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          },
+          {
+            "id": "broken",
+            "label": "broken"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files does cli bring in first?",
+          "expert": "Which project module does cli import first?"
+        }
+      }
+    ],
+    "pkg": [
+      {
+        "answer_ids": [
+          "pkg.service"
+        ],
+        "evidence": [
+          "pkg/__init__.py:1"
+        ],
+        "id": "3207f65dc1ddd94f",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "pkg.service",
+            "label": "pkg.service"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          },
+          {
+            "id": "app",
+            "label": "app"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files does pkg bring in first?",
+          "expert": "Which project module does pkg import first?"
+        }
+      }
+    ],
+    "pkg.helpers": [
+      {
+        "answer_ids": [
+          "pkg.util.normalize"
+        ],
+        "evidence": [
+          "pkg/helpers.py:5"
+        ],
+        "id": "af5752ee9c7a6c7c",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "pkg.util.normalize",
+            "label": "pkg.util.normalize"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does pkg.helpers.log call first?",
+          "expert": "Which structure does pkg.helpers.log call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "app"
+        ],
+        "evidence": [
+          "app.py:3"
+        ],
+        "id": "a72290a56f66c306",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "app",
+            "label": "app"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          },
+          {
+            "id": "broken",
+            "label": "broken"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files brings in pkg.helpers directly?",
+          "expert": "Which project module imports pkg.helpers directly?"
+        }
+      },
+      {
+        "answer_ids": [
+          "app.main"
+        ],
+        "evidence": [
+          "app.py:11"
+        ],
+        "id": "4fa06f6f0a072f50",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          },
+          {
+            "id": "pkg.helpers.log",
+            "label": "pkg.helpers.log"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses pkg.helpers.log directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on pkg.helpers.log and could break if it disappeared?"
+        }
+      }
+    ],
+    "pkg.service": [
+      {
+        "answer_ids": [
+          "pkg.util.normalize"
+        ],
+        "evidence": [
+          "pkg/service.py:8"
+        ],
+        "id": "7eafac94db469f41",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "pkg.util.normalize",
+            "label": "pkg.util.normalize"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does pkg.service.Service.run call first?",
+          "expert": "Which structure does pkg.service.Service.run call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "app",
+          "pkg"
+        ],
+        "evidence": [
+          "app.py:4",
+          "pkg/__init__.py:1"
+        ],
+        "id": "231a9a9018084235",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "app",
+            "label": "app"
+          },
+          {
+            "id": "pkg",
+            "label": "pkg"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files brings in pkg.service directly?",
+          "expert": "Which project module imports pkg.service directly?"
+        }
+      },
+      {
+        "answer_ids": [
+          "app.main"
+        ],
+        "evidence": [
+          "app.py:9"
+        ],
+        "id": "a3a2836c4ec1c3bf",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          },
+          {
+            "id": "pkg.helpers.log",
+            "label": "pkg.helpers.log"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses pkg.service.Service directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on pkg.service.Service and could break if it disappeared?"
+        }
+      }
+    ],
+    "pkg.util": [
+      {
+        "answer_ids": [
+          "pkg.util.normalize"
+        ],
+        "evidence": [
+          "pkg/util.py:2"
+        ],
+        "id": "bb9b2be4efd6dcc7",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "pkg.util.normalize",
+            "label": "pkg.util.normalize"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does pkg.util.greet call first?",
+          "expert": "Which structure does pkg.util.greet call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "app",
+          "pkg.helpers",
+          "pkg.service"
+        ],
+        "evidence": [
+          "app.py:5",
+          "pkg/helpers.py:1",
+          "pkg/service.py:3"
+        ],
+        "id": "e215588da9c0127e",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "app",
+            "label": "app"
+          },
+          {
+            "id": "pkg.helpers",
+            "label": "pkg.helpers"
+          },
+          {
+            "id": "pkg.service",
+            "label": "pkg.service"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files brings in pkg.util directly?",
+          "expert": "Which project module imports pkg.util directly?"
+        }
+      },
+      {
+        "answer_ids": [
+          "pkg.helpers.log",
+          "pkg.service.Service.run",
+          "pkg.util.greet"
+        ],
+        "evidence": [
+          "pkg/helpers.py:5",
+          "pkg/service.py:8",
+          "pkg/util.py:2"
+        ],
+        "id": "8c546d24529f5e0d",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "pkg.helpers.log",
+            "label": "pkg.helpers.log"
+          },
+          {
+            "id": "pkg.service.Service.run",
+            "label": "pkg.service.Service.run"
+          },
+          {
+            "id": "pkg.util.greet",
+            "label": "pkg.util.greet"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses pkg.util.normalize directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on pkg.util.normalize and could break if it disappeared?"
+        }
+      }
+    ],
+    "runner.__main__": [],
+    "shared": [
+      {
+        "answer_ids": [
+          "shared.duplicate"
+        ],
+        "evidence": [
+          "shared.py:6"
+        ],
+        "id": "de447d44026c70c9",
+        "kind": "first-call",
+        "options": [
+          {
+            "id": "shared.duplicate",
+            "label": "shared.duplicate"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          },
+          {
+            "id": "cli.launch",
+            "label": "cli.launch"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code does shared.choose call first?",
+          "expert": "Which structure does shared.choose call first?"
+        }
+      },
+      {
+        "answer_ids": [
+          "pkg.service"
+        ],
+        "evidence": [
+          "pkg/service.py:1"
+        ],
+        "id": "71c7f9cab91f5105",
+        "kind": "direct-importer",
+        "options": [
+          {
+            "id": "pkg.service",
+            "label": "pkg.service"
+          },
+          {
+            "id": "ambiguous",
+            "label": "ambiguous"
+          },
+          {
+            "id": "api",
+            "label": "api"
+          },
+          {
+            "id": "app",
+            "label": "app"
+          }
+        ],
+        "prompt": {
+          "easy": "Which of your files brings in shared directly?",
+          "expert": "Which project module imports shared directly?"
+        }
+      },
+      {
+        "answer_ids": [
+          "pkg.service.Service.run",
+          "shared.choose"
+        ],
+        "evidence": [
+          "pkg/service.py:9",
+          "shared.py:6"
+        ],
+        "id": "42d78874f58128ae",
+        "kind": "removal-impact",
+        "options": [
+          {
+            "id": "pkg.service.Service.run",
+            "label": "pkg.service.Service.run"
+          },
+          {
+            "id": "shared.choose",
+            "label": "shared.choose"
+          },
+          {
+            "id": "ambiguous.invoke",
+            "label": "ambiguous.invoke"
+          },
+          {
+            "id": "app.main",
+            "label": "app.main"
+          }
+        ],
+        "prompt": {
+          "easy": "Which piece of code uses shared.duplicate directly and would break if it disappeared?",
+          "expert": "Which structure directly depends on shared.duplicate and could break if it disappeared?"
+        }
+      }
+    ]
+  }
+}
