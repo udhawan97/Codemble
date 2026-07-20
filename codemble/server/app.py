@@ -72,6 +72,16 @@ class _ProjectState:
         self.studies = StudyService.from_environment(graph)
         self.checks = CheckService(graph)
 
+    def unbind(self) -> None:
+        """Drop the bound project so the picker can arm again.
+
+        Progress is already on disk per project root, so releasing the live
+        services loses nothing a re-select cannot restore.
+        """
+
+        self.checks = None
+        self.studies = None
+
 
 def create_app(
     graph: Graph | None = None,
@@ -101,6 +111,16 @@ def create_app(
     @app.get("/api/picker/state")
     def get_picker_state() -> dict[str, str]:
         return {"state": "ready" if state.bound else "unpicked"}
+
+    @app.post("/api/picker/reset")
+    def reset_picker() -> dict[str, str]:
+        if picker is None:
+            raise HTTPException(
+                status_code=409,
+                detail="This project was opened without a picker; restart Codemble to switch.",
+            )
+        state.unbind()
+        return {"state": "unpicked"}
 
     @app.get("/api/llm/status")
     def get_llm_status() -> dict[str, object]:

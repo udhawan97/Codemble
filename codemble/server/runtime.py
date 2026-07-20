@@ -34,7 +34,15 @@ def serve_project(
     graph = ProjectParser().parse(path, entrypoint=entrypoint)
     selected_port = port or available_port(host)
     url = f"http://{host}:{selected_port}"
-    app = create_app(graph, allowed_hosts=("127.0.0.1", "localhost", "testserver", host))
+    # A PickerConfig rides along even for `codemble <path>` so the header's
+    # Switch project control can re-arm the picker without a process restart.
+    # The CLI --entrypoint deliberately does not carry over: it was chosen for
+    # the named project, not for whatever the learner picks next.
+    app = create_app(
+        graph,
+        picker=PickerConfig(browse_root=Path.home()),
+        allowed_hosts=("127.0.0.1", "localhost", "testserver", host),
+    )
     print(
         f"Codemble mapped {len(graph.nodes)} nodes across {len(graph.regions)} systems.\n"
         f"Open {url}"

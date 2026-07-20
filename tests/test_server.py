@@ -494,3 +494,60 @@ def test_foreign_host_headers_are_rejected(tmp_path: Path) -> None:
 
     assert rebinding.status_code == 400
     assert client.get("/api/graph").status_code == 200
+
+
+def test_picker_reset_unbinds_and_re_arms_the_picker(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+
+    first = client.post("/api/picker/reset")
+    second = client.post("/api/picker/reset")
+
+    assert first.status_code == 200
+    assert first.json() == {"state": "unpicked"}
+    assert second.status_code == 200
+    assert second.json() == {"state": "unpicked"}
+    assert client.get("/api/picker/state").json() == {"state": "unpicked"}
+    assert client.get("/api/graph").status_code == 409
+    assert client.get("/api/picker/browse").status_code == 200
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+    assert client.get("/api/graph").status_code == 200
+
+
+def test_picker_reset_works_for_a_path_opened_project_that_carries_a_picker(
+    tmp_path: Path,
+) -> None:
+    from codemble.server.app import PickerConfig
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+
+    assert client.get("/api/graph").status_code == 200
+    assert client.post("/api/picker/reset").json() == {"state": "unpicked"}
+    assert client.get("/api/graph").status_code == 409
+    assert client.get("/api/picker/browse").status_code == 200
+
+
+def test_picker_reset_refuses_an_app_built_without_a_picker(tmp_path: Path) -> None:
+    # Unbinding here would strand the process with no way to pick anything,
+    # so refusing is the honest answer rather than a 200 that breaks the app.
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    response = client.post("/api/picker/reset")
+
+    assert response.status_code == 409
+    assert client.get("/api/graph").status_code == 200
