@@ -151,10 +151,30 @@ pendingTimers.values().next().value();
 assert.equal(session.getSnapshot().litRegionId, null);
 
 await session.dispatch({ type: "RETREAT" });
+assert.equal(
+  session.getSnapshot().entrypointOpen,
+  true,
+  "a graph with no selected Home opens the picker on load",
+);
 await session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId: "python:app.py:run" });
 assert.equal(session.getSnapshot().graph, understoodGraph);
+assert.equal(
+  session.getSnapshot().entrypointOpen,
+  false,
+  "choosing Home closes the picker",
+);
 await session.dispatch({ type: "DISMISS_ENTRYPOINT" });
 assert.equal(session.getSnapshot().entrypointDismissed, true);
+assert.equal(session.getSnapshot().entrypointOpen, false);
+
+await session.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await session.dispatch({ type: "CHANGE_HOME" });
+let homeSnapshot = session.getSnapshot();
+assert.equal(homeSnapshot.entrypointOpen, true, "Change Home reopens the picker");
+assert.equal(homeSnapshot.level, LEVELS.GALAXY, "Home is a galaxy-level decision");
+assert.equal(homeSnapshot.selectedNode, null);
+assert.equal(homeSnapshot.showChart, false);
+await session.dispatch({ type: "DISMISS_ENTRYPOINT" });
 await session.dispatch({ type: "SHOW_CHART" });
 assert.equal(session.getSnapshot().showChart, true);
 await session.dispatch({ type: "HIDE_CHART" });
@@ -631,6 +651,20 @@ assert.equal(
   "a stale entrypoint response after reset must not resurrect the old project's graph",
 );
 entrypointRaceSession.dispose();
+
+// A project that already carries a Home must not greet the learner with the
+// picker; the affordance is opt-in from the header instead.
+const homeGraph = { ...makeGraph(), selected_entrypoint: "python:app.py:run" };
+const seededHomeSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph: homeGraph }),
+  clock,
+});
+await seededHomeSession.start();
+assert.equal(seededHomeSession.getSnapshot().entrypointDismissed, true);
+assert.equal(seededHomeSession.getSnapshot().entrypointOpen, false);
+await seededHomeSession.dispatch({ type: "CHANGE_HOME" });
+assert.equal(seededHomeSession.getSnapshot().entrypointOpen, true);
+seededHomeSession.dispose();
 
 function makeGraph({ understood = false } = {}) {
   return {

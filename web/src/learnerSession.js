@@ -116,7 +116,13 @@ export function createLearnerSession({
     try {
       const graph = await adapter.loadGraph({ signal: controller.signal });
       if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
-      commit({ status: "ready", graph, region: defaultRegion(graph), error: "" });
+      commit({
+        status: "ready",
+        graph,
+        region: defaultRegion(graph),
+        error: "",
+        entrypointDismissed: Boolean(graph.selected_entrypoint),
+      });
       await loadPreferences(controller, requestLifecycle);
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
@@ -299,6 +305,21 @@ export function createLearnerSession({
         return selectEntrypoint(event.nodeId);
       case "DISMISS_ENTRYPOINT":
         commit({ entrypointDismissed: true });
+        return undefined;
+      case "CHANGE_HOME":
+        cancelStudy();
+        commit({
+          entrypointDismissed: false,
+          entrypointError: "",
+          level: LEVELS.GALAXY,
+          selectedNode: null,
+          showChart: false,
+          studyData: null,
+          studyError: "",
+          explanation: null,
+          explanationError: "",
+          explanationLoading: false,
+        });
         return undefined;
       case "BROWSE_PICKER":
         return browsePickerFolder(event.path);
@@ -556,7 +577,12 @@ export function createLearnerSession({
         signal: controller.signal,
       });
       if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
-      commit({ graph, region: defaultRegion(graph), entrypointError: "" });
+      commit({
+        graph,
+        region: defaultRegion(graph),
+        entrypointError: "",
+        entrypointDismissed: true,
+      });
       return graph;
     } catch (requestError) {
       if (
@@ -850,6 +876,7 @@ function deriveSnapshot(state) {
   return {
     ...state,
     focusedGraph,
+    entrypointOpen: Boolean(graph) && !state.entrypointDismissed,
     level,
     region,
     selectedNode,
