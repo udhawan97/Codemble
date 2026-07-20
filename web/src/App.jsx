@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
+import { ModeControl } from "./ModeControl.jsx";
 import {
   LEVELS,
   conceptTitle,
@@ -33,6 +34,8 @@ export function App() {
     entrypointDismissed,
     entrypointError,
     error,
+    explanation,
+    explanationError,
     focusedGraph,
     focusedStudiedCount,
     graph,
@@ -40,6 +43,8 @@ export function App() {
     languageOptions,
     level,
     litRegionId,
+    mode,
+    modeChosen,
     picker,
     projectName,
     region,
@@ -79,7 +84,11 @@ export function App() {
   }
 
   return (
-    <main className="app-shell" data-level={showChart ? "chart" : level.toLowerCase()}>
+    <main
+      className="app-shell"
+      data-level={showChart ? "chart" : level.toLowerCase()}
+      data-mode={mode}
+    >
       <header className="instrument-rail">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true" />
@@ -128,6 +137,11 @@ export function App() {
           onChange={(language) =>
             session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
           }
+        />
+        <ModeControl
+          mode={mode}
+          modeChosen={modeChosen}
+          onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
         />
       </header>
 
@@ -192,6 +206,7 @@ export function App() {
           <CheckPanel
             suite={checkData}
             error={checkError}
+            mode={mode}
             onClose={() => session.dispatch({ type: "CLOSE_CHECKS" })}
             onSubmit={(checkId, selectedIds) =>
               session.dispatch({ type: "SUBMIT_CHECK", checkId, selectedIds })
@@ -220,6 +235,9 @@ export function App() {
             node={selectedNode}
             study={studyData}
             error={studyError}
+            explanation={explanation}
+            explanationError={explanationError}
+            mode={mode}
             onSelectNode={(nodeId) =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
             }
@@ -382,7 +400,7 @@ function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
   );
 }
 
-function CheckPanel({ suite, error, onClose, onSubmit }) {
+function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   const current = suite?.checks.find((check) => !check.passed) ?? null;
   const passed = suite?.checks.filter((check) => check.passed).length ?? 0;
   const [selected, setSelected] = useState(() => new Set());
@@ -459,7 +477,7 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
             <progress value={passed} max={suite.checks.length} />
           </div>
           <fieldset>
-            <legend>{current.prompt}</legend>
+            <legend>{current.prompt_voices[mode]}</legend>
             {current.multiple ? <p>Select every answer supported by the graph.</p> : null}
             <div className="check-options">
               {current.options.map((option) => (
@@ -492,8 +510,7 @@ function CheckPanel({ suite, error, onClose, onSubmit }) {
   );
 }
 
-function StudyPanel({ node, study, error, onSelectNode }) {
-  const explanation = study?.explanation;
+function StudyPanel({ node, study, error, explanation, explanationError, mode, onSelectNode }) {
   return (
     <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
       <header className="study-preview__header">
@@ -523,15 +540,37 @@ function StudyPanel({ node, study, error, onSelectNode }) {
             </section>
           ) : null}
           <SourceExcerpt source={study.source} />
-          <LensNotes lens={study.lens} language={node.language} />
-          <Explanation explanation={explanation} node={node} onSelectNode={onSelectNode} />
+          <LensNotes lens={study.lens} language={node.language} mode={mode} />
+          <StructuralSummary structural={study.structural} mode={mode} />
+          <Explanation
+            explanation={explanation}
+            explanationError={explanationError}
+            node={node}
+            onSelectNode={onSelectNode}
+          />
         </div>
       ) : null}
     </aside>
   );
 }
 
-function LensNotes({ lens, language }) {
+function StructuralSummary({ structural, mode }) {
+  // The Tier 0 floor: graph facts through fixed templates, no model involved.
+  // It ships in the same /study response as the source and lens above, so it
+  // is never subject to narration's own loading/error/no-key states below it.
+  if (!structural) return null;
+  return (
+    <section className="structural-summary" aria-labelledby="structural-heading">
+      <div className="study-section-heading">
+        <h2 id="structural-heading">Structural summary</h2>
+        <span>No model required</span>
+      </div>
+      <p>{structural[mode]}</p>
+    </section>
+  );
+}
+
+function LensNotes({ lens, language, mode }) {
   if (!lens?.length) return null;
   return (
     <section className="lens-study" aria-labelledby="lens-heading">
@@ -547,7 +586,7 @@ function LensNotes({ lens, language }) {
               <Citation citation={note.citation} fallbackLine={note.line} />
             </div>
             <div>
-              <p>{note.note}</p>
+              <p>{note.note_voices[mode]}</p>
               <code>{note.snippet}</code>
             </div>
           </article>
@@ -612,8 +651,18 @@ function SourceExcerpt({ source }) {
   );
 }
 
-function Explanation({ explanation, node, onSelectNode }) {
-  if (!explanation) return null;
+function Explanation({ explanation, explanationError, node, onSelectNode }) {
+  if (!explanation) {
+    if (explanationError) {
+      return (
+        <section className="study-notice" role="alert" aria-labelledby="explanation-heading">
+          <h2 id="explanation-heading">Narration did not load.</h2>
+          <p>{explanationError} The source and parser evidence above remain available.</p>
+        </section>
+      );
+    }
+    return <p className="study-loading">Fetching narration…</p>;
+  }
   if (explanation.status === "no_key") {
     return (
       <section className="study-notice" aria-labelledby="explanation-heading">

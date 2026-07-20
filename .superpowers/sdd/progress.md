@@ -25,3 +25,16 @@ Task 9: complete (commits c1d6004..4ff29b3; SECURITY: brief's guard checked host
 Task 10: complete (commit 5c8d988, review clean; try/except ValueError containment verified across 8 failure combos)
 Task 11: complete (commits d3d082f..48bf394; Critical never-raise hole - http.client.HTTPException not caught; pre-existing network-touching test fixed)
 PHASE 3 COMPLETE (tasks 9-11). 128 tests passing. ALL 11 TASKS DONE.
+
+## Phases 4-6 (frontend)
+Plan: docs/plans/2026-07-19-audience-modes-frontend-plan.md
+Base: 92d22cb
+Task 12: complete (c0c86a1..f5d878c + backend f89177d; mode state, chosen signal, hydration race fixed)
+Task 13: complete (84442d2..53a167f; narration wired + Tier 0 finally rendered; vacuous race test found+fixed)
+Task 14: complete (222b8ad; voices rendered, legacy keys retired, verified live)
+TASK 19 MUST ALSO: add CLAUDE.md Gotchas line — the bare `codemble` console script
+  can resolve to a DIFFERENT editable install than the current worktree, so it may
+  verify against stale code. Use `python -m codemble.cli`. Bit two subagents.
+Task 14: review CLEAN (no findings at any severity)
+Task 15: complete (59340c8..02fb6ab; Critical dialog-flash/silent-overwrite fixed at session layer via tri-state)
+PHASE 4 COMPLETE (tasks 12-15).
