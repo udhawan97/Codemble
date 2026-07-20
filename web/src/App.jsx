@@ -229,10 +229,7 @@ export function App() {
             error={mapError}
             onSelectTab={(tab) => session.dispatch({ type: "SET_MAP_TAB", tab })}
             onSelectRegion={(regionId) =>
-              session.dispatch({
-                type: "ADVANCE",
-                node: focusedGraph.regions.find((region) => region.id === regionId),
-              })
+              session.dispatch({ type: "ADVANCE_REGION", regionId })
             }
             onSelectNode={(nodeId) =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
@@ -408,12 +405,7 @@ export function App() {
         ) : null}
         <HintChip
           hint={hint}
-          onStudy={(regionId) =>
-            session.dispatch({
-              type: "ADVANCE",
-              node: focusedGraph.regions.find((region) => region.id === regionId),
-            })
-          }
+          onStudy={(regionId) => session.dispatch({ type: "ADVANCE_REGION", regionId })}
         />
       </section>
       )}

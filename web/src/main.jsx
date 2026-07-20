@@ -23,8 +23,11 @@ class AppErrorBoundary extends Component {
     return { message: error instanceof Error ? error.message : String(error) };
   }
 
-  componentDidCatch(error) {
-    console.error("Codemble stopped rendering:", error);
+  componentDidCatch(error, errorInfo) {
+    // errorInfo carries the React component stack, which is the only thing in
+    // this report that says *where* the render died -- dropping the second
+    // argument left every boundary hit unlocatable in the console.
+    console.error("Codemble stopped rendering:", error, errorInfo?.componentStack);
   }
 
   render() {

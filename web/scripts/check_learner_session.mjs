@@ -1478,6 +1478,78 @@ assert.equal(
 );
 hoverSession.dispose();
 
+// Regression: the 2D map draws every module the parser found, including ones
+// the current language focus hides, so a box can name a region that is absent
+// from the focused projection. Resolving that id in React handed `undefined` to
+// ADVANCE, which dereferenced `node.id` straight into the error boundary --
+// and Easy mode *defaults* to the map layer, so this was one click deep.
+const focusedOutSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph }),
+  clock,
+});
+await focusedOutSession.start();
+await focusedOutSession.dispatch({ type: "SET_LANGUAGE_FOCUS", language: "python" });
+assert.deepEqual(
+  focusedOutSession.getSnapshot().focusedGraph.regions.map((region) => region.id),
+  ["app.py"],
+  "the focus really does hide the TypeScript region",
+);
+await focusedOutSession.dispatch({ type: "ADVANCE_REGION", regionId: "main.ts" });
+let focusedOutSnapshot = focusedOutSession.getSnapshot();
+assert.equal(focusedOutSnapshot.region.id, "main.ts", "the named region is entered");
+assert.equal(focusedOutSnapshot.level, LEVELS.SYSTEM);
+assert.equal(
+  focusedOutSnapshot.languageFocus,
+  "typescript",
+  "the focus widens to the module the learner named, as SELECT_STUDY_NODE does",
+);
+assert.equal(focusedOutSnapshot.error, "", "no failure reaches the learner");
+// An id no region carries is a caller bug, not a crash.
+await focusedOutSession.dispatch({ type: "ADVANCE_REGION", regionId: "nope.py" });
+assert.equal(focusedOutSession.getSnapshot().region.id, "main.ts");
+// The same guard on the node-object path: ADVANCE must survive a missing node.
+await focusedOutSession.dispatch({ type: "ADVANCE", node: undefined });
+focusedOutSnapshot = focusedOutSession.getSnapshot();
+assert.equal(focusedOutSnapshot.region.id, "main.ts");
+assert.equal(focusedOutSnapshot.level, LEVELS.SYSTEM);
+focusedOutSession.dispose();
+
+// Regression: a merge left both a parallel (`void`) and a sequential (`await`)
+// narration fetch in loadStudy. Two requests per study open meant call 2 aborted
+// call 1, silently killing the parallel behaviour and double-hitting the
+// provider. Exactly one request per open, and it must not wait for the study.
+let explanationCalls = 0;
+let studyResolved = false;
+const narrationOnceSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({
+      graph,
+      studies: { "python:app.py:run": study },
+      explanations: { "python:app.py:run:easy": { summary: { text: "easy voice" } } },
+    }),
+    async loadStudy(nodeId) {
+      await Promise.resolve();
+      studyResolved = true;
+      return study;
+    },
+    async loadExplanation() {
+      explanationCalls += 1;
+      assert.equal(
+        studyResolved,
+        false,
+        "narration starts beside the study fetch, not after it",
+      );
+      return { summary: { text: "easy voice" } };
+    },
+  },
+  clock,
+});
+await narrationOnceSession.start();
+await narrationOnceSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await narrationOnceSession.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
+assert.equal(explanationCalls, 1, "one study open issues exactly one narration request");
+narrationOnceSession.dispose();
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",

@@ -331,6 +331,9 @@ export function createLearnerSession({
     switch (event.type) {
       case "ADVANCE":
         return advance(event.node);
+      case "ADVANCE_REGION":
+        advanceRegion(event.regionId);
+        return undefined;
       case "RETREAT":
         retreat();
         return undefined;
@@ -401,15 +404,47 @@ export function createLearnerSession({
         cancelStudy();
         commit({ level: LEVELS.GALAXY, selectedNode: null });
         return undefined;
-      case "SET_MODE":
-        return setMode(event.mode);
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
   }
 
+  // Region entry by id, for callers that hold a region *name* rather than a
+  // node from the rendered scene: the 2D map (which draws every module the
+  // parser found, focus or no focus) and the Easy-mode hint chip. Resolving the
+  // id here rather than in React is what keeps a focused-out box from handing
+  // `undefined` to advance() -- and it keeps the renderer free of graph lookups.
+  function advanceRegion(regionId) {
+    // Searched against the whole graph, never the focused projection: the
+    // learner named a module that really exists, so the honest answer is to go
+    // there. A focus that hides it widens to that module's language, exactly as
+    // selectStudyNode already does for a cross-language node. The alternative --
+    // an inert box that looks and announces like a button -- would be a control
+    // that lies about being live.
+    const region = snapshot.graph?.regions.find((candidate) => candidate.id === regionId);
+    if (!region) return;
+    cancelStudy();
+    commit({
+      languageFocus:
+        snapshot.languageFocus !== "all" && region.language !== snapshot.languageFocus
+          ? region.language
+          : snapshot.languageFocus,
+      region,
+      selectedNode: null,
+      level: LEVELS.SYSTEM,
+      studyData: null,
+      studyError: "",
+      explanation: null,
+      explanationError: "",
+      explanationLoading: false,
+    });
+  }
+
   async function advance(node) {
-    if (!snapshot.focusedGraph) return;
+    // A missing node is a caller bug, not a learner-visible failure: dropping it
+    // keeps the galaxy on screen instead of tearing it down into the error
+    // boundary. Every id-based caller goes through advanceRegion above.
+    if (!snapshot.focusedGraph || !node) return;
     if (snapshot.level === LEVELS.GALAXY) {
       const nextRegion =
         snapshot.focusedGraph.regions.find((candidate) => candidate.id === node.id) ?? node;
@@ -550,6 +585,11 @@ export function createLearnerSession({
     studyController = new AbortController();
     const controller = studyController;
     commit({ studyData: null, studyError: "" });
+    // Started here and deliberately not awaited: narration runs *beside* the
+    // study fetch, so slow or absent narration never delays the source, lens,
+    // and structural summary. It is also outside the try below -- awaiting it
+    // there would let a narration failure commit `studyError`, mislabelling the
+    // one part of the panel that is allowed to fail as the part that is not.
     void loadExplanation(nodeId);
     try {
       const studyData = await adapter.loadStudy(nodeId, { signal: controller.signal });
@@ -564,9 +604,6 @@ export function createLearnerSession({
         studyData,
         studiedNodeIds: new Set(snapshot.studiedNodeIds).add(studyData.node.id),
       });
-      // A separate, deliberately unguarded request: slow or absent narration
-      // must never delay the source, lens, and structural summary above.
-      await loadExplanation(nodeId);
     } catch (requestError) {
       if (
         studyController === controller &&
@@ -795,7 +832,6 @@ export function createLearnerSession({
       pickerController,
       mapController,
       modeController,
-      explanationController,
       resetController,
     ]) {
       abortController(controller);
@@ -809,7 +845,6 @@ export function createLearnerSession({
     pickerController = null;
     mapController = null;
     modeController = null;
-    explanationController = null;
     resetController = null;
     if (illuminationTimer !== null) {
       clock.clearTimeout(illuminationTimer);
