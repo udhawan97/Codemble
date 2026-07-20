@@ -44,6 +44,7 @@ export function createLearnerSession({
     explanation: null,
     explanationLoading: false,
     explanationError: "",
+    hoverNodeId: null,
   });
   let lifecycle = 0;
   let modeLifecycle = 0;
@@ -72,17 +73,18 @@ export function createLearnerSession({
     let next = deriveSnapshot({ ...previous, ...patch });
     const navigationChanged =
       next.level !== previous.level || next.region?.id !== previous.region?.id;
-    if (navigationChanged && !preserveChecks) {
-      abortController(checksController);
-      abortController(submissionController);
-      checksController = null;
-      submissionController = null;
-      next = deriveSnapshot({
-        ...next,
-        showChecks: false,
-        checkData: null,
-        checkError: "",
-      });
+    if (navigationChanged) {
+      const navigationPatch = { hoverNodeId: null };
+      if (!preserveChecks) {
+        abortController(checksController);
+        abortController(submissionController);
+        checksController = null;
+        submissionController = null;
+        navigationPatch.showChecks = false;
+        navigationPatch.checkData = null;
+        navigationPatch.checkError = "";
+      }
+      next = deriveSnapshot({ ...next, ...navigationPatch });
     }
     snapshot = Object.freeze(next);
     for (const listener of listeners) listener();
@@ -288,6 +290,12 @@ export function createLearnerSession({
         return undefined;
       case "SET_MODE":
         return setMode(event.mode);
+      case "HOVER_NODE":
+        // Pointer motion fires this constantly; only a real change may notify.
+        if (snapshot.hoverNodeId !== (event.nodeId ?? null)) {
+          commit({ hoverNodeId: event.nodeId ?? null });
+        }
+        return undefined;
       case "SHOW_CHART":
         commit({ showChart: true });
         return undefined;

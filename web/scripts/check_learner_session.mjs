@@ -666,6 +666,34 @@ await seededHomeSession.dispatch({ type: "CHANGE_HOME" });
 assert.equal(seededHomeSession.getSnapshot().entrypointOpen, true);
 seededHomeSession.dispose();
 
+// Hover is view state: it must survive redundant events cheaply and must never
+// outlive the view it described.
+const hoverSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph }),
+  clock,
+});
+await hoverSession.start();
+assert.equal(hoverSession.getSnapshot().hoverNodeId, null);
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: "app.py" });
+assert.equal(hoverSession.getSnapshot().hoverNodeId, "app.py");
+const hoverBefore = hoverSession.getSnapshot();
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: "app.py" });
+assert.equal(
+  hoverSession.getSnapshot(),
+  hoverBefore,
+  "a repeated hover does not produce a new snapshot",
+);
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: null });
+assert.equal(hoverSession.getSnapshot().hoverNodeId, null);
+await hoverSession.dispatch({ type: "HOVER_NODE", nodeId: "app.py" });
+await hoverSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+assert.equal(
+  hoverSession.getSnapshot().hoverNodeId,
+  null,
+  "moving between levels drops the stale hover target",
+);
+hoverSession.dispose();
+
 function makeGraph({ understood = false } = {}) {
   return {
     project_root: "/tmp/demo",
