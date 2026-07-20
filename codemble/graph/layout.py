@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import replace
 
-from codemble.adapters.base import Graph, Node, Region, RegionEdge
+from codemble.adapters.base import Edge, Graph, Node, Region, RegionEdge
 
 _GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))
 _SYSTEM_RING_CAPACITY = 12
@@ -57,29 +57,33 @@ def layout_graph(graph: Graph) -> Graph:
             )
         )
 
-        for member_index, node in enumerate(members):
-            if member_index == 0:
+        depths = _call_depths(members, graph.edges)
+        orbits: dict[int, list[Node]] = defaultdict(list)
+        for node in members:
+            orbits[depths[node.id]].append(node)
+        for node in orbits[0]:
+            positioned_nodes.append(replace(node, system_x=0.0, system_y=0.0, system_z=0.0))
+        for depth in sorted(orbit for orbit in orbits if orbit > 0):
+            ring_nodes = orbits[depth]
+            for slot_index, node in enumerate(ring_nodes):
+                sub_ring = slot_index // _SYSTEM_RING_CAPACITY
+                slot = slot_index % _SYSTEM_RING_CAPACITY
+                ring_members = min(
+                    _SYSTEM_RING_CAPACITY,
+                    max(1, len(ring_nodes) - sub_ring * _SYSTEM_RING_CAPACITY),
+                )
+                angle = (
+                    2.0 * math.pi * slot / ring_members
+                ) + _fraction(node.id, "orbit") * 0.08
+                radius = 34.0 + (depth - 1) * 24.0 + sub_ring * 12.0
                 positioned_nodes.append(
-                    replace(node, system_x=0.0, system_y=0.0, system_z=0.0)
+                    replace(
+                        node,
+                        system_x=_rounded(math.cos(angle) * radius),
+                        system_y=_rounded(((_fraction(node.id, "depth") * 2.0) - 1.0) * 8.0),
+                        system_z=_rounded(math.sin(angle) * radius),
+                    )
                 )
-                continue
-            orbit_index = member_index - 1
-            ring = orbit_index // _SYSTEM_RING_CAPACITY
-            slot = orbit_index % _SYSTEM_RING_CAPACITY
-            ring_members = min(
-                _SYSTEM_RING_CAPACITY,
-                max(1, len(members) - 1 - ring * _SYSTEM_RING_CAPACITY),
-            )
-            angle = (2.0 * math.pi * slot / ring_members) + _fraction(node.id, "orbit") * 0.08
-            radius = 34.0 + ring * 24.0
-            positioned_nodes.append(
-                replace(
-                    node,
-                    system_x=_rounded(math.cos(angle) * radius),
-                    system_y=_rounded(((_fraction(node.id, "depth") * 2.0) - 1.0) * 8.0),
-                    system_z=_rounded(math.sin(angle) * radius),
-                )
-            )
 
     routes: dict[tuple[str, str], list[bool]] = defaultdict(list)
     for edge in graph.edges:
@@ -101,6 +105,53 @@ def layout_graph(graph: Graph) -> Graph:
         regions=tuple(sorted(regions, key=lambda region: region.id)),
         region_edges=region_edges,
     )
+
+
+def _call_depths(members: list[Node], edges: tuple[Edge, ...]) -> dict[str, int]:
+    """Return each member's orbit ring: call depth from the system's entry node.
+
+    The entry node is the module node at the origin (ring 0).  Ring 1 is what the
+    entry calls directly *plus* every member no sibling calls, because a module
+    that makes no module-level call would otherwise strand its whole region in
+    the outermost ring.  Members unreachable from those roots take the outermost
+    ring, ordered by node id, so unresolved evidence stays visible rather than
+    being guessed into the structure.  Only ``certain`` calls count: a "possible
+    call" is the parser admitting it isn't sure, so it must not silently decide
+    where a node orbits.
+    """
+
+    member_ids = {node.id for node in members}
+    entry = members[0].id
+    outgoing: dict[str, set[str]] = defaultdict(set)
+    indegree: dict[str, int] = defaultdict(int)
+    for edge in edges:
+        if edge.kind != "call" or edge.external or not edge.certain or edge.src == edge.dst:
+            continue
+        if edge.src in member_ids and edge.dst in member_ids:
+            if edge.dst not in outgoing[edge.src]:
+                indegree[edge.dst] += 1
+            outgoing[edge.src].add(edge.dst)
+
+    depths = {entry: 0}
+    queue: deque[str] = deque()
+    roots = outgoing[entry] | {
+        node.id for node in members if node.id != entry and indegree[node.id] == 0
+    }
+    for node_id in sorted(roots):
+        depths[node_id] = 1
+        queue.append(node_id)
+    while queue:
+        current = queue.popleft()
+        for target in sorted(outgoing[current]):
+            if target not in depths:
+                depths[target] = depths[current] + 1
+                queue.append(target)
+
+    stranded = sorted(node.id for node in members if node.id not in depths)
+    outermost = max(depths.values()) + 1 if depths else 1
+    for node_id in stranded:
+        depths[node_id] = outermost
+    return depths
 
 
 def with_entrypoint(graph: Graph, node_id: str) -> Graph:

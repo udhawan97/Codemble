@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -178,6 +179,10 @@ def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignor
     second_regions = {region.id: region for region in second.regions}
     nodes = {node.id: node for node in graph.nodes}
 
+    def orbit_radius(node_id: str) -> float:
+        node = nodes[node_id]
+        return round(math.hypot(node.system_x, node.system_z), 3)
+
     assert regions == second_regions
     assert len({(region.x, region.y, region.z) for region in graph.regions}) == len(
         graph.regions
@@ -185,9 +190,26 @@ def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignor
     assert regions["app"].home is True
     assert regions["app"].node_count == 2
     assert regions["pkg.service"].node_count == 4
-    assert nodes["app"].system_x == 0.0
-    assert (nodes["app.main"].system_x, nodes["app.main"].system_z) != (0.0, 0.0)
     assert any(route.src == "cli" and route.dst == "app" for route in graph.region_edges)
+
+    # Orbits are call depth from the system's entry node, not member index.
+    # The module node holds the origin; ring 1 is 34.0 out, each ring +24.0.
+    assert orbit_radius("app") == 0.0
+    assert orbit_radius("pkg.service") == 0.0
+    assert orbit_radius("app.main") == 34.0
+    # Service.run calls Service.finish, so finish orbits one ring further out.
+    assert orbit_radius("pkg.service.Service") == 34.0
+    assert orbit_radius("pkg.service.Service.run") == 34.0
+    assert orbit_radius("pkg.service.Service.finish") == 58.0
+    # greet -> normalize, and duplicate is called by nobody in the region.
+    assert orbit_radius("pkg.util.greet") == 34.0
+    assert orbit_radius("pkg.util.duplicate") == 34.0
+    assert orbit_radius("pkg.util.normalize") == 58.0
+    assert orbit_radius("shared.choose") == 34.0
+    assert orbit_radius("shared.duplicate") == 58.0
+    assert {node.id: (node.system_x, node.system_y, node.system_z) for node in graph.nodes} == {
+        node.id: (node.system_x, node.system_y, node.system_z) for node in second.nodes
+    }
 
 
 def test_ambiguous_rank_zero_entrypoints_require_an_explicit_choice(
