@@ -403,26 +403,164 @@ def test_picker_recents_come_from_the_progress_store(
     }
 
 
-def test_picker_select_binds_a_project_exactly_once(tmp_path: Path) -> None:
+def _inline_runner(work):  # type: ignore[no-untyped-def]
+    """Run the parse on the request thread so tests never sleep or poll."""
+
+    work()
+
+
+def test_picker_select_returns_202_and_binds_through_the_parse_job(
+    tmp_path: Path,
+) -> None:
     from codemble.server.app import PickerConfig
 
     client = TestClient(
         create_app(
             web_dist=tmp_path / "missing",
             picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=_inline_runner,
         )
     )
 
-    first = client.post("/api/picker/select", json={"path": str(FIXTURE)})
-    second = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    idle = client.get("/api/picker/progress").json()
+    accepted = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    progress = client.get("/api/picker/progress").json()
 
-    assert first.status_code == 200
-    assert first.json() == {"state": "ready"}
+    assert idle == {
+        "state": "idle",
+        "stage": None,
+        "files_done": 0,
+        "files_total": 0,
+        "error": None,
+    }
+    assert accepted.status_code == 202
+    assert accepted.json() == {"state": "parsing"}
+    assert progress["state"] == "ready"
+    assert progress["files_done"] == progress["files_total"] > 0
+    assert progress["error"] is None
     assert client.get("/api/picker/state").json() == {"state": "ready"}
     assert client.get("/api/graph").status_code == 200
-    assert second.status_code == 409
-    assert second.json()["detail"] == "A project is already selected."
-    assert client.get("/api/picker/browse").status_code == 409
+    assert (
+        client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code
+        == 409
+    )
+
+
+def test_picker_progress_reports_ready_for_a_cli_bound_project(tmp_path: Path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    client = TestClient(create_app(graph, tmp_path / "missing"))
+
+    assert client.get("/api/picker/progress").json()["state"] == "ready"
+
+
+def test_a_failed_parse_becomes_an_error_state_with_an_in_app_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from codemble.adapters.project import ProjectParser
+    from codemble.server.app import PickerConfig
+
+    def exploding_parse(self, source, **kwargs):  # type: ignore[no-untyped-def]
+        raise RuntimeError("tree-sitter exploded")
+
+    monkeypatch.setattr(ProjectParser, "parse", exploding_parse)
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=_inline_runner,
+        )
+    )
+
+    accepted = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    progress = client.get("/api/picker/progress").json()
+
+    assert accepted.status_code == 202
+    assert progress["state"] == "error"
+    assert progress["error"] == "tree-sitter exploded"
+    assert client.get("/api/picker/state").json() == {"state": "unpicked"}
+
+
+def test_reset_during_a_parse_re_arms_the_picker_and_leaves_nothing_bound(
+    tmp_path: Path,
+) -> None:
+    """Cancellation itself is proven in tests/test_parse_job.py; this pins the
+    HTTP contract: whether the worker stops mid-parse or finishes a moment
+    before the reset lands, reset wins and nothing stays bound."""
+
+    import threading
+
+    from codemble.server.app import PickerConfig
+
+    started = threading.Event()
+    release = threading.Event()
+    threads: list[threading.Thread] = []
+
+    def gated_runner(work):  # type: ignore[no-untyped-def]
+        def run() -> None:
+            started.set()
+            assert release.wait(timeout=5)
+            work()
+
+        thread = threading.Thread(target=run, daemon=True)
+        threads.append(thread)
+        thread.start()
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=gated_runner,
+        )
+    )
+
+    accepted = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    assert started.wait(timeout=5)
+    parsing = client.get("/api/picker/progress").json()
+    release.set()
+    reset = client.post("/api/picker/reset", json={"confirmed": True})
+    for thread in threads:
+        thread.join(timeout=5)
+
+    assert accepted.status_code == 202
+    assert parsing["state"] == "parsing"
+    assert parsing["stage"] == "discovering"
+    assert reset.status_code == 200
+    assert reset.json() == {"state": "unpicked"}
+    assert client.get("/api/picker/state").json() == {"state": "unpicked"}
+    assert client.get("/api/picker/progress").json()["state"] == "idle"
+    assert client.get("/api/graph").status_code == 409
+    assert client.get("/api/picker/browse").status_code == 200
+    assert (
+        client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code
+        == 202
+    ), "a reset picker accepts the next project without a server restart"
+
+
+def test_a_scale_refusal_leaves_the_picker_idle_not_stuck_parsing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from codemble.adapters.project import ProjectParser
+    from codemble.server.app import PickerConfig
+
+    monkeypatch.setattr(ProjectParser, "scale_cap", 3)
+    big = tmp_path / "big"
+    (big / "api").mkdir(parents=True)
+    for index in range(4):
+        (big / "api" / f"module_{index}.py").write_text("A = 1\n", encoding="utf-8")
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=tmp_path),
+            parse_runner=_inline_runner,
+        )
+    )
+
+    response = client.post("/api/picker/select", json={"path": str(big)})
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["reason"] == "scale"
+    assert client.get("/api/picker/progress").json()["state"] == "idle"
+    assert client.get("/api/picker/browse").status_code == 200
 
 
 def test_picker_select_reports_scale_with_suggestions(tmp_path: Path) -> None:
@@ -559,9 +697,10 @@ def test_picker_reset_unbinds_and_re_arms_the_picker(tmp_path: Path) -> None:
         create_app(
             web_dist=tmp_path / "missing",
             picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=_inline_runner,
         )
     )
-    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 202
 
     first = client.post("/api/picker/reset", json={"confirmed": True})
     second = client.post("/api/picker/reset", json={"confirmed": True})
@@ -573,7 +712,7 @@ def test_picker_reset_unbinds_and_re_arms_the_picker(tmp_path: Path) -> None:
     assert client.get("/api/picker/state").json() == {"state": "unpicked"}
     assert client.get("/api/graph").status_code == 409
     assert client.get("/api/picker/browse").status_code == 200
-    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 202
     assert client.get("/api/graph").status_code == 200
 
 
@@ -588,9 +727,10 @@ def test_picker_reset_refuses_a_body_a_cross_site_form_could_send(tmp_path: Path
         create_app(
             web_dist=tmp_path / "missing",
             picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=_inline_runner,
         )
     )
-    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 202
 
     formish = client.post(
         "/api/picker/reset",

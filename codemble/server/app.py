@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -14,6 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from codemble import __version__
 from codemble.adapters.base import Graph
+from codemble.adapters.parse_progress import ParseCancelled, ParseProgress
 from codemble.graph import build_map
 from codemble.adapters.project import (
     ProjectParseError,
@@ -24,6 +28,7 @@ from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckEr
 from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
 from codemble.progress import list_recent_projects
+from codemble.server.parse_job import ParseJob
 
 
 class CheckSubmission(BaseModel):
@@ -73,7 +78,7 @@ class PickerConfig:
 
 
 class _ProjectState:
-    """The one project this server is currently serving, if any.
+    """Binding from picker selection to live project services, plus its parse.
 
     Binding is one-*at-a-time*, not one-shot: ``POST /api/picker/reset`` unbinds
     so the header's Switch project control can re-arm the picker without a
@@ -86,14 +91,26 @@ class _ProjectState:
     def __init__(self) -> None:
         self.checks: CheckService | None = None
         self.studies: StudyService | None = None
+        self.job = ParseJob()
+        self._lock = threading.Lock()
+        self._graph_json: str | None = None
 
     @property
     def bound(self) -> bool:
         return self.checks is not None
 
-    def bind(self, graph: Graph) -> None:
-        self.studies = StudyService.from_environment(graph)
-        self.checks = CheckService(graph)
+    def bind(self, graph: Graph, progress: ParseProgress | None = None) -> None:
+        if progress is not None:
+            progress.stage("checks")
+        studies = StudyService.from_environment(graph)
+        checks = CheckService(graph)
+        if progress is not None:
+            progress.stage("layout")
+        with self._lock:
+            self.studies = studies
+            self.checks = checks
+            self._graph_json = None
+        self.graph_json()
 
     def unbind(self) -> None:
         """Drop the bound project so the picker can arm again.
@@ -102,8 +119,31 @@ class _ProjectState:
         services loses nothing a re-select cannot restore.
         """
 
-        self.checks = None
-        self.studies = None
+        with self._lock:
+            self.checks = None
+            self.studies = None
+            self._graph_json = None
+
+    def graph_json(self) -> str:
+        """Serialize the render document once per invalidating event."""
+
+        with self._lock:
+            cached = self._graph_json
+            checks = self.checks
+        if cached is not None:
+            return cached
+        if checks is None:
+            raise HTTPException(status_code=409, detail="No project selected yet.")
+        payload = json.dumps(
+            checks.graph().to_dict(), separators=(",", ":"), ensure_ascii=False
+        )
+        with self._lock:
+            self._graph_json = payload
+        return payload
+
+    def invalidate_graph_json(self) -> None:
+        with self._lock:
+            self._graph_json = None
 
 
 def create_app(
@@ -113,6 +153,7 @@ def create_app(
     check_service: CheckService | None = None,
     *,
     picker: PickerConfig | None = None,
+    parse_runner: Callable[[Callable[[], None]], None] | None = None,
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "testserver"),
 ) -> FastAPI:
     """Create an API and optional SPA server for one local project."""
@@ -122,6 +163,12 @@ def create_app(
     app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
     state = _ProjectState()
+    if parse_runner is not None:
+        state.job = ParseJob(runner=parse_runner)
+
+    def _new_job() -> ParseJob:
+        return ParseJob(runner=parse_runner) if parse_runner else ParseJob()
+
     if graph is not None:
         state.studies = study_service or StudyService.from_environment(graph)
         state.checks = check_service or CheckService(graph)
@@ -146,6 +193,8 @@ def create_app(
                 status_code=409,
                 detail="This project was opened without a picker; restart Codemble to switch.",
             )
+        state.job.cancel()
+        state.job = _new_job()
         state.unbind()
         return {"state": "unpicked"}
 
@@ -208,9 +257,9 @@ def create_app(
         ]
         return {"recents": recents}
 
-    @app.post("/api/picker/select")
+    @app.post("/api/picker/select", status_code=202)
     def select_project(selection: ProjectSelection) -> dict[str, object]:
-        if state.bound or picker is None:
+        if state.bound or picker is None or state.job.active:
             raise HTTPException(status_code=409, detail="A project is already selected.")
         jail = picker.browse_root.expanduser().resolve()
         try:
@@ -224,9 +273,13 @@ def create_app(
                 status_code=403, detail="Choose a folder inside your home directory."
             )
         parser = ProjectParser()
+        job = _new_job()
+        state.job = job
+        job.begin()
         try:
             intake = parser.intake(resolved)
         except ProjectScaleError as error:
+            state.job = _new_job()
             raise HTTPException(
                 status_code=409,
                 detail={
@@ -241,13 +294,29 @@ def create_app(
                 },
             ) from error
         except ProjectParseError as error:
+            state.job = _new_job()
             raise HTTPException(status_code=422, detail=str(error)) from error
-        try:
-            bound_graph = parser.parse(intake, entrypoint=picker.entrypoint)
-        except ProjectParseError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
-        state.bind(bound_graph)
-        return {"state": "ready"}
+
+        def work(reporter: ParseJob) -> None:
+            bound_graph = parser.parse(
+                intake, entrypoint=picker.entrypoint, progress=reporter
+            )
+            if reporter.cancelled:
+                raise ParseCancelled("the learner reset the picker during this parse")
+            state.bind(bound_graph, progress=reporter)
+
+        job.start(work)
+        return {"state": "parsing"}
+
+    @app.get("/api/picker/progress")
+    def picker_progress() -> dict[str, object]:
+        # Never guarded by _services(): the loading screen polls this while
+        # nothing is bound yet, and it must answer honestly before, during,
+        # and after a parse.
+        snapshot = state.job.snapshot()
+        if snapshot["state"] == "idle" and state.bound:
+            snapshot["state"] = "ready"
+        return snapshot
 
     @app.get("/api/graph")
     def get_graph() -> dict[str, object]:
