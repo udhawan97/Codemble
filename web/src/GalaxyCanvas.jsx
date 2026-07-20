@@ -2,7 +2,7 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { attachBloom } from "./galaxyEffects.js";
+import { attachBloom, runNebulaDawn } from "./galaxyEffects.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 
@@ -15,6 +15,7 @@ export function GalaxyCanvas({
   region,
   selectedNode,
   hoverNodeId,
+  litRegionId,
   onHoverNode,
   onAdvance,
   onRetreat,
@@ -195,6 +196,16 @@ export function GalaxyCanvas({
   }, [graph.file_hashes, palette]);
 
   useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer || !litRegionId) return undefined;
+    return runNebulaDawn({
+      scene: renderer.scene(),
+      regionId: litRegionId,
+      palette,
+    });
+  }, [litRegionId, palette]);
+
+  useEffect(() => {
     // At study level the selection is the subject even without a pointer, so
     // its connections stay legible instead of the scene fading to 0.16.
     const activeId = hoverNodeId ?? (level === LEVELS.STUDY ? selectedNode?.id ?? null : null);
@@ -306,6 +317,7 @@ export function GalaxyCanvas({
 
 function makeMarker(node, palette, dressing, focusedId) {
   const group = new THREE.Group();
+  group.name = node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
   const radius = Math.cbrt(node.val ?? 1) * NODE_REL_SIZE;
   // Dimmed nodes keep their true colour and lose their glow. Dimming by
   // removing light rather than shifting hue keeps a lit star recognisably lit.
