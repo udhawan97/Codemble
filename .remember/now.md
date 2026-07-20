@@ -1,3 +1,3 @@
 
-## 10:08 | friendly-wizard-claude/galaxy-ui-redesign-4f9457
-Phase B complete (12 tasks, 4 fixes); analyzed 55-commit main collision w/ dup audience-mode (21 conflict hunks), identified 2 silent reverts (lens notes/density) + 2 correctness gaps (legend encoding, mode leakage).
+## 11:20 | friendly-wizard-claude/galaxy-ui-redesign-4f9457
+Merged galaxy-ui-redesign → main (v0.3.1→v0.4.0, 155 tests); parallel reviews found 1 Critical crash (map click under language focus) + 5 Importants (untested guard, dup explanation fetch, coach-mark dual-ownership, WebGL leak, false legend) + Minors—fixes pre-merge.
