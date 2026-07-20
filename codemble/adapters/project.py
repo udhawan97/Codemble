@@ -13,6 +13,7 @@ from codemble.adapters.discovery import (
     SourceOwnership,
     discover_project_sources,
 )
+from codemble.adapters.parse_progress import ParseProgress, reporting_files
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 
@@ -133,23 +134,40 @@ class ProjectParser:
         *,
         entrypoint: str | None = None,
         explicit: bool = False,
+        progress: ParseProgress | None = None,
     ) -> Graph:
         """Parse every detected language and return one deterministic graph."""
 
-        intake = (
-            source
-            if isinstance(source, ProjectIntake)
-            else self.intake(source, explicit=explicit)
-        )
+        if isinstance(source, ProjectIntake):
+            intake = source
+        else:
+            if progress is not None:
+                progress.stage("discovering")
+            intake = self.intake(source, explicit=explicit)
+        owned = {
+            adapter.language: intake._files_for(adapter.language)
+            for adapter in self._adapters
+        }
+        if progress is not None:
+            # The counter totals the files adapters will actually read, which
+            # is what ``note_file_parsed`` counts.  ``intake.files`` is the
+            # deduplicated union and would drift if two adapters ever shared
+            # an extension.
+            progress.files_total(sum(len(files) for files in owned.values()))
+            progress.stage("parsing")
         graphs: list[Graph] = []
-        for adapter in self._adapters:
-            files = intake._files_for(adapter.language)
-            if not files:
-                continue
-            try:
-                graphs.append(adapter.parse_files(intake.root, files))
-            except AdapterParseError as error:
-                raise ProjectParseError(str(error)) from error
+        on_file = progress.file_parsed if progress is not None else None
+        with reporting_files(on_file):
+            for adapter in self._adapters:
+                files = owned[adapter.language]
+                if not files:
+                    continue
+                try:
+                    graphs.append(adapter.parse_files(intake.root, files))
+                except AdapterParseError as error:
+                    raise ProjectParseError(str(error)) from error
+        if progress is not None:
+            progress.stage("resolving")
         return _compose_graphs(tuple(graphs), intake.root, entrypoint)
 
 def _compose_graphs(
