@@ -182,7 +182,7 @@ repository were affected and no region lost a check. The root README was then
 restructured around the learning loop, fast tester setup, correctness, and the
 local/AI boundary. Its top mark now uses self-contained, GitHub-safe motion with
 a static reduced-motion state; no product or app behavior changed. Bare
-`codemble` now serves a one-shot in-app project picker (home-jailed browse +
+`codemble` now serves an in-app project picker (home-jailed browse +
 recents, Host-header allowlisted) instead of the current directory; README,
 docs-site, the changelog, and a new PyPI release checklist now lead with
 `uvx codemble` ahead of the pending first PyPI publish. A galaxy UX overhaul
@@ -404,6 +404,8 @@ animation.
 | 2026-07-20 | The workflow tree's first hop is labelled `defines`, not `calls` | The selected entrypoint is usually a module, and the parser observed no call from a module to its own function. Containment is real parser truth (`Node.region`); relabelling it a call would have invented an edge |
 | 2026-07-20 | Nebula tints ship lighter than the values in the design spec | The spec's starting values measured 3.19–4.46:1 against `--cm-ground-2` and failed the 4.5:1 legend floor. Hue is held; only lightness moved, and all three stay below `--cm-ink-2` so amber's monopoly is intact |
 | 2026-07-20 | Bloom resolution is capped with `composer.setPixelRatio(1)`, not the `UnrealBloomPass` constructor | `EffectComposer.setSize` forwards the canvas size to every pass on resize, overwriting the constructor's `resolution`. The pixel ratio is the cap that survives |
+| 2026-07-20 | **Corrects the row above**: bloom is capped by wrapping the bloom pass's own `setSize`, and the composer keeps the renderer's pixel ratio | The pixel ratio *did* cap bloom, but `EffectComposer.setSize` multiplies it into `renderTarget1/2` and every pass, so the whole scene rendered at 1x and upscaled — measured 1280x611 scene passes on a 2560x1221 buffer at dpr 2. Wrapping the one pass caps the one expensive thing: scene now 2560x1221, bloom mip 0 800x382 (1280x611 uncapped), `?benchmark` at 951 nodes unchanged at 928.8 → 961.5 fps median |
+| 2026-07-20 | **Corrects "binding is one-shot"** (2026-07-19 picker row): binding is one-*at-a-time*. `serve_project` attaches `PickerConfig(browse_root=Path.home())` too, so a `codemble <path>` run also exposes the picker endpoints after a reset, and browse then enumerates non-hidden directories under `$HOME` | The Switch project control has to work without a process restart, which is what that config is for — but the earlier row still claimed a permanent 409 for the path-opened flow, and this file is the source of truth. The home jail and the Host-header allowlist are unchanged; only the "one-shot" claim was false. An app built with no `PickerConfig` at all remains genuinely one-shot and refuses reset |
 
 ## Non-Goals — do NOT build (point here when asked)
 

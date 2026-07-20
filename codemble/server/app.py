@@ -50,6 +50,20 @@ class ModeSelection(BaseModel):
     mode: Literal["easy", "expert"]
 
 
+class ProjectRelease(BaseModel):
+    """Confirmation that the bound project should be released.
+
+    The field exists to make this endpoint JSON-only.  A cross-site HTML form
+    can POST without any script, but only as form-encoded, multipart, or
+    text/plain -- none of which parse as this body, so validation refuses them
+    before the handler runs, and a cross-origin JSON POST needs a preflight the
+    browser will not grant.  Every other state-changing endpoint already had
+    that protection by virtue of taking a body; reset was the one that did not.
+    """
+
+    confirmed: Literal[True]
+
+
 @dataclass(frozen=True)
 class PickerConfig:
     """Filesystem scope and parse settings for the in-app project picker."""
@@ -59,7 +73,15 @@ class PickerConfig:
 
 
 class _ProjectState:
-    """One-shot binding from picker selection to live project services."""
+    """The one project this server is currently serving, if any.
+
+    Binding is one-*at-a-time*, not one-shot: ``POST /api/picker/reset`` unbinds
+    so the header's Switch project control can re-arm the picker without a
+    process restart, and ``serve_project`` attaches a ``PickerConfig`` for
+    exactly that reason.  An app built with no ``PickerConfig`` at all is the
+    only genuinely one-shot case -- there, reset refuses rather than stranding
+    the process with nothing to pick.
+    """
 
     def __init__(self) -> None:
         self.checks: CheckService | None = None
@@ -114,7 +136,11 @@ def create_app(
         return {"state": "ready" if state.bound else "unpicked"}
 
     @app.post("/api/picker/reset")
-    def reset_picker() -> dict[str, str]:
+    def reset_picker(release: ProjectRelease) -> dict[str, str]:
+        # `release` is never read: validating it is the whole point (see
+        # ProjectRelease). A request that reaches this line already proved it
+        # carried a JSON body, which a cross-site form cannot send.
+        del release
         if picker is None:
             raise HTTPException(
                 status_code=409,

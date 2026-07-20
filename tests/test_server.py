@@ -563,8 +563,8 @@ def test_picker_reset_unbinds_and_re_arms_the_picker(tmp_path: Path) -> None:
     )
     assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
 
-    first = client.post("/api/picker/reset")
-    second = client.post("/api/picker/reset")
+    first = client.post("/api/picker/reset", json={"confirmed": True})
+    second = client.post("/api/picker/reset", json={"confirmed": True})
 
     assert first.status_code == 200
     assert first.json() == {"state": "unpicked"}
@@ -575,6 +575,36 @@ def test_picker_reset_unbinds_and_re_arms_the_picker(tmp_path: Path) -> None:
     assert client.get("/api/picker/browse").status_code == 200
     assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
     assert client.get("/api/graph").status_code == 200
+
+
+def test_picker_reset_refuses_a_body_a_cross_site_form_could_send(tmp_path: Path) -> None:
+    # Releasing the project is the only state change a no-body POST could reach,
+    # so a page on another origin could once unbind a learner's project with a
+    # plain <form>.  Requiring JSON puts it behind the same preflight as every
+    # other write here.  Nuisance, not disclosure -- but a one-field fix.
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+        )
+    )
+    assert client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code == 200
+
+    formish = client.post(
+        "/api/picker/reset",
+        content="confirmed=true",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    empty = client.post("/api/picker/reset")
+
+    assert formish.status_code == 422
+    assert empty.status_code == 422
+    # The project it tried to release is untouched.
+    assert client.get("/api/graph").status_code == 200
+    assert client.post("/api/picker/reset", json={"confirmed": True}).status_code == 200
+    assert client.get("/api/graph").status_code == 409
 
 
 def test_picker_reset_works_for_a_path_opened_project_that_carries_a_picker(
@@ -592,7 +622,9 @@ def test_picker_reset_works_for_a_path_opened_project_that_carries_a_picker(
     )
 
     assert client.get("/api/graph").status_code == 200
-    assert client.post("/api/picker/reset").json() == {"state": "unpicked"}
+    assert client.post(
+        "/api/picker/reset", json={"confirmed": True}
+    ).json() == {"state": "unpicked"}
     assert client.get("/api/graph").status_code == 409
     assert client.get("/api/picker/browse").status_code == 200
 
@@ -603,7 +635,7 @@ def test_picker_reset_refuses_an_app_built_without_a_picker(tmp_path: Path) -> N
     graph = PythonAstAdapter().parse(FIXTURE)
     client = TestClient(create_app(graph, tmp_path / "missing"))
 
-    response = client.post("/api/picker/reset")
+    response = client.post("/api/picker/reset", json={"confirmed": True})
 
     assert response.status_code == 409
     assert client.get("/api/graph").status_code == 200

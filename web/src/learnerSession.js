@@ -937,6 +937,10 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
       return request("/api/picker/reset", "Project reset", {
         ...options,
         method: "POST",
+        // A body, so the one state-changing endpoint that a cross-site form
+        // could once reach is now JSON-only like its siblings.
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmed: true }),
       });
     },
     loadPickerState(options = {}) {

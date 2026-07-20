@@ -95,6 +95,14 @@ def layout_graph(graph: Graph) -> Graph:
             continue
         routes[(src_node.region, dst_node.region)].append(edge.certain)
 
+    # ``all``, deliberately, where ``mapview.py``'s ``_workflow`` uses ``any``
+    # for a call pair.  The two marks claim different things.  A workflow row
+    # asserts only that a relationship exists, so one proven call site settles
+    # it and the ambiguous ones beside it change nothing.  A route is a single
+    # line standing in for ``weight`` imports, so calling it certain asserts
+    # every one of them: one unproven import among them and the whole route
+    # drops to possible.  Under-claiming is the only direction that is safe
+    # when one mark speaks for many edges.
     region_edges = tuple(
         RegionEdge(src=src, dst=dst, weight=len(certainties), certain=all(certainties))
         for (src, dst), certainties in sorted(routes.items())
