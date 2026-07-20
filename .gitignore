@@ -28,3 +28,6 @@ logs/
 .idea/
 .vscode/
 _to_delete/
+
+# graphify knowledge graph (build artifact, regenerate with: graphify update .)
+graphify-out/
