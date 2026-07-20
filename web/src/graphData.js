@@ -131,12 +131,14 @@ export function galaxyData(graph, palette) {
         : graph.nodes.some((node) => node.region === region.id && node.partial)
           ? palette.routePossible
           : brightness(region.centrality, palette),
+      focusDim: false,
     })),
     links: graph.region_edges.map((edge) => ({
       ...edge,
       source: edge.src,
       target: edge.dst,
       color: edge.certain ? palette.route : palette.routePossible,
+      focusDim: false,
     })),
   };
 }
@@ -144,6 +146,23 @@ export function galaxyData(graph, palette) {
 export function systemData(graph, regionId, palette, { selectedId = null } = {}) {
   const members = graph.nodes.filter((node) => node.region === regionId);
   const memberIds = new Set(members.map((node) => node.id));
+  const callEdges = graph.edges.filter(
+    (edge) =>
+      edge.kind === "call" &&
+      !edge.external &&
+      memberIds.has(edge.src) &&
+      memberIds.has(edge.dst),
+  );
+  // Presentation of an already-computed edge list, not layout: which nodes the
+  // selection touches. Study level fades the rest instead of dimming the whole
+  // scene, so the selected node's connections stay readable.
+  const connected = new Set(selectedId ? [selectedId] : []);
+  if (selectedId) {
+    for (const edge of callEdges) {
+      if (edge.src === selectedId) connected.add(edge.dst);
+      if (edge.dst === selectedId) connected.add(edge.src);
+    }
+  }
   return {
     nodes: members.map((node) => ({
       ...node,
@@ -157,21 +176,16 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
           ? palette.routePossible
           : brightness(node.centrality, palette),
       selected: node.id === selectedId,
+      focusDim: Boolean(selectedId) && !connected.has(node.id),
     })),
-    links: graph.edges
-      .filter(
-        (edge) =>
-          edge.kind === "call" &&
-          !edge.external &&
-          memberIds.has(edge.src) &&
-          memberIds.has(edge.dst),
-      )
-      .map((edge) => ({
-        ...edge,
-        source: edge.src,
-        target: edge.dst,
-        color: edge.certain ? palette.route : palette.routePossible,
-      })),
+    links: callEdges.map((edge) => ({
+      ...edge,
+      source: edge.src,
+      target: edge.dst,
+      color: edge.certain ? palette.route : palette.routePossible,
+      focusDim:
+        Boolean(selectedId) && edge.src !== selectedId && edge.dst !== selectedId,
+    })),
   };
 }
 

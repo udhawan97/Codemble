@@ -2,6 +2,7 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { attachBloom } from "./galaxyEffects.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 
@@ -26,6 +27,7 @@ export function GalaxyCanvas({
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
   const wheelLockRef = useRef(0);
   const dressingRef = useRef(null);
+  const bloomRef = useRef(null);
   const focusedIdRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
@@ -51,6 +53,9 @@ export function GalaxyCanvas({
   }
 
   function linkColor(link) {
+    // Study level: a link not touching the selection recedes regardless of
+    // hover, so the selection's own call connections stay the subject.
+    if (link.focusDim) return palette.routePossible;
     const { activeId, neighborIds } = highlightRef.current;
     const base = link.certain ? palette.route : palette.routePossible;
     if (!activeId) return base;
@@ -61,6 +66,7 @@ export function GalaxyCanvas({
   }
 
   function linkWidth(link) {
+    if (link.focusDim) return 0.4;
     const { activeId } = highlightRef.current;
     const base = Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25);
     if (!activeId) return base;
@@ -93,6 +99,9 @@ export function GalaxyCanvas({
         .nodeColor(nodeColor)
         .nodeRelSize(NODE_REL_SIZE)
         .nodeResolution(8)
+        // Study level no longer dims the whole scene: focusDim removes the glow
+        // from unconnected nodes instead, so the selection's connections stay
+        // visible while everything else recedes.
         .nodeOpacity(0.82)
         .nodeThreeObject((node) => makeMarker(node, palette, dressing, focusedIdRef.current))
         .nodeThreeObjectExtend(true)
@@ -100,9 +109,18 @@ export function GalaxyCanvas({
         .linkLabel(linkLabel)
         .linkOpacity(0.32)
         .linkWidth(linkWidth)
+        .linkCurvature(0.12)
         .linkHoverPrecision(4)
         .linkDirectionalArrowRelPos(1)
         .linkDirectionalArrowColor(linkColor)
+        // Particles drift only on CERTAIN call edges. A possible call stays
+        // still, so motion can never imply proof.
+        .linkDirectionalParticles((link) =>
+          link.kind === "call" && link.certain && !link.focusDim ? 2 : 0,
+        )
+        .linkDirectionalParticleSpeed(0.006)
+        .linkDirectionalParticleWidth(1.1)
+        .linkDirectionalParticleColor(() => palette.orbit)
         .onNodeHover((node) => {
           host.style.cursor = node ? "pointer" : "default";
           hoverRef.current(node?.id ?? null);
@@ -111,6 +129,7 @@ export function GalaxyCanvas({
       const hideNavigationHint = requestAnimationFrame(() => {
         host.querySelector(".scene-nav-info")?.remove();
       });
+      bloomRef.current = attachBloom(renderer);
       rendererRef.current = renderer;
 
       const resize = new ResizeObserver(([entry]) => {
@@ -121,6 +140,8 @@ export function GalaxyCanvas({
         resize.disconnect();
         cancelAnimationFrame(hideNavigationHint);
         renderer.pauseAnimation();
+        bloomRef.current?.dispose();
+        bloomRef.current = null;
         dressing.dispose();
         dressingRef.current = null;
         host.replaceChildren();
@@ -205,10 +226,13 @@ export function GalaxyCanvas({
       const graphRenderer = rendererRef.current;
       if (!graphRenderer) return;
       const webglRenderer = graphRenderer.renderer();
+      const composer = graphRenderer.postProcessingComposer();
       const frameCount = 60;
       const startedAt = performance.now();
       for (let frame = 0; frame < frameCount; frame += 1) {
-        webglRenderer.render(graphRenderer.scene(), graphRenderer.camera());
+        // Must go through the composer: rendering the scene directly would skip
+        // the bloom pass and report a framerate the learner never sees.
+        composer.render();
       }
       webglRenderer.getContext().finish();
       const elapsed = performance.now() - startedAt;
