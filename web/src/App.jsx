@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
-import { HintChip } from "./GuidanceLayer.jsx";
+import { CoachMarks, HintChip, hasSeenCoachmarks } from "./GuidanceLayer.jsx";
 import { MapView } from "./MapView.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
@@ -33,6 +33,7 @@ export function App() {
     chart,
     checkData,
     checkError,
+    coachmarksSeen,
     entrypointError,
     entrypointOpen,
     error,
@@ -107,15 +108,51 @@ export function App() {
             <span>{projectName}</span>
           </div>
         </div>
-        <p className="location" aria-live="polite">
-          {showChart
-            ? "Star chart"
-            : level === LEVELS.GALAXY
-              ? `Galaxy · Home ${graph.selected_entrypoint ? (defaultRegion(graph)?.id ?? "unresolved") : "unselected"}`
-              : region.id}
-          {!showChart && level === LEVELS.STUDY && selectedNode ? ` / ${selectedNode.name}` : ""}
-          {languageFocus !== "all" ? ` · ${languageLabel(languageFocus)} focus` : ""}
-        </p>
+        <nav className="location" aria-label="Breadcrumb" aria-live="polite">
+          {showChart ? (
+            <span aria-current="page">Star chart</span>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={level === LEVELS.GALAXY}
+                aria-current={level === LEVELS.GALAXY ? "page" : undefined}
+                onClick={() => session.dispatch({ type: "SET_LEVEL_GALAXY" })}
+              >
+                Galaxy
+              </button>
+              {level === LEVELS.GALAXY ? (
+                <small>
+                  {" · Home "}
+                  {graph.selected_entrypoint
+                    ? (defaultRegion(graph)?.id ?? "unresolved")
+                    : "unselected"}
+                </small>
+              ) : (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <button
+                    type="button"
+                    disabled={level === LEVELS.SYSTEM}
+                    aria-current={level === LEVELS.SYSTEM ? "page" : undefined}
+                    onClick={() => session.dispatch({ type: "RETREAT" })}
+                  >
+                    {region.id}
+                  </button>
+                </>
+              )}
+              {level === LEVELS.STUDY && selectedNode ? (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <span aria-current="page">{selectedNode.name}</span>
+                </>
+              ) : null}
+              {languageFocus !== "all" ? (
+                <small>{" · "}{languageLabel(languageFocus)} focus</small>
+              ) : null}
+            </>
+          )}
+        </nav>
         <div className="rail-actions">
           {showChart ? (
             <button
@@ -212,12 +249,11 @@ export function App() {
         )}
         <aside className="map-legend" aria-label="Galaxy legend">
           <span>
-            <i className="legend-dot legend-dot--dim legend-dot--small" />
-            <i className="legend-dot legend-dot--dim" />
+            <i className="legend-size" />
             Size · {mode === "easy" ? "how much code" : "lines of code"}
           </span>
           <span>
-            <i className="legend-dot legend-dot--bright" />
+            <i className="legend-brightness" />
             Brighter · {mode === "easy" ? "used more often" : "higher call centrality"}
           </span>
           <span>
@@ -237,9 +273,25 @@ export function App() {
             {mode === "easy" ? "Certain connection" : "Parser edge · certain"}
           </span>
           <span>
-            <i className="legend-route legend-route--possible" />
+            {/* Uncertainty renders as a distinct colour in the 3D galaxy (no
+                dash support in 3d-force-graph) but as a dash in the 2D SVG
+                map -- the swatch must match whichever layer is on screen. */}
+            <i
+              className={
+                layer === "map"
+                  ? "legend-route legend-route--possible legend-route--dashed"
+                  : "legend-route legend-route--possible"
+              }
+            />
             {mode === "easy" ? "Possible connection" : "Possible relationship"}
           </span>
+          {languageOptions
+            .filter((option) => option.id !== "all")
+            .map((option) => (
+              <span key={option.id}>
+                <i className={`legend-tint legend-tint--${option.id}`} /> {option.label}
+              </span>
+            ))}
         </aside>
         {layer === "galaxy" && level === LEVELS.GALAXY ? (
           <section className="orientation-copy">
@@ -326,6 +378,9 @@ export function App() {
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: selectedNode.id })
             }
           />
+        ) : null}
+        {!coachmarksSeen && !hasSeenCoachmarks() ? (
+          <CoachMarks onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })} />
         ) : null}
         <HintChip
           hint={hint}

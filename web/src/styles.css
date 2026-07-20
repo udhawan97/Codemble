@@ -1741,3 +1741,97 @@ button:focus-visible,
   font-size: var(--cm-text-xs);
   cursor: pointer;
 }
+
+.location button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cm-orbit);
+  font: inherit;
+  cursor: pointer;
+}
+
+.location button[disabled] {
+  color: var(--cm-ink-2);
+  cursor: default;
+}
+
+.location button:not([disabled]):hover {
+  text-decoration: underline;
+}
+
+.coach-marks {
+  position: absolute;
+  z-index: var(--cm-z-panel);
+  inset-block-end: var(--cm-space-lg);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  width: min(38ch, calc(100% - var(--cm-space-lg)));
+  padding: var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink);
+}
+
+.coach-marks__progress {
+  margin: 0 0 var(--cm-space-2xs);
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.coach-marks h1 {
+  margin: 0 0 var(--cm-space-xs);
+  font-size: var(--cm-text-lg);
+}
+
+.coach-marks__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cm-space-sm);
+  margin-block-start: var(--cm-space-md);
+}
+
+.coach-skip {
+  border: 0;
+  background: transparent;
+  color: var(--cm-ink-3);
+  cursor: pointer;
+}
+
+/* Legend swatches. The tint tokens are tuned to clear 4.5:1 on --cm-ground-2,
+   which is this panel's own background. */
+.legend-tint {
+  display: inline-block;
+  width: var(--cm-space-sm);
+  height: var(--cm-space-sm);
+  border-radius: 2px;
+}
+
+.legend-tint--python { background: var(--cm-neb-python); }
+.legend-tint--javascript { background: var(--cm-neb-js); }
+.legend-tint--typescript { background: var(--cm-neb-ts); }
+
+/* Opt-in dash, applied only for the 2D map swatch (see App.jsx): the galaxy
+   is a distinct COLOUR only (3d-force-graph cannot dash a link), so
+   .legend-route--possible itself must stay colour-only above or the same
+   legend would misdescribe whichever layer has no dash. */
+.legend-route--dashed {
+  border-block-start-style: dashed;
+}
+
+.legend-size {
+  display: inline-block;
+  width: var(--cm-space-md);
+  height: var(--cm-space-sm);
+  border-radius: 50%;
+  background: var(--cm-ink-3);
+}
+
+.legend-brightness {
+  display: inline-block;
+  width: var(--cm-space-md);
+  height: var(--cm-space-sm);
+  background: linear-gradient(90deg, var(--cm-node-unlit), var(--cm-ink-2));
+}

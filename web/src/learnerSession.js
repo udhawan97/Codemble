@@ -353,6 +353,10 @@ export function createLearnerSession({
       case "DISMISS_COACHMARKS":
         commit({ coachmarksSeen: true });
         return undefined;
+      case "SET_LEVEL_GALAXY":
+        cancelStudy();
+        commit({ level: LEVELS.GALAXY, selectedNode: null });
+        return undefined;
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
@@ -436,10 +440,12 @@ export function createLearnerSession({
   // layer: an explicit SET_LAYER (layerChosen) always wins, otherwise the
   // mode picks the learner's default layer.
   function applyMode(mode) {
-    commit({
-      mode,
-      layer: snapshot.layerChosen ? snapshot.layer : mode === "easy" ? "map" : "galaxy",
-    });
+    const layer = snapshot.layerChosen ? snapshot.layer : mode === "easy" ? "map" : "galaxy";
+    commit({ mode, layer });
+    // Landing on Map by mode default must fetch exactly like an explicit
+    // SET_LAYER does -- otherwise a learner already in Easy mode lands on a
+    // Map that stays in its loading state forever.
+    if (layer === "map") ensureMapLoaded();
   }
 
   async function setMode(mode) {
@@ -636,8 +642,19 @@ export function createLearnerSession({
 
   async function setLayer(layer) {
     commit({ layer, layerChosen: true });
-    if (layer === "map" && !snapshot.mapData) return loadMap();
+    if (layer === "map") return ensureMapLoaded();
     return undefined;
+  }
+
+  // Shared by setLayer and applyMode so landing on Map always fetches
+  // exactly once: skip when the data is already cached, skip when a fetch
+  // for it is genuinely still in flight, otherwise (including a retry after
+  // a failed attempt, where mapController is set but mapError is not empty)
+  // start the one map-loading concern's single AbortController.
+  function ensureMapLoaded() {
+    if (snapshot.mapData) return undefined;
+    const inFlight = mapController && !mapController.signal.aborted && !snapshot.mapError;
+    return inFlight ? undefined : loadMap();
   }
 
   async function loadMap() {

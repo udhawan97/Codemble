@@ -14,6 +14,26 @@ function tintFor(language) {
   return key ? TINT_VAR[key] : "var(--cm-hairline)";
 }
 
+// Box geometry (box.width) is backend-computed and fixed regardless of label
+// length (codemble/graph/mapview.py: _BOX_WIDTH is a constant) -- this only
+// decides how much of the label fits inside that width, the way CSS
+// text-overflow would if SVG <text> supported it. 0.62em matches the
+// monospace advance width WorkflowTree already assumes for row.label below.
+const BOX_LABEL_FONT_PX = 13;
+const BOX_LABEL_CHAR_EM = 0.62;
+const BOX_LABEL_X = 14;
+const BOX_LABEL_RIGHT_PAD = 10;
+
+function fitBoxLabel(label, boxWidth) {
+  const available = boxWidth - BOX_LABEL_X - BOX_LABEL_RIGHT_PAD;
+  const maxChars = Math.max(1, Math.floor(available / (BOX_LABEL_FONT_PX * BOX_LABEL_CHAR_EM)));
+  if (label.length <= maxChars) return label;
+  // An honest truncation, never a silent clip: a shortened identifier with
+  // an ellipsis tells the learner it is shortened; a bare clip (the bug this
+  // fixes) looked like a real, different identifier.
+  return `${label.slice(0, Math.max(1, maxChars - 1))}…`;
+}
+
 export function MapView({
   data,
   mapTab,
@@ -115,9 +135,12 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
               }
             }}
           >
+            {/* Native hover tooltip; the full label is also always in
+                aria-label above regardless of what the glyphs below fit. */}
+            <title>{box.label}</title>
             <rect width={box.width} height={box.height} rx="3" />
             <rect className="box-tint" width="4" height={box.height} fill={tintFor(box.language)} />
-            <text x="14" y="24">{box.label}</text>
+            <text x={BOX_LABEL_X} y="24">{fitBoxLabel(box.label, box.width)}</text>
             <text className="box-meta" x="14" y="42">
               {mode === "easy"
                 ? `${box.node_count} ${box.node_count === 1 ? "piece" : "pieces"}`

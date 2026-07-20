@@ -580,12 +580,26 @@ assert.equal(layerSession.getSnapshot().mapTab, "workflow");
 
 await layerSession.dispatch({ type: "DISMISS_COACHMARKS" });
 assert.equal(layerSession.getSnapshot().coachmarksSeen, true);
+assert.equal(
+  layerSession.getSnapshot().coachmarksSeen,
+  true,
+  "dismissing coach-marks is sticky within a session",
+);
+await layerSession.dispatch({ type: "SET_LAYER", layer: "galaxy" });
+assert.equal(
+  layerSession.getSnapshot().coachmarksSeen,
+  true,
+  "coach-marks never return after a layer change",
+);
 
 // The hint is expert-mode-silent and graph-derived.
 assert.equal(layerSession.getSnapshot().hint, null, "expert mode shows no hint");
 await layerSession.dispatch({ type: "SET_MODE", mode: "easy" });
 layerSnapshot = layerSession.getSnapshot();
-assert.equal(layerSnapshot.layer, "map", "an explicit layer choice survives a mode flip");
+// The most recent explicit choice is now "galaxy" (dispatched above to prove
+// coach-marks survive a layer change), so that -- not the earlier "map" --
+// is what must survive this mode flip.
+assert.equal(layerSnapshot.layer, "galaxy", "an explicit layer choice survives a mode flip");
 assert.equal(
   layerSnapshot.hint.regionId,
   "main.ts",
@@ -600,10 +614,12 @@ layerSession.dispose();
 const fullyUnderstoodGraph = makeGraph({ understood: true });
 fullyUnderstoodGraph.regions[1].understood = true;
 fullyUnderstoodGraph.nodes[1].understood = true;
+let easyMapFetchCount = 0;
 const easySession = createLearnerSession({
   adapter: {
     ...createInMemoryLearnerSessionAdapter({ graph: fullyUnderstoodGraph }),
     async fetchMap() {
+      easyMapFetchCount += 1;
       return mapPayload;
     },
     async fetchMode() {
@@ -614,6 +630,24 @@ const easySession = createLearnerSession({
 });
 await easySession.start();
 assert.equal(easySession.getSnapshot().layer, "map", "easy mode lands on the map");
+// Regression (carried-over fix): applyMode() used to set layer:"map" for a
+// persisted Easy mode without ever calling loadMap(), so a learner whose
+// mode was already Easy on load landed on a Map stuck loading forever.
+assert.equal(
+  easySession.getSnapshot().mapData,
+  mapPayload,
+  "a persisted easy mode must load the map itself, not strand the learner on a permanent loading state",
+);
+assert.equal(
+  easySession.getSnapshot().mapError,
+  "",
+  "the map that loaded from the mode default carries no error",
+);
+assert.equal(
+  easyMapFetchCount,
+  1,
+  "landing on the map by mode default fetches it exactly once, never a duplicate",
+);
 assert.equal(
   easySession.getSnapshot().hint,
   null,
