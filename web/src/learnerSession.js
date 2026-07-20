@@ -257,6 +257,11 @@ export function createLearnerSession({
     cancelStudy();
     abortController(entrypointController);
     entrypointController = null;
+    // Like entrypointController above: an in-flight map fetch belongs to the
+    // released project. Abort it here and re-check lifecycle inside loadMap
+    // -- abort alone would miss an adapter that resolves instead of rejecting.
+    abortController(mapController);
+    mapController = null;
     commit({
       graph: null,
       region: null,
@@ -279,6 +284,8 @@ export function createLearnerSession({
       languageFocus: "all",
       llmStatus: null,
       picker: null,
+      mapData: null,
+      mapError: "",
     });
     return start();
   }
@@ -658,17 +665,21 @@ export function createLearnerSession({
   }
 
   async function loadMap() {
+    const requestLifecycle = lifecycle;
     abortController(mapController);
     mapController = new AbortController();
     const controller = mapController;
     commit({ mapError: "" });
     try {
       const mapData = await adapter.fetchMap({ signal: controller.signal });
-      if (!controller.signal.aborted) commit({ mapData, mapError: "" });
+      if (requestLifecycle === lifecycle && !controller.signal.aborted) {
+        commit({ mapData, mapError: "" });
+      }
       return mapData;
     } catch (requestError) {
       if (
         mapController === controller &&
+        requestLifecycle === lifecycle &&
         !controller.signal.aborted &&
         !isAbortError(requestError)
       ) {

@@ -878,6 +878,93 @@ assert.equal(
 );
 entrypointRaceSession.dispose();
 
+// Regression: RESET_PROJECT must clear map-layer state too, not just
+// graph/study/entrypoint state -- otherwise project A's architecture and
+// workflow trees stay in mapData after the learner switches to project B.
+const mapClearBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  mode: "expert",
+  map: mapPayload,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const mapClearSession = createLearnerSession({ adapter: mapClearBaseAdapter, clock });
+await mapClearSession.start();
+await mapClearSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+await mapClearSession.dispatch({ type: "SET_LAYER", layer: "map" });
+assert.equal(
+  mapClearSession.getSnapshot().mapData,
+  mapPayload,
+  "setup: project A's map really loaded before reset",
+);
+
+await mapClearSession.dispatch({ type: "RESET_PROJECT" });
+const mapClearSnapshot = mapClearSession.getSnapshot();
+assert.equal(mapClearSnapshot.status, "picking", "reset returns to the picker");
+assert.equal(mapClearSnapshot.mapData, null, "reset clears the previous project's map data");
+assert.equal(mapClearSnapshot.mapError, "", "reset clears any previous map error too");
+mapClearSession.dispose();
+
+// Regression: a map fetch that was in flight for the old project at reset
+// time must not be able to commit into the new session when it later
+// resolves -- same class of bug as the SELECT_ENTRYPOINT race above.
+// resetProject() must abort mapController like it aborts entrypointController,
+// and loadMap() must check lifecycle like loadProjectGraph/selectEntrypoint,
+// because an adapter that ignores the abort signal still resolves.
+let resolveLateMap;
+const lateMap = new Promise((resolve) => {
+  resolveLateMap = resolve;
+});
+const mapRaceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  mode: "expert",
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const mapRaceSession = createLearnerSession({
+  adapter: { ...mapRaceBaseAdapter, fetchMap: () => lateMap },
+  clock,
+});
+await mapRaceSession.start();
+await mapRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(mapRaceSession.getSnapshot().status, "ready");
+
+const staleMapRequest = mapRaceSession.dispatch({ type: "SET_LAYER", layer: "map" });
+await mapRaceSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  mapRaceSession.getSnapshot().status,
+  "picking",
+  "reset returns to the picker while the map request is still in flight",
+);
+assert.equal(mapRaceSession.getSnapshot().mapData, null);
+
+resolveLateMap(mapPayload);
+await staleMapRequest;
+assert.equal(
+  mapRaceSession.getSnapshot().mapData,
+  null,
+  "a stale map response after reset must not resurrect the old project's map",
+);
+mapRaceSession.dispose();
+
 // A project that already carries a Home must not greet the learner with the
 // picker; the affordance is opt-in from the header instead.
 const homeGraph = { ...makeGraph(), selected_entrypoint: "python:app.py:run" };
