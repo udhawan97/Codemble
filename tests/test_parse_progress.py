@@ -8,7 +8,9 @@ import pytest
 
 from codemble.adapters.parse_progress import (
     ParseCancelled,
+    note_detail,
     note_file_parsed,
+    reporting_detail,
     reporting_files,
 )
 from codemble.adapters.project import ProjectParser
@@ -25,6 +27,7 @@ class _Recorder:
         self.stages: list[str] = []
         self.total = 0
         self.files = 0
+        self.details: list[str] = []
 
     def stage(self, stage: str) -> None:
         self.stages.append(stage)
@@ -34,6 +37,9 @@ class _Recorder:
 
     def file_parsed(self) -> None:
         self.files += 1
+
+    def detail(self, detail: str) -> None:
+        self.details.append(detail)
 
 
 def test_note_file_parsed_is_a_no_op_when_nobody_is_listening() -> None:
@@ -61,6 +67,36 @@ def test_progress_reporting_never_changes_the_parsed_graph() -> None:
 
     assert reported.to_json() == quiet.to_json()
     assert reported.to_json() == PythonAstAdapter().parse(FIXTURE).to_json()
+    # Driving the resolving detail hook must not perturb the graph either.
+    assert recorder.details
+
+
+def test_note_detail_is_a_no_op_when_nobody_is_listening() -> None:
+    note_detail("no listener bound")
+
+
+def test_reporting_detail_restores_the_previous_binding() -> None:
+    outer: list[str] = []
+    inner: list[str] = []
+    with reporting_detail(outer.append):
+        with reporting_detail(inner.append):
+            note_detail("inner")
+        note_detail("outer")
+
+    assert inner == ["inner"]
+    assert outer == ["outer"]
+
+
+def test_resolving_reports_real_named_substeps() -> None:
+    parser = ProjectParser()
+    recorder = _Recorder()
+
+    parser.parse(FIXTURE, progress=recorder)
+
+    # The resolving stage must not be a single frozen label: it reports the
+    # real cross-file passes as they run, and every one is a non-empty string.
+    assert len(recorder.details) >= 2
+    assert all(isinstance(detail, str) and detail for detail in recorder.details)
 
 
 def test_every_owned_file_is_counted_exactly_once() -> None:

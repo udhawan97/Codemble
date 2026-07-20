@@ -4,6 +4,7 @@ import {
   buildConceptChart,
   galaxyData,
   languageFocusGraph,
+  languageFocusMap,
   linkLabel,
   projectLanguageOptions,
   systemData,
@@ -52,6 +53,90 @@ assert.deepEqual(typescript.regions.map((region) => region.id), ["ts"]);
 assert.deepEqual(typescript.region_edges, []);
 assert.deepEqual(typescript.partial_files, []);
 assert.equal(graph.nodes.length, 3, "focus never mutates graph truth");
+
+// The Map's language projection (F4): the same drop-not-move rule as the galaxy
+// focus, applied to the flat map payload. Boxes/rows/edges of other languages
+// disappear; survivors keep their exact backend coordinates and objects.
+const mapData = {
+  schema_version: 1,
+  architecture: {
+    home: null,
+    layer_count: 2,
+    width: 960,
+    height: 240,
+    groups: [],
+    boxes: [
+      { id: "py", language: "python", x: 10, y: 0, width: 160, height: 56 },
+      { id: "pylib", language: "python", x: 10, y: 120, width: 160, height: 56 },
+      { id: "ts", language: "typescript", x: 200, y: 0, width: 160, height: 56 },
+      { id: "js", language: "javascript", x: 390, y: 0, width: 160, height: 56 },
+    ],
+    edges: [
+      { src: "py", dst: "pylib", certain: true }, // both python -> survives
+      { src: "ts", dst: "js", certain: true }, // neither python -> dropped
+      { src: "py", dst: "ts", certain: false }, // ts dropped -> orphaned -> dropped
+    ],
+    unreachable: ["js"],
+  },
+  workflow: {
+    root: "python:py:run",
+    depth_count: 2,
+    width: 320,
+    height: 68,
+    nodes: [
+      { id: "python:py:run", language: "python", x: 0, y: 0, parent: null },
+      { id: "typescript:ts:main", language: "typescript", x: 28, y: 34, parent: "python:py:run" },
+    ],
+    unreachable: ["javascript:js:helper", "python:py:dead"],
+  },
+};
+
+assert.equal(languageFocusMap(mapData, "all"), mapData, "no focus is the identity");
+assert.equal(languageFocusMap(null, "python"), null, "a missing map projects to nothing");
+
+const pyMap = languageFocusMap(mapData, "python");
+assert.deepEqual(
+  pyMap.architecture.boxes.map((box) => box.id),
+  ["py", "pylib"],
+  "only the focused language's boxes survive",
+);
+assert.equal(
+  pyMap.architecture.boxes[0],
+  mapData.architecture.boxes[0],
+  "a surviving box keeps its object and its backend coordinates -- nothing moves",
+);
+assert.equal(pyMap.architecture.edges.length, 1, "an edge orphaned by a dropped box is dropped too");
+assert.equal(
+  pyMap.architecture.edges[0],
+  mapData.architecture.edges[0],
+  "a surviving edge keeps its object -- its certainty (dashed/solid) is never rewritten",
+);
+assert.deepEqual(pyMap.architecture.unreachable, [], "the unreachable note's count follows the focus");
+assert.equal(pyMap.architecture.width, 960, "canvas dimensions are backend-owned and never recomputed");
+assert.equal(pyMap.architecture.height, 240);
+assert.deepEqual(
+  pyMap.workflow.nodes.map((row) => row.id),
+  ["python:py:run"],
+  "only the focused language's workflow rows survive",
+);
+assert.equal(
+  pyMap.workflow.nodes[0],
+  mapData.workflow.nodes[0],
+  "a surviving row keeps its object and coordinates",
+);
+assert.deepEqual(
+  pyMap.workflow.unreachable,
+  ["python:py:dead"],
+  "unreached rows have no language field, so their language:file:symbol id prefix filters them",
+);
+assert.equal(pyMap.workflow.root, "python:py:run", "the backend root is untouched");
+assert.equal(mapData.architecture.boxes.length, 4, "projection never mutates the map payload");
+assert.equal(mapData.workflow.nodes.length, 2);
+
+const tsMap = languageFocusMap(mapData, "typescript");
+assert.deepEqual(tsMap.architecture.boxes.map((box) => box.id), ["ts"]);
+assert.deepEqual(tsMap.architecture.edges, [], "ts's only edges point at dropped boxes, so none survive");
+assert.deepEqual(tsMap.workflow.nodes.map((row) => row.id), ["typescript:ts:main"]);
 
 assert.deepEqual(
   projectLanguageOptions(graph).map(({ id, count }) => [id, count]),

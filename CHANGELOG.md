@@ -5,7 +5,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- Large projects now show a staged loading screen instead of a frozen tab.
+  Parsing runs on a worker thread; the app polls `GET /api/picker/progress` and
+  names the stage it is in — discovering, parsing, resolving, checks, layout —
+  with a real file count while files are read, and a narrated sub-step
+  (resolving imports, resolving calls, building the galaxy map, composing the
+  project) once the parse moves past counting files. A failed parse reports
+  the parser's own message and offers an in-app retry; cancelling stops the
+  parse at the next file boundary. A realistic 1,000-file Python project
+  parses and renders an interactive galaxy end to end; the parse itself is
+  1.56x faster after removing a parser hotspot (below), and the one-pass check
+  index builds a full 1,000-region suite in under a second.
+- The over-cap prompt is actionable in-app: the busiest subdirectories are
+  buttons that navigate the picker, and a typed path field accepts any folder
+  inside your home directory. Outside-home paths are still refused.
+- A **Clear this project's progress** control on the star chart, behind a
+  confirmation, scoped to the open project only.
+- A non-interactive `codemble` run now prints the busiest-scope suggestions
+  with the scale refusal instead of a bare message.
+
 ### Changed
+- The scale cap moved from 300 to 1,000 supported source files. LOD and
+  clustering remain Phase 2 work.
+- `POST /api/picker/select` returns `202 {"state": "parsing"}` instead of
+  blocking until the graph is ready.
 - `CODEMBLE_DATA_DIR` now relocates **everything** Codemble keeps under your home
   directory — saved progress, the narration cache, and the `config` file — rather
   than progress alone. All three resolve through one helper, so pointing the
@@ -13,6 +37,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   `~/.codemble`.
 
 ### Fixed
+- Check generation walked every graph edge up to four times per region, and
+  rebuilt the node lookup and the option pool per region — an O(regions × graph)
+  freeze at bind. One index is now built per bind in a single pass, measured
+  ~16x faster at 1,000 files. A committed golden fixture proves the generated
+  suites and answers are byte-identical for the Python and mixed fixtures.
+- `GET /api/graph` and `GET /api/map` re-hydrated progress and re-sorted every
+  node and edge on every request. The serialized document is cached and
+  invalidated on region light-up, Home selection, and project bind or reset —
+  measured ~25-26x faster warm.
+- The Python adapter resolved a node's owning module with an O(definitions ×
+  modules) scan; it now walks the node id's own dotted prefixes in O(depth),
+  a further 1.56x on total parse wall-clock. Output is byte-identical.
 - The test suite no longer reads the developer's `~/.codemble/config` or their
   `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`. Every server test that built an app
   without an explicit study service inherited whatever the machine had

@@ -14,6 +14,7 @@ def test_a_fresh_job_is_idle() -> None:
     assert ParseJob().snapshot() == {
         "state": "idle",
         "stage": None,
+        "detail": None,
         "files_done": 0,
         "files_total": 0,
         "error": None,
@@ -55,6 +56,7 @@ def test_a_finished_thread_reports_ready_with_its_final_counts() -> None:
     assert job.snapshot() == {
         "state": "ready",
         "stage": None,
+        "detail": None,
         "files_done": 2,
         "files_total": 2,
         "error": None,
@@ -148,3 +150,18 @@ def test_a_cancelled_hook_raises_parse_cancelled() -> None:
 
     with pytest.raises(ParseCancelled):
         job.file_parsed()
+
+
+def test_detail_is_reported_then_cleared_by_the_next_stage() -> None:
+    job = ParseJob()
+    job.stage("resolving")
+    job.detail("Resolving imports and calls")
+    assert job.snapshot()["detail"] == "Resolving imports and calls"
+
+    # Re-announcing the same stage keeps a live sub-step visible.
+    job.stage("resolving")
+    assert job.snapshot()["detail"] == "Resolving imports and calls"
+
+    # A real stage change retires the stale sub-step rather than stranding it.
+    job.stage("checks")
+    assert job.snapshot()["detail"] is None

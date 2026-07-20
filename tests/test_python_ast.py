@@ -141,6 +141,51 @@ def test_serialization_is_byte_deterministic(graph) -> None:  # type: ignore[no-
     )
 
 
+def _longest_prefix_reference(node_id: str, modules: set[str]) -> str:
+    """The original O(defs x modules) scan, kept as the byte-identical oracle."""
+
+    return max(
+        (m for m in modules if node_id == m or node_id.startswith(f"{m}.")),
+        key=len,
+    )
+
+
+def test_module_from_node_id_matches_longest_prefix_oracle() -> None:
+    from codemble.adapters.python_ast import _module_from_node_id
+
+    cases: list[tuple[str, set[str]]] = [
+        ("a.b.func", {"a.b"}),
+        ("a.b.c.func", {"a", "a.b", "a.b.c"}),
+        ("a.bc.func", {"a", "a.b"}),  # component boundary: not "a.b"
+        ("a.b", {"a", "a.b"}),  # exact module match
+        ("pkg.Outer.method", {"pkg", "pkg.Outer"}),  # nested-class ambiguity kept
+        ("pkg.mod.Class.method.inner", {"pkg.mod", "pkg.mod.Class"}),
+    ]
+    for node_id, modules in cases:
+        assert _module_from_node_id(node_id, modules) == _longest_prefix_reference(
+            node_id, modules
+        )
+
+
+def test_module_from_node_id_is_byte_identical_to_the_old_scan() -> None:
+    import random
+
+    from codemble.adapters.python_ast import _module_from_node_id
+
+    rng = random.Random(20260720)
+    atoms = ["a", "ab", "abc", "pkg", "mod", "Class", "fn", "x"]
+    for _ in range(4000):
+        modules = {
+            ".".join(rng.choices(atoms, k=rng.randint(1, 4)))
+            for _ in range(rng.randint(1, 6))
+        }
+        base = rng.choice(sorted(modules))
+        node_id = base + "." + ".".join(rng.choices(atoms, k=rng.randint(1, 3)))
+        assert _module_from_node_id(node_id, modules) == _longest_prefix_reference(
+            node_id, modules
+        )
+
+
 def test_python_lens_annotations_are_ast_proven_and_lexically_owned() -> None:
     graph = PythonAstAdapter().parse(CONCEPT_FIXTURE)
     concepts_by_node: dict[str, set[tuple[str, int]]] = {}

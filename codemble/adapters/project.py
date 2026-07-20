@@ -13,7 +13,12 @@ from codemble.adapters.discovery import (
     SourceOwnership,
     discover_project_sources,
 )
-from codemble.adapters.parse_progress import ParseProgress, reporting_files
+from codemble.adapters.parse_progress import (
+    ParseProgress,
+    note_detail,
+    reporting_detail,
+    reporting_files,
+)
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 
@@ -27,10 +32,14 @@ class ProjectScaleError(ProjectParseError):
     def __init__(self, intake: ProjectIntake, scale_cap: int) -> None:
         self.intake = intake
         self.scale_cap = scale_cap
+        scopes = ", ".join(
+            f"{directory} ({count})" for directory, count in intake.scope_counts()[:6]
+        )
+        suggestion = f" Busiest scopes: {scopes}." if scopes else ""
         super().__init__(
             f"found {len(intake.files)} supported source files; Codemble is capped at "
             f"{scale_cap}. Re-run with `codemble --path PATH` to choose a project "
-            "subdirectory."
+            f"subdirectory.{suggestion}"
         )
 
 
@@ -86,7 +95,9 @@ class ProjectParser:
 
         return tuple(adapter.language for adapter in self._adapters)
 
-    scale_cap = 300
+    # Raised from 300 with the Phase C threaded parse and staged loading
+    # screen; LOD and clustering remain Phase 2.
+    scale_cap = 1000
 
     def intake(self, path: Path, *, explicit: bool = False) -> ProjectIntake:
         """Resolve one project scope and every adapter's owned files."""
@@ -157,7 +168,11 @@ class ProjectParser:
             progress.stage("parsing")
         graphs: list[Graph] = []
         on_file = progress.file_parsed if progress is not None else None
-        with reporting_files(on_file):
+        # ``detail`` outlives the file-read loop: the adapters narrate their
+        # cross-file passes and composition narrates the merge, all under the
+        # single ``resolving`` stage the design spec fixes.
+        on_detail = getattr(progress, "detail", None) if progress is not None else None
+        with reporting_detail(on_detail), reporting_files(on_file):
             for adapter in self._adapters:
                 files = owned[adapter.language]
                 if not files:
@@ -166,15 +181,16 @@ class ProjectParser:
                     graphs.append(adapter.parse_files(intake.root, files))
                 except AdapterParseError as error:
                     raise ProjectParseError(str(error)) from error
-        if progress is not None:
-            progress.stage("resolving")
-        return _compose_graphs(tuple(graphs), intake.root, entrypoint)
+            if progress is not None:
+                progress.stage("resolving")
+            return _compose_graphs(tuple(graphs), intake.root, entrypoint)
 
 def _compose_graphs(
     graphs: tuple[Graph, ...],
     project_root: Path,
     entrypoint: str | None,
 ) -> Graph:
+    note_detail("Composing your project")
     nodes: list[Node] = []
     edges = []
     annotations = []

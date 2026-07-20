@@ -227,9 +227,9 @@ game; only the optional prose narration is unavailable.
 
 - **Supported source:** Python 3.11+, JavaScript/JSX, TypeScript/TSX, and mixed
   projects. Unsupported languages stay outside the graph rather than being guessed.
-- **Scale:** above roughly 300 supported source files, choose a subdirectory —
-  the in-app picker prompts for the scope, or pass
-  `codemble --path ./project/subdirectory`.
+- **Scale:** above roughly 1,000 supported source files, choose a subdirectory —
+  the in-app picker offers the busiest scopes as buttons and accepts a typed
+  path, or pass `codemble --path ./project/subdirectory`.
 - **Ambiguous Home:** choose a parser-ranked entrypoint in the app or pass
   `--entrypoint NODE_ID`.
 - **Broken source:** syntax errors remain visible; Codemble maps safe partial

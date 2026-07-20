@@ -63,3 +63,10 @@ gives Codemble nothing to build a question from, so it stays dim and says so.
 Lighting it anyway would mean the amber said something untrue about what you
 understand. Import that module somewhere, or call something inside it, and its
 checks appear.
+
+## Starting a project over
+
+The star chart has a **Clear this project's progress** control behind a
+confirmation. It forgets the understood regions for the project you have open
+and nothing else: progress is stored per project in `~/.codemble/progress/`,
+and other projects keep theirs. Your Easy/Expert preference survives the reset.

@@ -361,6 +361,13 @@ export function GalaxyCanvas({
       <section className="webgl-error" role="alert">
         <h1>The sky could not open.</h1>
         <p>{renderError}</p>
+        {/* The 2D layer draws from the same parser graph without WebGL, and its
+            switch is in the header rail one step away -- cheaper and kinder than
+            leaving a stranded learner with only "enable WebGL and reload". */}
+        <p>
+          The {mode === "easy" ? "Diagram" : "Map"} layer works without WebGL —
+          switch to it at the top of the window to explore the same code.
+        </p>
       </section>
     );
   }

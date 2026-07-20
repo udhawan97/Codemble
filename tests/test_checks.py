@@ -2,15 +2,79 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import replace
 from pathlib import Path
 
 from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
 from codemble.checks import CheckService, generate_checks
 from codemble.progress import ProgressStore
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
+IMPACT_FIXTURE = Path(__file__).parent / "fixtures" / "impact"
+GOLDEN = Path(__file__).parent / "fixtures" / "check_suites.json"
+
+
+def _suite_shapes(graph) -> dict:  # type: ignore[no-untyped-def]
+    """Serialize every region's whole suite, answers included."""
+
+    return {
+        region.id: [
+            {
+                "id": check.id,
+                "kind": check.kind,
+                "prompt": check.prompt,
+                "options": [
+                    {"id": option.id, "label": option.label} for option in check.options
+                ],
+                "answer_ids": list(check.answer_ids),
+                "evidence": list(check.evidence),
+            }
+            for check in generate_checks(graph, region.id)
+        ]
+        for region in graph.regions
+    }
+
+
+def test_generated_check_suites_match_the_pinned_golden() -> None:
+    """A performance change to generation must not move one byte of a suite.
+
+    ``impact`` is in the golden on purpose. Neither sampleproj nor polyglot
+    contains a single target called more than once from one caller, so both
+    rank identically whether the generator counts call sites or distinct
+    callers -- a golden built from those two alone would pass while silently
+    reintroducing the bug b7dc5aa fixed.
+    """
+
+    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
+
+    assert _suite_shapes(PythonAstAdapter().parse(FIXTURE)) == golden["sampleproj"]
+    assert (
+        _suite_shapes(JavaScriptTypeScriptAdapter().parse(POLYGLOT_FIXTURE))
+        == golden["polyglot"]
+    )
+    assert _suite_shapes(PythonAstAdapter().parse(IMPACT_FIXTURE)) == golden["impact"]
+
+
+def test_the_service_generates_the_same_suites_as_the_public_function(
+    tmp_path: Path,
+) -> None:
+    """The bound service and the one-off function must never disagree."""
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = CheckService(graph, ProgressStore(graph, tmp_path))
+
+    for region in graph.regions:
+        suite = service.for_region(region.id)["checks"]
+        expected = generate_checks(graph, region.id)
+        assert [question["id"] for question in suite] == [check.id for check in expected]
+        assert [question["options"] for question in suite] == [
+            [{"id": option.id, "label": option.label} for option in check.options]
+            for check in expected
+        ]
 
 
 def test_home_region_has_all_four_graph_derived_check_types() -> None:
@@ -81,7 +145,7 @@ def test_every_check_offers_at_least_one_wrong_option(tmp_path: Path) -> None:
             )
 
 
-def test_removal_impact_targets_the_most_depended_on_structure(tmp_path: Path) -> None:
+def test_removal_impact_targets_the_most_depended_on_structure() -> None:
     """Call sites are evidence; distinct callers are the measure of impact.
 
     Ranking by call sites let a private helper called five times from one
@@ -89,27 +153,12 @@ def test_removal_impact_targets_the_most_depended_on_structure(tmp_path: Path) -
     shipped with a single correct answer — the weakest form of "what depends
     on this?". The decoy sorts first alphabetically, so passing this test
     requires the ranking, not the tiebreak.
+
+    The fixture is checked in rather than built here because the golden suite
+    comparison needs the same divergence; see the golden test's docstring.
     """
 
-    project = tmp_path / "impact"
-    project.mkdir()
-    (project / "helpers.py").write_text(
-        'def cache_key() -> str:\n    return "k"\n\n\ndef log() -> None:\n    pass\n',
-        encoding="utf-8",
-    )
-    (project / "noisy.py").write_text(
-        "import helpers\n\n\ndef spam() -> None:\n" + "    helpers.cache_key()\n" * 5,
-        encoding="utf-8",
-    )
-    (project / "alpha.py").write_text(
-        "import helpers\n\n\ndef go() -> None:\n    helpers.log()\n    helpers.log()\n",
-        encoding="utf-8",
-    )
-    for name in ("beta", "gamma"):
-        (project / f"{name}.py").write_text(
-            "import helpers\n\n\ndef go() -> None:\n    helpers.log()\n", encoding="utf-8"
-        )
-    graph = PythonAstAdapter().parse(project)
+    graph = PythonAstAdapter().parse(IMPACT_FIXTURE)
 
     impact = next(
         check
@@ -304,3 +353,31 @@ def test_an_explicit_home_outranks_a_persisted_one(tmp_path: Path) -> None:
     restarted = CheckService(explicit, ProgressStore(explicit, progress_root))
 
     assert restarted.graph().selected_entrypoint == "alpha"
+
+
+def test_check_generation_walks_every_edge_once(tmp_path: Path) -> None:
+    """Per-region full-edge scans are the bind freeze at ~1,000 files.
+
+    Binding generated every region's suite by re-scanning ``graph.edges`` up
+    to four times per region, so the learner waited on O(regions x edges)
+    while the galaxy stayed blank.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    passes = 0
+
+    class _CountingEdges(tuple):  # noqa: SLOT001 - a plain tuple is the point
+        """A real tuple that records how many times a consumer walked it."""
+
+        def __iter__(self):  # type: ignore[no-untyped-def]
+            nonlocal passes
+            passes += 1
+            return super().__iter__()
+
+    counted = replace(graph, edges=_CountingEdges(graph.edges))
+    # The store is built from the uncounted graph, so every recorded pass
+    # belongs to check generation and none to progress hydration.
+    CheckService(counted, ProgressStore(graph, tmp_path))
+
+    assert len(graph.regions) > 1
+    assert passes == 1

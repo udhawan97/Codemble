@@ -753,10 +753,10 @@ const pickerFetch = async (url, options = {}) => {
       json: async () => ({
         detail: {
           reason: "scale",
-          file_count: 420,
-          scale_cap: 300,
+          file_count: 1420,
+          scale_cap: 1000,
           root: "/home/u/big",
-          suggestions: [{ path: "api", file_count: 300 }],
+          suggestions: [{ path: "api", file_count: 900 }],
         },
       }),
     };
@@ -767,10 +767,35 @@ const httpPicker = createHttpLearnerSessionAdapter(pickerFetch);
 assert.deepEqual(await httpPicker.loadPickerState(), { state: "unpicked" });
 const scaleResult = await httpPicker.selectProject("/home/u/big");
 assert.equal(scaleResult.state, "scale");
-assert.equal(scaleResult.file_count, 420);
+assert.equal(scaleResult.file_count, 1420);
 assert.equal(
   JSON.parse(pickerHttpCalls.at(-1).options.body).path,
   "/home/u/big",
+);
+
+// A refusal carries the server's own sentence, not its status code: the picker
+// path field is the first control that can reach a 403, and "Folder listing
+// returned 403." tells a learner nothing about what to do next.
+const detailedAdapter = createHttpLearnerSessionAdapter(async (url) => {
+  if (url.startsWith("/api/picker/browse")) {
+    return {
+      ok: false,
+      status: 403,
+      json: async () => ({ detail: "Choose a folder inside your home directory." }),
+    };
+  }
+  // A refusal with no JSON body at all still has to produce a message.
+  return { ok: false, status: 500, json: async () => { throw new Error("not json"); } };
+});
+await assert.rejects(
+  () => detailedAdapter.browsePicker("/etc"),
+  /^Error: Choose a folder inside your home directory\.$/,
+  "a browse refusal shows the server's sentence",
+);
+await assert.rejects(
+  () => detailedAdapter.loadGraph(),
+  /^Error: Graph request returned 500\.$/,
+  "a refusal with no detail still falls back to the labelled status",
 );
 
 // In-memory picker adapter: fixture-driven browse/recents/select and state flip.
@@ -825,10 +850,10 @@ const pickerAdapter = createInMemoryLearnerSessionAdapter({
     selections: {
       "/home/u/big": {
         state: "scale",
-        file_count: 420,
-        scale_cap: 300,
+        file_count: 1420,
+        scale_cap: 1000,
         root: "/home/u/big",
-        suggestions: [{ path: "api", file_count: 300 }],
+        suggestions: [{ path: "api", file_count: 900 }],
       },
       "/home/u/demo": { state: "ready" },
     },
@@ -847,7 +872,7 @@ assert.equal(pickerSession.getSnapshot().picker.path, "/home/u/big");
 await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/big" });
 pickerSnapshot = pickerSession.getSnapshot();
 assert.equal(pickerSnapshot.status, "picking");
-assert.equal(pickerSnapshot.picker.scale.file_count, 420);
+assert.equal(pickerSnapshot.picker.scale.file_count, 1420);
 assert.equal(pickerSnapshot.picker.path, "/home/u/big");
 assert.equal(pickerSnapshot.picker.busy, false);
 
@@ -1742,6 +1767,265 @@ await narrationOnceSession.dispatch({ type: "ADVANCE", node: graph.regions[0] })
 await narrationOnceSession.dispatch({ type: "ADVANCE", node: graph.nodes[0] });
 assert.equal(explanationCalls, 1, "one study open issues exactly one narration request");
 narrationOnceSession.dispose();
+
+// The earlier illumination assertion fires its timer without deleting it, so
+// start the Phase C blocks from a clean timer map.
+pendingTimers.clear();
+
+// Phase C: a 202 select drives a polled loading screen, not a frozen tab.
+const parseFixture = () => ({
+  graph,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "parsing" } },
+    // The session seeds stage "discovering" itself from the 202, so the first
+    // served payload is the first real server observation.
+    progress: [
+      {
+        state: "parsing",
+        stage: "parsing",
+        files_done: 640,
+        files_total: 1000,
+        error: null,
+      },
+      {
+        state: "ready",
+        stage: null,
+        files_done: 1000,
+        files_total: 1000,
+        error: null,
+      },
+    ],
+  },
+});
+
+const parseSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter(parseFixture()),
+  clock,
+});
+await parseSession.start();
+await parseSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+let parseSnapshot = parseSession.getSnapshot();
+assert.equal(parseSnapshot.status, "picking");
+assert.equal(parseSnapshot.picker.busy, true);
+assert.equal(parseSnapshot.parseProgress.stage, "discovering");
+assert.equal(parseSnapshot.parseProgress.path, "/home/u/demo");
+assert.equal(pendingTimers.size, 1, "a parsing poll is scheduled, not spun");
+
+await fireOnlyTimer();
+parseSnapshot = parseSession.getSnapshot();
+assert.equal(parseSnapshot.parseProgress.stage, "parsing");
+assert.equal(parseSnapshot.parseProgress.files_done, 640);
+assert.equal(parseSnapshot.parseProgress.files_total, 1000);
+
+await fireOnlyTimer();
+parseSnapshot = parseSession.getSnapshot();
+assert.equal(parseSnapshot.status, "ready");
+assert.equal(parseSnapshot.parseProgress, null);
+assert.equal(parseSnapshot.graph, graph);
+assert.equal(pendingTimers.size, 0, "polling stops once the parse is ready");
+parseSession.dispose();
+
+// A crashed parse thread surfaces in-app and the same path can be retried.
+const failing = parseFixture();
+failing.picker.progress = [
+  { state: "error", stage: null, files_done: 3, files_total: 9, error: "boom" },
+];
+const failSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter(failing),
+  clock,
+});
+await failSession.start();
+await failSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+await fireOnlyTimer();
+let failSnapshot = failSession.getSnapshot();
+assert.equal(failSnapshot.status, "picking");
+assert.equal(failSnapshot.parseProgress, null);
+assert.equal(failSnapshot.picker.busy, false, "a failed parse re-arms the picker");
+assert.equal(failSnapshot.picker.error, "boom");
+assert.equal(pendingTimers.size, 0, "a failed parse stops the loop, it does not retry it");
+failSession.dispose();
+
+// A poll failure backs off and reports honestly instead of going silent.
+const flaky = parseFixture();
+const flakyBase = createInMemoryLearnerSessionAdapter(flaky);
+let progressCalls = 0;
+const flakySession = createLearnerSession({
+  adapter: {
+    ...flakyBase,
+    async fetchParseProgress(options = {}) {
+      progressCalls += 1;
+      if (progressCalls === 1) throw new Error("network hiccup");
+      return flakyBase.fetchParseProgress(options);
+    },
+  },
+  clock,
+});
+await flakySession.start();
+await flakySession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+await fireOnlyTimer();
+let flakySnapshot = flakySession.getSnapshot();
+assert.equal(flakySnapshot.parseProgress.pollError, "network hiccup");
+assert.equal(flakySnapshot.parseProgress.attempts, 1);
+assert.equal(pendingTimers.size, 1, "a failed poll retries with backoff");
+await fireOnlyTimer();
+flakySnapshot = flakySession.getSnapshot();
+assert.equal(flakySnapshot.parseProgress.pollError, "");
+assert.equal(flakySnapshot.parseProgress.attempts, 0);
+assert.equal(pendingTimers.size, 1, "setup: a poll really is still scheduled at dispose");
+flakySession.dispose();
+assert.equal(
+  pendingTimers.size,
+  0,
+  "unmounting mid-parse clears the scheduled poll: a leaked loop would keep " +
+    "hitting a server the learner has already walked away from",
+);
+
+// Reset during a parse cancels the poll and returns to the picker.
+const cancelSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter(parseFixture()),
+  clock,
+});
+await cancelSession.start();
+await cancelSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(pendingTimers.size, 1);
+await cancelSession.dispatch({ type: "RESET_PROJECT" });
+const cancelSnapshot = cancelSession.getSnapshot();
+assert.equal(cancelSnapshot.parseProgress, null);
+assert.equal(pendingTimers.size, 0, "reset cancels the scheduled poll");
+cancelSession.dispose();
+
+// Regression class: a poll issued for a selection the learner has already
+// abandoned must not commit when it later resolves. The abort alone would miss
+// an adapter that ignores the signal and resolves anyway -- and this one lands
+// `state: "ready"`, so committing it would bind a project that was released.
+let resolveStalePoll;
+const stalePoll = new Promise((resolve) => {
+  resolveStalePoll = resolve;
+});
+const staleParseSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter(parseFixture()),
+    fetchParseProgress: () => stalePoll,
+  },
+  clock,
+});
+await staleParseSession.start();
+await staleParseSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+// Not awaited: the poll is now suspended on the deferred response above.
+const stalePollRun = fireOnlyTimer();
+await staleParseSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(staleParseSession.getSnapshot().status, "picking");
+assert.equal(staleParseSession.getSnapshot().parseProgress, null);
+
+resolveStalePoll({
+  state: "ready",
+  stage: null,
+  files_done: 9,
+  files_total: 9,
+  error: null,
+});
+await stalePollRun;
+const staleParseSnapshot = staleParseSession.getSnapshot();
+assert.equal(
+  staleParseSnapshot.status,
+  "picking",
+  "a superseded poll must not bind the project the learner just released",
+);
+assert.equal(staleParseSnapshot.graph, null);
+assert.equal(staleParseSnapshot.parseProgress, null);
+assert.equal(pendingTimers.size, 0, "nor may it restart the loop it belonged to");
+staleParseSession.dispose();
+
+// Clearing progress reloads the graph so lit systems dim again.
+const clearAdapter = createInMemoryLearnerSessionAdapter({ graph: understoodGraph });
+let cleared = 0;
+const clearSession = createLearnerSession({
+  adapter: {
+    ...clearAdapter,
+    async clearProgress(options = {}) {
+      cleared += 1;
+      return { understood_regions: 0 };
+    },
+    async loadGraph(options = {}) {
+      return cleared ? graph : understoodGraph;
+    },
+  },
+  clock,
+});
+await clearSession.start();
+assert.equal(clearSession.getSnapshot().region.understood, true);
+await clearSession.dispatch({ type: "CLEAR_PROGRESS" });
+assert.equal(cleared, 1);
+assert.equal(clearSession.getSnapshot().graph, graph);
+assert.equal(clearSession.getSnapshot().region.understood, false);
+clearSession.dispose();
+
+// The same stale-generation guard on the clear path: the reload that follows
+// the DELETE belongs to the project that asked for it. Left unguarded it fires
+// into whatever session replaced it -- and against an unbound one that is a
+// 409 painted over the picker.
+let resolveLateClear;
+const lateClear = new Promise((resolve) => {
+  resolveLateClear = resolve;
+});
+let clearGraphLoads = 0;
+const clearRaceSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph }),
+    clearProgress: () => lateClear,
+    async loadGraph() {
+      clearGraphLoads += 1;
+      return graph;
+    },
+  },
+  clock,
+});
+await clearRaceSession.start();
+assert.equal(clearGraphLoads, 1, "setup: the session loaded its graph once");
+const staleClear = clearRaceSession.dispatch({ type: "CLEAR_PROGRESS" });
+clearRaceSession.dispose();
+resolveLateClear({ understood_regions: 0 });
+await staleClear;
+assert.equal(
+  clearGraphLoads,
+  1,
+  "a clear that outlives its session must not refetch into the next one",
+);
+
+// HTTP adapter: exact URLs and the 202 mapping.
+const phaseCCalls = [];
+const phaseCHttp = createHttpLearnerSessionAdapter(async (url, options = {}) => {
+  phaseCCalls.push({ url, options });
+  if (url === "/api/picker/select") {
+    return { ok: true, status: 202, json: async () => ({ state: "parsing" }) };
+  }
+  return { ok: true, status: 200, json: async () => ({ state: "parsing" }) };
+});
+assert.deepEqual(await phaseCHttp.selectProject("/home/u/demo"), {
+  state: "parsing",
+});
+await phaseCHttp.fetchParseProgress();
+await phaseCHttp.clearProgress();
+assert.deepEqual(
+  phaseCCalls.map(({ url }) => url),
+  ["/api/picker/select", "/api/picker/progress", "/api/progress"],
+);
+assert.equal(phaseCCalls.at(-1).options.method, "DELETE");
+
+async function fireOnlyTimer() {
+  assert.equal(pendingTimers.size, 1, "exactly one timer must be pending");
+  const [timerId, callback] = pendingTimers.entries().next().value;
+  pendingTimers.delete(timerId);
+  await callback();
+}
 
 function makeGraph({ understood = false } = {}) {
   return {

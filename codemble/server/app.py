@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -17,7 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from codemble import __version__
 from codemble.adapters.base import Graph
-from codemble.adapters.parse_progress import ParseCancelled, ParseProgress
+from codemble.adapters.parse_progress import ParseCancelled
 from codemble.graph import build_map
 from codemble.adapters.project import (
     ProjectParseError,
@@ -93,13 +93,15 @@ class _ProjectState:
         self.studies: StudyService | None = None
         self.job = ParseJob()
         self._lock = threading.Lock()
+        self._graph: Graph | None = None
         self._graph_json: str | None = None
+        self._map_json: str | None = None
 
     @property
     def bound(self) -> bool:
         return self.checks is not None
 
-    def bind(self, graph: Graph, progress: ParseProgress | None = None) -> None:
+    def bind(self, graph: Graph, progress: ParseJob | None = None) -> None:
         if progress is not None:
             progress.stage("checks")
         studies = StudyService.from_environment(graph)
@@ -107,9 +109,20 @@ class _ProjectState:
         if progress is not None:
             progress.stage("layout")
         with self._lock:
+            # Re-check cancellation here, under the same lock as the commit --
+            # not just before this method was called. A parse cancelled while
+            # this construction was running (bind() outlives cancel()'s 2s
+            # wait on a large graph) must not resurrect the project reset just
+            # released, nor clobber whatever the learner selected next.
+            # `cancelled` never clears once set, so this is safe no matter how
+            # much later this commit is attempted.
+            if progress is not None and progress.cancelled:
+                return
             self.studies = studies
             self.checks = checks
+            self._graph = None
             self._graph_json = None
+            self._map_json = None
         self.graph_json()
 
     def unbind(self) -> None:
@@ -122,28 +135,77 @@ class _ProjectState:
         with self._lock:
             self.checks = None
             self.studies = None
+            self._graph = None
             self._graph_json = None
+            self._map_json = None
+
+    def _hydrated(self) -> Graph:
+        """Hydrate from progress once per invalidating event.
+
+        ``graph_json`` and ``map_json`` both need this same render-ready
+        graph -- sharing it means a cold cache after a light-up or Home
+        change pays hydration once, not once per endpoint a learner happens
+        to open next.
+        """
+
+        with self._lock:
+            cached = self._graph
+            checks = self.checks
+        if cached is not None:
+            return cached
+        if checks is None:
+            raise HTTPException(status_code=409, detail="No project selected yet.")
+        hydrated = checks.graph()
+        with self._lock:
+            self._graph = hydrated
+        return hydrated
 
     def graph_json(self) -> str:
         """Serialize the render document once per invalidating event."""
 
         with self._lock:
             cached = self._graph_json
-            checks = self.checks
         if cached is not None:
             return cached
-        if checks is None:
-            raise HTTPException(status_code=409, detail="No project selected yet.")
         payload = json.dumps(
-            checks.graph().to_dict(), separators=(",", ":"), ensure_ascii=False
+            self._hydrated().to_dict(), separators=(",", ":"), ensure_ascii=False
         )
         with self._lock:
             self._graph_json = payload
         return payload
 
-    def invalidate_graph_json(self) -> None:
+    def map_json(self) -> str:
+        """Serialize the 2D map layouts once per invalidating event.
+
+        Easy mode defaults to the Map layer, so it must not re-pay hydration
+        plus layout on every request either -- the same disease this class
+        was written to cure for the galaxy payload.
+        """
+
         with self._lock:
+            cached = self._map_json
+        if cached is not None:
+            return cached
+        payload = json.dumps(
+            build_map(self._hydrated()), separators=(",", ":"), ensure_ascii=False
+        )
+        with self._lock:
+            self._map_json = payload
+        return payload
+
+    def invalidate_graph_json(self) -> None:
+        """Drop every cached payload derived from the live graph.
+
+        One trigger for all three: the hydrated ``Graph``, the galaxy JSON,
+        and the map JSON all become stale from the same three events (a
+        region lighting up, an entrypoint choice, or bind/unbind), so there
+        is nothing to gain from invalidating them separately.
+        """
+
+        with self._lock:
+            self._graph = None
             self._graph_json = None
+            self._map_json = None
 
 
 def create_app(
@@ -172,6 +234,7 @@ def create_app(
     if graph is not None:
         state.studies = study_service or StudyService.from_environment(graph)
         state.checks = check_service or CheckService(graph)
+        state.graph_json()
 
     def _services() -> tuple[CheckService, StudyService]:
         if state.checks is None or state.studies is None:
@@ -319,16 +382,19 @@ def create_app(
         return snapshot
 
     @app.get("/api/graph")
-    def get_graph() -> dict[str, object]:
-        checks, _ = _services()
-        return checks.graph().to_dict()
+    def get_graph() -> Response:
+        _services()
+        return Response(state.graph_json(), media_type="application/json")
 
     @app.get("/api/map")
-    def get_map() -> dict[str, object]:
+    def get_map() -> Response:
         # The hydrated graph, so lit regions and the selected Home in the 2D map
-        # can never disagree with the galaxy the learner just came from.
-        checks, _ = _services()
-        return build_map(checks.graph())
+        # can never disagree with the galaxy the learner just came from. Cached
+        # like /api/graph -- Easy mode defaults to this layer, so it is the
+        # beginner's first request and must not re-pay hydration + layout on
+        # every read either.
+        _services()
+        return Response(state.map_json(), media_type="application/json")
 
     @app.post("/api/entrypoint")
     def select_entrypoint(selection: EntrypointSelection) -> dict[str, object]:
@@ -340,6 +406,7 @@ def create_app(
                 status_code=422,
                 detail="Choose one of the parser-ranked entrypoint candidates.",
             ) from error
+        state.invalidate_graph_json()
         return selected.to_dict()
 
     @app.get("/api/regions/{region_id:path}/checks")
@@ -358,13 +425,18 @@ def create_app(
     ) -> dict[str, object]:
         checks, _ = _services()
         try:
-            return checks.submit(region_id, check_id, submission.selected_ids)
+            result = checks.submit(region_id, check_id, submission.selected_ids)
         except UnknownCheckError as error:
             raise HTTPException(
                 status_code=404, detail="That graph check does not exist."
             ) from error
         except InvalidCheckSubmission as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
+        # Invalidated on every accepted submission, not only a completing one:
+        # a submission is rare, and a light-up is the one thing that must
+        # never be served stale.
+        state.invalidate_graph_json()
+        return result
 
     @app.get("/api/node/{node_id:path}/study")
     def get_node_study(node_id: str) -> dict[str, object]:
@@ -405,6 +477,13 @@ def create_app(
         checks, _ = _services()
         checks.progress.set_mode(selection.mode)
         return {"mode": selection.mode, "chosen": True}
+
+    @app.delete("/api/progress")
+    def clear_progress() -> dict[str, int]:
+        checks, _ = _services()
+        checks.progress.clear()
+        state.invalidate_graph_json()
+        return {"understood_regions": len(checks.progress.understood_regions())}
 
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():

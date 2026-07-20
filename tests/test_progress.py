@@ -70,3 +70,28 @@ def test_recents_survive_a_missing_progress_directory(
     monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "never-written"))
 
     assert list_recent_projects() == []
+
+
+def test_clear_forgets_only_this_projects_regions(tmp_path: Path) -> None:
+    from codemble.adapters.python_ast import PythonAstAdapter
+    from codemble.progress import ProgressStore
+
+    fixture = Path(__file__).parent / "fixtures" / "sampleproj"
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "solo.py").write_text("def go() -> None:\n    pass\n", encoding="utf-8")
+
+    graph = PythonAstAdapter().parse(fixture)
+    other_graph = PythonAstAdapter().parse(other)
+    store = ProgressStore(graph, tmp_path / "progress")
+    other_store = ProgressStore(other_graph, tmp_path / "progress")
+    store.set_mode("expert")
+    store.mark_understood("app")
+    other_store.mark_understood("solo")
+
+    store.clear()
+
+    assert store.understood_regions() == frozenset()
+    assert other_store.understood_regions() == frozenset({"solo"})
+    assert store.mode() == "expert", "clearing progress must not reset preferences"
+    assert other_store.path.exists()

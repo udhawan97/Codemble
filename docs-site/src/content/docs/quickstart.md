@@ -38,9 +38,9 @@ It keeps syntax-error files visible and labels unresolved calls instead of
 guessing. Use `--no-open` when you want to copy the printed URL yourself.
 Codemble reads supported source; it never runs your project or package scripts.
 
-For a project above 300 supported source files, the picker prompts for a
-busiest-first subdirectory right in the UI. From the CLI, select the scope
-yourself:
+For a project above 1,000 supported source files, the picker offers the
+busiest-first subdirectories as buttons and accepts a typed path, right in the
+UI. From the CLI, select the scope yourself:
 
 ```bash
 codemble --path ./my-project/src
