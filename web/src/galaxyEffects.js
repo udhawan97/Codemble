@@ -11,19 +11,35 @@ const BLOOM_RADIUS = 0.45;
 // Tuned so a lit amber star blooms hard and the unlit ramp barely does: the
 // threshold sits above --cm-ink-2's luminance and below --cm-star-high's.
 const BLOOM_THRESHOLD = 0.52;
+// Bloom is the expensive pass: its mip chain starts at half the buffer and runs
+// a separable blur over every level, so on a 2x display it costs ~4x what it
+// costs at 1x. Capping it via `composer.setPixelRatio(1)` -- what this used to
+// do -- works, but EffectComposer.setSize multiplies that ratio into
+// renderTarget1/2 AND every pass (EffectComposer.js:152,296,317-333), including
+// the RenderPass that draws the scene and the copy that presents it. The whole
+// galaxy rendered at 1x and upscaled: soft at every zoom level on retina.
+// Clamp the bloom pass's own resolution instead. A blur is the one thing in the
+// chain that cannot show the difference, and its screen-space spread is
+// resolution-independent (invSize is derived from the mip size).
+const BLOOM_MAX_DIMENSION = 1600;
 
 export function attachBloom(renderer) {
   const composer = renderer.postProcessingComposer();
-  // UnrealBloomPass's constructor resolution is overwritten on the first
-  // composer resize, so the cap that actually survives is the pixel ratio:
-  // at 1 the bloom mip chain stays in CSS pixels even on a retina display.
-  composer.setPixelRatio(1);
   const pass = new UnrealBloomPass(
     new THREE.Vector2(composer._width ?? 1, composer._height ?? 1),
     BLOOM_STRENGTH,
     BLOOM_RADIUS,
     BLOOM_THRESHOLD,
   );
+  // Installed before addPass, which sizes the pass immediately on insert.
+  const sizePass = pass.setSize.bind(pass);
+  pass.setSize = (width, height) => {
+    const scale = Math.min(1, BLOOM_MAX_DIMENSION / Math.max(width, height, 1));
+    sizePass(
+      Math.max(1, Math.round(width * scale)),
+      Math.max(1, Math.round(height * scale)),
+    );
+  };
   composer.addPass(pass);
   // Whichever pass renders last re-applies the renderer's sRGB output encode
   // on top of a buffer that 3d-force-graph's own RenderPass already wrote in
@@ -59,23 +75,18 @@ export function prefersReducedMotion() {
 // The one bold moment in the app: amber washes across the lit system's fog and
 // its star flares. Reduced motion gets the finished lit state instantly -- not a
 // faster animation, no animation at all.
-export function runNebulaDawn({ scene, regionId, palette, onDone }) {
+export function runNebulaDawn({ scene, regionId, palette }) {
+  // Nothing to restore in either case: the lit colour the dawn celebrates is
+  // already committed to the graph, so the finished state is what is on screen.
+  if (prefersReducedMotion()) return () => {};
   const target = scene.getObjectByName(`codemble-system-${regionId}`);
-  if (!target) {
-    onDone?.();
-    return () => {};
-  }
+  if (!target) return () => {};
   const sprites = [];
   target.traverse((child) => {
     if (child.isSprite) sprites.push([child, child.material.opacity, child.scale.x]);
   });
   const amber = new THREE.Color(palette.star);
   const originals = sprites.map(([sprite]) => sprite.material.color.clone());
-
-  if (prefersReducedMotion()) {
-    onDone?.();
-    return () => {};
-  }
 
   let frame = 0;
   const startedAt = performance.now();
@@ -98,7 +109,6 @@ export function runNebulaDawn({ scene, regionId, palette, onDone }) {
       sprite.material.opacity = baseOpacity;
       sprite.scale.setScalar(baseScale);
     });
-    onDone?.();
   };
   frame = requestAnimationFrame(step);
   return () => {

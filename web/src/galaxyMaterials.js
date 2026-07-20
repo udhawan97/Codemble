@@ -43,13 +43,27 @@ function ringTexture(size) {
 }
 
 export function createDressing(palette) {
-  const haloTexture = radialTexture(HALO_TEXTURE_SIZE, [
+  // three-forcegraph frees every node object it removes, and its _deallocate
+  // disposes `material.map` and `material` recursively (three-forcegraph.mjs:
+  // 218-243). These resources are shared by every sprite in the scene, so one
+  // galaxy->system transition would free textures and materials the next scene
+  // still draws with, forcing a full re-upload each time. Ownership stays here:
+  // the borrower's dispose() is a no-op and dispose() below frees them for real.
+  const releases = [];
+  function owned(resource) {
+    const release = resource.dispose.bind(resource);
+    resource.dispose = () => {};
+    releases.push(release);
+    return resource;
+  }
+
+  const haloTexture = owned(radialTexture(HALO_TEXTURE_SIZE, [
     [0, 0.85], [0.25, 0.42], [0.6, 0.1], [1, 0],
-  ]);
-  const nebulaTexture = radialTexture(NEBULA_TEXTURE_SIZE, [
+  ]));
+  const nebulaTexture = owned(radialTexture(NEBULA_TEXTURE_SIZE, [
     [0, 0.32], [0.45, 0.14], [0.8, 0.03], [1, 0],
-  ]);
-  const reticleTexture = ringTexture(HALO_TEXTURE_SIZE);
+  ]));
+  const reticleTexture = owned(ringTexture(HALO_TEXTURE_SIZE));
   const haloMaterials = new Map();
   const nebulaMaterials = new Map();
 
@@ -57,7 +71,7 @@ export function createDressing(palette) {
     if (!haloMaterials.has(color)) {
       haloMaterials.set(
         color,
-        new THREE.SpriteMaterial({
+        owned(new THREE.SpriteMaterial({
           map: haloTexture,
           // The white texture is multiplied by the node's own colour, so an
           // unlit node's halo can never be brighter than a lit one's.
@@ -66,7 +80,7 @@ export function createDressing(palette) {
           transparent: true,
           depthWrite: false,
           opacity: 0.6,
-        }),
+        })),
       );
     }
     return haloMaterials.get(color);
@@ -84,7 +98,7 @@ export function createDressing(palette) {
       if (!nebulaMaterials.has(tint)) {
         nebulaMaterials.set(
           tint,
-          new THREE.SpriteMaterial({
+          owned(new THREE.SpriteMaterial({
             map: nebulaTexture,
             color: new THREE.Color(tint),
             blending: THREE.AdditiveBlending,
@@ -93,7 +107,7 @@ export function createDressing(palette) {
             // Alpha lives here, not in the token: the token has to survive a
             // 4.5:1 legend check, the fog has to stay a whisper.
             opacity: 0.16,
-          }),
+          })),
         );
       }
       const sprite = new THREE.Sprite(nebulaMaterials.get(tint));
@@ -116,11 +130,11 @@ export function createDressing(palette) {
       return sprite;
     },
     dispose() {
-      haloTexture.dispose();
-      nebulaTexture.dispose();
-      reticleTexture.dispose();
-      for (const material of haloMaterials.values()) material.dispose();
-      for (const material of nebulaMaterials.values()) material.dispose();
+      // The only real free: every shared texture and material registered above,
+      // in creation order. The per-call reticle material is not shared and is
+      // still freed by three-forcegraph when its node object is removed.
+      for (const release of releases) release();
+      releases.length = 0;
       haloMaterials.clear();
       nebulaMaterials.clear();
     },

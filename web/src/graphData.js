@@ -116,6 +116,11 @@ export function nebulaTintKey(language) {
   return null;
 }
 
+// Summed over a region's members, so the top step stays where it was.
+const REGION_BRIGHT_AT = 5;
+// Distinct callers of one structure. See brightness() below.
+const NODE_BRIGHT_AT = 2;
+
 export function galaxyData(graph, palette) {
   return {
     nodes: graph.regions.map((region) => ({
@@ -130,7 +135,7 @@ export function galaxyData(graph, palette) {
         ? palette.star
         : graph.nodes.some((node) => node.region === region.id && node.partial)
           ? palette.routePossible
-          : brightness(region.centrality, palette),
+          : brightness(region.centrality, palette, REGION_BRIGHT_AT),
       focusDim: false,
     })),
     links: graph.region_edges.map((edge) => ({
@@ -174,7 +179,7 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
         ? palette.star
         : node.partial
           ? palette.routePossible
-          : brightness(node.centrality, palette),
+          : brightness(node.centrality, palette, NODE_BRIGHT_AT),
       selected: node.id === selectedId,
       focusDim: Boolean(selectedId) && !connected.has(node.id),
     })),
@@ -220,8 +225,15 @@ function sizeFromLoc(loc, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, Math.sqrt(Math.max(1, loc)) * 1.15));
 }
 
-function brightness(centrality, palette) {
-  if (centrality >= 5) return palette.nodeBright;
+// Two very different domains share this ramp, so each names its own top step.
+// A region's centrality is the SUM over its members (0..86 on this repo); a
+// single structure's is its count of DISTINCT callers (0..26, and 96% of nodes
+// sit at 0-2). One threshold cannot serve both: at >= 5 only 4% of nodes ever
+// reached the bright step, so at system level the legend promised a ramp the
+// scene did not draw. Per-node the steps now read exactly as the legend says --
+// nothing calls it, one place calls it, several places call it.
+function brightness(centrality, palette, brightAt) {
+  if (centrality >= brightAt) return palette.nodeBright;
   if (centrality >= 1) return palette.node;
   return palette.nodeDim;
 }

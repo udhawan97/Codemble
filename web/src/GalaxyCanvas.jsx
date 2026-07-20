@@ -2,7 +2,7 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { attachBloom, runNebulaDawn } from "./galaxyEffects.js";
+import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 
@@ -44,6 +44,12 @@ export function GalaxyCanvas({
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
   const palette = useMemo(readPalette, []);
+  const reducedMotion = useMemo(prefersReducedMotion, []);
+  // The seed's *value*, not the identity of the object it came from: every
+  // session commit rebuilds file_hashes while a language focus is active
+  // (learnerSession.js deriveSnapshot), and depending on that identity rebuilt
+  // the whole starfield on unrelated state changes.
+  const starfieldSeed = seedFromHashes(graph.file_hashes);
   const data = useMemo(() => {
     if (level === LEVELS.GALAXY) return galaxyData(graph, palette);
     return systemData(graph, region?.id, palette, {
@@ -129,9 +135,11 @@ export function GalaxyCanvas({
         .linkDirectionalArrowRelPos(1)
         .linkDirectionalArrowColor(linkColor)
         // Particles drift only on CERTAIN call edges. A possible call stays
-        // still, so motion can never imply proof.
+        // still, so motion can never imply proof -- and reduced motion means no
+        // continuous drift at all, the same contract the nebula dawn honours.
+        // Certainty keeps a colour channel either way, so nothing is lost.
         .linkDirectionalParticles((link) =>
-          link.kind === "call" && link.certain && !link.focusDim ? 2 : 0,
+          link.kind === "call" && link.certain && !link.focusDim && !reducedMotion ? 2 : 0,
         )
         .linkDirectionalParticleSpeed(0.006)
         .linkDirectionalParticleWidth(1.1)
@@ -157,6 +165,16 @@ export function GalaxyCanvas({
         renderer.pauseAnimation();
         bloomRef.current?.dispose();
         bloomRef.current = null;
+        // The only thing that frees the WebGL context: _destructor empties the
+        // scene and disposes the controls, the renderer and the composer
+        // (three-render-objects.mjs:466-472). Without it, every Galaxy<->Map
+        // switch and every Star chart visit stranded a live context, and after
+        // ~16 the browser force-lost the oldest ones -- the galaxy went blank
+        // with nothing in the console to say why.
+        renderer._destructor();
+        // After _destructor, not before: it empties the scene, which hands the
+        // shared halo/nebula resources to three-forcegraph's deallocator. That
+        // is a no-op by design (see galaxyMaterials), so this is the real free.
         dressing.dispose();
         dressingRef.current = null;
         host.replaceChildren();
@@ -201,14 +219,14 @@ export function GalaxyCanvas({
       previous.material.dispose();
     }
     // Seeded by the project's own file hashes: same code, same sky, every run.
-    const starfield = createStarfield(seedFromHashes(graph.file_hashes), palette);
+    const starfield = createStarfield(starfieldSeed, palette);
     scene.add(starfield);
     return () => {
       scene.remove(starfield);
       starfield.geometry.dispose();
       starfield.material.dispose();
     };
-  }, [graph.file_hashes, palette]);
+  }, [starfieldSeed, palette]);
 
   // Keyed on `level` (not pendingDawnRegionId) so a normal galaxy-level
   // re-render never re-triggers this: the region to play is read from a ref
