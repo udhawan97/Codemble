@@ -464,7 +464,13 @@ export function App() {
               ? `${graph.nodes.length} nodes · ${graph.edges.length} edges`
               : `${focusedGraph.nodes.length}/${graph.nodes.length} nodes · ${focusedGraph.edges.length} focused edges`}
         </span>
-        <span>{showChart ? `${focusedStudiedCount} focused structures studied this session` : "Scroll or Enter to move closer · Escape to move back"}</span>
+        <span>
+          {showChart
+            ? `${focusedStudiedCount} focused structures studied this session`
+            : layer === "map"
+              ? "Click a box or row to study · Switch tabs to change view"
+              : "Scroll or Enter to move closer · Escape to move back"}
+        </span>
         <span>Local only</span>
       </footer>
     </main>
