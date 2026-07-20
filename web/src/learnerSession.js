@@ -42,7 +42,12 @@ export function createLearnerSession({
     languageFocus: "all",
     picker: null,
     mode: "easy",
-    modeChosen: false,
+    // Three states, not two: null means hydration hasn't resolved yet
+    // (unknown), false means the backend confirmed nobody has ever chosen,
+    // true means chosen (by the learner, or resolved after a mode-fetch
+    // failure — see loadProjectGraph). Collapsing null into false was the
+    // root cause of the first-run gate flashing over returning learners.
+    modeChosen: null,
   });
   let lifecycle = 0;
   let modeLifecycle = 0;
@@ -123,22 +128,39 @@ export function createLearnerSession({
     // project is bound, so it hydrates here rather than earlier in start() —
     // and a failure here must never block the galaxy that just loaded above.
     const requestModeLifecycle = modeLifecycle;
+    // requestModeLifecycle catches a SET_MODE dispatched while this fetch
+    // was in flight: setMode bumps modeLifecycle synchronously, so a
+    // mismatch here means the learner already made an explicit choice that
+    // must win no matter which of the two requests resolves first.
+    const modeRequestIsCurrent = () =>
+      requestLifecycle === lifecycle && requestModeLifecycle === modeLifecycle;
+    // Resolves the unknown (null) state when the response can't be trusted —
+    // a thrown request, or a payload with a mode value the renderer doesn't
+    // understand. Leaving it null forever would leave ModeControl rendering
+    // nothing for the rest of the session, so it resolves to known-and-
+    // chosen rather than known-and-never-chosen: the worse failure is
+    // flashing the first-run gate over a *returning* learner, who could then
+    // silently overwrite their real stored mode by clicking through it — the
+    // exact bug this fix exists to prevent. A genuine first-timer only
+    // loses the friendly first-run framing for this one reload and still has
+    // the always-available header toggle to pick a mode explicitly.
+    function resolveUnknownModeAfterFailure() {
+      if (modeRequestIsCurrent() && snapshot.modeChosen === null) {
+        commit({ modeChosen: true });
+      }
+    }
     try {
       const stored = await adapter.loadMode({ signal: controller.signal });
       const validMode = stored?.mode === "easy" || stored?.mode === "expert";
-      // requestModeLifecycle catches a SET_MODE dispatched while this fetch
-      // was in flight: setMode bumps modeLifecycle synchronously, so a
-      // mismatch here means the learner already made an explicit choice that
-      // must win no matter which of the two requests resolves first.
-      if (
-        requestLifecycle === lifecycle &&
-        requestModeLifecycle === modeLifecycle &&
-        validMode
-      ) {
-        commit({ mode: stored.mode, modeChosen: stored.chosen === true });
+      if (modeRequestIsCurrent()) {
+        if (validMode) {
+          commit({ mode: stored.mode, modeChosen: stored.chosen === true });
+        } else {
+          resolveUnknownModeAfterFailure();
+        }
       }
     } catch {
-      // Mode is a preference; a failure here must never block the galaxy.
+      resolveUnknownModeAfterFailure();
     }
     return snapshot;
   }

@@ -18,26 +18,30 @@ const TOGGLE_OPTIONS = [
 ];
 
 /**
- * Two states, one component:
+ * Three states from one prop, one component. `modeChosen` is owned and
+ * sequenced entirely by learnerSession.js — this component only reads it.
+ * - Unknown (`modeChosen === null`): hydration hasn't resolved yet. Renders
+ *   nothing at all — no dialog, no toggle, no focus move — so a returning
+ *   learner's galaxy never flashes the first-run question underneath it.
  * - First run (`modeChosen === false`): a modal question. There is no way
  *   to dismiss it except choosing — that is the point of it.
- * - Thereafter: a compact radiogroup in the header rail.
+ * - Chosen (`modeChosen === true`): a compact radiogroup in the header rail.
  */
 export function ModeControl({ mode, modeChosen, onChoose }) {
   const dialogRef = useRef(null);
   const checkedRadioRef = useRef(null);
-  // Mode hydrates asynchronously, after the graph, so modeChosen briefly
-  // reads false on every load — even a returning learner's — until that
-  // fetch resolves (see learnerSession.js's loadProjectGraph). This flag
-  // marks a transition caused by THIS component's own choose(), so the
-  // effect below can tell "the learner just answered" apart from
-  // "hydration just caught up" and never steal focus for the latter.
-  const justChosenRef = useRef(false);
+  // Remembers the previous render's modeChosen so the focus effect below can
+  // tell "the gate just closed because the learner chose" (false -> true)
+  // apart from "this is the first real paint and mode was already known"
+  // (null -> true, e.g. a returning learner) — the latter must never steal
+  // focus. modeChosen is null exactly until hydration resolves it once, so
+  // false -> true can now only happen through choose() below.
+  const previousModeChosenRef = useRef(modeChosen);
 
   // Open before the browser paints, so the gate is never visible closed first.
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
-    if (dialog && !modeChosen && !dialog.open) {
+    if (dialog && modeChosen === false && !dialog.open) {
       dialog.showModal();
     }
   }, [modeChosen]);
@@ -46,17 +50,20 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
   // closes the gate — never on an ordinary load, including the moment a
   // returning learner's mode finishes hydrating.
   useEffect(() => {
-    if (modeChosen && justChosenRef.current) {
+    if (modeChosen === true && previousModeChosenRef.current === false) {
       checkedRadioRef.current?.focus();
     }
-    justChosenRef.current = false;
+    previousModeChosenRef.current = modeChosen;
   }, [modeChosen]);
 
   function choose(nextMode) {
-    justChosenRef.current = true;
     dialogRef.current?.close();
     onChoose(nextMode);
   }
+
+  // The truth isn't in yet: render nothing so no dialog can open and no
+  // focus can move until it is.
+  if (modeChosen === null) return null;
 
   if (!modeChosen) {
     return (

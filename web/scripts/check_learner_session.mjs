@@ -232,6 +232,96 @@ assert.equal(
 );
 raceModeSession.dispose();
 
+// Fix 3: modeChosen must report the unknown state (null), not false, for
+// the entire window between start() beginning and mode hydration resolving
+// — collapsing the two let ModeControl show the first-run gate over a
+// returning learner's galaxy on every load. This adapter's fixture reports
+// a project that HAS already had a mode chosen, so any read of `false`
+// during the pending window can only be the conflated-state bug, not a
+// legitimately unchosen project. The in-flight loadMode() request is held
+// open by a manually-resolved promise (no timers, no wall clock), so the
+// interleaving below is deterministic — same checkpoint pattern as
+// modeRequested above.
+{
+  let resolvePendingMode;
+  const pendingMode = new Promise((resolve) => {
+    resolvePendingMode = resolve;
+  });
+  let signalModePending;
+  const modePending = new Promise((resolve) => {
+    signalModePending = resolve;
+  });
+  const unknownModeSession = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter({ graph, mode: "easy", modeChosen: true }),
+      loadMode() {
+        signalModePending();
+        return pendingMode;
+      },
+    },
+  });
+  const unknownModeStart = unknownModeSession.start();
+  // Awaiting this signal (instead of guessing a tick count) guarantees the
+  // graph has already committed and loadMode() is genuinely in flight
+  // before the snapshot is inspected below.
+  await modePending;
+  assert.equal(
+    unknownModeSession.getSnapshot().graph,
+    graph,
+    "the graph is already visible while mode hydration is still pending — " +
+      "a mode failure or delay must never block the galaxy",
+  );
+  assert.equal(
+    unknownModeSession.getSnapshot().modeChosen,
+    null,
+    "modeChosen must report unknown (null), not false, while hydration is " +
+      "still pending — false would make ModeControl show the first-run gate " +
+      "over a returning learner",
+  );
+  resolvePendingMode({ mode: "easy", chosen: true });
+  await unknownModeStart;
+  assert.equal(
+    unknownModeSession.getSnapshot().modeChosen,
+    true,
+    "hydration resolves modeChosen once the real response lands",
+  );
+  unknownModeSession.dispose();
+}
+
+// Fix 3 (failure resolution): a thrown /api/mode request must resolve the
+// unknown state rather than leave it null forever — a permanently null
+// modeChosen would leave ModeControl rendering nothing for the rest of the
+// session. Resolves to known-and-chosen; see learnerSession.js's
+// resolveUnknownModeAfterFailure for the full reasoning.
+{
+  let rejectMode;
+  const failingMode = new Promise((_resolve, reject) => {
+    rejectMode = reject;
+  });
+  const modeFailureSession = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter({ graph }),
+      loadMode() {
+        return failingMode;
+      },
+    },
+  });
+  const modeFailureStart = modeFailureSession.start();
+  rejectMode(new Error("mode request failed"));
+  await modeFailureStart;
+  assert.equal(
+    modeFailureSession.getSnapshot().status,
+    "ready",
+    "a mode request failure must never block the galaxy from loading",
+  );
+  assert.equal(
+    modeFailureSession.getSnapshot().modeChosen,
+    true,
+    "a failed mode request resolves to known-and-chosen, never stuck at unknown",
+  );
+  modeFailureSession.dispose();
+}
+
 // Narration: opening a node fetches its explanation as its own request.
 {
   const explanationSession = createLearnerSession({
