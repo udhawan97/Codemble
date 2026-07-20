@@ -75,6 +75,24 @@ class ProgressStore:
         payload["mode"] = mode
         self._write(payload)
 
+    def selected_entrypoint(self) -> str | None:
+        """Return the learner's persisted Home choice, if one was stored.
+
+        Not signature-scoped like understood regions: Home is a navigation
+        preference, not evidence of understanding. The caller re-validates the
+        id against the current parser ranking before trusting it.
+        """
+
+        value = self._read().get("entrypoint")
+        return value if isinstance(value, str) else None
+
+    def set_selected_entrypoint(self, node_id: str) -> None:
+        """Persist the learner's Home choice beside progress."""
+
+        payload = self._read()
+        payload["entrypoint"] = node_id
+        self._write(payload)
+
     def hydrated_graph(self) -> Graph:
         """Project valid progress onto immutable render data."""
 

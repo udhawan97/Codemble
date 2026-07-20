@@ -551,3 +551,26 @@ def test_picker_reset_refuses_an_app_built_without_a_picker(tmp_path: Path) -> N
 
     assert response.status_code == 409
     assert client.get("/api/graph").status_code == 200
+
+
+def test_selected_home_is_restored_for_the_next_run_of_the_same_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    first = TestClient(
+        create_app(PythonAstAdapter().parse(project), tmp_path / "missing")
+    )
+    assert first.get("/api/graph").json()["selected_entrypoint"] is None
+    assert first.post("/api/entrypoint", json={"node_id": "beta"}).status_code == 200
+
+    restarted = TestClient(
+        create_app(PythonAstAdapter().parse(project), tmp_path / "missing")
+    )
+
+    assert restarted.get("/api/graph").json()["selected_entrypoint"] == "beta"

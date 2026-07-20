@@ -60,10 +60,11 @@ class CheckService:
     """Generate, validate, and persist one graph-owned region check flow."""
 
     def __init__(self, graph: Graph, progress: ProgressStore | None = None) -> None:
-        self._graph = graph
         self._progress = progress or ProgressStore(graph)
+        self._graph = _restored_entrypoint(graph, self._progress)
         self._checks = {
-            region.id: generate_checks(graph, region.id) for region in graph.regions
+            region.id: generate_checks(self._graph, region.id)
+            for region in self._graph.regions
         }
         self._passed: dict[str, set[str]] = {}
 
@@ -87,6 +88,7 @@ class CheckService:
         """Apply an explicit parser-ranked Home choice to graph and check suites."""
 
         self._graph = with_entrypoint(self._graph, node_id)
+        self._progress.set_selected_entrypoint(node_id)
         self._checks = {
             region.id: generate_checks(self._graph, region.id)
             for region in self._graph.regions
@@ -150,6 +152,21 @@ class CheckService:
         if region_id not in self._checks:
             raise UnknownCheckError(region_id)
         return self._checks[region_id]
+
+
+def _restored_entrypoint(graph: Graph, progress: ProgressStore) -> Graph:
+    """Re-apply a persisted Home only when the parser still ranks it.
+
+    An explicit CLI or picker choice wins outright, and a saved id the parser
+    no longer ranks is dropped rather than invented back into the graph.
+    """
+
+    if graph.selected_entrypoint is not None:
+        return graph
+    saved = progress.selected_entrypoint()
+    if saved is None or saved not in graph.entrypoint_candidates:
+        return graph
+    return with_entrypoint(graph, saved)
 
 
 def generate_checks(graph: Graph, region_id: str) -> tuple[Check, ...]:

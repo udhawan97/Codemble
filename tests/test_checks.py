@@ -185,3 +185,59 @@ def test_check_is_hashable_and_prompt_still_affects_equality() -> None:
     reworded = replace(check, prompt={"easy": "different wording", "expert": "different wording"})
     assert reworded != check, "hash=False must not weaken equality"
     assert hash(reworded) == hash(check), "prompt must stay excluded from the hash"
+
+
+def test_home_choice_survives_a_restart(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    progress_root = tmp_path / "progress"
+    graph = PythonAstAdapter().parse(project)
+    assert graph.selected_entrypoint is None
+
+    CheckService(graph, ProgressStore(graph, progress_root)).select_entrypoint("beta")
+    restarted = CheckService(graph, ProgressStore(graph, progress_root))
+    hydrated = restarted.graph()
+
+    assert hydrated.selected_entrypoint == "beta"
+    assert next(region for region in hydrated.regions if region.id == "beta").home is True
+
+
+def test_a_persisted_home_outside_the_parser_ranking_is_never_restored(
+    tmp_path: Path,
+) -> None:
+    """A saved id the parser no longer ranks must be dropped, not invented back."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    progress_root = tmp_path / "progress"
+    graph = PythonAstAdapter().parse(project)
+    ProgressStore(graph, progress_root).set_selected_entrypoint("deleted.module")
+
+    restarted = CheckService(graph, ProgressStore(graph, progress_root))
+
+    assert restarted.graph().selected_entrypoint is None
+
+
+def test_an_explicit_home_outranks_a_persisted_one(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    for module in ("alpha", "beta"):
+        (project / f"{module}.py").write_text(
+            'if __name__ == "__main__":\n    print("start")\n', encoding="utf-8"
+        )
+    progress_root = tmp_path / "progress"
+    graph = PythonAstAdapter().parse(project)
+    ProgressStore(graph, progress_root).set_selected_entrypoint("beta")
+    explicit = PythonAstAdapter().parse(project, entrypoint="alpha")
+
+    restarted = CheckService(explicit, ProgressStore(explicit, progress_root))
+
+    assert restarted.graph().selected_entrypoint == "alpha"
