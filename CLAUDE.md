@@ -185,7 +185,13 @@ a static reduced-motion state; no product or app behavior changed. Bare
 `codemble` now serves a one-shot in-app project picker (home-jailed browse +
 recents, Host-header allowlisted) instead of the current directory; README,
 docs-site, the changelog, and a new PyPI release checklist now lead with
-`uvx codemble` ahead of the pending first PyPI publish.
+`uvx codemble` ahead of the pending first PyPI publish. A galaxy UX overhaul
+design was then interviewed and approved (spec
+`docs/superpowers/specs/2026-07-19-galaxy-ux-overhaul-design.md`): three phases —
+light up the shipped-but-inert narration/mode/connections surface plus project
+switching, then the "living cosmos" visual overhaul with a 2D Map layer, then
+~1,000-file scale with staged parse progress; four Decision Log entries record
+the approved Non-Goal and binding relaxations. Implementation has not started.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -361,12 +367,16 @@ JS/TS certainty and concept evidence remain parser-proven through the unchanged
 | 2026-07-19 | Bare `codemble` serves a one-shot in-app project picker (browse + recents) on a single two-phase server; binding is one-shot and the API is home-jailed with a Host-header allowlist | Approved by UD this session: easiest possible run flow for learners without a second server, without free filesystem enumeration, and without changing the one-graph app model |
 | 2026-07-19 | Codemble publishes to PyPI from the next tagged release; install collapses to `uvx codemble` | Approved by UD this session: the git+tag install was the biggest onboarding hurdle for the target learner |
 | 2026-07-19 | Local models (Ollama) are now allowed, reversing the 2026-07-18 Non-Goal; guardrails: loopback-and-`http`-only enforced at construction, explicit opt-in with no auto-detection, the same grounding validation applied to every provider, and the deterministic Tier 0 summary always available as a floor | Approved by UD this session. Residual risk stated honestly: grounding validation catches an invented identifier, not a wrong claim about a real one, and small local models make that second kind of error more often |
+| 2026-07-19 | A 2D Map layer (architecture + workflow-tree tabs) joins the 3D galaxy behind one switcher, superseding the "no second 2D renderer in v1" Non-Goal; layouts are computed deterministically in the graph layer and React stays a pure SVG renderer | Approved by UD in the galaxy UX overhaul interview (spec `docs/superpowers/specs/2026-07-19-galaxy-ux-overhaul-design.md`); beginners read flat maps more easily and the render-ready graph rule makes the second view cheap and truthful |
+| 2026-07-19 | Scale target raised to ~1,000 supported files with a worker-thread parse, polled staged progress, and an honest loading screen; the subdirectory prompt moves to the new cap | Approved by UD: a deliberate partial pull-forward of Phase 2 scale work; full LOD/clustering stays in Phase 2 |
+| 2026-07-19 | One-shot project binding relaxed to an explicit in-app reset (`POST /api/picker/reset`); home jail and Host allowlist unchanged | Approved by UD: learners must be able to switch projects without killing the server; per-project progress makes switching safe |
+| 2026-07-19 | App art direction is "living cosmos" within the Formal Edo palette: halo sprites, bloom, hash-seeded starfield, language-tinted nebulae, call-depth system orbits (layout bytes change once, still deterministic), and an Easy/Expert UI toggle riding the shipped audience-mode backend | Approved by UD section-by-section; amber keeps its monopoly on understanding, uncertainty stays dashed in both layers, and Easy-mode guidance is graph-deterministic (nearest unlit region by route hops), never model-decided |
 
 ## Non-Goals — do NOT build (point here when asked)
 
 - ❌ Free-flight 3D navigation — semantic zoom only
 - ❌ XP, streaks, levels, leaderboards
-- ❌ A second 2D renderer/toggle in v1 (render-ready graph keeps one possible later)
+- ❌ ~~A second 2D renderer/toggle in v1~~ — superseded 2026-07-19: the 2D Map layer is approved (see Decision Log); free-form/client-computed 2D layouts remain out
 - ❌ Accounts, cloud hosting, multi-user; share link waits for Phase 3
 - ❌ Extra quest types before Phase 3
 - ❌ GitHub-URL ingestion in v1
