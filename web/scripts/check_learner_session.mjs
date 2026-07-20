@@ -1347,6 +1347,95 @@ assert.equal(
 );
 mapRaceSession.dispose();
 
+// Regression: the mode toggle and Switch project sit in the same always-
+// rendered header, so a learner can flip Easy/Expert and confirm the switch
+// before PUT /api/mode answers. If that write then fails, setMode's rollback
+// belongs to the project that is gone -- committing it would push the previous
+// project's mode into the new session, and because Easy defaults to the Map
+// layer it would also fire a second, spurious map fetch. resetProject() must
+// abort modeController like it aborts entrypointController/mapController, and
+// setMode() must re-check lifecycle across the await, because an adapter that
+// ignores the abort signal still settles.
+let rejectStaleMode;
+const staleMode = new Promise((_resolve, reject) => {
+  rejectStaleMode = reject;
+});
+const modeRaceFetchedMaps = [];
+const modeRaceBaseAdapter = createInMemoryLearnerSessionAdapter({
+  graph,
+  mode: "easy",
+  map: mapPayload,
+  picker: {
+    browse: {
+      "": {
+        path: "/home/u",
+        parent: null,
+        entries: [{ name: "demo", path: "/home/u/demo" }],
+      },
+    },
+    recents: [],
+    selections: { "/home/u/demo": { state: "ready" } },
+  },
+});
+const modeRaceSession = createLearnerSession({
+  adapter: {
+    ...modeRaceBaseAdapter,
+    saveMode: () => staleMode,
+    fetchMap(options) {
+      modeRaceFetchedMaps.push(options);
+      return modeRaceBaseAdapter.fetchMap(options);
+    },
+  },
+  clock,
+});
+await modeRaceSession.start();
+await modeRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(
+  modeRaceSession.getSnapshot().mode,
+  "easy",
+  "setup: project A hydrated Easy, which lands the learner on the Map layer",
+);
+assert.equal(modeRaceSession.getSnapshot().layer, "map");
+assert.equal(modeRaceFetchedMaps.length, 1, "setup: Easy fetched project A's map once");
+
+const staleModeRequest = modeRaceSession.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(
+  modeRaceSession.getSnapshot().mode,
+  "expert",
+  "setup: the mode applies optimistically while the write is in flight",
+);
+await modeRaceSession.dispatch({ type: "RESET_PROJECT" });
+assert.equal(
+  modeRaceSession.getSnapshot().status,
+  "picking",
+  "reset returns to the picker while the mode write is still in flight",
+);
+
+rejectStaleMode(new Error("Mode write returned 500."));
+await staleModeRequest;
+const modeRaceSnapshot = modeRaceSession.getSnapshot();
+assert.equal(
+  modeRaceSnapshot.mode,
+  "expert",
+  "a failed mode write for the released project must not roll its mode into the next one",
+);
+assert.equal(
+  modeRaceSnapshot.modeChosen,
+  true,
+  "nor may it resurrect the released project's never-chosen state",
+);
+assert.equal(
+  modeRaceSnapshot.layer,
+  "galaxy",
+  "nor drag the new session onto the previous project's default layer",
+);
+assert.equal(
+  modeRaceFetchedMaps.length,
+  1,
+  "and the rolled-back layer must not fire a second map fetch after reset",
+);
+modeRaceSession.dispose();
+
 // A project that already carries a Home must not greet the learner with the
 // picker; the affordance is opt-in from the header instead.
 const homeGraph = { ...makeGraph(), selected_entrypoint: "python:app.py:run" };

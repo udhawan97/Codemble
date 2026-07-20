@@ -291,6 +291,14 @@ export function createLearnerSession({
     // -- abort alone would miss an adapter that resolves instead of rejecting.
     abortController(mapController);
     mapController = null;
+    // The mode toggle and Switch project sit in the same always-rendered
+    // header, so a mode write can still be in flight when the project is
+    // released. Its rollback belongs to the project that is going away: left
+    // alone, a later failure commits the previous project's mode -- and, when
+    // that mode defaults to the Map layer, a spurious map fetch -- into the
+    // next project's already-loading session.
+    abortController(modeController);
+    modeController = null;
     commit({
       graph: null,
       region: null,
@@ -503,17 +511,29 @@ export function createLearnerSession({
     abortController(modeController);
     modeController = new AbortController();
     const controller = modeController;
+    // Captured like loadProjectGraph/selectEntrypoint/loadMap do: resetProject
+    // aborts this controller, but an adapter that ignores the signal still
+    // settles, so the project generation has to be re-checked across the await
+    // as well. Both sides below belong to the project that issued the write.
+    const requestLifecycle = lifecycle;
     applyMode(mode, true);
     try {
       await adapter.saveMode(mode, { signal: controller.signal });
     } catch (requestError) {
       // Rolled back rather than left optimistically committed: a snapshot that
-      // silently disagrees with disk is the undetectable kind of wrong.
-      if (modeController === controller && !isAbortError(requestError)) {
+      // silently disagrees with disk is the undetectable kind of wrong. Rolling
+      // back into a *different* project would be worse still, hence the
+      // lifecycle re-check beside the controller identity one.
+      if (
+        modeController === controller &&
+        requestLifecycle === lifecycle &&
+        !isAbortError(requestError)
+      ) {
         applyMode(previous, previousChosen);
       }
       return undefined;
     }
+    if (requestLifecycle !== lifecycle || controller.signal.aborted) return undefined;
     // Lens, checks, and the Tier 0 summary already carry both voices and
     // switch locally from the existing payload -- only narration is generated
     // per mode, so only narration is worth a refetch here. It runs after the
