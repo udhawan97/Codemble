@@ -261,7 +261,7 @@ export function App() {
           </span>
           <span>
             <i className="legend-brightness" />
-            Brighter · {mode === "easy" ? "used more often" : "higher call centrality"}
+            Brighter · {mode === "easy" ? "used in more places" : "more distinct callers"}
           </span>
           <span>
             <i className="legend-dot legend-dot--dim" />
@@ -310,7 +310,7 @@ export function App() {
                   : "systems"
                 : `${languageLabel(languageFocus)} ${focusedGraph.regions.length === 1 ? "system" : "systems"}`} from real source.
             </h1>
-            <p>Choose a system. Size follows lines of code; brightness follows call centrality.</p>
+            <p>Choose a system. Size follows lines of code; brightness follows how many places call it.</p>
             {focusedGraph.partial_files.length ? (
               <p className="partial-summary">
                 {focusedGraph.partial_files.length} {focusedGraph.partial_files.length === 1 ? "file is" : "files are"} unchartable because {focusedGraph.partial_files.length === 1 ? "its" : "their"} language parser reported a syntax error.

@@ -15,14 +15,16 @@ from the parsed structure of your code:
 | Route between systems | An import |
 | Edge between planets | A call (uncertain calls are labeled "possible call") |
 | Size | Lines of code |
-| Brightness and glow | How often it's called (centrality) |
+| Brightness and glow | How many distinct places call it (centrality) |
 | Nebula tint | Language |
 | Lit amber / dim | Understood / not yet |
 | Drifting particles | A call the parser proved; possible calls stay still |
 | Orbit ring | Call depth — the inner ring runs first |
 
 Nothing that is merely busy can outshine something you understand: the unlit
-brightness ramp stops below the amber a lit star uses.
+brightness ramp stops below the amber a lit star uses. Brightness counts the
+distinct places that call a structure, not how many call sites they contain —
+a helper hammered in one loop is not more depended-on than a shared utility.
 
 ## Semantic zoom, not free flight
 

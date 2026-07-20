@@ -21,7 +21,9 @@ export function StudyPanel({
           <div><dt>Kind</dt><dd>{node.kind}</dd></div>
           <div><dt>Span</dt><dd>{node.loc} lines</dd></div>
           <div>
-            <dt>{mode === "easy" ? "Used by" : "Calls in"}</dt>
+            {/* "Callers", not "Calls in": centrality counts the distinct
+                structures that call this one, not the call sites they contain. */}
+            <dt>{mode === "easy" ? "Used by" : "Callers"}</dt>
             <dd>{node.centrality}</dd>
           </div>
           <div><dt>Resolution</dt><dd>{node.partial ? "Partial parse" : "Parser-proven"}</dd></div>

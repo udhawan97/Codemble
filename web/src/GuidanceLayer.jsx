@@ -24,7 +24,7 @@ const COACHMARK_KEY = "codemble.coachmarks.seen";
 const STEPS = [
   {
     title: "What you see",
-    body: "Every star system is one file. Size is how much code it holds; brightness is how often the rest of your project calls it.",
+    body: "Every star system is one file. Size is how much code it holds; brightness is how many places in your project call it.",
   },
   {
     title: "How to move",

@@ -313,7 +313,10 @@ def _impact_check(
         return None
     target_id = sorted(
         callers_by_target,
-        key=lambda candidate: (-len(callers_by_target[candidate]), candidate),
+        key=lambda candidate: (
+            -len({edge.src for edge in callers_by_target[candidate]}),
+            candidate,
+        ),
     )[0]
     callers = sorted(callers_by_target[target_id], key=lambda edge: (edge.src, edge.lineno))
     answers = tuple(sorted({edge.src for edge in callers}))
