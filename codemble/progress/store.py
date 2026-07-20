@@ -59,6 +59,19 @@ class ProgressStore:
         payload["regions"] = dict(sorted(regions.items()))
         self._write(payload)
 
+    def clear(self) -> None:
+        """Forget this project's understood regions, keeping its preferences.
+
+        Scoped to ``self.path``, which is keyed by this project's root, so no
+        other project's progress can be touched.
+        """
+
+        payload = self._read()
+        payload["schema_version"] = _SCHEMA_VERSION
+        payload["project_root"] = self._graph.project_root
+        payload["regions"] = {}
+        self._write(payload)
+
     def mode(self) -> str:
         """Return the learner's audience mode; this never affects progress."""
 

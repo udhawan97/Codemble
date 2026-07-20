@@ -1119,3 +1119,50 @@ def test_rebinding_a_different_project_after_reset_serves_its_own_graph_and_map(
     assert {region["id"] for region in second_graph["regions"]} == {"bravo"}
     assert {box["id"] for box in first_map["architecture"]["boxes"]} == {"alpha"}
     assert {box["id"] for box in second_map["architecture"]["boxes"]} == {"bravo"}
+
+
+def test_progress_can_be_cleared_for_the_bound_project_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    checks = CheckService(graph, ProgressStore(graph, tmp_path / "progress"))
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            StudyService(graph, cache_root=tmp_path / "cache"),
+            checks,
+        )
+    )
+    for check in generate_checks(graph, "app"):
+        client.post(
+            f"/api/regions/app/checks/{check.id}",
+            json={"selected_ids": list(check.answer_ids)},
+        )
+    lit = client.get("/api/graph").json()
+
+    cleared = client.delete("/api/progress")
+    after = client.get("/api/graph").json()
+
+    assert next(region for region in lit["regions"] if region["id"] == "app")[
+        "understood"
+    ]
+    assert cleared.status_code == 200
+    assert cleared.json() == {"understood_regions": 0}
+    assert (
+        next(region for region in after["regions"] if region["id"] == "app")[
+            "understood"
+        ]
+        is False
+    ), "the cached graph must not survive a progress reset"
+
+
+def test_clearing_progress_requires_a_bound_project(tmp_path: Path) -> None:
+    from codemble.server.app import PickerConfig
+
+    client = TestClient(
+        create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
+    )
+
+    assert client.delete("/api/progress").status_code == 409

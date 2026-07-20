@@ -469,6 +469,13 @@ def create_app(
         checks.progress.set_mode(selection.mode)
         return {"mode": selection.mode, "chosen": True}
 
+    @app.delete("/api/progress")
+    def clear_progress() -> dict[str, int]:
+        checks, _ = _services()
+        checks.progress.clear()
+        state.invalidate_graph_json()
+        return {"understood_regions": len(checks.progress.understood_regions())}
+
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():
         assets = distribution / "assets"
