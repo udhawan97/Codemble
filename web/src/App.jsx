@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
+import { ModeControl } from "./ModeControl.jsx";
 import {
   LEVELS,
   conceptTitle,
@@ -43,6 +44,7 @@ export function App() {
     level,
     litRegionId,
     mode,
+    modeChosen,
     picker,
     projectName,
     region,
@@ -82,7 +84,11 @@ export function App() {
   }
 
   return (
-    <main className="app-shell" data-level={showChart ? "chart" : level.toLowerCase()}>
+    <main
+      className="app-shell"
+      data-level={showChart ? "chart" : level.toLowerCase()}
+      data-mode={mode}
+    >
       <header className="instrument-rail">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true" />
@@ -131,6 +137,11 @@ export function App() {
           onChange={(language) =>
             session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
           }
+        />
+        <ModeControl
+          mode={mode}
+          modeChosen={modeChosen}
+          onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
         />
       </header>
 
