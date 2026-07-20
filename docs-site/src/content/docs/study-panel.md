@@ -5,6 +5,8 @@ description: What the parser knows, what a model adds, and what happens when you
 
 ## Five sections, in order of certainty
 
+![The study panel for create_app: kind, span, thirty-six callers, a structural summary marked "No model needed", guidance for setting a provider key or pointing Codemble at the local Ollama already running, and a parser connections diagram above an inbound call citing a real file and line.](/Codemble/shots/study-panel.png)
+
 Open a planet and the panel builds itself from the most certain evidence
 outward:
 

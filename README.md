@@ -107,6 +107,35 @@ ollama pull gemma4:12b && export CODEMBLE_PROVIDER=ollama
 No XP. No streaks. No leaderboard. The visible reward is the useful one: more
 of your own code becomes a sky you understand.
 
+## What it looks like
+
+<p align="center">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: 80 dim star systems parsed from real source, with a legend, language focus buttons, and a notice that two files are unchartable because their parser reported a syntax error" width="900">
+</p>
+
+<p align="center"><sub>
+  Galaxy level. Every system is one module; size is lines of code, brightness is
+  how many distinct structures call it. Files the parser could not read stay
+  visible and say so.
+</sub></p>
+
+<p align="center">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, showing its functions and classes in orbits with call edges and a keyboard focus reticle" width="900">
+</p>
+
+<p align="center"><sub>
+  System level. Members orbit by call depth, so the inner ring runs first.
+</sub></p>
+
+<p align="center">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/study-panel.png" alt="The study panel for create_app, showing kind, span, 36 callers, a structural summary marked no model needed, guidance for configuring a provider or a local Ollama, and a parser connections diagram with an inbound call citing a real file and line" width="900">
+</p>
+
+<p align="center"><sub>
+  Study. The structural summary, the connections, the source, and the Lens all
+  come from the parser — the panel above has no model configured at all.
+</sub></p>
+
 ## Two layers over one graph
 
 Codemble draws the same parser evidence two ways, switchable in the header. The

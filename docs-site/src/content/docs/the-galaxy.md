@@ -5,6 +5,8 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 ## Your code, mapped honestly
 
+![Codemble at galaxy level: eighty dim star systems parsed from real source, with the legend, the language focus buttons, and a notice that two files are unchartable because their parser reported a syntax error.](/Codemble/shots/galaxy.png)
+
 The galaxy is not an artist's impression. Every visual property encodes a fact
 from the parsed structure of your code:
 
@@ -73,8 +75,12 @@ The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 ## A region = one star system
 
+![One star system, codemble.server.app, with its functions and classes in call-depth orbits, the call edges between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
+
 A **region** is one module — the unit of checks, illumination, and progress.
 Change a file and only its region goes dim again; the rest of your sky stays lit.
+Its members orbit by call depth, and a **Prove understanding** button opens that
+region's checks.
 
 ## Focus a mixed sky without changing it
 
