@@ -563,12 +563,16 @@ def test_a_scale_refusal_leaves_the_picker_idle_not_stuck_parsing(
     assert client.get("/api/picker/browse").status_code == 200
 
 
-def test_picker_select_reports_scale_with_suggestions(tmp_path: Path) -> None:
+def test_picker_select_reports_scale_with_suggestions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from codemble.adapters.project import ProjectParser
     from codemble.server.app import PickerConfig
 
+    monkeypatch.setattr(ProjectParser, "scale_cap", 3)
     big = tmp_path / "big"
     (big / "api").mkdir(parents=True)
-    for index in range(301):
+    for index in range(4):
         (big / "api" / f"module_{index}.py").write_text("A = 1\n", encoding="utf-8")
     client = TestClient(
         create_app(web_dist=tmp_path / "missing", picker=PickerConfig(browse_root=tmp_path))
@@ -579,10 +583,10 @@ def test_picker_select_reports_scale_with_suggestions(tmp_path: Path) -> None:
     assert response.status_code == 409
     detail = response.json()["detail"]
     assert detail["reason"] == "scale"
-    assert detail["file_count"] == 301
-    assert detail["scale_cap"] == 300
+    assert detail["file_count"] == 4
+    assert detail["scale_cap"] == 3
     assert detail["root"] == str(big.resolve())
-    assert detail["suggestions"][0] == {"path": "api", "file_count": 301}
+    assert detail["suggestions"][0] == {"path": "api", "file_count": 4}
 
 
 def test_picker_select_rejects_unparseable_and_escaping_paths(tmp_path: Path) -> None:

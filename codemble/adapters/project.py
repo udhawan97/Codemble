@@ -27,10 +27,14 @@ class ProjectScaleError(ProjectParseError):
     def __init__(self, intake: ProjectIntake, scale_cap: int) -> None:
         self.intake = intake
         self.scale_cap = scale_cap
+        scopes = ", ".join(
+            f"{directory} ({count})" for directory, count in intake.scope_counts()[:6]
+        )
+        suggestion = f" Busiest scopes: {scopes}." if scopes else ""
         super().__init__(
             f"found {len(intake.files)} supported source files; Codemble is capped at "
             f"{scale_cap}. Re-run with `codemble --path PATH` to choose a project "
-            "subdirectory."
+            f"subdirectory.{suggestion}"
         )
 
 
@@ -86,7 +90,9 @@ class ProjectParser:
 
         return tuple(adapter.language for adapter in self._adapters)
 
-    scale_cap = 300
+    # Raised from 300 with the Phase C threaded parse and staged loading
+    # screen; LOD and clustering remain Phase 2.
+    scale_cap = 1000
 
     def intake(self, path: Path, *, explicit: bool = False) -> ProjectIntake:
         """Resolve one project scope and every adapter's owned files."""

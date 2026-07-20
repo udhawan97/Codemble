@@ -753,10 +753,10 @@ const pickerFetch = async (url, options = {}) => {
       json: async () => ({
         detail: {
           reason: "scale",
-          file_count: 420,
-          scale_cap: 300,
+          file_count: 1420,
+          scale_cap: 1000,
           root: "/home/u/big",
-          suggestions: [{ path: "api", file_count: 300 }],
+          suggestions: [{ path: "api", file_count: 900 }],
         },
       }),
     };
@@ -767,7 +767,7 @@ const httpPicker = createHttpLearnerSessionAdapter(pickerFetch);
 assert.deepEqual(await httpPicker.loadPickerState(), { state: "unpicked" });
 const scaleResult = await httpPicker.selectProject("/home/u/big");
 assert.equal(scaleResult.state, "scale");
-assert.equal(scaleResult.file_count, 420);
+assert.equal(scaleResult.file_count, 1420);
 assert.equal(
   JSON.parse(pickerHttpCalls.at(-1).options.body).path,
   "/home/u/big",
@@ -825,10 +825,10 @@ const pickerAdapter = createInMemoryLearnerSessionAdapter({
     selections: {
       "/home/u/big": {
         state: "scale",
-        file_count: 420,
-        scale_cap: 300,
+        file_count: 1420,
+        scale_cap: 1000,
         root: "/home/u/big",
-        suggestions: [{ path: "api", file_count: 300 }],
+        suggestions: [{ path: "api", file_count: 900 }],
       },
       "/home/u/demo": { state: "ready" },
     },
@@ -847,7 +847,7 @@ assert.equal(pickerSession.getSnapshot().picker.path, "/home/u/big");
 await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/big" });
 pickerSnapshot = pickerSession.getSnapshot();
 assert.equal(pickerSnapshot.status, "picking");
-assert.equal(pickerSnapshot.picker.scale.file_count, 420);
+assert.equal(pickerSnapshot.picker.scale.file_count, 1420);
 assert.equal(pickerSnapshot.picker.path, "/home/u/big");
 assert.equal(pickerSnapshot.picker.busy, false);
 

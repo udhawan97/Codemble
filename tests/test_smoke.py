@@ -49,10 +49,23 @@ def test_production_web_app_is_part_of_the_python_package() -> None:
     assert any((distribution / "assets").iterdir())
 
 
-def test_large_project_requires_an_explicit_or_interactive_scope(tmp_path: Path) -> None:
+def test_the_v1_scale_cap_is_one_thousand_supported_files() -> None:
+    from codemble.adapters.project import ProjectParser
+
+    assert ProjectParser.scale_cap == 1000
+
+
+def test_large_project_requires_an_explicit_or_interactive_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from codemble.adapters.project import ProjectParser
+
+    # Exercise the mechanism, not the constant: building scale_cap+1 real
+    # files would add a second of I/O to every run.
+    monkeypatch.setattr(ProjectParser, "scale_cap", 3)
     project = tmp_path / "large"
     project.mkdir()
-    for index in range(299):
+    for index in range(4):
         (project / f"module_{index:03d}.py").touch()
     small = project / "small"
     small.mkdir()
@@ -61,7 +74,10 @@ def test_large_project_requires_an_explicit_or_interactive_scope(tmp_path: Path)
 
     with pytest.raises(ProjectParseError, match="Re-run with `codemble --path PATH`"):
         choose_project_scope(project, explicit=False, interactive=False)
-    assert choose_project_scope(project, explicit=True, interactive=False).path == project.resolve()
+    assert (
+        choose_project_scope(project, explicit=True, interactive=False).path
+        == project.resolve()
+    )
 
     output: list[str] = []
     selected = choose_project_scope(
@@ -72,4 +88,27 @@ def test_large_project_requires_an_explicit_or_interactive_scope(tmp_path: Path)
         output_fn=output.append,
     )
     assert selected.path == small.resolve()
-    assert any("301 supported source files" in message for message in output)
+    assert any("6 supported source files" in message for message in output)
+
+
+def test_the_non_tty_scale_error_names_the_busiest_scopes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A piped run gets the same actionable suggestions the prompt shows."""
+
+    from codemble.adapters.project import ProjectParser
+
+    monkeypatch.setattr(ProjectParser, "scale_cap", 2)
+    project = tmp_path / "large"
+    (project / "api").mkdir(parents=True)
+    for index in range(3):
+        (project / "api" / f"module_{index}.py").touch()
+    (project / "web").mkdir()
+    (project / "web" / "one.py").touch()
+
+    with pytest.raises(ProjectParseError) as raised:
+        choose_project_scope(project, explicit=False, interactive=False)
+
+    assert "api (3)" in str(raised.value)
+    assert "web (1)" in str(raised.value)
+    assert "Re-run with `codemble --path PATH`" in str(raised.value)
