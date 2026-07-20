@@ -22,6 +22,7 @@ from codemble.llm.providers import (
     RECOMMENDED_MODEL,
 )
 from codemble.llm.structural import structural_summary
+from codemble.paths import data_dir
 
 PROMPT_VERSION = "study-v3"
 _CACHE_SCHEMA = 1
@@ -54,7 +55,7 @@ class StudyService:
         self._project_root = Path(graph.project_root).resolve()
         self._nodes = {node.id: node for node in graph.nodes}
         self._provider = provider
-        self._cache_root = cache_root or Path.home() / ".codemble" / "cache" / "explanations"
+        self._cache_root = cache_root or data_dir() / "cache" / "explanations"
         self._setup_message = setup_message or (
             "Set ANTHROPIC_API_KEY or OPENAI_API_KEY, then restart Codemble."
         )
@@ -71,7 +72,7 @@ class StudyService:
         """Build the module from environment variables or ``~/.codemble/config``."""
 
         values = dict(os.environ if environ is None else environ)
-        path = config_path or Path.home() / ".codemble" / "config"
+        path = config_path or data_dir() / "config"
         config, config_error = _read_config(path)
         provider_name = (values.get("CODEMBLE_PROVIDER") or config.get("provider") or "").lower()
         generic_key = config.get("api_key")

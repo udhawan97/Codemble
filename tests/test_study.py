@@ -510,6 +510,58 @@ def test_remote_ollama_host_degrades_gracefully_instead_of_crashing(tmp_path: Pa
     assert "loopback" in result["message"]
 
 
+def test_the_suite_never_inherits_a_provider_from_the_machine() -> None:
+    """No overrides at all must still mean no provider, on any machine.
+
+    This is the exact call ``create_app`` makes for every caller that passes no
+    ``study_service`` -- around thirty of them in ``test_server.py``. Before the
+    conftest cleared the provider variables, a developer with ANTHROPIC_API_KEY
+    exported got a live ``AnthropicProvider`` here where CI got ``None``, so the
+    two server tests that GET ``/explanation`` made a real billed API call and
+    cached the reply under the developer's home. Both assert only that a
+    ``status`` key exists, which is true of ``no_key``, ``ready``, and ``error``
+    alike, so the difference never surfaced as a failure.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = StudyService.from_environment(graph)
+
+    assert service.provider is None
+    assert service.explain("app.main", "easy")["status"] == "no_key"
+
+
+def test_config_and_cache_follow_codemble_data_dir(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """One variable must move all three home-directory paths together.
+
+    ``CODEMBLE_DATA_DIR`` used to redirect progress only, while the config file
+    and narration cache stayed hardcoded to ``~/.codemble``. Passing
+    ``environ={}`` here is what makes the config half meaningful: no
+    environment key can supply the provider, so a provider can only appear if
+    the redirected config file was the one actually read.
+    """
+
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "config").write_text(
+        'provider = "anthropic"\nanthropic_api_key = "config-key"\n', encoding="utf-8"
+    )
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(data))
+    graph = PythonAstAdapter().parse(FIXTURE)
+
+    configured = StudyService.from_environment(graph, environ={})
+    cached = StudyService(graph, provider=FakeProvider())
+    result = cached.explain("app.main", "easy")
+
+    assert configured.provider is not None
+    assert configured.provider.name == "anthropic"
+    assert result["status"] == "ready"
+    assert list((data / "cache" / "explanations").glob("*.json")), (
+        "a default cache_root must write under CODEMBLE_DATA_DIR, not ~/.codemble"
+    )
+
+
 def test_file_scheme_ollama_host_is_refused_through_from_environment(tmp_path: Path) -> None:
     """The guard's scheme check must still fire when host arrives via config.
 

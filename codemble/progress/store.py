@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from codemble.adapters.base import Graph
+from codemble.paths import data_dir
 
 _SCHEMA_VERSION = 1
 
@@ -22,11 +23,7 @@ class ProgressStore:
 
     def __init__(self, graph: Graph, root: Path | None = None) -> None:
         self._graph = graph
-        data_root = os.environ.get("CODEMBLE_DATA_DIR")
-        self._root = root or (
-            (Path(data_root).expanduser() if data_root else Path.home() / ".codemble")
-            / "progress"
-        )
+        self._root = root or data_dir() / "progress"
         project_key = hashlib.sha256(graph.project_root.encode()).hexdigest()[:20]
         self.path = self._root / f"{project_key}.json"
         self._signatures = _region_signatures(graph)
@@ -163,11 +160,7 @@ def _region_signatures(graph: Graph) -> dict[str, str]:
 def list_recent_projects(limit: int = 8) -> list[dict[str, object]]:
     """Return recently explored projects whose paths still exist, newest first."""
 
-    data_root = os.environ.get("CODEMBLE_DATA_DIR")
-    progress_root = (
-        (Path(data_root).expanduser() if data_root else Path.home() / ".codemble")
-        / "progress"
-    )
+    progress_root = data_dir() / "progress"
     entries: list[tuple[float, dict[str, object]]] = []
     try:
         candidates = sorted(progress_root.glob("*.json"))
