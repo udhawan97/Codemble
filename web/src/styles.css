@@ -529,6 +529,75 @@ button:focus-visible,
   color: var(--cm-ink);
 }
 
+.mini-constellation {
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+  margin-block-start: var(--cm-space-md);
+}
+
+.mini-constellation line {
+  stroke: var(--cm-hairline);
+  stroke-width: 1;
+}
+
+.mini-constellation circle {
+  fill: var(--cm-ink-3);
+}
+
+.mini-constellation__self {
+  fill: var(--cm-orbit);
+}
+
+.connections h3 {
+  margin: var(--cm-space-lg) 0 0;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.connection-list {
+  margin: var(--cm-space-xs) 0 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.connection-list button {
+  display: grid;
+  width: 100%;
+  min-height: 52px;
+  gap: var(--cm-space-2xs);
+  padding: var(--cm-space-sm) 0;
+  border: 0;
+  border-block-end: 1px solid var(--cm-hairline);
+  background: transparent;
+  color: var(--cm-ink);
+  cursor: pointer;
+  text-align: start;
+}
+
+.connection-name {
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+}
+
+.connection-meta {
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .connection-list button:hover .connection-name {
+    color: var(--cm-orbit);
+  }
+}
+
 .load-state .check-primary,
 .study-notice .check-primary {
   justify-self: start;

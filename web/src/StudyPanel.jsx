@@ -51,6 +51,12 @@ export function StudyPanel({
             onSelectNode={onSelectNode}
             onRetry={onRetryNarration}
           />
+          <Connections
+            neighbors={study.neighbors}
+            node={node}
+            mode={mode}
+            onSelectNode={onSelectNode}
+          />
           <SourceExcerpt source={study.source} />
           <LensNotes lens={study.lens} language={node.language} />
         </div>
@@ -71,6 +77,134 @@ function StructuralSummary({ structural, mode }) {
       </div>
       <p>{structural[mode] ?? structural.easy}</p>
     </section>
+  );
+}
+
+const STRIP_LIMIT = 8;
+
+function Connections({ neighbors, node, mode, onSelectNode }) {
+  const items = neighbors ?? [];
+  const inbound = items.filter((item) => item.direction === "inbound");
+  const outbound = items.filter((item) => item.direction === "outbound");
+  return (
+    <section className="connections" aria-labelledby="connections-heading">
+      <div className="study-section-heading">
+        <h2 id="connections-heading">
+          {mode === "easy" ? "What this connects to" : "Parser connections"}
+        </h2>
+        <span>
+          {items.length} parser {items.length === 1 ? "relationship" : "relationships"}
+        </span>
+      </div>
+      {items.length === 0 ? (
+        <p className="study-loading">
+          {mode === "easy"
+            ? "Nothing in your code reaches this yet, and it does not reach anything else."
+            : "The parser observed no relationship into or out of this structure."}
+        </p>
+      ) : (
+        <>
+          <MiniConstellation inbound={inbound} outbound={outbound} node={node} />
+          <ConnectionGroup
+            title={mode === "easy" ? "Uses this" : "Inbound"}
+            items={inbound}
+            mode={mode}
+            onSelectNode={onSelectNode}
+          />
+          <ConnectionGroup
+            title={mode === "easy" ? "This uses" : "Outbound"}
+            items={outbound}
+            mode={mode}
+            onSelectNode={onSelectNode}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+function ConnectionGroup({ title, items, mode, onSelectNode }) {
+  if (!items.length) return null;
+  return (
+    <>
+      <h3>{title}</h3>
+      <ul className="connection-list">
+        {items.map((item) => (
+          <li key={`${item.direction}-${item.node_id}`}>
+            <button type="button" onClick={() => onSelectNode(item.node_id)}>
+              <span className="connection-name">{item.name}</span>
+              <span className="connection-meta">
+                {relationWords(item, mode)} · {certaintyWords(item, mode)}
+              </span>
+              <span className="source-citation">{item.citation}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function relationWords(item, mode) {
+  if (item.relationship === "import") {
+    if (item.direction === "inbound") return mode === "easy" ? "brings this in" : "import · inbound";
+    return mode === "easy" ? "this brings it in" : "import · outbound";
+  }
+  if (item.direction === "inbound") return mode === "easy" ? "calls this" : "call · inbound";
+  return mode === "easy" ? "this calls it" : "call · outbound";
+}
+
+function certaintyWords(item, mode) {
+  if (item.certain) return mode === "easy" ? "certain" : "certain";
+  if (item.relationship === "import") {
+    return mode === "easy" ? "possible link, not certain" : "possible import";
+  }
+  return mode === "easy" ? "possible link, not certain" : "possible call";
+}
+
+function MiniConstellation({ inbound, outbound, node }) {
+  // Presentation of the already-fetched neighbour list, like the star chart's
+  // bars — no layout is computed here that the backend does not already own.
+  const left = inbound.slice(0, STRIP_LIMIT);
+  const right = outbound.slice(0, STRIP_LIMIT);
+  const height = Math.max(left.length, right.length, 1) * 22 + 16;
+  const middle = height / 2;
+  const seat = (index, count) => ((index + 1) * height) / (count + 1);
+  return (
+    <svg
+      className="mini-constellation"
+      viewBox={`0 0 280 ${height}`}
+      role="img"
+      aria-label={`${inbound.length} inbound and ${outbound.length} outbound parser relationships for ${node.name}`}
+    >
+      {left.map((item, index) => (
+        <line
+          key={`in-line-${item.node_id}`}
+          x1="26"
+          y1={seat(index, left.length)}
+          x2="132"
+          y2={middle}
+          strokeDasharray={item.certain ? undefined : "3 3"}
+        />
+      ))}
+      {right.map((item, index) => (
+        <line
+          key={`out-line-${item.node_id}`}
+          x1="148"
+          y1={middle}
+          x2="254"
+          y2={seat(index, right.length)}
+          strokeDasharray={item.certain ? undefined : "3 3"}
+        />
+      ))}
+      {left.map((item, index) => (
+        <circle key={`in-dot-${item.node_id}`} cx="22" cy={seat(index, left.length)} r="4" />
+      ))}
+      {right.map((item, index) => (
+        <circle key={`out-dot-${item.node_id}`} cx="258" cy={seat(index, right.length)} r="4" />
+      ))}
+      <circle className="mini-constellation__self" cx="140" cy={middle} r="6" />
+    </svg>
   );
 }
 
@@ -130,7 +264,7 @@ function Explanation({
 }) {
   if (loading) {
     return (
-      <p className="study-loading">
+      <p className="study-loading" role="status">
         {mode === "easy"
           ? "Asking your model to explain this in plain language…"
           : "Requesting a grounded narration for this structure…"}
@@ -175,7 +309,7 @@ function Explanation({
   }
   return (
     <section className="grounded-explanation" aria-labelledby="explanation-heading">
-      <div className="study-section-heading">
+      <div className="study-section-heading" role="status">
         <h2 id="explanation-heading">
           {mode === "easy" ? "In plain language" : "Grounded explanation"}
         </h2>
