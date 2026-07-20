@@ -99,7 +99,11 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
         // (StudyPanel's mini-constellation is correctly `img`: it has no
         // interactive children to hide.)
         role="group"
-        aria-label={`${architecture.boxes.length} modules in ${architecture.layer_count} import layers from Home`}
+        aria-label={
+          architecture.home
+            ? `${architecture.boxes.length} modules in ${architecture.layer_count} import layers from Home`
+            : `${architecture.boxes.length} modules in ${architecture.layer_count} import layers, measured from the modules nothing imports`
+        }
       >
         <g className="architecture-map__edges">
           {architecture.edges.map((edge) => {
@@ -166,6 +170,14 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
           </g>
         ))}
       </svg>
+      {architecture.home ? null : (
+        <p className="map-note">
+          No Home is selected, so these layers run from the modules nothing else
+          imports rather than from your entrypoint. Both are read from your imports,
+          not guessed. Pick your starting point with “Change Home” to see the same
+          modules layered by what the project runs first.
+        </p>
+      )}
       {architecture.unreachable.length ? (
         <p className="map-note">
           {architecture.unreachable.length}{" "}

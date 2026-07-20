@@ -19,6 +19,10 @@ _ROW_HEIGHT = 120.0
 _BOX_WIDTH = 160.0
 _BOX_HEIGHT = 56.0
 _COLUMN_GAP = 24.0
+# How many fixed-width boxes fit the canvas.  A layer wider than this wraps
+# rather than overflowing: the SVG root clips everything outside the viewBox,
+# and the viewBox is built from _MAP_WIDTH.
+_MAX_COLUMNS = int((_MAP_WIDTH + _COLUMN_GAP) // (_BOX_WIDTH + _COLUMN_GAP))
 _TREE_INDENT = 28.0
 _TREE_ROW = 34.0
 _TREE_LABEL_WIDTH = 320.0
@@ -45,19 +49,33 @@ def _architecture(graph: Graph) -> dict[str, object]:
         successors[edge.src].append(edge.dst)
     cut = _back_edges(([home] if home else []) + region_ids, successors)
 
-    layers: dict[str, int] = {}
+    # With a Home, layers are import depth from Home, and whatever Home cannot
+    # reach is reported as unreachable rather than placed by guesswork.
+    #
+    # Without a Home there is no root to measure from.  Seeding nothing put
+    # every region in one row, which is not a diagram: this project's 80
+    # modules became a single unreadable line.  So layer from the import DAG's
+    # own sources instead -- the modules nothing else in the project imports.
+    # That root set is parser evidence exactly like Home is, invents no
+    # relationship, and always exists for a non-empty project, because cutting
+    # the back edges above leaves a DAG and every DAG has a source.
     if home is not None:
-        layers[home] = 0
-        for _ in range(len(region_ids)):
-            changed = False
-            for edge in routes:
-                if (edge.src, edge.dst) in cut or edge.src not in layers:
-                    continue
-                if layers.get(edge.dst, -1) < layers[edge.src] + 1:
-                    layers[edge.dst] = layers[edge.src] + 1
-                    changed = True
-            if not changed:
-                break
+        roots = [home]
+    else:
+        imported = {edge.dst for edge in routes if (edge.src, edge.dst) not in cut}
+        roots = [region_id for region_id in region_ids if region_id not in imported]
+
+    layers: dict[str, int] = dict.fromkeys(roots, 0)
+    for _ in range(len(region_ids)):
+        changed = False
+        for edge in routes:
+            if (edge.src, edge.dst) in cut or edge.src not in layers:
+                continue
+            if layers.get(edge.dst, -1) < layers[edge.src] + 1:
+                layers[edge.dst] = layers[edge.src] + 1
+                changed = True
+        if not changed:
+            break
 
     unreachable = [region_id for region_id in region_ids if region_id not in layers]
     outer_layer = (max(layers.values()) + 1) if layers else 0
@@ -79,38 +97,50 @@ def _architecture(graph: Graph) -> dict[str, object]:
 
     partial_regions = {node.region for node in graph.nodes if node.partial}
     boxes: list[dict[str, object]] = []
+    visual_row = 0
     for layer_index in sorted(rows):
         members = rows[layer_index]
-        span = len(members) * _BOX_WIDTH + (len(members) - 1) * _COLUMN_GAP
-        start = (_MAP_WIDTH - span) / 2.0
-        for column, region_id in enumerate(members):
-            region = regions[region_id]
-            boxes.append(
-                {
-                    "id": region_id,
-                    "group": group_of[region_id],
-                    "label": region_id,
-                    "language": region.language,
-                    "layer": layer_index,
-                    "column": column,
-                    "reachable": region_id in layers,
-                    "x": _rounded(start + column * (_BOX_WIDTH + _COLUMN_GAP)),
-                    "y": _rounded(layer_index * _ROW_HEIGHT),
-                    "width": _BOX_WIDTH,
-                    "height": _BOX_HEIGHT,
-                    "loc": region.loc,
-                    "node_count": region.node_count,
-                    "understood": region.understood,
-                    "home": region.home,
-                    "partial": region_id in partial_regions,
-                }
-            )
+        # A layer wider than the canvas wraps onto further rows.  Boxes are a
+        # fixed width and the SVG clips outside the viewBox, so an unwrapped
+        # layer did not merely look cramped -- its overflow was invisible and
+        # unscrollable, which is the one thing the map must never do to parser
+        # evidence.  "layer" below stays the true import depth; only the row
+        # the box is drawn on wraps.
+        for offset in range(0, len(members), _MAX_COLUMNS):
+            chunk = members[offset : offset + _MAX_COLUMNS]
+            span = len(chunk) * _BOX_WIDTH + (len(chunk) - 1) * _COLUMN_GAP
+            start = (_MAP_WIDTH - span) / 2.0
+            for column, region_id in enumerate(chunk):
+                region = regions[region_id]
+                boxes.append(
+                    {
+                        "id": region_id,
+                        "group": group_of[region_id],
+                        "label": region_id,
+                        "language": region.language,
+                        "layer": layer_index,
+                        "column": column,
+                        "reachable": region_id in layers,
+                        "x": _rounded(start + column * (_BOX_WIDTH + _COLUMN_GAP)),
+                        "y": _rounded(visual_row * _ROW_HEIGHT),
+                        "width": _BOX_WIDTH,
+                        "height": _BOX_HEIGHT,
+                        "loc": region.loc,
+                        "node_count": region.node_count,
+                        "understood": region.understood,
+                        "home": region.home,
+                        "partial": region_id in partial_regions,
+                    }
+                )
+            visual_row += 1
 
     return {
         "home": home,
         "layer_count": layer_count,
         "width": _MAP_WIDTH,
-        "height": _rounded(max(layer_count, 1) * _ROW_HEIGHT),
+        # Wrapped rows, not layers: the canvas has to be tall enough for every
+        # row actually drawn, or the wrap would clip exactly what it fixed.
+        "height": _rounded(max(visual_row, 1) * _ROW_HEIGHT),
         "groups": [
             {"id": group_id, "label": group_id, "regions": sorted(grouped[group_id])}
             for group_id in sorted(grouped)

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.graph import build_map
+from codemble.graph.mapview import _MAX_COLUMNS
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 
@@ -106,17 +107,64 @@ def test_cycles_are_cut_deterministically_and_stay_visible(tmp_path: Path) -> No
     assert "cycle" in [row["cut"] for row in payload["workflow"]["nodes"]]
 
 
-def test_a_graph_without_home_marks_every_region_unreachable(tmp_path: Path) -> None:
-    (tmp_path / "solo.py").write_text("def work() -> None:\n    pass\n", encoding="utf-8")
+def test_a_graph_without_home_layers_from_the_modules_nothing_imports(
+    tmp_path: Path,
+) -> None:
+    # Without a Home there is no root to measure import depth from.  Seeding
+    # nothing put every region in one row, so a real project's modules became a
+    # single line wider than the canvas -- unreadable, and mostly clipped away.
+    # The import DAG's own sources are parser evidence too, so they layer it.
+    (tmp_path / "leaf.py").write_text("def work() -> None:\n    pass\n", encoding="utf-8")
+    (tmp_path / "middle.py").write_text(
+        "import leaf\n\n\ndef go() -> None:\n    leaf.work()\n", encoding="utf-8"
+    )
+    (tmp_path / "top.py").write_text(
+        "import middle\n\n\ndef run() -> None:\n    middle.go()\n", encoding="utf-8"
+    )
 
     payload = build_map(PythonAstAdapter().parse(tmp_path))
+    architecture = payload["architecture"]
+    layers = {box["id"]: box["layer"] for box in architecture["boxes"]}
 
-    assert payload["architecture"]["home"] is None
-    assert payload["architecture"]["unreachable"] == ["solo"]
-    assert payload["architecture"]["layer_count"] == 1
+    assert architecture["home"] is None
+    # "top" is the source: nothing in the project imports it.
+    assert layers == {"top": 0, "middle": 1, "leaf": 2}
+    assert architecture["layer_count"] == 3
+    # Nothing is stranded, and no region is dropped to say so.
+    assert architecture["unreachable"] == []
+    assert len(architecture["boxes"]) == 3
+    # The workflow tree still needs a real entrypoint and must not invent one.
     assert payload["workflow"]["root"] is None
     assert payload["workflow"]["nodes"] == []
-    assert payload["workflow"]["unreachable"] == ["solo", "solo.work"]
+
+
+def test_a_layer_wider_than_the_canvas_wraps_instead_of_overflowing(
+    tmp_path: Path,
+) -> None:
+    # Regression: rows were centred on a fixed 960-wide canvas but never sized
+    # to it, so a layer of more than _MAX_COLUMNS modules ran off both edges.
+    # The SVG root clips outside the viewBox and the element is width:100%, so
+    # the overflow was invisible AND unscrollable -- parser evidence silently
+    # hidden.  These siblings share no imports, so they all land on layer 0.
+    count = _MAX_COLUMNS * 2 + 1
+    for index in range(count):
+        (tmp_path / f"mod{index:02d}.py").write_text(
+            "def work() -> None:\n    pass\n", encoding="utf-8"
+        )
+
+    architecture = build_map(PythonAstAdapter().parse(tmp_path))["architecture"]
+    boxes = architecture["boxes"]
+
+    assert len(boxes) == count
+    assert {box["layer"] for box in boxes} == {0}
+    # One layer, but drawn across three rows rather than one clipped line.
+    assert len({box["y"] for box in boxes}) == 3
+    # Every box sits inside the declared canvas, which is what the viewBox uses.
+    assert all(0 <= box["x"] and box["x"] + box["width"] <= architecture["width"] for box in boxes)
+    assert all(box["y"] + box["height"] <= architecture["height"] for box in boxes)
+    # No row is overfilled, and the canvas grew to cover the wrapped rows.
+    assert all(box["column"] < _MAX_COLUMNS for box in boxes)
+    assert architecture["height"] == 3 * 120.0
 
 
 def test_workflow_places_a_member_at_top_level_when_only_a_possible_call_claims_it(
