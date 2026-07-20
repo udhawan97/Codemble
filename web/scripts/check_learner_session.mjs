@@ -375,6 +375,23 @@ pickerSnapshot = pickerSession.getSnapshot();
 assert.equal(pickerSnapshot.status, "ready");
 assert.equal(pickerSnapshot.picker, null);
 assert.equal(pickerSnapshot.graph, graph);
+
+await pickerSession.dispatch({ type: "ADVANCE", node: graph.regions[0] });
+await pickerSession.dispatch({ type: "RESET_PROJECT" });
+pickerSnapshot = pickerSession.getSnapshot();
+assert.equal(pickerSnapshot.status, "picking", "reset returns the learner to the picker");
+assert.equal(pickerSnapshot.graph, null);
+assert.equal(pickerSnapshot.region, null);
+assert.equal(pickerSnapshot.selectedNode, null);
+assert.equal(pickerSnapshot.level, LEVELS.GALAXY);
+assert.equal(pickerSnapshot.studiedNodeIds.size, 0);
+assert.equal(pickerSnapshot.explanation, null);
+assert.equal(pickerSnapshot.llmStatus, null);
+assert.equal(pickerSnapshot.picker.path, "/home/u");
+
+await pickerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+assert.equal(pickerSession.getSnapshot().status, "ready", "a project can be re-picked");
+
 pickerSession.dispose();
 
 // Regression: a browse during an in-flight selection must not wedge picker.busy.
@@ -535,6 +552,29 @@ assert.equal(
   "narration failure never removes parser evidence",
 );
 narrationFailureSession.dispose();
+
+// A refused reset must surface to the caller and leave the project bound.
+const refusedResetAdapter = createInMemoryLearnerSessionAdapter({ graph });
+const refusedResetSession = createLearnerSession({
+  adapter: {
+    ...refusedResetAdapter,
+    resetProject() {
+      throw new Error("Project reset returned 409.");
+    },
+  },
+  clock,
+});
+await refusedResetSession.start();
+await assert.rejects(
+  () => refusedResetSession.dispatch({ type: "RESET_PROJECT" }),
+  /Project reset returned 409\./,
+);
+assert.equal(
+  refusedResetSession.getSnapshot().graph,
+  graph,
+  "a refused reset leaves the bound project exactly as it was",
+);
+refusedResetSession.dispose();
 
 function makeGraph({ understood = false } = {}) {
   return {

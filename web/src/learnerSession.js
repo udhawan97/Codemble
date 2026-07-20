@@ -55,6 +55,7 @@ export function createLearnerSession({
   let pickerController = null;
   let modeController = null;
   let explanationController = null;
+  let resetController = null;
   let illuminationTimer = null;
 
   function getSnapshot() {
@@ -231,6 +232,40 @@ export function createLearnerSession({
     }
   }
 
+  async function resetProject() {
+    abortController(resetController);
+    resetController = new AbortController();
+    const controller = resetController;
+    // Deliberately uncaught, like submitCheck: a refused reset is a control
+    // failure the header shows inline, not a reason to blank the galaxy.
+    await adapter.resetProject({ signal: controller.signal });
+    if (controller.signal.aborted) return snapshot;
+    cancelStudy();
+    commit({
+      graph: null,
+      region: null,
+      selectedNode: null,
+      level: LEVELS.GALAXY,
+      studyData: null,
+      studyError: "",
+      explanation: null,
+      explanationError: "",
+      explanationLoading: false,
+      showChart: false,
+      studiedNodeIds: new Set(),
+      showChecks: false,
+      checkData: null,
+      checkError: "",
+      entrypointDismissed: false,
+      entrypointError: "",
+      litRegionId: null,
+      languageFocus: "all",
+      llmStatus: null,
+      picker: null,
+    });
+    return start();
+  }
+
   async function dispatch(event) {
     switch (event.type) {
       case "ADVANCE":
@@ -267,6 +302,8 @@ export function createLearnerSession({
         return browsePickerFolder(event.path);
       case "SELECT_PROJECT":
         return selectProject(event.path);
+      case "RESET_PROJECT":
+        return resetProject();
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
@@ -551,6 +588,7 @@ export function createLearnerSession({
       pickerController,
       modeController,
       explanationController,
+      resetController,
     ]) {
       abortController(controller);
     }
@@ -562,6 +600,7 @@ export function createLearnerSession({
     pickerController = null;
     modeController = null;
     explanationController = null;
+    resetController = null;
     if (illuminationTimer !== null) {
       clock.clearTimeout(illuminationTimer);
       illuminationTimer = null;
@@ -640,6 +679,12 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         "Explanation request",
         options,
       );
+    },
+    resetProject(options = {}) {
+      return request("/api/picker/reset", "Project reset", {
+        ...options,
+        method: "POST",
+      });
     },
     loadPickerState(options = {}) {
       return request("/api/picker/state", "Picker state", options);
@@ -769,6 +814,11 @@ export function createInMemoryLearnerSessionAdapter({
       const result = requiredFixture(pickerPhase.selections, path, "picker selection");
       if (result.state === "ready") pickerPhase.selected = true;
       return result;
+    },
+    async resetProject(options = {}) {
+      throwIfAborted(options.signal);
+      if (pickerPhase) pickerPhase.selected = false;
+      return { state: "unpicked" };
     },
   });
 }
