@@ -198,10 +198,13 @@ since shipped, and were released together as **v0.4.0** (tag `v0.4.0`, published
 to PyPI, verified end to end from a clean `uvx codemble==0.4.0` install: the
 wheel's SPA bundle is byte-identical to the tag, all 27 regions draw unclipped,
 and the galaxy renders deep space with no console errors). Phase C (~1,000-file
-scale with staged parse progress) has not started — there is still no threaded
-parse or parse-progress screen, and the scale cap remains ~300 files. Its plan
-is written and ready at
-`docs/superpowers/plans/2026-07-19-galaxy-ux-phase-c.md` (12 tasks). Suite
+scale with staged parse progress) is **partly landed**: its backend shipped on
+main while this branch was open — per-file parse progress, a parse-job state
+machine with cancellation and crash reporting, and a worker-thread parse behind
+a 202 select with `GET /api/picker/progress`. The learner-facing half has not:
+the merge touched no `web/` file, so there is still no parse-progress screen,
+and `scale_cap` is still 300, so the ~1,000-file target is not met. Its plan is
+at `docs/superpowers/plans/2026-07-19-galaxy-ux-phase-c.md` (12 tasks). Suite
 hermeticity was then closed on the read side: `CODEMBLE_DATA_DIR` had
 redirected saved progress only, while `StudyService` hardcoded `Path.home()`
 for the narration cache and the `config` file and nothing cleared
