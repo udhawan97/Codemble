@@ -19,3 +19,7 @@ Shipped folder picker (bare `codemble` → browser picker); 20 commits → main;
 Reopened #13; designed audience-modes (easy/expert + local Ollama/Gemma4 + structural-summaries); backend impl underway (2 of 11 tasks done, 9 remain).
 ## 10:15 | friendly-wizard-claude/web-app-install-ux-b9f408
 Shipped in-app folder picker install UX (bare codemble → select project via UI, stores recents); released v0.3.0 on PyPI, then v0.3.1 fixing metadata gaps + excluding agent notes; documented uv prereq w/ icons on README/docs-site/GitHub; verified uvx codemble works e2e.
+## 10:25 | friendly-wizard-claude/work-planning-f2e933
+Designed & executed audience modes (easy/expert) + Tier 0 summaries + local Ollama; phase 1 merged, phase 2 in-progress; fixed app.py merge conflict & Python comprehension correctness bug.
+## 19:57 | friendly-wizard-claude/galaxy-ui-redesign-4f9457
+Planned galaxy UI redesign (texture/3D, connection-viz, layer-toggles, workflow-trees, arch-SVGs, scale-ingestion) via brainstorming/frontend-design/subagent-dev; created execution tasks.
