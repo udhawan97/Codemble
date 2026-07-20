@@ -35,6 +35,15 @@ class ParseProgress(Protocol):
     def file_parsed(self) -> None:
         """Report one finished file; raise ``ParseCancelled`` to stop."""
 
+    def detail(self, detail: str) -> None:
+        """Report the sub-step now running within a stage.
+
+        The ``resolving`` stage is one label over several seconds of cross-file
+        work; a sub-step keeps the screen honestly changing instead of frozen.
+        It is advisory only: unlike ``file_parsed`` it never cancels, so a
+        reporter that ignores it loses nothing but the finer copy.
+        """
+
 
 @contextmanager
 def reporting_files(on_file: Callable[[], None] | None) -> Iterator[None]:
@@ -56,9 +65,35 @@ def note_file_parsed() -> None:
         on_file()
 
 
+@contextmanager
+def reporting_detail(on_detail: Callable[[str], None] | None) -> Iterator[None]:
+    """Bind ``on_detail`` for this thread for the duration of one parse.
+
+    Separate from ``reporting_files`` because resolving sub-steps outlive the
+    file-reading loop: they run through cross-file resolution and composition.
+    """
+
+    previous = getattr(_local, "on_detail", None)
+    _local.on_detail = on_detail
+    try:
+        yield
+    finally:
+        _local.on_detail = previous
+
+
+def note_detail(detail: str) -> None:
+    """Report the resolving sub-step now running; a no-op with no listener."""
+
+    on_detail = getattr(_local, "on_detail", None)
+    if on_detail is not None:
+        on_detail(detail)
+
+
 __all__ = [
     "ParseCancelled",
     "ParseProgress",
+    "note_detail",
     "note_file_parsed",
+    "reporting_detail",
     "reporting_files",
 ]

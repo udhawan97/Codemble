@@ -36,6 +36,7 @@ class ParseJob:
         self._started = False
         self._state: JobState = "idle"
         self._stage: str | None = None
+        self._detail: str | None = None
         self._files_done = 0
         self._files_total = 0
         self._error: str | None = None
@@ -60,6 +61,7 @@ class ParseJob:
             return {
                 "state": self._state,
                 "stage": self._stage,
+                "detail": self._detail,
                 "files_done": self._files_done,
                 "files_total": self._files_total,
                 "error": self._error,
@@ -117,7 +119,16 @@ class ParseJob:
         if stage not in STAGES:
             raise ValueError(f"unknown parse stage: {stage}")
         with self._lock:
+            # A new stage retires its predecessor's sub-step; re-announcing the
+            # same stage (ProjectParser confirms ``resolving`` after the counter
+            # already flipped) keeps the live sub-step the adapters are setting.
+            if stage != self._stage:
+                self._detail = None
             self._stage = stage
+
+    def detail(self, detail: str) -> None:
+        with self._lock:
+            self._detail = detail
 
     def files_total(self, total: int) -> None:
         with self._lock:
@@ -135,6 +146,7 @@ class ParseJob:
         with self._lock:
             self._state = state
             self._stage = None
+            self._detail = None
             self._error = error
 
 

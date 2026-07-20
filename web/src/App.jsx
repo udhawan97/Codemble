@@ -475,7 +475,7 @@ const STAGE_COPY = {
 const STAGE_ORDER = ["discovering", "parsing", "resolving", "checks", "layout"];
 
 function LoadingScreen({ progress, onCancel }) {
-  const { stage, files_done: done, files_total: total, pollError, path } = progress;
+  const { stage, detail, files_done: done, files_total: total, pollError, path } = progress;
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const headingRef = useRef(null);
@@ -523,7 +523,13 @@ function LoadingScreen({ progress, onCancel }) {
                   screen reader at all. */}
               <small>
                 {name === "parsing" && total ? `${done}/${total} files · ` : ""}
-                {state === "done" ? "done" : state === "active" ? "working" : "waiting"}
+                {state === "done"
+                  ? "done"
+                  : state === "active"
+                    ? detail
+                      ? `working · ${detail}`
+                      : "working"
+                    : "waiting"}
               </small>
             </li>
           );
@@ -541,12 +547,14 @@ function LoadingScreen({ progress, onCancel }) {
           aria-label={`${done} of ${total} files read`}
         />
       ) : null}
-      {/* Stage only, never the running count: files_done moves on every 300 ms
-          poll, and announcing it would bury the five events that matter under a
-          counter no listener can follow. The count stays on screen, and on the
-          meter's accessible name for anyone who asks for it. */}
+      {/* Stage and its live sub-step, never the running count: files_done moves
+          on every 300 ms poll, and announcing it would bury the events that
+          matter under a counter no listener can follow. The resolving detail
+          changes only a handful of times, at real pass boundaries, so it earns
+          the live region -- it is what keeps this stage from reading as a hang.
+          The count stays on screen and on the meter's accessible name. */}
       <p className="loading-live" role="status">
-        {STAGE_COPY[stage] ?? "Starting"}
+        {detail ?? STAGE_COPY[stage] ?? "Starting"}
       </p>
       {pollError ? (
         <p className="loading-error" role="status">

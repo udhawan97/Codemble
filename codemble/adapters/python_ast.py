@@ -12,7 +12,7 @@ from pathlib import Path
 
 from codemble.adapters.base import AdapterParseError, ConceptAnnotation, Edge, Graph, Node
 from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
-from codemble.adapters.parse_progress import note_file_parsed
+from codemble.adapters.parse_progress import note_detail, note_file_parsed
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 _APP_FACTORIES = {"FastAPI", "Flask", "Typer"}
@@ -351,6 +351,10 @@ class PythonAstAdapter:
         module_bindings: dict[str, list[_ImportBinding]] = defaultdict(list)
         scope_bindings: dict[str, list[_ImportBinding]] = defaultdict(list)
 
+        # The stage counter is full once the last file is read; from here the
+        # resolving stage does its cross-file work, so it narrates the real
+        # passes rather than sitting on one frozen label.
+        note_detail("Resolving imports")
         for parsed in parsed_files:
             if parsed.tree is None:
                 continue
@@ -372,6 +376,7 @@ class PythonAstAdapter:
                 _, bindings = _resolve_import(parsed, syntax, modules, node_by_id)
                 scope_bindings[definition.node_id].extend(bindings)
 
+        note_detail("Resolving calls")
         call_edges: list[Edge] = []
         children_by_parent: dict[str, list[Node]] = defaultdict(list)
         for definition in definitions:
@@ -402,6 +407,7 @@ class PythonAstAdapter:
                     )
                 )
 
+        note_detail("Reading language concepts")
         all_edges = [*import_edges, *call_edges]
         annotations: list[ConceptAnnotation] = []
         for parsed in parsed_files:
@@ -431,6 +437,7 @@ class PythonAstAdapter:
                 parsed.relative_path for parsed in parsed_files if parsed.tree is None
             ),
         )
+        note_detail("Building the galaxy map")
         try:
             return finalize_graph(draft, entrypoint=entrypoint)
         except GraphFinalizationError as error:

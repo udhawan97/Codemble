@@ -429,6 +429,7 @@ def test_picker_select_returns_202_and_binds_through_the_parse_job(
     assert idle == {
         "state": "idle",
         "stage": None,
+        "detail": None,
         "files_done": 0,
         "files_total": 0,
         "error": None,

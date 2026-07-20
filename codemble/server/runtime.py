@@ -43,6 +43,8 @@ class TerminalProgress:
         self._write = write or (lambda text: sys.stdout.write(text))
         self._isatty = sys.stdout.isatty() if isatty is None else isatty
         self._stage: str | None = None
+        self._detail: str | None = None
+        self._counter_open = False
         self._total = 0
         self._done = 0
 
@@ -63,6 +65,18 @@ class TerminalProgress:
         self._done += 1
         if self._isatty and self._total:
             self._write(f"\r  {self._done}/{self._total} files")
+            self._counter_open = True
+
+    def detail(self, detail: str) -> None:
+        # Resolving's real sub-steps, one per line, so the terminal shows the
+        # same movement the browser loading screen does instead of one pause.
+        if detail == self._detail:
+            return
+        self._detail = detail
+        if self._counter_open:
+            self._write("\n")
+            self._counter_open = False
+        self._write(f"  {detail}\n")
 
 
 def serve_project(

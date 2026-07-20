@@ -13,7 +13,12 @@ from codemble.adapters.discovery import (
     SourceOwnership,
     discover_project_sources,
 )
-from codemble.adapters.parse_progress import ParseProgress, reporting_files
+from codemble.adapters.parse_progress import (
+    ParseProgress,
+    note_detail,
+    reporting_detail,
+    reporting_files,
+)
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 
@@ -163,7 +168,11 @@ class ProjectParser:
             progress.stage("parsing")
         graphs: list[Graph] = []
         on_file = progress.file_parsed if progress is not None else None
-        with reporting_files(on_file):
+        # ``detail`` outlives the file-read loop: the adapters narrate their
+        # cross-file passes and composition narrates the merge, all under the
+        # single ``resolving`` stage the design spec fixes.
+        on_detail = getattr(progress, "detail", None) if progress is not None else None
+        with reporting_detail(on_detail), reporting_files(on_file):
             for adapter in self._adapters:
                 files = owned[adapter.language]
                 if not files:
@@ -172,15 +181,16 @@ class ProjectParser:
                     graphs.append(adapter.parse_files(intake.root, files))
                 except AdapterParseError as error:
                     raise ProjectParseError(str(error)) from error
-        if progress is not None:
-            progress.stage("resolving")
-        return _compose_graphs(tuple(graphs), intake.root, entrypoint)
+            if progress is not None:
+                progress.stage("resolving")
+            return _compose_graphs(tuple(graphs), intake.root, entrypoint)
 
 def _compose_graphs(
     graphs: tuple[Graph, ...],
     project_root: Path,
     entrypoint: str | None,
 ) -> Graph:
+    note_detail("Composing your project")
     nodes: list[Node] = []
     edges = []
     annotations = []
