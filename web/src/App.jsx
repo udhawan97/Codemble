@@ -30,6 +30,13 @@ export function App() {
     session.start();
     return () => session.dispose();
   }, [session]);
+  // The path the learner last handed to SELECT_PROJECT. The session reports a
+  // failed parse as `picker.error` and drops `parseProgress` -- which carried
+  // the path -- in the same commit, so the only place the attempted path
+  // survives the loading screen unmounting is here, in the component that
+  // never unmounts. Cleared on browse so a folder error can never be labelled
+  // with an unrelated earlier attempt.
+  const [attempt, setAttempt] = useState("");
   const {
     chart,
     checkData,
@@ -57,6 +64,7 @@ export function App() {
     mapTab,
     mode,
     modeChosen,
+    parseProgress,
     pendingDawnRegionId,
     picker,
     projectName,
@@ -82,12 +90,31 @@ export function App() {
     );
   }
 
+  if (parseProgress) {
+    return (
+      <LoadingScreen
+        progress={parseProgress}
+        onCancel={() => session.dispatch({ type: "RESET_PROJECT" })}
+      />
+    );
+  }
+
   if (status === "picking" && picker) {
     return (
       <PickerScreen
         picker={picker}
-        onBrowse={(path) => session.dispatch({ type: "BROWSE_PICKER", path })}
-        onSelect={(path) => session.dispatch({ type: "SELECT_PROJECT", path })}
+        // A select that came back with an error is the only failure a learner
+        // can retry in place; a browse error clears `attempt`, so it keeps the
+        // server's own plain wording instead of being dressed as a parse crash.
+        failure={attempt && picker.error ? { path: attempt, detail: picker.error } : null}
+        onBrowse={(path) => {
+          setAttempt("");
+          return session.dispatch({ type: "BROWSE_PICKER", path });
+        }}
+        onSelect={(path) => {
+          setAttempt(path);
+          return session.dispatch({ type: "SELECT_PROJECT", path });
+        }}
       />
     );
   }
@@ -218,7 +245,12 @@ export function App() {
       </header>
 
       {showChart ? (
-        <StarChart chart={chart} studiedCount={focusedStudiedCount} />
+        <StarChart
+          chart={chart}
+          studiedCount={focusedStudiedCount}
+          projectName={projectName}
+          onClearProgress={() => session.dispatch({ type: "CLEAR_PROGRESS" })}
+        />
       ) : (
       <section className="map-stage" aria-label="Parser-proven project map">
         {layer === "map" ? (
@@ -431,7 +463,117 @@ export function App() {
   );
 }
 
-function PickerScreen({ picker, onBrowse, onSelect }) {
+// The five stages ParseJob reports, in the order it reports them. Copy matches
+// runtime.py's _STAGE_COPY so the terminal and the browser say the same thing.
+const STAGE_COPY = {
+  discovering: "Finding your source files",
+  parsing: "Reading each file",
+  resolving: "Connecting imports and calls",
+  checks: "Building graph-only checks",
+  layout: "Placing your galaxy",
+};
+const STAGE_ORDER = ["discovering", "parsing", "resolving", "checks", "layout"];
+
+function LoadingScreen({ progress, onCancel }) {
+  const { stage, files_done: done, files_total: total, pollError, path } = progress;
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const headingRef = useRef(null);
+  const reached = STAGE_ORDER.indexOf(stage);
+
+  // A whole-screen replacement with no focus move leaves a keyboard user's
+  // focus on a button that no longer exists and tells a screen reader nothing
+  // about where it went. Same route-change pattern the picker → galaxy hop
+  // relies on the galaxy canvas for.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  async function cancel() {
+    setCancelling(true);
+    setCancelError("");
+    try {
+      await onCancel();
+    } catch (resetError) {
+      setCancelError(resetError.message);
+      setCancelling(false);
+    }
+  }
+
+  return (
+    <main className="loading-screen">
+      <header className="loading-header">
+        <p className="picker-wordmark">Codemble</p>
+        <h1 ref={headingRef} tabIndex={-1}>
+          Mapping <span className="loading-path">{path}</span>
+        </h1>
+        <p className="loading-subtitle">
+          Parsing runs on your machine. Nothing is sent anywhere.
+        </p>
+      </header>
+      <ol className="loading-stages" aria-label="Parse stages">
+        {STAGE_ORDER.map((name, index) => {
+          const state =
+            index < reached ? "done" : index === reached ? "active" : "waiting";
+          return (
+            <li key={name} data-state={state}>
+              <span>{STAGE_COPY[name]}</span>
+              {/* The state as a word, not only as a colour: done and waiting sit
+                  two steps apart on one ink ramp, and `data-state` reaches no
+                  screen reader at all. */}
+              <small>
+                {name === "parsing" && total ? `${done}/${total} files · ` : ""}
+                {state === "done" ? "done" : state === "active" ? "working" : "waiting"}
+              </small>
+            </li>
+          );
+        })}
+      </ol>
+      {/* No bar until the server has reported a denominator. An indeterminate
+          meter animates, and motion the data cannot justify is exactly the
+          reassurance this screen must not fake: a stalled parse has to look
+          stalled. */}
+      {total ? (
+        <progress
+          className="loading-meter"
+          value={done}
+          max={total}
+          aria-label={`${done} of ${total} files read`}
+        />
+      ) : null}
+      {/* Stage only, never the running count: files_done moves on every 300 ms
+          poll, and announcing it would bury the five events that matter under a
+          counter no listener can follow. The count stays on screen, and on the
+          meter's accessible name for anyone who asks for it. */}
+      <p className="loading-live" role="status">
+        {STAGE_COPY[stage] ?? "Starting"}
+      </p>
+      {pollError ? (
+        <p className="loading-error" role="status">
+          Lost contact with the local server ({pollError}). Still retrying — the
+          parse itself may be running fine.
+        </p>
+      ) : null}
+      {cancelError ? (
+        <p className="loading-error" role="alert">
+          {cancelError}
+        </p>
+      ) : null}
+      <div className="loading-actions">
+        <button
+          className="check-primary"
+          type="button"
+          disabled={cancelling}
+          onClick={cancel}
+        >
+          {cancelling ? "Stopping…" : "Cancel and pick another project"}
+        </button>
+      </div>
+    </main>
+  );
+}
+
+function PickerScreen({ picker, failure, onBrowse, onSelect }) {
   const { path, parent, entries, recents, error, scale, busy } = picker;
   return (
     <main className="picker-screen" aria-busy={busy}>
@@ -466,16 +608,11 @@ function PickerScreen({ picker, onBrowse, onSelect }) {
         </section>
       ) : null}
       {scale ? (
-        <p className="picker-scale" role="alert">
-          That folder has {scale.file_count} supported source files; Codemble is
-          capped at {scale.scale_cap}. Pick a subdirectory — busiest first:{" "}
-          {scale.suggestions
-            .map((suggestion) => `${suggestion.path} (${suggestion.file_count})`)
-            .join(", ")}
-          .
-        </p>
+        <ScaleGuidance scale={scale} busy={busy} onBrowse={onBrowse} />
       ) : null}
-      {error ? (
+      {failure ? (
+        <ProjectFailure failure={failure} busy={busy} onSelect={onSelect} />
+      ) : error ? (
         <p className="picker-error" role="alert">
           {error}
         </p>
@@ -509,6 +646,102 @@ function PickerScreen({ picker, onBrowse, onSelect }) {
         </button>
       </section>
     </main>
+  );
+}
+
+function ScaleGuidance({ scale, busy, onBrowse }) {
+  // scope_counts() files "." for sources sitting directly in the root. That is
+  // the folder the learner already chose, not a smaller scope, so it can never
+  // become a button that claims to narrow anything.
+  const scopes = scale.suggestions.filter((suggestion) => suggestion.path !== ".");
+  return (
+    <section
+      className="picker-scale"
+      role="alert"
+      aria-labelledby="picker-scale-heading"
+    >
+      <h2 id="picker-scale-heading">That folder is too big to map at once.</h2>
+      <p>
+        It has {scale.file_count} supported source files; Codemble maps up to{" "}
+        {scale.scale_cap}. Choose a smaller scope — busiest first.
+      </p>
+      {scopes.length ? (
+        <ul className="picker-scale-scopes">
+          {scopes.map((suggestion) => (
+            <li key={suggestion.path}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onBrowse(`${scale.root}/${suggestion.path}`)}
+              >
+                <span>{suggestion.path}/</span>
+                <small>{suggestion.file_count} files</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <PathEntry busy={busy} onBrowse={onBrowse} />
+    </section>
+  );
+}
+
+function PathEntry({ busy, onBrowse }) {
+  const [typed, setTyped] = useState("");
+  return (
+    <form
+      className="picker-path-entry"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const target = typed.trim();
+        // Deliberately unvalidated here. /api/picker/browse resolves the path
+        // and answers 403 for anything outside the home jail; re-deciding that
+        // in the browser would be a second, weaker copy of the only rule that
+        // matters, and the one a learner could edit around.
+        if (target) onBrowse(target);
+      }}
+    >
+      <label htmlFor="picker-path-input">Or type a folder path</label>
+      <input
+        id="picker-path-input"
+        type="text"
+        value={typed}
+        disabled={busy}
+        placeholder="/Users/you/project/src"
+        onChange={(event) => setTyped(event.target.value)}
+      />
+      <button type="submit" disabled={busy || !typed.trim()}>
+        Go
+      </button>
+    </form>
+  );
+}
+
+function ProjectFailure({ failure, busy, onSelect }) {
+  // ParseJob turns any worker exception into str(error), so `detail` can be raw
+  // traceback text. It is shown, because a learner reporting this needs it and
+  // hiding it would be its own kind of dishonest -- but it is labelled as the
+  // machine's words and kept out of the sentence that explains what happened.
+  return (
+    <section className="picker-failure" role="alert">
+      <h2>Codemble could not map that folder.</h2>
+      <p>
+        Nothing on disk changed, and no project's saved progress was touched. Try
+        it again, or choose a different folder below.
+      </p>
+      <p className="picker-failure__detail">
+        <span>What the parser reported</span>
+        <code>{failure.detail}</code>
+      </p>
+      <button
+        className="picker-select"
+        type="button"
+        disabled={busy}
+        onClick={() => onSelect(failure.path)}
+      >
+        Try <span className="picker-recent-path">{failure.path}</span> again
+      </button>
+    </section>
   );
 }
 
@@ -800,7 +1033,7 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   );
 }
 
-function StarChart({ chart, studiedCount }) {
+function StarChart({ chart, studiedCount, projectName, onClearProgress }) {
   const understood = chart.filter((item) => item.understood_nodes > 0).length;
   return (
     <section className="star-chart-screen" aria-labelledby="star-chart-heading">
@@ -832,6 +1065,100 @@ function StarChart({ chart, studiedCount }) {
             </dl>
           </article>
         ))}
+      </div>
+      <ClearProgress projectName={projectName} onConfirm={onClearProgress} />
+    </section>
+  );
+}
+
+function ClearProgress({ projectName, onConfirm }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState("");
+  const triggerRef = useRef(null);
+  const groupRef = useRef(null);
+  const wasConfirmingRef = useRef(false);
+
+  // Same deferred refocus SwitchProject uses: the trigger and the confirm group
+  // are mutually exclusive branches, so the trigger has already unmounted by the
+  // time a cancel would try to focus it.
+  useEffect(() => {
+    if (confirming) {
+      groupRef.current?.focus();
+    } else if (wasConfirmingRef.current) {
+      triggerRef.current?.focus();
+    }
+    wasConfirmingRef.current = confirming;
+  }, [confirming]);
+
+  function cancel() {
+    setConfirming(false);
+    setFailure("");
+  }
+
+  async function confirm() {
+    setBusy(true);
+    setFailure("");
+    try {
+      await onConfirm();
+      setConfirming(false);
+    } catch (clearError) {
+      setFailure(clearError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!confirming) {
+    return (
+      <section className="progress-reset">
+        <button
+          className="check-primary"
+          type="button"
+          ref={triggerRef}
+          onClick={() => setConfirming(true)}
+        >
+          Clear this project's progress
+        </button>
+        <p>Start {projectName} over with every system dim again.</p>
+      </section>
+    );
+  }
+  return (
+    <section
+      className="progress-reset progress-reset--confirming"
+      role="group"
+      aria-label="Clear this project's progress"
+      tabIndex={-1}
+      ref={groupRef}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !busy) cancel();
+      }}
+    >
+      <p role="alert">
+        This dims every system you lit in {projectName} and cannot be undone. Your
+        other projects keep their progress, and no source file is touched.
+      </p>
+      {failure ? (
+        <p className="progress-reset__error" role="alert">
+          {failure}
+        </p>
+      ) : null}
+      <div>
+        {/* The destructive half must not look like its safe twin: identical
+            buttons make "which one undoes my work" a guess, and this one
+            cannot be undone. */}
+        <button
+          className="check-primary progress-reset__confirm"
+          type="button"
+          disabled={busy}
+          onClick={confirm}
+        >
+          {busy ? "Clearing…" : `Yes, clear ${projectName}`}
+        </button>
+        <button className="check-primary" type="button" disabled={busy} onClick={cancel}>
+          Keep it
+        </button>
       </div>
     </section>
   );

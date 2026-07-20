@@ -773,6 +773,31 @@ assert.equal(
   "/home/u/big",
 );
 
+// A refusal carries the server's own sentence, not its status code: the picker
+// path field is the first control that can reach a 403, and "Folder listing
+// returned 403." tells a learner nothing about what to do next.
+const detailedAdapter = createHttpLearnerSessionAdapter(async (url) => {
+  if (url.startsWith("/api/picker/browse")) {
+    return {
+      ok: false,
+      status: 403,
+      json: async () => ({ detail: "Choose a folder inside your home directory." }),
+    };
+  }
+  // A refusal with no JSON body at all still has to produce a message.
+  return { ok: false, status: 500, json: async () => { throw new Error("not json"); } };
+});
+await assert.rejects(
+  () => detailedAdapter.browsePicker("/etc"),
+  /^Error: Choose a folder inside your home directory\.$/,
+  "a browse refusal shows the server's sentence",
+);
+await assert.rejects(
+  () => detailedAdapter.loadGraph(),
+  /^Error: Graph request returned 500\.$/,
+  "a refusal with no detail still falls back to the labelled status",
+);
+
 // In-memory picker adapter: fixture-driven browse/recents/select and state flip.
 const rootListing = {
   path: "/home/u",

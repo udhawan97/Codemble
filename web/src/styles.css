@@ -2036,3 +2036,285 @@ input:focus-visible {
   text-transform: none;
   letter-spacing: normal;
 }
+
+/* --- Parse loading screen, scale guidance, progress reset ------------------ */
+.loading-screen {
+  display: grid;
+  gap: var(--cm-space-md);
+  align-content: center;
+  justify-items: start;
+  min-height: 100vh;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: var(--cm-space-lg) max(var(--cm-space-md), env(safe-area-inset-right))
+    var(--cm-space-lg) max(var(--cm-space-md), env(safe-area-inset-left));
+}
+
+.loading-header h1 {
+  min-width: 0;
+  margin: var(--cm-space-2xs) 0 0;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-xl);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.loading-path {
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+  color: var(--cm-ink-2);
+}
+
+.loading-subtitle {
+  margin: var(--cm-space-xs) 0 0;
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.loading-stages {
+  display: grid;
+  gap: var(--cm-space-2xs);
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.loading-stages li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cm-space-sm);
+  flex-wrap: wrap;
+  padding: var(--cm-space-xs) var(--cm-space-sm);
+  border-left: 2px solid var(--cm-hairline);
+  color: var(--cm-ink-3);
+  font-size: var(--cm-text-sm);
+}
+
+/* Ruri marks the stage the server says it is in. Kohaku is never used here:
+   this is machine activity, not a learner understanding anything. */
+.loading-stages li[data-state="active"] {
+  border-left-color: var(--cm-orbit);
+  color: var(--cm-ink);
+}
+
+.loading-stages li[data-state="done"] {
+  border-left-color: var(--cm-orbit-deep);
+  color: var(--cm-ink-2);
+}
+
+.loading-stages small {
+  font-family: var(--cm-font-mono);
+  color: var(--cm-ink-2);
+}
+
+.loading-meter {
+  width: 100%;
+  height: var(--cm-space-xs);
+  accent-color: var(--cm-orbit);
+}
+
+.loading-live {
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+}
+
+.loading-error {
+  width: 100%;
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  padding: var(--cm-space-sm);
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.loading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-sm);
+}
+
+.loading-actions button {
+  padding: var(--cm-space-xs) var(--cm-space-md);
+}
+
+/* --- Over-cap guidance ---------------------------------------------------- */
+.picker-scale h2,
+.picker-failure h2 {
+  margin: 0 0 var(--cm-space-xs);
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-base);
+}
+
+.picker-scale-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs);
+  padding: 0;
+  margin: var(--cm-space-sm) 0;
+  list-style: none;
+}
+
+.picker-scale-scopes button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cm-space-2xs);
+  min-height: 44px;
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  background: var(--cm-ground-2);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+  cursor: pointer;
+}
+
+.picker-scale-scopes button:hover:not(:disabled),
+.picker-scale-scopes button:focus-visible {
+  border-color: var(--cm-orbit);
+}
+
+.picker-scale-scopes button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.picker-scale-scopes small {
+  color: var(--cm-ink-2);
+}
+
+.picker-path-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs);
+  align-items: center;
+}
+
+.picker-path-entry label {
+  color: var(--cm-ink-2);
+}
+
+.picker-path-entry input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--cm-space-2xs) var(--cm-space-xs);
+  background: var(--cm-ground);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+}
+
+.picker-path-entry button {
+  min-height: 44px;
+  padding: var(--cm-space-2xs) var(--cm-space-md);
+  background: var(--cm-orbit-low);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+  cursor: pointer;
+}
+
+.picker-path-entry button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Failed parse --------------------------------------------------------- */
+.picker-failure {
+  border: 1px solid var(--cm-error);
+  border-radius: var(--cm-radius);
+  padding: var(--cm-space-sm);
+  font-size: var(--cm-text-sm);
+}
+
+.picker-failure > p {
+  margin: 0 0 var(--cm-space-sm);
+  color: var(--cm-ink-2);
+}
+
+.picker-failure__detail {
+  display: grid;
+  gap: var(--cm-space-2xs);
+}
+
+.picker-failure__detail span {
+  color: var(--cm-ink-3);
+  font-size: var(--cm-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.picker-failure__detail code {
+  display: block;
+  max-height: 8rem;
+  overflow: auto;
+  padding: var(--cm-space-xs);
+  background: var(--cm-ground-2);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  overflow-wrap: anywhere;
+}
+
+.picker-failure .picker-select {
+  align-self: flex-start;
+  min-height: 44px;
+  font-size: var(--cm-text-sm);
+}
+
+/* --- Clear this project's progress ---------------------------------------- */
+.progress-reset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cm-space-sm);
+  max-width: 72rem;
+  margin: var(--cm-space-lg) auto 0;
+  padding-top: var(--cm-space-md);
+  border-top: 1px solid var(--cm-hairline);
+}
+
+.progress-reset p {
+  margin: 0;
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.progress-reset button {
+  min-height: 44px;
+  padding-inline: var(--cm-space-md);
+  font-size: var(--cm-text-sm);
+}
+
+.progress-reset--confirming {
+  display: grid;
+  justify-items: start;
+  gap: var(--cm-space-sm);
+}
+
+.progress-reset--confirming > p[role="alert"] {
+  max-width: 60ch;
+  color: var(--cm-ink);
+}
+
+.progress-reset--confirming > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-sm);
+}
+
+.progress-reset__confirm {
+  border-color: var(--cm-error);
+  color: var(--cm-error);
+}
+
+.progress-reset__error {
+  color: var(--cm-error);
+}

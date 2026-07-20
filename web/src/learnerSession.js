@@ -1052,7 +1052,20 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
 
   async function request(url, label, options = {}) {
     const response = await fetchImplementation(url, options);
-    if (!response.ok) throw new Error(`${label} returned ${response.status}.`);
+    if (!response.ok) {
+      // Every refusal on this server already carries a sentence written for a
+      // learner -- "Choose a folder inside your home directory." -- and a bare
+      // status code threw all of them away. selectProject read `detail`
+      // already; doing it here means every caller does, rather than each one
+      // growing its own copy.
+      const payload = await response.json().catch(() => null);
+      const detail = payload?.detail;
+      throw new Error(
+        typeof detail === "string" && detail
+          ? detail
+          : `${label} returned ${response.status}.`,
+      );
+    }
     return response.json();
   }
 
