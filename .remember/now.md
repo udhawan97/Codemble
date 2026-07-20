@@ -33,3 +33,7 @@ Easy/Expert audience modes implemented across 4 backend phases (PRs #26–#28 me
 Galaxy UX redesign interview locked 3 phases (backend wiring, 3D living-cosmos + 2D map layer, 1k-scale parse); 27-decision register; baseline green (131 tests); phase plan writers executing, Phase A subagent rollout next.
 ## 20:49 | friendly-wizard-claude/work-planning-f2e933
 Audience-modes system design & exec: easy/expert explanation voices, local Ollama + cloud API narration, deterministic Tier 0 floor; backend phases 1-3 shipped (#26-28, 58→131 tests); phase 4 frontend building.
+## 20:52 | friendly-wizard-claude/galaxy-ui-redesign-4f9457
+Galaxy UI redesign: spec + 39-task plan (A=wiring narration/mode/switch, B=visual, C=parse→1k) created; Phase A executing.
+## 22:40 | friendly-wizard-claude/work-planning-f2e933
+Workstream D (easy/expert modes, Tier 0, Ollama): phases 1-4 via SDD (PRs #26-#29, 131 tests); phase 5 skipped; phase 6 in progress; #13 reopened; layout-redesign branch—coordinate merges.
