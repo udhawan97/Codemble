@@ -100,7 +100,6 @@ def javascript_typescript_lens_notes(
                 "language": annotation.language,
                 "concept": annotation.concept,
                 "title": title,
-                "note": explanation["easy"],
                 "note_voices": explanation,
                 "line": annotation.lineno,
                 "end_line": annotation.end_lineno,

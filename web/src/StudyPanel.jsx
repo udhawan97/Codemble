@@ -58,7 +58,7 @@ export function StudyPanel({
             onSelectNode={onSelectNode}
           />
           <SourceExcerpt source={study.source} />
-          <LensNotes lens={study.lens} language={node.language} />
+          <LensNotes lens={study.lens} language={node.language} mode={mode} />
         </div>
       ) : null}
     </aside>
@@ -208,7 +208,7 @@ function MiniConstellation({ inbound, outbound, node }) {
   );
 }
 
-function LensNotes({ lens, language }) {
+function LensNotes({ lens, language, mode }) {
   if (!lens?.length) return null;
   return (
     <section className="lens-study" aria-labelledby="lens-heading">
@@ -224,7 +224,7 @@ function LensNotes({ lens, language }) {
               <Citation citation={note.citation} fallbackLine={note.line} />
             </div>
             <div>
-              <p>{note.note}</p>
+              <p>{note.note_voices[mode]}</p>
               <code>{note.snippet}</code>
             </div>
           </article>

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
 import { CoachMarks, HintChip, hasSeenCoachmarks } from "./GuidanceLayer.jsx";
 import { MapView } from "./MapView.jsx";
+import { ModeControl } from "./ModeControl.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
   LEVELS,
@@ -55,6 +56,7 @@ export function App() {
     mapError,
     mapTab,
     mode,
+    modeChosen,
     pendingDawnRegionId,
     picker,
     projectName,
@@ -99,7 +101,11 @@ export function App() {
   }
 
   return (
-    <main className="app-shell" data-level={showChart ? "chart" : level.toLowerCase()}>
+    <main
+      className="app-shell"
+      data-level={showChart ? "chart" : level.toLowerCase()}
+      data-mode={mode}
+    >
       <header className="instrument-rail">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true" />
@@ -203,9 +209,10 @@ export function App() {
               session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
             }
           />
-          <ModeToggle
+          <ModeControl
             mode={mode}
-            onChange={(next) => session.dispatch({ type: "SET_MODE", mode: next })}
+            modeChosen={modeChosen}
+            onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
           />
         </div>
       </header>
@@ -534,32 +541,6 @@ function LanguageFocus({ options, value, onChange }) {
   );
 }
 
-function ModeToggle({ mode, onChange }) {
-  const options = [
-    { id: "easy", label: "Easy", hint: "Plain language" },
-    { id: "expert", label: "Expert", hint: "Full terminology" },
-  ];
-  return (
-    <nav className="language-focus mode-toggle" aria-label="Explanation mode">
-      <span className="language-focus__label">Mode</span>
-      <div>
-        {options.map((option) => (
-          <button
-            type="button"
-            key={option.id}
-            aria-label={`${option.label} mode: ${option.hint}`}
-            aria-pressed={mode === option.id}
-            title={option.hint}
-            onClick={() => onChange(option.id)}
-          >
-            <span>{option.label}</span>
-          </button>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
 function SwitchProject({ onConfirm }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -769,7 +750,7 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
             </p>
           ) : null}
           <fieldset>
-            <legend>{current.prompt_voices?.[mode] ?? current.prompt}</legend>
+            <legend>{current.prompt_voices[mode]}</legend>
             {current.multiple ? <p>Select every answer supported by the graph.</p> : null}
             <div className="check-options">
               {current.options.map((option) => (

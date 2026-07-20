@@ -301,15 +301,15 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/mode")
-    def get_mode() -> dict[str, str]:
+    def get_mode() -> dict[str, object]:
         checks, _ = _services()
-        return {"mode": checks.progress.mode()}
+        return {"mode": checks.progress.mode(), "chosen": checks.progress.mode_chosen()}
 
     @app.put("/api/mode")
-    def set_mode(selection: ModeSelection) -> dict[str, str]:
+    def set_mode(selection: ModeSelection) -> dict[str, object]:
         checks, _ = _services()
         checks.progress.set_mode(selection.mode)
-        return {"mode": selection.mode}
+        return {"mode": selection.mode, "chosen": True}
 
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():
