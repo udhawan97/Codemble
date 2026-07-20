@@ -1709,3 +1709,35 @@ button:focus-visible,
   text-align: center;
   color: var(--cm-ink-2);
 }
+
+.hint-chip {
+  position: absolute;
+  z-index: var(--cm-z-raised);
+  inset-inline-start: var(--cm-space-md);
+  inset-block-end: var(--cm-space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+}
+
+.hint-chip small {
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.hint-chip button {
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-orbit);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
+import { HintChip } from "./GuidanceLayer.jsx";
 import { MapView } from "./MapView.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
@@ -202,6 +203,7 @@ export function App() {
             selectedNode={selectedNode}
             hoverNodeId={hoverNodeId}
             pendingDawnRegionId={pendingDawnRegionId}
+            mode={mode}
             onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
             onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
             onRetreat={() => session.dispatch({ type: "RETREAT" })}
@@ -325,6 +327,15 @@ export function App() {
             }
           />
         ) : null}
+        <HintChip
+          hint={hint}
+          onStudy={(regionId) =>
+            session.dispatch({
+              type: "ADVANCE",
+              node: focusedGraph.regions.find((region) => region.id === regionId),
+            })
+          }
+        />
       </section>
       )}
 

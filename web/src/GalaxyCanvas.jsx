@@ -22,6 +22,7 @@ export function GalaxyCanvas({
   selectedNode,
   hoverNodeId,
   pendingDawnRegionId,
+  mode,
   onHoverNode,
   onAdvance,
   onRetreat,
@@ -123,6 +124,7 @@ export function GalaxyCanvas({
         .linkOpacity(0.32)
         .linkWidth(linkWidth)
         .linkCurvature(0.12)
+        .linkVisibility((link) => !(mode === "easy" && link.focusDim))
         .linkHoverPrecision(4)
         .linkDirectionalArrowRelPos(1)
         .linkDirectionalArrowColor(linkColor)
@@ -171,6 +173,7 @@ export function GalaxyCanvas({
     if (!renderer) return;
     renderer
       .nodeResolution(data.nodes.length >= 900 ? 4 : 8)
+      .linkVisibility((link) => !(mode === "easy" && link.focusDim))
       // Arrows only where an edge means a direction the learner can act on.
       .linkDirectionalArrowLength(level === LEVELS.GALAXY ? 0 : 3.2)
       .graphData(data);
@@ -180,7 +183,7 @@ export function GalaxyCanvas({
       renderer.cameraPosition({ x: 0, y: 52, z: 150 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
     }
     setFocusedIndex(0);
-  }, [data, level]);
+  }, [data, level, mode]);
 
   useEffect(() => {
     focusedIdRef.current = data.nodes[focusedIndex]?.id ?? null;
