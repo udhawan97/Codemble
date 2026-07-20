@@ -15,9 +15,14 @@ from the parsed structure of your code:
 | Route between systems | An import |
 | Edge between planets | A call (uncertain calls are labeled "possible call") |
 | Size | Lines of code |
-| Brightness | How often it's called (centrality) |
-| Color | Language |
-| Lit / dim | Understood / not yet |
+| Brightness and glow | How often it's called (centrality) |
+| Nebula tint | Language |
+| Lit amber / dim | Understood / not yet |
+| Drifting particles | A call the parser proved; possible calls stay still |
+| Orbit ring | Call depth — the inner ring runs first |
+
+Nothing that is merely busy can outshine something you understand: the unlit
+brightness ramp stops below the amber a lit star uses.
 
 ## Semantic zoom, not free flight
 
@@ -25,6 +30,19 @@ Free-flight 3D looks fun in demos and is where comprehension goes to die.
 Codemble's camera moves on rails between three levels — galaxy for orientation,
 system for structure, study for learning — with scripted fly-to transitions.
 Reading never happens "in space": the study panel dims the scene behind it.
+
+## Two layers, one truth
+
+The header switches between the 3D **Galaxy** and a flat **Map**. The Map has
+two tabs: *Architecture* lays your modules out by folder and by how far they sit
+from Home along import routes, and *Workflow* walks the call tree from your
+entrypoint. Both layouts are computed by the same parser-backed graph the galaxy
+draws — the map cannot show you a relationship the galaxy does not have. Modules
+with no import route from Home are placed in their own row and labelled, never
+guessed into position. Clicking anything in either layer opens the same study
+panel, and a lit system is amber in both.
+
+The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 ## A region = one star system
 
@@ -57,8 +75,9 @@ study level the selected structure stays highlighted with its connections, so
 the panel and the sky agree about what you are reading.
 
 The legend in the corner names every encoding: size, brightness, amber for
-understood, the unchartable colour for syntax-error files, and certain versus
-possible relationships. In Easy mode it says the same things in plain language.
+understood, the unchartable colour for syntax-error files, one swatch per
+language, and certain versus possible relationships. In Easy mode it says the
+same things in plain language.
 
 ## Switching project and changing Home
 

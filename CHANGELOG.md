@@ -33,6 +33,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   connections and fades the rest.
 - A `<noscript>` message and a React error boundary, so a render failure
   explains itself and offers a reload instead of showing a blank page.
+- A second **Map** layer sits beside the galaxy, switchable from the header. Its
+  Architecture tab lays modules out by directory and by import distance from
+  Home; its Workflow tab walks the call tree from your entrypoint. Both layouts
+  are computed by the parser-backed graph layer and served by a new
+  `GET /api/map`, so the map and the galaxy can never disagree.
+- The Map layer renders without WebGL, so a machine that cannot draw the galaxy
+  can still read the project.
+- First-run coach-marks explain what you see, how to move, and what lights
+  stars. Dismissing them is a local UI preference, not progress.
+- Easy mode now lands on the Map, hides everything but the selected structure's
+  connections, and shows a hint chip naming the nearest unlit region to Home.
+  The hint is counted in import routes from the graph; no model chooses it.
+- The breadcrumb is clickable. The legend adds a swatch per language and now
+  matches whichever layer is on screen: possible relationships dash on the Map
+  and stay colour-only in the galaxy.
 
 ### Changed
 - The study panel leads with the structural summary and narration, then
@@ -45,6 +60,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   flag; every option is in the app.
 - The star chart labels studied counts "this session", which is what they have
   always measured.
+- The galaxy gained depth: every node carries a canvas-generated halo, lit stars
+  bloom, each system sits in a faint language-tinted nebula, and a background
+  starfield is seeded from the project's own file hashes — the same code always
+  produces the same sky.
+- Passing a region's checks now triggers a ~1.2s "nebula dawn": amber washes
+  across that system's fog and its star flares. `prefers-reduced-motion` gets
+  the finished lit state with no animation at all.
+- System orbits are laid out by call depth from the module's entry node instead
+  of by member index, so an inner ring means "this runs first". Structures no
+  call reaches keep the outermost ring rather than being placed by guesswork.
+  Layout coordinates changed once; saved progress is unaffected because region
+  signatures are derived from file hashes, not coordinates.
+- Drifting particles mark **certain** call edges only in the galaxy. A possible
+  call stays still, so motion can never imply proof.
 
 ### Fixed
 - The partial-parse notice rode a code path that never executed; it now renders

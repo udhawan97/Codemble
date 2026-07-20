@@ -29,4 +29,6 @@ launch.
 ## Non-goals
 
 No accounts. No telemetry. No hosted code. No XP or streaks — illumination and
-the star chart are the whole game. No free-flight camera. Ever.
+the star chart are the whole game. No free-flight camera. Ever. The 2D Map layer
+is a second *view* of the same graph, not a second source of truth: it was
+approved once the layouts moved into the graph layer.

@@ -167,7 +167,7 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-19 ·
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-20 ·
 Session note: architecture-deepening maintenance is complete after the verified
 v0.2.0 release; all four report recommendations are merged in phases while issue
 #13 remains open for human tester evidence. The public site was then redesigned
@@ -191,7 +191,12 @@ design was then interviewed and approved (spec
 light up the shipped-but-inert narration/mode/connections surface plus project
 switching, then the "living cosmos" visual overhaul with a 2D Map layer, then
 ~1,000-file scale with staged parse progress; four Decision Log entries record
-the approved Non-Goal and binding relaxations. Implementation has not started.
+the approved Non-Goal and binding relaxations. Phase A (the narration/mode/
+connections surface and project switching) and Phase B (M12: call-depth
+orbits, the 2D Map layer, and the living-cosmos visual overhaul) have both
+since shipped. Phase C (~1,000-file scale with staged parse progress) has not
+started — there is still no threaded parse or parse-progress screen, and the
+scale cap remains ~300 files.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -315,6 +320,30 @@ intake avoids repeated discovery; learner transitions are tested above local HTT
 JS/TS certainty and concept evidence remain parser-proven through the unchanged
 `LanguageAdapter` interface.
 
+### M12 — Living cosmos + 2D map (galaxy UX overhaul, Phase B) ✅ (2026-07-20)
+- [x] System orbits by call depth from the region's entry node, hash-seeded and
+      deterministic; layout coordinates changed once, saved progress did not
+- [x] `GET /api/map`: deterministic Architecture and Workflow 2D layouts
+      computed in `codemble/graph/`, reading the same graph as `GET /api/graph`
+- [x] A 2D Map layer (Architecture + Workflow tabs) switchable from the header,
+      plain SVG, no WebGL dependency
+- [x] Canvas-generated halos, language-tinted nebulae, a hash-seeded starfield,
+      composited bloom, and drifting particles on certain call edges only
+- [x] The ~1.2s nebula-dawn light-up moment, with an instantly finished lit
+      state under reduced motion
+- [x] Easy mode defaults to the Map with reduced edge density and a
+      graph-derived hint chip; Expert defaults to the galaxy; an explicit
+      layer choice always beats the mode default
+- [x] First-run coach-marks, a clickable breadcrumb, and a language-tint
+      legend key
+
+**Acceptance:** the map and the galaxy read one graph and cannot disagree;
+uncertainty renders distinctly in both — colour-only in the 3D galaxy (no
+line-dash support there), genuinely dashed in the 2D map; region signatures
+hash file content, never coordinates, so the orbit relayout did not re-dim any
+region; reduced motion always yields the finished lit state with zero
+animation.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
@@ -371,6 +400,10 @@ JS/TS certainty and concept evidence remain parser-proven through the unchanged
 | 2026-07-19 | Scale target raised to ~1,000 supported files with a worker-thread parse, polled staged progress, and an honest loading screen; the subdirectory prompt moves to the new cap | Approved by UD: a deliberate partial pull-forward of Phase 2 scale work; full LOD/clustering stays in Phase 2 |
 | 2026-07-19 | One-shot project binding relaxed to an explicit in-app reset (`POST /api/picker/reset`); home jail and Host allowlist unchanged | Approved by UD: learners must be able to switch projects without killing the server; per-project progress makes switching safe |
 | 2026-07-19 | App art direction is "living cosmos" within the Formal Edo palette: halo sprites, bloom, hash-seeded starfield, language-tinted nebulae, call-depth system orbits (layout bytes change once, still deterministic), and an Easy/Expert UI toggle riding the shipped audience-mode backend | Approved by UD section-by-section; amber keeps its monopoly on understanding, uncertainty stays dashed in both layers, and Easy-mode guidance is graph-deterministic (nearest unlit region by route hops), never model-decided |
+| 2026-07-20 | System orbits are call depth from the module's entry node, with the seed widened to include members no sibling calls | A module node makes no intra-project calls, so the spec's literal seed was always empty and stranded every member in the outermost ring. Both spec rules are preserved: the entry's callees are ring 1, and unreachable members take the outermost ring by node id |
+| 2026-07-20 | The workflow tree's first hop is labelled `defines`, not `calls` | The selected entrypoint is usually a module, and the parser observed no call from a module to its own function. Containment is real parser truth (`Node.region`); relabelling it a call would have invented an edge |
+| 2026-07-20 | Nebula tints ship lighter than the values in the design spec | The spec's starting values measured 3.19–4.46:1 against `--cm-ground-2` and failed the 4.5:1 legend floor. Hue is held; only lightness moved, and all three stay below `--cm-ink-2` so amber's monopoly is intact |
+| 2026-07-20 | Bloom resolution is capped with `composer.setPixelRatio(1)`, not the `UnrealBloomPass` constructor | `EffectComposer.setSize` forwards the canvas size to every pass on resize, overwriting the constructor's `resolution`. The pixel ratio is the cap that survives |
 
 ## Non-Goals — do NOT build (point here when asked)
 
