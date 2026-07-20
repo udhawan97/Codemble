@@ -132,6 +132,17 @@ of your own code becomes a sky you understand.
   and this one has no model configured at all.
 </sub></p>
 
+<p align="center">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/loading.png" alt="Codemble's staged loading screen mapping a large project, with five named stages — finding source files, reading each file, connecting imports and calls, building graph-only checks, placing your galaxy — a live count reading 13 of 900 files, and a cancel button" width="900">
+</p>
+
+<p align="center"><sub>
+  Large projects (up to roughly 1,000 source files) parse in the background with
+  visible staged progress — a real file count while reading, named steps while
+  resolving — so a big project never looks like a frozen tab. Cancel any time to
+  pick another.
+</sub></p>
+
 ## Two layers over one graph
 
 Codemble draws the same parser evidence two ways, switchable in the header. The

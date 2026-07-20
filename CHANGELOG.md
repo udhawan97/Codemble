@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-20
+
 ### Added
 - Large projects now show a staged loading screen instead of a frozen tab.
   Parsing runs on a worker thread; the app polls `GET /api/picker/progress` and
@@ -35,6 +37,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   than progress alone. All three resolve through one helper, so pointing the
   variable somewhere else moves them together. Unset, the default is unchanged:
   `~/.codemble`.
+- Language focus now also projects onto the **2D Map**, matching the galaxy: a
+  focused language keeps its boxes, rows, and edges while the others are dropped,
+  and the survivors keep their backend-computed coordinates. The projection
+  happens in the frontend and never re-lays-out or mutates the immutable graph,
+  so focus finally means the same thing on both layers.
+- The no-WebGL message now points the learner to the Map/Diagram layer, which
+  draws the same parser evidence as plain SVG and is one switch away, instead of
+  only stating that the galaxy needs WebGL.
 
 ### Fixed
 - Check generation walked every graph edge up to four times per region, and
@@ -55,6 +65,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   configured, so the same test could construct a live provider locally and none
   in CI. The two tests that request `/explanation` would then make a real, billed
   API call and cache the reply under the developer's home directory.
+- First-run onboarding assumed the learner was on the galaxy, but Easy — the
+  default audience — opens on the 2D Map. The coach-marks and the footer control
+  hint now key on the active layer, so a learner on the Map reads map guidance
+  ("click a box or row to study, switch tabs") instead of galaxy scroll/camera
+  controls that are not on screen.
+- The audience-mode gate and the first-run coach-marks no longer open as two
+  stacked modals on a genuine first run; the coach-marks wait until a mode has
+  been chosen, so the gate resolves first.
+- With no parser-recognisable entrypoint the "Change Home" control is not
+  rendered, so both Map tabs now state that reason instead of pointing at a
+  button that is not there. The has-candidates-but-unselected copy is unchanged.
+- A project bind slow enough to outlast a parse cancellation could commit after
+  the picker had already been reset, resurrecting the just-released project or
+  clobbering the next selection. The commit now re-checks cancellation under the
+  same lock that performs it, so a stale bind can never rebind a released project.
 
 ## [0.4.0] - 2026-07-20
 
