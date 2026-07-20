@@ -537,6 +537,72 @@ def test_reset_during_a_parse_re_arms_the_picker_and_leaves_nothing_bound(
     ), "a reset picker accepts the next project without a server restart"
 
 
+def test_a_bind_that_outlasts_cancel_does_not_resurrect_a_reset_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F5: ``work()`` checks ``reporter.cancelled`` only *before* calling
+    ``state.bind(...)``. If ``bind`` (building ``CheckService`` and friends)
+    outlasts ``cancel()``'s 2s wait, the old code committed anyway -- *after*
+    ``reset`` had already unbound the project, resurrecting it (or clobbering
+    whatever the learner selects next).
+
+    The reset-during-a-parse test above can't catch this: its tiny fixture
+    binds in far under 2s, so ``cancel()``'s wait always outlasts the bind and
+    ``unbind()`` naturally runs after it. Here ``CheckService.__init__`` is
+    gated open with a ``threading.Event`` so ``bind`` deterministically
+    outlasts the pre-bind cancellation check *and* the reset call -- no sleep,
+    no timing luck."""
+
+    import threading
+
+    from codemble.checks import CheckService
+
+    entered_bind = threading.Event()
+    release_bind = threading.Event()
+    real_init = CheckService.__init__
+
+    def gated_init(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        entered_bind.set()
+        assert release_bind.wait(timeout=5)
+        real_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(CheckService, "__init__", gated_init)
+
+    threads: list[threading.Thread] = []
+
+    def capturing_runner(work):  # type: ignore[no-untyped-def]
+        thread = threading.Thread(target=work, daemon=True)
+        threads.append(thread)
+        thread.start()
+
+    client = TestClient(
+        create_app(
+            web_dist=tmp_path / "missing",
+            picker=PickerConfig(browse_root=FIXTURE.parent),
+            parse_runner=capturing_runner,
+        )
+    )
+
+    accepted = client.post("/api/picker/select", json={"path": str(FIXTURE)})
+    assert accepted.status_code == 202
+    assert entered_bind.wait(timeout=5), "worker never reached CheckService construction"
+
+    # The worker is stuck inside bind(), past work()'s pre-bind cancellation
+    # check. cancel() waits its full 2s and gives up because bind() has not
+    # finished.
+    reset = client.post("/api/picker/reset", json={"confirmed": True})
+    assert reset.status_code == 200
+    assert reset.json() == {"state": "unpicked"}
+
+    # Let the stale bind run to its commit -- it must still lose the race.
+    release_bind.set()
+    for thread in threads:
+        thread.join(timeout=5)
+
+    assert client.get("/api/picker/state").json() == {"state": "unpicked"}
+    assert client.get("/api/graph").status_code == 409
+
+
 def test_a_scale_refusal_leaves_the_picker_idle_not_stuck_parsing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

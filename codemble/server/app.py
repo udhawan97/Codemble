@@ -17,7 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from codemble import __version__
 from codemble.adapters.base import Graph
-from codemble.adapters.parse_progress import ParseCancelled, ParseProgress
+from codemble.adapters.parse_progress import ParseCancelled
 from codemble.graph import build_map
 from codemble.adapters.project import (
     ProjectParseError,
@@ -101,7 +101,7 @@ class _ProjectState:
     def bound(self) -> bool:
         return self.checks is not None
 
-    def bind(self, graph: Graph, progress: ParseProgress | None = None) -> None:
+    def bind(self, graph: Graph, progress: ParseJob | None = None) -> None:
         if progress is not None:
             progress.stage("checks")
         studies = StudyService.from_environment(graph)
@@ -109,6 +109,15 @@ class _ProjectState:
         if progress is not None:
             progress.stage("layout")
         with self._lock:
+            # Re-check cancellation here, under the same lock as the commit --
+            # not just before this method was called. A parse cancelled while
+            # this construction was running (bind() outlives cancel()'s 2s
+            # wait on a large graph) must not resurrect the project reset just
+            # released, nor clobber whatever the learner selected next.
+            # `cancelled` never clears once set, so this is safe no matter how
+            # much later this commit is attempted.
+            if progress is not None and progress.cancelled:
+                return
             self.studies = studies
             self.checks = checks
             self._graph = None
