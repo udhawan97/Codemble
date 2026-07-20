@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed
+- Cancelling a parse (returning to the picker) now stops the `resolving` stage
+  too, not only the file-reading loop. Resolving is the slowest stage on a large
+  project and only reported sub-steps, so a cancel there left a worker burning
+  CPU to completion — and a second selection could run two parses at once. Each
+  resolving sub-step is now a cancellation checkpoint, matching the per-file one.
+- Clicking a module box on the 2D Map now visibly highlights it (in the
+  interaction accent, never the amber that means "understood"), so a click on
+  the Easy-default layer no longer looks like it did nothing. The system-level
+  copy on the Map now says plainly that a module's internal structures are drawn
+  as planets in the Galaxy layer and that the Map shows how modules connect, not
+  what is inside them — it no longer points at the Workflow tab, which has no
+  rows for a module the program never reaches.
+
 ## [0.5.0] - 2026-07-20
 
 ### Added

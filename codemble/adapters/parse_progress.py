@@ -40,8 +40,12 @@ class ParseProgress(Protocol):
 
         The ``resolving`` stage is one label over several seconds of cross-file
         work; a sub-step keeps the screen honestly changing instead of frozen.
-        It is advisory only: unlike ``file_parsed`` it never cancels, so a
-        reporter that ignores it loses nothing but the finer copy.
+        An implementation MAY treat a detail boundary as a cancellation
+        checkpoint and raise ``ParseCancelled`` — the ``resolving`` stage calls
+        no ``file_parsed`` and would otherwise run to completion after a cancel.
+        The picker's ``ParseJob`` does; the CLI's ``TerminalProgress`` does not,
+        because that parse is not cancellable.  A reporter that ignores it loses
+        nothing but the finer copy.
         """
 
 

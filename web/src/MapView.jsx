@@ -38,6 +38,7 @@ export function MapView({
   data,
   mapTab,
   mode,
+  selectedRegionId,
   hasEntrypointCandidates,
   error,
   onSelectTab,
@@ -77,6 +78,7 @@ export function MapView({
         <ArchitectureMap
           architecture={data.architecture}
           mode={mode}
+          selectedRegionId={selectedRegionId}
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectRegion={onSelectRegion}
         />
@@ -84,6 +86,7 @@ export function MapView({
         <WorkflowTree
           workflow={data.workflow}
           mode={mode}
+          selectedRegionId={selectedRegionId}
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectNode={onSelectNode}
         />
@@ -92,7 +95,7 @@ export function MapView({
   );
 }
 
-function ArchitectureMap({ architecture, mode, hasEntrypointCandidates, onSelectRegion }) {
+function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCandidates, onSelectRegion }) {
   const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
   const padding = 32;
   return (
@@ -139,6 +142,12 @@ function ArchitectureMap({ architecture, mode, hasEntrypointCandidates, onSelect
             data-home={box.home}
             data-reachable={box.reachable}
             data-partial={box.partial}
+            // Selection is the interaction accent (--cm-orbit), never amber:
+            // the box you clicked (or drilled into) reads as "you chose this",
+            // which is distinct from "understood". A persistent attribute, not
+            // :focus-visible, so a mouse click shows it too -- the whole bug was
+            // that focus-visible stays dark for a pointer user.
+            data-selected={box.id === selectedRegionId}
             transform={`translate(${box.x} ${box.y})`}
             role="button"
             tabIndex={0}
@@ -202,7 +211,7 @@ function ArchitectureMap({ architecture, mode, hasEntrypointCandidates, onSelect
   );
 }
 
-function WorkflowTree({ workflow, mode, hasEntrypointCandidates, onSelectNode }) {
+function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidates, onSelectNode }) {
   if (!workflow.root) {
     // Two ways to reach an empty workflow. With candidates, a Home just hasn't
     // been chosen and the "Change Home" control exists to fix it -- keep the
@@ -262,6 +271,11 @@ function WorkflowTree({ workflow, mode, hasEntrypointCandidates, onSelectNode })
             data-cut={row.cut ?? undefined}
             data-partial={row.partial}
             data-relation={row.relation}
+            // Every row whose structure lives in the selected module rings in
+            // the interaction accent, so clicking a box shows what it contains
+            // on this tab too. row.region is parser truth (mapview.py), matched
+            // by id -- no client-side region lookup.
+            data-selected={row.region === selectedRegionId}
             transform={`translate(${row.x} ${row.y})`}
             role="button"
             tabIndex={0}
