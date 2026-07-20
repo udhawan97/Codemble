@@ -194,9 +194,14 @@ switching, then the "living cosmos" visual overhaul with a 2D Map layer, then
 the approved Non-Goal and binding relaxations. Phase A (the narration/mode/
 connections surface and project switching) and Phase B (M12: call-depth
 orbits, the 2D Map layer, and the living-cosmos visual overhaul) have both
-since shipped. Phase C (~1,000-file scale with staged parse progress) has not
-started — there is still no threaded parse or parse-progress screen, and the
-scale cap remains ~300 files.
+since shipped, and were released together as **v0.4.0** (tag `v0.4.0`, published
+to PyPI, verified end to end from a clean `uvx codemble==0.4.0` install: the
+wheel's SPA bundle is byte-identical to the tag, all 27 regions draw unclipped,
+and the galaxy renders deep space with no console errors). Phase C (~1,000-file
+scale with staged parse progress) has not started — there is still no threaded
+parse or parse-progress screen, and the scale cap remains ~300 files. Its plan
+is written and ready at
+`docs/superpowers/plans/2026-07-19-galaxy-ux-phase-c.md` (12 tasks).
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
