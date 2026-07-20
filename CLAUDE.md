@@ -201,7 +201,20 @@ and the galaxy renders deep space with no console errors). Phase C (~1,000-file
 scale with staged parse progress) has not started — there is still no threaded
 parse or parse-progress screen, and the scale cap remains ~300 files. Its plan
 is written and ready at
-`docs/superpowers/plans/2026-07-19-galaxy-ux-phase-c.md` (12 tasks).
+`docs/superpowers/plans/2026-07-19-galaxy-ux-phase-c.md` (12 tasks). Suite
+hermeticity was then closed on the read side: `CODEMBLE_DATA_DIR` had
+redirected saved progress only, while `StudyService` hardcoded `Path.home()`
+for the narration cache and the `config` file and nothing cleared
+`ANTHROPIC_API_KEY` / `OPENAI_API_KEY`, so every server test that built an app
+without an explicit study service inherited the developer's configuration. The
+two that request `/explanation` assert only that a `status` key came back —
+true of `no_key`, `ready`, and `error` alike — so on a machine with a key they
+made a real billed API call and cached the reply under the developer's home
+while still passing. All four `~/.codemble` call sites now resolve through one
+`codemble/paths.py` helper and the suite clears every provider variable
+`from_environment` reads; no parser, graph, checks, persistence, or app
+behaviour changed, and `~/.codemble` stays byte-for-byte identical across full
+runs with and without a key set.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
