@@ -31,7 +31,6 @@ export function App() {
     chart,
     checkData,
     checkError,
-    entrypointDismissed,
     entrypointError,
     entrypointOpen,
     error,
@@ -105,38 +104,56 @@ export function App() {
           {!showChart && level === LEVELS.STUDY && selectedNode ? ` / ${selectedNode.name}` : ""}
           {languageFocus !== "all" ? ` · ${languageLabel(languageFocus)} focus` : ""}
         </p>
-        {showChart ? (
-          <button
-            className="rail-action"
-            type="button"
-            onClick={() => session.dispatch({ type: "HIDE_CHART" })}
-          >
-            Return to galaxy
-          </button>
-        ) : level !== LEVELS.GALAXY ? (
-          <button
-            className="rail-action"
-            type="button"
-            onClick={() => session.dispatch({ type: "RETREAT" })}
-          >
-            {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
-          </button>
-        ) : (
-          <button
-            className="rail-action"
-            type="button"
-            onClick={() => session.dispatch({ type: "SHOW_CHART" })}
-          >
-            Star chart
-          </button>
-        )}
-        <LanguageFocus
-          options={languageOptions}
-          value={languageFocus}
-          onChange={(language) =>
-            session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
-          }
-        />
+        <div className="rail-actions">
+          {showChart ? (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "HIDE_CHART" })}
+            >
+              Return to galaxy
+            </button>
+          ) : level !== LEVELS.GALAXY ? (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "RETREAT" })}
+            >
+              {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
+            </button>
+          ) : (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "SHOW_CHART" })}
+            >
+              Star chart
+            </button>
+          )}
+          {graph.entrypoint_candidates.length ? (
+            <button
+              className="rail-action"
+              type="button"
+              onClick={() => session.dispatch({ type: "CHANGE_HOME" })}
+            >
+              Change Home
+            </button>
+          ) : null}
+          <SwitchProject onConfirm={() => session.dispatch({ type: "RESET_PROJECT" })} />
+        </div>
+        <div className="rail-controls">
+          <LanguageFocus
+            options={languageOptions}
+            value={languageFocus}
+            onChange={(language) =>
+              session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
+            }
+          />
+          <ModeToggle
+            mode={mode}
+            onChange={(next) => session.dispatch({ type: "SET_MODE", mode: next })}
+          />
+        </div>
       </header>
 
       {showChart ? (
@@ -206,10 +223,11 @@ export function App() {
             }
           />
         ) : null}
-        {!graph.selected_entrypoint && !entrypointDismissed && level === LEVELS.GALAXY ? (
+        {entrypointOpen && level === LEVELS.GALAXY ? (
           <EntrypointPicker
             candidates={graph.entrypoint_candidates}
             nodes={graph.nodes}
+            selectedEntrypoint={graph.selected_entrypoint}
             error={entrypointError}
             onSelect={(nodeId) =>
               session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId })
@@ -364,7 +382,84 @@ function LanguageFocus({ options, value, onChange }) {
   );
 }
 
-function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
+function ModeToggle({ mode, onChange }) {
+  const options = [
+    { id: "easy", label: "Easy", hint: "Plain language" },
+    { id: "expert", label: "Expert", hint: "Full terminology" },
+  ];
+  return (
+    <nav className="language-focus mode-toggle" aria-label="Explanation mode">
+      <span className="language-focus__label">Mode</span>
+      <div>
+        {options.map((option) => (
+          <button
+            type="button"
+            key={option.id}
+            aria-label={`${option.label} mode: ${option.hint}`}
+            aria-pressed={mode === option.id}
+            title={option.hint}
+            onClick={() => onChange(option.id)}
+          >
+            <span>{option.label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function SwitchProject({ onConfirm }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState("");
+
+  async function confirm() {
+    setBusy(true);
+    setFailure("");
+    try {
+      await onConfirm();
+    } catch (resetError) {
+      setFailure(resetError.message);
+      setBusy(false);
+    }
+  }
+
+  if (!confirming) {
+    return (
+      <button className="rail-action" type="button" onClick={() => setConfirming(true)}>
+        Switch project
+      </button>
+    );
+  }
+  return (
+    <div className="switch-project" role="group" aria-label="Switch project">
+      <p>Progress is saved per project, so this galaxy comes back lit.</p>
+      {failure ? (
+        <p className="switch-project__error" role="alert">
+          {failure}
+        </p>
+      ) : null}
+      <div>
+        <button className="rail-action" type="button" disabled={busy} onClick={confirm}>
+          {busy ? "Releasing…" : "Switch"}
+        </button>
+        <button
+          className="rail-action"
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setConfirming(false);
+            setFailure("");
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSelect, onContinue }) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   return (
     <aside className="entrypoint-picker" aria-labelledby="entrypoint-heading">
@@ -375,7 +470,7 @@ function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
       <p>
         {candidates.length
           ? "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
-          : "Explore the parsed map without Home, or restart with an explicit --entrypoint after adding a recognized startup structure."}
+          : "No file here declares a startup structure the parser recognises, and Codemble will not guess one. Explore the map without Home — every system, check, explanation, and lens note still works."}
       </p>
       {candidates.length ? (
         <div className="entrypoint-candidates">
@@ -392,7 +487,7 @@ function EntrypointPicker({ candidates, nodes, error, onSelect, onContinue }) {
       ) : null}
       {error ? <p className="entrypoint-error" role="alert">{error}</p> : null}
       <button className="entrypoint-continue" type="button" onClick={onContinue}>
-        Explore without Home
+        {selectedEntrypoint ? "Keep current Home" : "Explore without Home"}
       </button>
     </aside>
   );

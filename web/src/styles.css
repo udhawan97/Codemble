@@ -57,7 +57,7 @@ button:focus-visible,
   display: grid;
   min-width: 0;
   max-width: 100%;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: var(--cm-space-sm) var(--cm-space-md);
   padding: var(--cm-space-sm) max(var(--cm-space-md), env(safe-area-inset-right))
@@ -105,7 +105,7 @@ button:focus-visible,
 
 .location {
   grid-column: 1 / -1;
-  grid-row: 2;
+  grid-row: 3;
   margin: 0;
 }
 
@@ -151,6 +151,53 @@ button:focus-visible,
 .rail-action[data-state="success"] {
   border-color: var(--cm-star);
   color: var(--cm-star);
+}
+
+.rail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: var(--cm-space-sm);
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.rail-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cm-space-md);
+  grid-column: 1 / -1;
+  grid-row: 4;
+  min-width: 0;
+}
+
+.switch-project {
+  display: grid;
+  gap: var(--cm-space-xs);
+  padding: var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+}
+
+.switch-project p {
+  max-width: 26ch;
+  margin: 0;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.switch-project__error {
+  color: var(--cm-error) !important;
+}
+
+.switch-project > div {
+  display: flex;
+  gap: var(--cm-space-xs);
 }
 
 .language-focus {
@@ -1266,7 +1313,12 @@ button:focus-visible,
     justify-self: end;
   }
 
-  .language-focus {
+  .rail-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .rail-controls {
     grid-row: 2;
     justify-self: center;
   }
