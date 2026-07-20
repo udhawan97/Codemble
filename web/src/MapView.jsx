@@ -71,7 +71,7 @@ export function MapView({
           </button>
         </div>
       ) : !data ? (
-        <p className="map-loading" aria-busy="true">Laying out parser evidence…</p>
+        <p className="map-loading" role="status">Laying out parser evidence…</p>
       ) : mapTab === "architecture" ? (
         <ArchitectureMap
           architecture={data.architecture}
@@ -93,7 +93,12 @@ function ArchitectureMap({ architecture, mode, onSelectRegion }) {
       <svg
         className="architecture-map"
         viewBox={`${-padding} ${-padding} ${architecture.width + padding * 2} ${architecture.height + padding * 2}`}
-        role="img"
+        // group, not img: `img` is children-presentational in ARIA, so it
+        // stripped the name and role off every box below -- a screen-reader
+        // user tabbed into focusable elements announced as nothing at all.
+        // (StudyPanel's mini-constellation is correctly `img`: it has no
+        // interactive children to hide.)
+        role="group"
         aria-label={`${architecture.boxes.length} modules in ${architecture.layer_count} import layers from Home`}
       >
         <g className="architecture-map__edges">
@@ -191,7 +196,8 @@ function WorkflowTree({ workflow, mode, onSelectNode }) {
       <svg
         className="workflow-tree"
         viewBox={`-16 -16 ${workflow.width + 32} ${workflow.height + 32}`}
-        role="img"
+        // group, not img -- see ArchitectureMap above: these rows are buttons.
+        role="group"
         aria-label={`Call tree from ${workflow.root}, ${workflow.nodes.length} steps deep to ${workflow.depth_count} levels`}
       >
         <g className="workflow-tree__edges">

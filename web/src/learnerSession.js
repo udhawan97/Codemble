@@ -48,7 +48,11 @@ export function createLearnerSession({
     mapTab: "architecture",
     mapData: null,
     mapError: "",
-    coachmarksSeen: false,
+    // Read once, here, and written only by DISMISS_COACHMARKS below. This is
+    // the single owner: the component used to read localStorage during render
+    // while this field held a second, non-authoritative copy, so whatever a
+    // test asserted about this one said nothing about what the UI did.
+    coachmarksSeen: readCoachmarksSeen(),
     llmStatus: null,
     hoverNodeId: null,
     mode: "easy",
@@ -398,6 +402,7 @@ export function createLearnerSession({
         commit({ mapTab: event.tab });
         return undefined;
       case "DISMISS_COACHMARKS":
+        writeCoachmarksSeen();
         commit({ coachmarksSeen: true });
         return undefined;
       case "SET_LEVEL_GALAXY":
@@ -1168,6 +1173,40 @@ function nearestUnlitRegion(graph, mode) {
           ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
           : "No import route reaches it from Home.",
   };
+}
+
+// A UI preference, not progress: it belongs in localStorage, never in
+// ~/.codemble/, which is reserved for what the learner has actually proven.
+// A blocked or absent storage API must never stop the learner from continuing,
+// so both directions fail soft -- the cost is re-seeing onboarding once.
+const COACHMARK_KEY = "codemble.coachmarks.seen";
+
+// Guarded on `document` rather than on localStorage itself: under Node the mere
+// property access emits an experimental-feature warning, which would put noise
+// in every harness run for a store that only exists in a browser anyway.
+function browserStorage() {
+  if (typeof document === "undefined") return null;
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readCoachmarksSeen() {
+  try {
+    return browserStorage()?.getItem(COACHMARK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCoachmarksSeen() {
+  try {
+    browserStorage()?.setItem(COACHMARK_KEY, "1");
+  } catch {
+    // Storage refused; the session field still hides it for this session.
+  }
 }
 
 function abortController(controller) {

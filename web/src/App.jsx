@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
-import { CoachMarks, HintChip, hasSeenCoachmarks } from "./GuidanceLayer.jsx";
+import { CoachMarks, HintChip } from "./GuidanceLayer.jsx";
 import { MapView } from "./MapView.jsx";
 import { ModeControl } from "./ModeControl.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
@@ -258,7 +258,12 @@ export function App() {
             the Map would describe an encoding the renderer does not draw,
             which is precisely the kind of wrong a learner cannot detect.
             Language tint is drawn on architecture boxes but not on workflow
-            rows, so it follows the tab as well as the layer. */}
+            rows, so it follows the tab as well as the layer -- and in the
+            galaxy it is a nebula, which makeMarker only adds for
+            `node.kind === "region"`. Regions exist at GALAXY level only
+            (NodeKind is module/class/function), so at system and study level
+            the sky carries no tint at all and the rows must go. A learner in a
+            mixed project reads "no fog here" as "no language evidence here". */}
         <aside
           className="map-legend"
           aria-label={layer === "map" ? "Map legend" : "Galaxy legend"}
@@ -304,7 +309,8 @@ export function App() {
             />
             {mode === "easy" ? "Possible connection" : "Possible relationship"}
           </span>
-          {layer === "galaxy" || mapTab === "architecture"
+          {(layer === "galaxy" && level === LEVELS.GALAXY) ||
+          (layer === "map" && mapTab === "architecture")
             ? languageOptions
                 .filter((option) => option.id !== "all")
                 .map((option) => (
@@ -400,7 +406,7 @@ export function App() {
             }
           />
         ) : null}
-        {!coachmarksSeen && !hasSeenCoachmarks() ? (
+        {!coachmarksSeen ? (
           <CoachMarks onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })} />
         ) : null}
         <HintChip
@@ -726,7 +732,9 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
           <p>{error || submitError} The galaxy remains available.</p>
         </div>
       ) : null}
-      {!suite && !error ? <p className="check-loading">Deriving answers from parser edges…</p> : null}
+      {!suite && !error ? (
+        <p className="check-loading" role="status">Deriving answers from parser edges…</p>
+      ) : null}
       {suite?.region_understood ? (
         <div className="check-complete" aria-live="polite">
           <span className="check-complete__star" aria-hidden="true">✦</span>

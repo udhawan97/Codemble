@@ -39,7 +39,9 @@ export function StudyPanel({
           </button>
         </section>
       ) : null}
-      {!study && !error ? <p className="study-loading">Reading parser evidence…</p> : null}
+      {!study && !error ? (
+        <p className="study-loading" role="status">Reading parser evidence…</p>
+      ) : null}
       {study ? (
         <div className="study-content">
           <StructuralSummary structural={study.structural} mode={mode} />
@@ -165,8 +167,11 @@ function certaintyWords(item, mode) {
 }
 
 function MiniConstellation({ inbound, outbound, node }) {
-  // Presentation of the already-fetched neighbour list, like the star chart's
-  // bars — no layout is computed here that the backend does not already own.
+  // Seat coordinates ARE computed here, unlike the galaxy and the 2D map, whose
+  // every coordinate is backend-owned. This is presentation of an already-
+  // fetched list — evenly spacing N items down a strip, the way the star chart
+  // sizes its bars from counts — and it asserts nothing about the project:
+  // order comes from the payload, and no position here means anything.
   const left = inbound.slice(0, STRIP_LIMIT);
   const right = outbound.slice(0, STRIP_LIMIT);
   const height = Math.max(left.length, right.length, 1) * 22 + 16;

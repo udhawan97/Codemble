@@ -74,8 +74,12 @@ export function GalaxyCanvas({
 
   function linkColor(link) {
     // Study level: a link not touching the selection recedes regardless of
-    // hover, so the selection's own call connections stay the subject.
-    if (link.focusDim) return palette.routePossible;
+    // hover, so the selection's own call connections stay the subject. It
+    // recedes to `faded`, the token that exists for exactly that -- painting a
+    // *certain* edge in the uncertainty colour claimed something the parser
+    // never said, and now that uncertainty is legible it would also have made
+    // the receding links the brightest thing at study level.
+    if (link.focusDim) return palette.faded;
     const { activeId, neighborIds } = highlightRef.current;
     const base = link.certain ? palette.route : palette.routePossible;
     if (!activeId) return base;

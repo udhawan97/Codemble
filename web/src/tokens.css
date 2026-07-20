@@ -1,7 +1,18 @@
 @import url("../../docs-site/src/styles/tokens.css");
 
 :root {
-  --cm-route-possible: color-mix(in srgb, var(--cm-ink-3) 56%, var(--cm-ground));
+  /* Uncertainty, and its twin claim "unchartable". "Approximate call edges are
+     labeled possible call" is a Correctness Contract clause, so this swatch
+     being legible is correctness, not polish: at its old value it measured
+     2.18:1 on --cm-ground-2 (the legend panel's own background) and 2.51:1 on
+     --cm-ground -- present, but below the floor at which a reader can see it.
+     Now 6.35:1 on --cm-ground and 5.50:1 on --cm-ground-2. It stays below
+     --cm-ink-2, the cap of the unlit centrality ramp, so a lit amber star
+     (--cm-star-high, 12.06:1) still owns the top of the brightness range. On
+     the canvas this also widens the gap from a *certain* route (--cm-hairline)
+     from 1.60:1 to 4.04:1 -- uncertainty is now the more visible of the two,
+     which is the right way round for a claim the parser could not prove. */
+  --cm-route-possible: color-mix(in srgb, var(--cm-ink-2) 30%, var(--cm-ink-3));
   /* Floor of the unlit centrality ramp. The ramp stops at --cm-ink-2 so that a
      lit star (--cm-star-high) is always the brightest object in the sky —
      understanding, not call centrality, owns the top of the range. */

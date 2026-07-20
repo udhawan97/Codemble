@@ -583,15 +583,6 @@ input:focus-visible {
   background: var(--cm-route-possible);
 }
 
-.legend-dot--bright {
-  background: var(--cm-ink-2);
-}
-
-.legend-dot--small {
-  width: var(--cm-space-2xs);
-  height: var(--cm-space-2xs);
-}
-
 .legend-route {
   width: var(--cm-space-md);
   border-block-start: 1px solid var(--cm-ink-3);
@@ -1834,12 +1825,16 @@ input:focus-visible {
   fill: var(--cm-route-possible);
 }
 
-.workflow-tree__row[data-understood="true"] circle {
-  fill: var(--cm-star-high);
-}
-
 .workflow-tree__row[data-cut] circle {
   fill: var(--cm-route-possible);
+}
+
+/* Last of the three at equal specificity, so understanding wins the cascade:
+   a repeated or cycle-cut row that the learner HAS proven must keep its amber.
+   The cut itself is never colour-only -- the row says "shown above" or
+   "loops back" in its own text and aria-label. */
+.workflow-tree__row[data-understood="true"] circle {
+  fill: var(--cm-star-high);
 }
 
 .workflow-tree__row text {
@@ -1919,18 +1914,23 @@ input:focus-visible {
   text-decoration: underline;
 }
 
+/* A modal <dialog> in the top layer, like .mode-gate: `inset` and `margin`
+   place it, not the absolute positioning it used as an <aside>. It keeps its
+   low, out-of-the-way seat near the foot of the stage. */
 .coach-marks {
-  position: absolute;
-  z-index: var(--cm-z-panel);
-  inset-block-end: var(--cm-space-lg);
-  inset-inline-start: 50%;
-  translate: -50% 0;
+  inset-block: auto var(--cm-space-lg);
+  inset-inline: 0;
   width: min(38ch, calc(100% - var(--cm-space-lg)));
+  margin-inline: auto;
   padding: var(--cm-space-md);
   border: 1px solid var(--cm-orbit);
   border-radius: var(--cm-radius);
   background: var(--cm-ground-2);
   color: var(--cm-ink);
+}
+
+.coach-marks::backdrop {
+  background: var(--cm-scrim);
 }
 
 .coach-marks__progress {

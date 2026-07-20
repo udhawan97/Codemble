@@ -1,7 +1,7 @@
 // Easy-mode guidance. Both components render deterministic graph truth handed
 // down from the session: no model produces a hint, an order, or a next step.
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 export function HintChip({ hint, onStudy }) {
   if (!hint) return null;
@@ -19,8 +19,6 @@ export function HintChip({ hint, onStudy }) {
   );
 }
 
-const COACHMARK_KEY = "codemble.coachmarks.seen";
-
 const STEPS = [
   {
     title: "What you see",
@@ -36,31 +34,46 @@ const STEPS = [
   },
 ];
 
-// A UI preference, not progress: it belongs in localStorage, never in
-// ~/.codemble/, which is reserved for what the learner has actually proven.
-export function hasSeenCoachmarks() {
-  try {
-    return globalThis.localStorage?.getItem(COACHMARK_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
+/**
+ * First-run onboarding. Whether it has been seen is owned entirely by
+ * learnerSession.js -- this component reads nothing and writes nothing, it just
+ * reports that the learner is done. It used to read localStorage during render
+ * while the session held a second, non-authoritative copy of the same fact.
+ *
+ * A native <dialog> opened with showModal(), the same shape ModeControl already
+ * uses for the audience gate: that is what supplies aria-modal, the focus trap,
+ * initial focus and Escape. Before this it claimed role="dialog" with none of
+ * them, so onboarding sat behind the entire header rail in tab order and
+ * Escape fell through to the canvas and retreated a level instead.
+ */
 export function CoachMarks({ onDismiss }) {
   const [step, setStep] = useState(0);
+  const dialogRef = useRef(null);
   const current = STEPS[step];
 
+  // Open before paint, so it is never briefly visible as a closed dialog.
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+
   function finish() {
-    try {
-      globalThis.localStorage?.setItem(COACHMARK_KEY, "1");
-    } catch {
-      // A blocked storage API must never stop the learner from continuing.
-    }
+    dialogRef.current?.close();
     onDismiss();
   }
 
   return (
-    <aside className="coach-marks" role="dialog" aria-labelledby="coach-heading">
+    <dialog
+      ref={dialogRef}
+      className="coach-marks"
+      aria-labelledby="coach-heading"
+      // Escape is a dismissal here, unlike the audience gate, which has no
+      // default to fall back to. Skipping onboarding is always allowed.
+      onCancel={(event) => {
+        event.preventDefault();
+        finish();
+      }}
+    >
       <p className="coach-marks__progress">Step {step + 1} of {STEPS.length}</p>
       <h1 id="coach-heading">{current.title}</h1>
       <p>{current.body}</p>
@@ -74,6 +87,6 @@ export function CoachMarks({ onDismiss }) {
           {step + 1 < STEPS.length ? "Next" : "Start exploring"}
         </button>
       </div>
-    </aside>
+    </dialog>
   );
 }
