@@ -127,6 +127,11 @@ class ParseJob:
             self._stage = stage
 
     def detail(self, detail: str) -> None:
+        # The resolving stage only ever calls detail(), so it is the sole
+        # cancellation checkpoint there — symmetric with file_parsed().  A cancel
+        # is noticed at the next sub-step boundary instead of at the very end.
+        if self._cancelled.is_set():
+            raise ParseCancelled("the learner reset the picker during this parse")
         with self._lock:
             self._detail = detail
 

@@ -104,6 +104,39 @@ def test_cancelling_mid_parse_stops_at_the_next_file_and_returns_to_idle() -> No
     assert job.snapshot()["error"] is None
 
 
+def test_cancelling_during_resolving_stops_at_the_next_sub_step() -> None:
+    # The resolving stage runs after every file is read, so it only ever calls
+    # detail() — no file_parsed() left to notice a cancel.  detail() must be a
+    # checkpoint too, or a cancelled worker burns CPU to completion.
+    job = ParseJob()
+    reached_resolving = threading.Event()
+    release = threading.Event()
+    steps_seen: list[str] = []
+
+    def work(reporter: ParseJob) -> None:
+        reporter.files_total(1)
+        reporter.stage("parsing")
+        reporter.file_parsed()          # last file: flips the stage to resolving
+        reporter.detail("Resolving imports and calls")
+        steps_seen.append("imports")
+        reached_resolving.set()
+        assert release.wait(timeout=5)
+        reporter.detail("Building the galaxy map")   # raises ParseCancelled
+        steps_seen.append("map")        # never reached
+
+    job.begin()
+    job.start(work)
+    assert reached_resolving.wait(timeout=5)
+    job.request_cancel()            # flag set while only detail() calls remain
+    release.set()
+
+    assert job.wait(timeout=5) is True
+    assert steps_seen == ["imports"]
+    assert job.cancelled is True
+    assert job.snapshot()["state"] == "idle"
+    assert job.snapshot()["error"] is None
+
+
 def test_a_crash_in_the_worker_becomes_an_error_state_not_a_hang() -> None:
     job = ParseJob()
 
