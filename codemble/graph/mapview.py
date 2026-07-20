@@ -132,16 +132,23 @@ def _architecture(graph: Graph) -> dict[str, object]:
 
 def _workflow(graph: Graph) -> dict[str, object]:
     nodes = {node.id: node for node in graph.nodes}
-    calls: dict[str, list[tuple[str, bool]]] = defaultdict(list)
+    calls: dict[str, dict[str, bool]] = defaultdict(dict)
     called_by: dict[str, set[str]] = defaultdict(set)
     for edge in sorted(graph.edges, key=lambda item: (item.src, item.dst, item.lineno)):
         if edge.kind != "call" or edge.external:
             continue
         if edge.src not in nodes or edge.dst not in nodes or edge.src == edge.dst:
             continue
-        if edge.dst not in {target for target, _ in calls[edge.src]}:
-            calls[edge.src].append((edge.dst, edge.certain))
-        called_by[edge.dst].add(edge.src)
+        # A pair can carry several call edges of differing certainty (e.g. one
+        # proven call site plus one ambiguous one); the proven edge must win so
+        # dedup never under-reports a pair's certainty.
+        calls[edge.src][edge.dst] = calls[edge.src].get(edge.dst, False) or edge.certain
+        # Only a certain call claims a same-region member for nested "calls"
+        # placement -- a "possible" call must never suppress a member's
+        # top-level "defines" row, mirroring layout.py's _call_depths, which
+        # excludes certain=False edges from deciding orbit placement.
+        if edge.certain:
+            called_by[edge.dst].add(edge.src)
 
     members: dict[str, list[str]] = defaultdict(list)
     for node in graph.nodes:
@@ -159,7 +166,7 @@ def _workflow(graph: Graph) -> dict[str, object]:
                 for member in sorted(members[node.region])
                 if not (called_by[member] & siblings)
             ]
-        return [(target, certain, "calls") for target, certain in sorted(calls[node_id])]
+        return [(target, certain, "calls") for target, certain in sorted(calls[node_id].items())]
 
     rows: list[dict[str, object]] = []
     emitted: set[str] = set()

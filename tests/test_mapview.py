@@ -119,6 +119,79 @@ def test_a_graph_without_home_marks_every_region_unreachable(tmp_path: Path) -> 
     assert payload["workflow"]["unreachable"] == ["solo", "solo.work"]
 
 
+def test_workflow_places_a_member_at_top_level_when_only_a_possible_call_claims_it(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "workmod.py").write_text(
+        "class Box:\n"
+        "    def helper(self) -> None:\n"
+        "        pass\n"
+        "\n"
+        "\n"
+        "def caller() -> None:\n"
+        "    helper()\n"
+        "\n"
+        "\n"
+        'if __name__ == "__main__":\n'
+        "    caller()\n",
+        encoding="utf-8",
+    )
+
+    workflow = build_map(PythonAstAdapter().parse(tmp_path))["workflow"]
+    defines = {
+        row["id"]: (row["parent"], row["depth"], row["certain"])
+        for row in workflow["nodes"]
+        if row["relation"] == "defines"
+    }
+    calls_hops = [
+        (row["id"], row["parent"], row["certain"], row["cut"])
+        for row in workflow["nodes"]
+        if row["relation"] == "calls"
+    ]
+
+    # "helper()" is unqualified and resolved only by whole-project name lookup
+    # (no import, no lexical match) -- a "possible" call, never proven.  A
+    # possible call must not steal the module's certain containment claim on
+    # its own member (mirrors layout.py's _call_depths, which excludes
+    # certain=False edges from deciding orbit placement), so Box.helper still
+    # gets a top-level "defines" row straight from the module.
+    assert defines["workmod.Box.helper"] == ("workmod", 1, True)
+
+    # The possible call itself must stay visible as a real relationship, not
+    # be silently dropped now that it no longer decides placement.
+    assert ("workmod.Box.helper", "workmod.caller", False, "repeat") in calls_hops
+    assert workflow["unreachable"] == []
+
+
+def test_workflow_prefers_a_certain_edge_when_a_pair_has_mixed_certainty(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "greet.py").write_text("def hello() -> None:\n    pass\n", encoding="utf-8")
+    (tmp_path / "app.py").write_text(
+        "import greet\n"
+        "\n"
+        "\n"
+        "def run() -> None:\n"
+        "    hello()\n"
+        "    greet.hello()\n"
+        "\n"
+        "\n"
+        'if __name__ == "__main__":\n'
+        "    run()\n",
+        encoding="utf-8",
+    )
+
+    workflow = build_map(PythonAstAdapter().parse(tmp_path))["workflow"]
+    hello_rows = [row for row in workflow["nodes"] if row["id"] == "greet.hello"]
+
+    # Line 5's "hello()" is unqualified and only resolves by whole-project name
+    # lookup -- possible, not proven.  Line 6's "greet.hello()" is the same
+    # (src, dst) pair resolved as a certain, import-qualified call.  Dedup must
+    # keep the pair's proven edge rather than whichever sorts first by line.
+    assert len(hello_rows) == 1
+    assert hello_rows[0]["certain"] is True
+
+
 def test_workflow_survives_a_deep_unbranching_call_chain(tmp_path: Path) -> None:
     # Regression: the inner walk() in _workflow used to recurse once per call
     # hop, so a deep, unbranching chain blew CPython's default recursion limit
