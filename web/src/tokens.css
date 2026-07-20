@@ -6,6 +6,17 @@
      lit star (--cm-star-high) is always the brightest object in the sky —
      understanding, not call centrality, owns the top of the range. */
   --cm-node-unlit: color-mix(in srgb, var(--cm-ink-3) 78%, var(--cm-ground));
+  /* Language nebula tints. Plain rgb() only -- readPalette hands the authored
+     text to WebGL, and a color-mix() token renders black. Lightness is tuned so
+     a legend swatch clears 4.5:1 on --cm-ground AND --cm-ground-2 while staying
+     below --cm-ink-2, so no nebula can outshine a lit star. Fog alpha lives in
+     the material, not here. */
+  --cm-neb-python: rgb(89 144 121);
+  --cm-neb-js: rgb(139 126 169);
+  --cm-neb-ts: rgb(86 139 170);
+  /* Neutral base for the halo sprite texture. Always multiplied by the node's
+     own colour, so it can never brighten an unlit node past a lit one. */
+  --cm-star-halo: rgb(242 239 233);
   --cm-scrim: color-mix(in srgb, var(--cm-ground) 82%, transparent);
   --cm-error: oklch(72% 0.16 28);
   --cm-space-2xs: 0.125rem;

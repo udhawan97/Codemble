@@ -307,5 +307,9 @@ function readPalette() {
     // it stays a plain value so readPalette can hand WebGL real rgb().
     faded: value("--cm-hairline-soft"),
     star: value("--cm-star-high"),
+    starHalo: value("--cm-star-halo"),
+    nebPython: value("--cm-neb-python"),
+    nebJs: value("--cm-neb-js"),
+    nebTs: value("--cm-neb-ts"),
   });
 }
