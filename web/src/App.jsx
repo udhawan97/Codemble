@@ -62,7 +62,11 @@ export function App() {
     return (
       <main className="load-state" role="alert">
         <h1>The graph did not load.</h1>
-        <p>{error} Restart Codemble and reload this page.</p>
+        <p>{error}</p>
+        <p>Your progress is stored on this machine and is not affected.</p>
+        <button className="check-primary" type="button" onClick={() => session.start()}>
+          Try again
+        </button>
       </main>
     );
   }
@@ -171,10 +175,35 @@ export function App() {
           onRetreat={() => session.dispatch({ type: "RETREAT" })}
         />
         <aside className="map-legend" aria-label="Galaxy legend">
-          <span><i className="legend-dot legend-dot--dim" /> Not studied</span>
-          <span><i className="legend-dot legend-dot--lit" /> Understood</span>
-          <span><i className="legend-dot legend-dot--partial" /> Unchartable</span>
-          <span><i className="legend-route" /> Parser edge</span>
+          <span>
+            <i className="legend-dot legend-dot--dim legend-dot--small" />
+            <i className="legend-dot legend-dot--dim" />
+            Size · {mode === "easy" ? "how much code" : "lines of code"}
+          </span>
+          <span>
+            <i className="legend-dot legend-dot--bright" />
+            Brighter · {mode === "easy" ? "used more often" : "higher call centrality"}
+          </span>
+          <span>
+            <i className="legend-dot legend-dot--dim" />
+            Dim · {mode === "easy" ? "not proven yet" : "not understood"}
+          </span>
+          <span>
+            <i className="legend-dot legend-dot--lit" />
+            Amber · {mode === "easy" ? "you proved you understand it" : "understood"}
+          </span>
+          <span>
+            <i className="legend-dot legend-dot--partial" />
+            {mode === "easy" ? "Could not be read" : "Unchartable · syntax error"}
+          </span>
+          <span>
+            <i className="legend-route" />
+            {mode === "easy" ? "Certain connection" : "Parser edge · certain"}
+          </span>
+          <span>
+            <i className="legend-route legend-route--possible" />
+            {mode === "easy" ? "Possible connection" : "Possible relationship"}
+          </span>
         </aside>
         {level === LEVELS.GALAXY ? (
           <section className="orientation-copy">

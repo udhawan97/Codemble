@@ -406,7 +406,8 @@ button:focus-visible,
   inset-inline-end: var(--cm-space-md);
   inset-block-start: var(--cm-space-md);
   display: none;
-  gap: var(--cm-space-md);
+  grid-template-columns: repeat(2, auto);
+  gap: var(--cm-space-2xs) var(--cm-space-md);
   padding: var(--cm-space-sm) var(--cm-space-md);
   border: 1px solid var(--cm-hairline);
   border-radius: var(--cm-radius);
@@ -442,9 +443,25 @@ button:focus-visible,
   background: var(--cm-route-possible);
 }
 
+.legend-dot--bright {
+  background: var(--cm-ink-2);
+}
+
+.legend-dot--small {
+  width: var(--cm-space-2xs);
+  height: var(--cm-space-2xs);
+}
+
 .legend-route {
   width: var(--cm-space-md);
   border-block-start: 1px solid var(--cm-ink-3);
+}
+
+/* Declared after .legend-route: both are single-class selectors, so equal
+   specificity falls back to source order, and .legend-route's shorthand also
+   sets border-block-start-color. This rule must stay last to win the cascade. */
+.legend-route--possible {
+  border-block-start-color: var(--cm-route-possible);
 }
 
 .partial-summary {
@@ -1383,7 +1400,7 @@ button:focus-visible,
 
 @media (min-width: 60rem) {
   .map-legend {
-    display: flex;
+    display: grid;
   }
 }
 
