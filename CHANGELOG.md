@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-07-20
+
 ### Fixed
 - "Cancel and pick another project" now works when the local server has stopped.
   The teardown that returns you to the picker used to run only after the reset
