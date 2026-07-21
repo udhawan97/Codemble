@@ -27,8 +27,13 @@ from codemble.adapters.project import (
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
-from codemble.progress import list_recent_projects
 from codemble.server.parse_job import ParseJob
+from codemble.server.project_selection import (
+    ProjectFolderForbidden,
+    ProjectFolderMissing,
+    ProjectFolderUnreadable,
+    ProjectSelector,
+)
 
 
 class CheckSubmission(BaseModel):
@@ -225,6 +230,7 @@ def create_app(
     app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
     state = _ProjectState()
+    selector = ProjectSelector(picker.browse_root) if picker is not None else None
     if parse_runner is not None:
         state.job = ParseJob(runner=parse_runner)
 
@@ -275,66 +281,33 @@ def create_app(
 
     @app.get("/api/picker/browse")
     def browse_picker(path: str | None = None) -> dict[str, object]:
-        if state.bound or picker is None:
+        if state.bound or selector is None:
             raise HTTPException(status_code=409, detail="A project is already selected.")
-        jail = picker.browse_root.expanduser().resolve()
-        target = Path(path).expanduser() if path else jail
         try:
-            resolved = target.resolve(strict=True)
-        except OSError as error:
-            raise HTTPException(
-                status_code=404, detail="That folder does not exist."
-            ) from error
-        if not resolved.is_dir():
-            raise HTTPException(status_code=404, detail="That folder does not exist.")
-        if not resolved.is_relative_to(jail):
-            raise HTTPException(
-                status_code=403, detail="Choose a folder inside your home directory."
-            )
-        try:
-            children = [
-                child
-                for child in resolved.iterdir()
-                if child.is_dir() and not child.name.startswith(".")
-            ]
-        except OSError as error:
-            raise HTTPException(
-                status_code=403, detail="Codemble cannot read that folder."
-            ) from error
-        entries = sorted(
-            ({"name": child.name, "path": str(child)} for child in children),
-            key=lambda entry: str(entry["name"]).lower(),
-        )
-        parent = str(resolved.parent) if resolved != jail else None
-        return {"path": str(resolved), "parent": parent, "entries": entries}
+            return selector.browse(path).to_dict()
+        except ProjectFolderMissing as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except ProjectFolderForbidden as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
+        except ProjectFolderUnreadable as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
 
     @app.get("/api/picker/recents")
     def picker_recents() -> dict[str, object]:
-        if state.bound or picker is None:
+        if state.bound or selector is None:
             raise HTTPException(status_code=409, detail="A project is already selected.")
-        jail = picker.browse_root.expanduser().resolve()
-        recents = [
-            entry
-            for entry in list_recent_projects()
-            if Path(str(entry["project_root"])).resolve().is_relative_to(jail)
-        ]
-        return {"recents": recents}
+        return {"recents": selector.recents()}
 
     @app.post("/api/picker/select", status_code=202)
     def select_project(selection: ProjectSelection) -> dict[str, object]:
-        if state.bound or picker is None or state.job.active:
+        if state.bound or picker is None or selector is None or state.job.active:
             raise HTTPException(status_code=409, detail="A project is already selected.")
-        jail = picker.browse_root.expanduser().resolve()
         try:
-            resolved = Path(selection.path).expanduser().resolve(strict=True)
-        except OSError as error:
-            raise HTTPException(
-                status_code=404, detail="That folder does not exist."
-            ) from error
-        if not resolved.is_relative_to(jail):
-            raise HTTPException(
-                status_code=403, detail="Choose a folder inside your home directory."
-            )
+            resolved = selector.resolve(selection.path)
+        except ProjectFolderMissing as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except ProjectFolderForbidden as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
         parser = ProjectParser()
         job = _new_job()
         state.job = job
