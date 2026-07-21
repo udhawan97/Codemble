@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // The first-run question frames each option as a description of the learner,
 // never as the technical mode name — see task-15-brief.md: a beginner may
@@ -66,7 +67,12 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
   if (modeChosen === null) return null;
 
   if (!modeChosen) {
-    return (
+    // A modal belongs to the document top layer, not to the header's responsive
+    // disclosure. Keeping it in that subtree made a fresh mobile run call
+    // showModal() on a dialog whose ancestor was display:none: the invisible
+    // backdrop blocked the whole app. The portal preserves the same component
+    // state and focus contract while removing layout containment.
+    return createPortal(
       <dialog
         ref={dialogRef}
         className="mode-gate"
@@ -85,7 +91,8 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
             </button>
           ))}
         </div>
-      </dialog>
+      </dialog>,
+      document.body,
     );
   }
 
