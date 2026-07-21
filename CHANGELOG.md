@@ -12,6 +12,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   direction, and cycles or long routes travel around the diagram flank. Possible
   relationships remain dashed, and React still consumes graph-owned geometry.
 
+## [0.5.3] - 2026-07-21
+
+### Fixed
+- **A fresh install crashed on every JavaScript/TypeScript project.** The
+  dependency range allowed `tree-sitter` 0.26.0, which is ABI-incompatible with
+  the newest published grammar wheels (`tree-sitter-javascript` 0.25.0,
+  `tree-sitter-typescript` 0.23.2 — the only ones that exist). Partway through a
+  real project the parser died with a SIGSEGV inside `node_get_named_children`,
+  taking the whole process down with it: `codemble <path>` exited with no
+  traceback, and the app's local server vanished mid-parse, so the loading
+  screen reported "Lost contact with the local server" and stopped there.
+  Bisected on one machine, one project, one Python: 0.26.0 crashes every run,
+  0.25.2 is clean. The core is now pinned `<0.26`.
+  An install that already had 0.25.x kept working, which is why this stayed
+  invisible from a developer checkout — it only reached people installing
+  fresh, including through the documented `uvx codemble` path.
+- A dependency guard now asserts the resolved `tree-sitter` version stays below
+  the segfaulting release. A behavioural test cannot catch this: a small snippet
+  parses and walks fine on 0.26.0, and every fixture in the suite is small,
+  which is exactly how it reached a release.
+
 ## [0.5.2] - 2026-07-20
 
 ### Fixed
