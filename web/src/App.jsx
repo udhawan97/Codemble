@@ -127,6 +127,45 @@ export function App() {
     );
   }
 
+  // One element, two placements. Over the galaxy it floats: the 3D canvas is
+  // deep space at this corner, so nothing is behind it. The Map draws its SVG
+  // in normal flow from that same corner, so there it is handed to MapView and
+  // takes its own row above the drawing instead of sitting on the first rows
+  // of the tree.
+  const systemCopy =
+    level === LEVELS.SYSTEM ? (
+      <section
+        className={`orientation-copy orientation-copy--system${
+          layer === "map" ? " orientation-copy--inline" : ""
+        }`}
+      >
+        <h1>{region.id}</h1>
+        <p>
+          {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
+            ? `${region.node_count} source ${region.node_count === 1 ? "file remains" : "files remain"} visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
+            : layer === "map"
+              ? // On the Map, a module is one box: its internal structures
+                // aren't drawn here, only in the Galaxy. Say so plainly
+                // rather than let the click look like it revealed nothing.
+                // Only claim what is true for every module — an unreachable
+                // one has no rows in the Workflow tab, so never promise it.
+                `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect, not what is inside them.`
+              : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
+        </p>
+        <button
+          className="check-launch"
+          type="button"
+          onClick={() => session.dispatch({ type: "OPEN_CHECKS" })}
+        >
+          {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
+            ? "Check availability"
+            : region.understood
+              ? "Review understanding"
+              : "Prove understanding"}
+        </button>
+      </section>
+    ) : null;
+
   return (
     <main
       className="app-shell"
@@ -272,7 +311,9 @@ export function App() {
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
             }
             onRetry={() => session.dispatch({ type: "SET_LAYER", layer: "map" })}
-          />
+          >
+            {systemCopy}
+          </MapView>
         ) : (
           <GalaxyCanvas
             graph={focusedGraph}
@@ -375,34 +416,7 @@ export function App() {
             ) : null}
           </section>
         ) : null}
-        {level === LEVELS.SYSTEM ? (
-          <section className="orientation-copy orientation-copy--system">
-            <h1>{region.id}</h1>
-            <p>
-              {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
-                ? `${region.node_count} source ${region.node_count === 1 ? "file remains" : "files remain"} visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
-                : layer === "map"
-                  ? // On the Map, a module is one box: its internal structures
-                    // aren't drawn here, only in the Galaxy. Say so plainly
-                    // rather than let the click look like it revealed nothing.
-                    // Only claim what is true for every module — an unreachable
-                    // one has no rows in the Workflow tab, so never promise it.
-                    `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect, not what is inside them.`
-                  : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
-            </p>
-            <button
-              className="check-launch"
-              type="button"
-              onClick={() => session.dispatch({ type: "OPEN_CHECKS" })}
-            >
-              {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
-                ? "Check availability"
-                : region.understood
-                  ? "Review understanding"
-                  : "Prove understanding"}
-            </button>
-          </section>
-        ) : null}
+        {layer === "galaxy" ? systemCopy : null}
         {level === LEVELS.SYSTEM && showChecks ? (
           <CheckPanel
             suite={checkData}

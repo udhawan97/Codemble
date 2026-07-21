@@ -55,6 +55,11 @@ export function MapView({
   onSelectRegion,
   onSelectNode,
   onRetry,
+  // The drill-down copy for the selected module, given a row of its own in
+  // this column. The galaxy can float the same element over its canvas; the
+  // drawing below starts at this component's top-left corner, so here it must
+  // occupy space rather than overlap the first boxes and tree rows.
+  children,
 }) {
   return (
     <section className="map-view" aria-label="Two-dimensional project map">
@@ -74,6 +79,7 @@ export function MapView({
           {mode === "easy" ? "What runs first" : "Workflow"}
         </button>
       </nav>
+      {children}
       {error ? (
         <div className="map-state" role="alert">
           <h2>The map did not load.</h2>
