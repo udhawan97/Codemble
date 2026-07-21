@@ -491,10 +491,17 @@ input:focus-visible {
   background: var(--cm-ground-2);
 }
 
-/* The stage's absolutely-positioned overlays start at the canvas edge, which
-   the open sidebar covers. Without this the system panel -- including its
-   Prove understanding button, the primary action on that screen -- sat behind
-   the sidebar and could be neither read nor clicked. */
+/* An open sidebar reserves a gutter rather than covering the stage. Every child
+   here is absolutely positioned -- the galaxy frame, the map, the overlays --
+   so each one's start inset has to move; padding on the stage would do nothing,
+   because an absolute box resolves against the padding box, which includes the
+   padding. Without this the sidebar sat on top of the system panel, including
+   its Prove understanding button, the primary action on that screen. */
+.map-stage:has(.index-sidebar) .galaxy-frame,
+.map-stage:has(.index-sidebar) .map-view {
+  inset-inline-start: var(--cm-sidebar-width);
+}
+
 .map-stage:has(.index-sidebar) .orientation-bar,
 .map-stage:has(.index-sidebar) .orientation-copy {
   inset-inline-start: calc(var(--cm-sidebar-width) + var(--cm-space-md));
@@ -724,6 +731,14 @@ input:focus-visible {
   inset-block-start: var(--cm-space-lg);
 }
 
+/* The Map layer's variant: a row in the map column, not an overlay on it. The
+   3D canvas has nothing behind this corner, but the SVG below draws its first
+   box and its root tree row exactly here, so floating meant display-size serif
+   on top of the learner's own identifiers. It keeps the same narrow measure as
+   the floating version, which is what holds it clear of the legend card.
+   Declared after the shared .orientation-copy rules below on purpose: these
+   overrides match at equal specificity, so source order is what settles them. */
+
 .orientation-copy h1,
 .study-preview h1,
 .load-state h1,
@@ -744,6 +759,35 @@ input:focus-visible {
   max-width: 55ch;
   margin: var(--cm-space-sm) 0 0;
   color: var(--cm-ink-2);
+}
+
+.orientation-copy--inline {
+  position: static;
+  z-index: auto;
+  flex: 0 0 auto;
+  /* Never starve the drawing. On a short viewport this copy is tall enough to
+     take the whole column and leave the map zero height -- trading an overlap
+     for a map that isn't there. The cap only binds when space is genuinely
+     scarce; at ordinary window heights the band is shorter than this and the
+     rule does nothing. */
+  max-block-size: 45%;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+/* Sized to sit above a drawing rather than float over open space: the display
+   clamp would spend most of the map's height on the module name alone. */
+.orientation-copy--inline h1 {
+  font-size: var(--cm-text-lg);
+}
+
+.orientation-copy--inline p {
+  margin-block-start: var(--cm-space-2xs);
+  font-size: var(--cm-text-sm);
+}
+
+.orientation-copy--inline .check-launch {
+  margin-block-start: var(--cm-space-sm);
 }
 
 .check-launch,
