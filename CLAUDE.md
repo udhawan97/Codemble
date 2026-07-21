@@ -257,7 +257,15 @@ only one position each, directly above their star, so at galaxy zoom nearly
 every plate lost its slot to a neighbour and a 90-system sky carried one name.
 Names now try a short list of slots around the star and collision-test where the
 plate actually draws rather than where its star sits — 1 name became roughly 24
-with everything shown, 9 by default.
+with everything shown, 9 by default. The same navigation and clarity pass was
+then applied to the Map layer, where two of the three galaxy problems turned out
+to exist in a sharper form: a fixed-width box truncated the dotted region id, so
+`codemble.server.app` and `codemble.server.runtime` both rendered as
+`codemble.server…` — identical text for different modules — and a 960x2640
+diagram sat in a plain scroll box showing four of its nine import layers. Boxes
+are now named by the tail of their real path (map schema 3, zero visible-text
+collisions across all 90 boxes on this repository) and the Map gained zoom, Fit,
+and drag-to-pan. Progressive reveal was deliberately not extended to the Map.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -496,6 +504,9 @@ to before the index change.
 | 2026-07-21 | `Region.hops_from_home` is graph-layer truth (schema 6): undirected BFS from Home over proven import routes, `None` when unreachable; `with_entrypoint` recomputes it | Reveal is game logic and belongs in `LearnerSession`, but the *distance* is a fact about the project and belongs in the graph. The frontend was already re-walking this exact BFS for the Easy-mode hint, so the two could in principle have disagreed about one number; there is now one source. `None` is never softened to a large number, or "unreachable" would read as "very far" |
 | 2026-07-21 | Canvas name plates are ranked (Home → lit → centrality), budgeted by camera distance, and decluttered by claiming the full screen-cell rectangle each plate covers | A name is the cheapest differentiation there is and the sky had none. Claiming one cell per plate let a wide name cover three neighbours, and claiming only a row let two plates straddling a boundary collide — the rectangle is the only version that actually holds. Plate geometry is published on the sprite by the module that sizes it, so the constant is not duplicated across files |
 | 2026-07-21 | Finding a module is a command palette **and** an index sidebar over one shared `moduleIndex`; sidebar rows show each path minus its group's shared prefix | Approved by UD. Progressive reveal makes targeted retrieval mandatory — a thinned sky must never hide a module from someone who knows its name — and both surfaces reach every module whether charted or not. Basenames alone are useless in a Python project where every package carries an `__init__.py`, so rows keep enough real path to be told apart |
+| 2026-07-21 | Progressive reveal stays **galaxy-only**; the Map always draws every module | Approved by UD when the navigation work was extended to the Map. The Map's job is "how it all fits together", and a layered import diagram with holes in it teaches less than a complete one; the galaxy already offers the thinned view for learners who want it |
+| 2026-07-21 | Architecture boxes are named by the tail of their file path (`short_label`, map schema 3); `label` keeps the full identifier for title and aria | A box is a fixed width, so its text always truncates on a real project — and truncating a dotted region id rendered `codemble.server.app` and `codemble.server.runtime` as the same glyphs. Identical text for different modules is worse than no label, and it is exactly the kind of wrong a learner cannot detect. The path tail also survives the `__init__.py` collision a basename alone cannot |
+| 2026-07-21 | The Map gains zoom, Fit, and drag-to-pan; panning rides the container's own scroll and zoom only scales the rendered size | The 2D counterpart of bounded orbit: a 960x2640 diagram in a plain scroll box showed four of nine layers and no way to see the whole shape. Scroll-based panning keeps native scrollbars, keyboard scrolling and screen-reader behaviour intact, and because every coordinate inside the SVG stays backend-computed, React remains a pure renderer of graph-owned geometry. It opens at true size rather than auto-fitting: fitting on mount measured the scroller before layout settled and landed on a scale that was neither fitted nor honest |
 
 ## Non-Goals — do NOT build (point here when asked)
 

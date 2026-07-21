@@ -12,7 +12,7 @@ from pathlib import PurePosixPath
 
 from codemble.adapters.base import Graph, RegionEdge
 
-MAP_SCHEMA_VERSION = 2
+MAP_SCHEMA_VERSION = 3
 
 _MAP_WIDTH = 960.0
 _ROW_HEIGHT = 120.0
@@ -38,8 +38,34 @@ def build_map(graph: Graph) -> dict[str, object]:
     }
 
 
+def _short_label(file: str) -> str:
+    """Name a box by the tail of its real path, not by its dotted region id.
+
+    A box is a fixed width, so its text is always truncated on a real project;
+    what matters is that the surviving end is the part that distinguishes it.
+    ``codemble.server.app`` and ``codemble.server.runtime`` both truncated to
+    ``codemble.server…`` -- identical glyphs for different modules, which is
+    worse than no label at all.  The last two path segments fit the box and
+    stay distinct, including for the packages that all carry an ``__init__.py``.
+    The full identifier is still carried in ``label`` for title and aria.
+    """
+
+    parts = PurePosixPath(file).parts
+    return "/".join(parts[-2:]) if len(parts) > 1 else (parts[-1] if parts else file)
+
+
+def _region_files(graph: Graph) -> dict[str, str]:
+    """The first file each region's members came from, in node id order."""
+
+    files: dict[str, str] = {}
+    for node in sorted(graph.nodes, key=lambda item: item.id):
+        files.setdefault(node.region, node.file)
+    return files
+
+
 def _architecture(graph: Graph) -> dict[str, object]:
     regions = {region.id: region for region in graph.regions}
+    region_files = _region_files(graph)
     region_ids = sorted(regions)
     home = next((region.id for region in graph.regions if region.home), None)
     routes = sorted(graph.region_edges, key=lambda edge: (edge.src, edge.dst))
@@ -118,6 +144,7 @@ def _architecture(graph: Graph) -> dict[str, object]:
                         "id": region_id,
                         "group": group_of[region_id],
                         "label": region_id,
+                        "short_label": _short_label(region_files.get(region_id, region_id)),
                         "language": region.language,
                         "layer": layer_index,
                         "column": column,

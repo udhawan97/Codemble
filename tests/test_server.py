@@ -882,7 +882,7 @@ def test_map_endpoint_serves_both_deterministic_layouts(client) -> None:  # type
     assert first.status_code == 200
     assert first.json() == second.json()
     payload = first.json()
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert payload["architecture"]["home"] == "app"
     assert payload["workflow"]["root"] == "app"
     assert {box["id"] for box in payload["architecture"]["boxes"]} == {

@@ -1,4 +1,116 @@
+import { useCallback, useRef, useState } from "react";
+
 import { nebulaTintKey } from "./graphData.js";
+
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 2.5;
+const ZOOM_STEP = 1.25;
+
+function clampZoom(scale) {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
+}
+
+/**
+ * The Map's answer to the galaxy's bounded orbit: zoom, fit, and drag-to-pan
+ * over a diagram far larger than the window. This project's architecture map is
+ * 960x2640, so a plain scroll box showed roughly four of its nine import layers
+ * and gave no way to see the shape of the whole thing.
+ *
+ * Panning rides the container's own scroll rather than a transform, so native
+ * scrollbars, wheel scrolling, keyboard scrolling and screen-reader behaviour
+ * all keep working. Zoom only scales the rendered size -- every coordinate
+ * inside the SVG is still the backend's, untouched, so this stays a pure
+ * renderer of graph-owned geometry.
+ */
+function MapCanvas({ contentWidth, contentHeight, label, children }) {
+  const scrollRef = useRef(null);
+  const [scale, setScale] = useState(1);
+  const [panning, setPanning] = useState(false);
+  const drag = useRef(null);
+
+  // Deliberately not run on mount. The map opens at true size, which already
+  // fits horizontally and is the only scale its labels are readable at; Fit is
+  // the zoom-out you ask for when you want the whole shape. Auto-fitting also
+  // measured the scroller before flex layout had settled and landed on a scale
+  // that was neither fitted nor honest.
+  const fit = useCallback(() => {
+    const box = scrollRef.current?.getBoundingClientRect();
+    if (!box || !contentWidth || !contentHeight) return;
+    setScale(clampZoom(Math.min(box.width / contentWidth, box.height / contentHeight)));
+  }, [contentWidth, contentHeight]);
+
+  function onPointerDown(event) {
+    // Left button on empty diagram space only: boxes and rows are buttons, and
+    // stealing their pointer would make the map look interactive but inert.
+    if (event.button !== 0 || event.target.closest("[role='button']")) return;
+    const scroller = scrollRef.current;
+    drag.current = {
+      x: event.clientX,
+      y: event.clientY,
+      left: scroller.scrollLeft,
+      top: scroller.scrollTop,
+    };
+    setPanning(true);
+    scroller.setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event) {
+    if (!drag.current) return;
+    const scroller = scrollRef.current;
+    scroller.scrollLeft = drag.current.left - (event.clientX - drag.current.x);
+    scroller.scrollTop = drag.current.top - (event.clientY - drag.current.y);
+  }
+
+  function endPan(event) {
+    if (!drag.current) return;
+    drag.current = null;
+    setPanning(false);
+    scrollRef.current?.releasePointerCapture?.(event.pointerId);
+  }
+
+  return (
+    <div className="map-canvas">
+      <div className="map-zoom" role="group" aria-label={`Zoom ${label}`}>
+        <button
+          type="button"
+          aria-label="Zoom out"
+          disabled={scale <= ZOOM_MIN}
+          onClick={() => setScale((value) => clampZoom(value / ZOOM_STEP))}
+        >
+          −
+        </button>
+        <button type="button" onClick={fit}>Fit</button>
+        <button type="button" onClick={() => setScale(1)}>
+          {Math.round(scale * 100)}%
+        </button>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          disabled={scale >= ZOOM_MAX}
+          onClick={() => setScale((value) => clampZoom(value * ZOOM_STEP))}
+        >
+          +
+        </button>
+      </div>
+      <div
+        ref={scrollRef}
+        className="map-scroll"
+        data-panning={panning || undefined}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+      >
+        <div
+          className="map-canvas__sized"
+          style={{ width: contentWidth * scale, height: contentHeight * scale }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Every coordinate here comes from GET /api/map. This file draws numbers and
 // decides nothing: no layout, no ordering, no layering happens client-side.
@@ -32,7 +144,10 @@ function architectureEdgeWidth(weight) {
 const BOX_LABEL_FONT_PX = 13;
 const BOX_LABEL_CHAR_EM = 0.62;
 const BOX_LABEL_X = 14;
-const BOX_LABEL_RIGHT_PAD = 10;
+// 6, not 10: at 13px monospace those four pixels are half a character, and the
+// difference decides whether `server/runtime.py` fits whole or loses its
+// extension to an ellipsis. The box outline is still clear of the glyphs.
+const BOX_LABEL_RIGHT_PAD = 6;
 
 function fitBoxLabel(label, boxWidth) {
   const available = boxWidth - BOX_LABEL_X - BOX_LABEL_RIGHT_PAD;
@@ -115,9 +230,17 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
   const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
   const padding = 32;
   return (
-    <div className="map-scroll">
+    <>
+    <MapCanvas
+      contentWidth={architecture.width + padding * 2}
+      contentHeight={architecture.height + padding * 2}
+      label="the architecture map"
+    >
       <svg
         className="architecture-map"
+        width="100%"
+        height="100%"
+        preserveAspectRatio="xMidYMin meet"
         viewBox={`${-padding} ${-padding} ${architecture.width + padding * 2} ${architecture.height + padding * 2}`}
         // group, not img: `img` is children-presentational in ARIA, so it
         // stripped the name and role off every box below -- a screen-reader
@@ -218,7 +341,13 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
                 d={`M ${box.width - 16} 2 L ${box.width - 2} 2 L ${box.width - 2} 16 Z`}
               />
             ) : null}
-            <text x={BOX_LABEL_X} y="24">{fitBoxLabel(box.label, box.width)}</text>
+            {/* short_label is the tail of the module's real path; `label` is
+                the full identifier and stays in <title> and aria-label above.
+                Truncating the dotted id instead used to render two different
+                modules as the same glyphs (codemble.server… twice). */}
+            <text x={BOX_LABEL_X} y="24">
+              {fitBoxLabel(box.short_label ?? box.label, box.width)}
+            </text>
             <text className="box-meta" x="14" y="42">
               {mode === "easy"
                 ? `${box.node_count} ${box.node_count === 1 ? "piece" : "pieces"}`
@@ -227,6 +356,10 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
           </g>
         ))}
       </svg>
+      </MapCanvas>
+      {/* Notes sit outside the zoom canvas: they are prose about the drawing,
+          so scaling them with it would shrink the explanation exactly when a
+          zoomed-out learner most needs to read it. */}
       {architecture.home ? null : (
         <p className="map-note">
           No Home is selected, so these layers run from the modules nothing else
@@ -248,7 +381,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
           in the bottom row rather than being placed by guesswork.
         </p>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -280,9 +413,17 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
   }
   const rows = new Map(workflow.nodes.map((row) => [row.order, row]));
   return (
-    <div className="map-scroll">
+    <>
+    <MapCanvas
+      contentWidth={workflow.width + 32}
+      contentHeight={workflow.height + 32}
+      label="the workflow tree"
+    >
       <svg
         className="workflow-tree"
+        width="100%"
+        height="100%"
+        preserveAspectRatio="xMinYMin meet"
         viewBox={`-16 -16 ${workflow.width + 32} ${workflow.height + 32}`}
         // group, not img -- see ArchitectureMap above: these rows are buttons.
         role="group"
@@ -347,6 +488,7 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
           </g>
         ))}
       </svg>
+      </MapCanvas>
       {workflow.unreachable.length ? (
         <p className="map-note">
           {workflow.unreachable.length}{" "}
@@ -355,6 +497,6 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
           than attached to the tree by guesswork.
         </p>
       ) : null}
-    </div>
+    </>
   );
 }

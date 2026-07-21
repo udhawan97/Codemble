@@ -18,8 +18,8 @@ def test_map_payload_is_byte_stable_for_one_graph() -> None:
     second = build_map(PythonAstAdapter().parse(FIXTURE))
 
     assert json.dumps(first, sort_keys=True) == json.dumps(second, sort_keys=True)
-    assert first["schema_version"] == 2
-    assert MAP_SCHEMA_VERSION == 2
+    assert first["schema_version"] == 3
+    assert MAP_SCHEMA_VERSION == 3
     assert all(len(edge["points"]) >= 2 for edge in first["architecture"]["edges"])
 
 
@@ -57,6 +57,66 @@ def test_architecture_groups_regions_by_source_directory() -> None:
     assert list(groups) == [".", "pkg", "runner"]
     assert groups["pkg"] == ["pkg", "pkg.helpers", "pkg.service", "pkg.util"]
     assert groups["runner"] == ["runner.__main__"]
+
+
+def test_box_short_label_names_the_file_not_the_dotted_region_id() -> None:
+    """A fixed-width box truncates, so what it truncates has to be the useful end.
+
+    ``codemble.server.app`` and ``codemble.server.runtime`` both rendered as
+    ``codemble.server…`` -- two different modules showing identical text, which
+    is worse than no label. The last two path segments fit the box and tell
+    them apart, while ``label`` keeps the full identifier for title and aria.
+    """
+
+    architecture = build_map(PythonAstAdapter().parse(FIXTURE))["architecture"]
+    short = {box["id"]: box["short_label"] for box in architecture["boxes"]}
+    full = {box["id"]: box["label"] for box in architecture["boxes"]}
+
+    assert short["pkg.service"] == "pkg/service.py"
+    assert short["pkg.util"] == "pkg/util.py"
+    assert short["app"] == "app.py", "a top-level file has no parent to prefix"
+    assert full["pkg.service"] == "pkg.service", "the full identity is still carried"
+    assert len({short["pkg.service"], short["pkg.util"], short["pkg.helpers"]}) == 3
+
+
+def test_short_labels_disambiguate_files_that_share_a_basename() -> None:
+    """Two packages, two __init__.py: the case a basename alone cannot survive."""
+
+    graph = finalize_graph(
+        Graph(
+            nodes=(
+                Node(
+                    id="pkg.alpha",
+                    kind="module",
+                    name="alpha",
+                    language="python",
+                    file="pkg/alpha/__init__.py",
+                    lineno=1,
+                    end_lineno=1,
+                    loc=1,
+                    region="pkg.alpha",
+                ),
+                Node(
+                    id="pkg.beta",
+                    kind="module",
+                    name="beta",
+                    language="python",
+                    file="pkg/beta/__init__.py",
+                    lineno=1,
+                    end_lineno=1,
+                    loc=1,
+                    region="pkg.beta",
+                ),
+            ),
+            edges=(),
+            entrypoint_candidates=(),
+            project_root="/project",
+            file_hashes={"pkg/alpha/__init__.py": "a", "pkg/beta/__init__.py": "b"},
+        )
+    )
+    boxes = {box["id"]: box["short_label"] for box in build_map(graph)["architecture"]["boxes"]}
+
+    assert boxes == {"pkg.alpha": "alpha/__init__.py", "pkg.beta": "beta/__init__.py"}
 
 
 def test_architecture_edges_keep_parser_certainty_and_weight() -> None:

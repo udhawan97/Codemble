@@ -2074,15 +2074,69 @@ input:focus-visible {
   color: var(--cm-ink);
 }
 
+.map-canvas {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.map-zoom {
+  position: absolute;
+  z-index: var(--cm-z-raised);
+  inset-block-start: var(--cm-space-sm);
+  inset-inline-end: var(--cm-space-sm);
+  display: flex;
+  gap: 1px;
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+}
+
+.map-zoom button {
+  min-width: 34px;
+  min-height: 30px;
+  border: 0;
+  background: none;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.map-zoom button:hover:not(:disabled),
+.map-zoom button:focus-visible {
+  color: var(--cm-orbit);
+}
+
+.map-zoom button:disabled {
+  color: var(--cm-ink-3);
+  cursor: default;
+}
+
 .map-scroll {
   flex: 1 1 auto;
   overflow: auto;
+  /* Grab, not text: dragging empty diagram space pans, so the cursor has to
+     promise that rather than a selection the drag never makes. */
+  cursor: grab;
+}
+
+.map-scroll[data-panning] {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.map-canvas__sized {
+  /* The zoomed drawing's box. Its size is the only thing zoom changes -- every
+     coordinate inside the SVG stays exactly as the backend computed it. */
+  min-width: 100%;
 }
 
 .architecture-map,
 .workflow-tree {
-  width: 100%;
-  height: auto;
+  display: block;
   min-height: 0;
 }
 

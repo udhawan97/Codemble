@@ -33,6 +33,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   left half of the view is now one line of text (`90 systems · 22 charted`), the
   module path at system level lives in the breadcrumb instead of wrapping across
   three lines, and the twelve-row legend is behind a **Key** button.
+- **Map boxes say which module they are.** A box is a fixed width, and it used
+  to truncate the dotted module id — so `codemble.server.app` and
+  `codemble.server.runtime` both read `codemble.server…`, two different modules
+  showing identical text. Boxes are now named by the tail of their real path
+  (`server/app.py`, `server/runtime.py`); the full identifier is still in the
+  tooltip and read out to screen readers.
+- **You can zoom and pan the Map.** The architecture diagram is far taller than
+  the window — on this project, nine import layers of which about four were
+  visible. Zoom in and out, drag empty space to pan, or press **Fit** to see the
+  whole shape at once. Every coordinate is still the one the backend computed;
+  zoom only changes how large it is drawn.
 - The 2D Architecture map is now a deterministic layered diagram rather than
   a straight-line grid: four barycenter sweeps reduce import-edge crossings,
   backend-assigned ports keep fan-out distinct, weighted arrowed paths expose
