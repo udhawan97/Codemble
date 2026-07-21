@@ -11,6 +11,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   backend-assigned ports keep fan-out distinct, weighted arrowed paths expose
   direction, and cycles or long routes travel around the diagram flank. Possible
   relationships remain dashed, and React still consumes graph-owned geometry.
+- Galaxy systems now form deterministic constellations from parser-proven
+  import communities instead of scattering solely by identifier hash. The
+  additive `community` region field is exposed in graph schema 5 for later
+  renderers, while progress, Home, and system-internal orbital layout stay
+  unchanged.
 
 ## [0.5.3] - 2026-07-21
 

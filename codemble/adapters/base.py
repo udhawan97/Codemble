@@ -89,6 +89,7 @@ class Region:
     x: float
     y: float
     z: float
+    community: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,7 +116,7 @@ class Graph:
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
-    schema_version: int = field(default=4, init=False)
+    schema_version: int = field(default=5, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""

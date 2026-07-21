@@ -24,22 +24,66 @@ def layout_graph(graph: Graph) -> Graph:
     for node in graph.nodes:
         grouped[node.region].append(node)
 
-    region_order = sorted(grouped, key=lambda region_id: (_digest(region_id), region_id))
-    regions: list[Region] = []
-    positioned_nodes: list[Node] = []
     node_by_id = {node.id: node for node in graph.nodes}
 
-    for region_index, region_id in enumerate(region_order):
+    routes: dict[tuple[str, str], list[bool]] = defaultdict(list)
+    for edge in graph.edges:
+        if edge.kind != "import" or edge.external:
+            continue
+        src_node = node_by_id.get(edge.src)
+        dst_node = node_by_id.get(edge.dst)
+        if src_node is None or dst_node is None or src_node.region == dst_node.region:
+            continue
+        routes[(src_node.region, dst_node.region)].append(edge.certain)
+
+    # ``all``, deliberately, where ``mapview.py``'s ``_workflow`` uses ``any``
+    # for a call pair.  The two marks claim different things.  A workflow row
+    # asserts only that a relationship exists, so one proven call site settles
+    # it and the ambiguous ones beside it change nothing.  A route is a single
+    # line standing in for ``weight`` imports, so calling it certain asserts
+    # every one of them: one unproven import among them and the whole route
+    # drops to possible.  Under-claiming is the only direction that is safe
+    # when one mark speaks for many edges.
+    region_edges = tuple(
+        RegionEdge(src=src, dst=dst, weight=len(certainties), certain=all(certainties))
+        for (src, dst), certainties in sorted(routes.items())
+    )
+
+    region_order = sorted(grouped, key=lambda region_id: (_digest(region_id), region_id))
+    communities = _communities(tuple(grouped), region_edges)
+    community_members: dict[int, list[str]] = defaultdict(list)
+    for region_id in region_order:
+        community_members[communities[region_id]].append(region_id)
+
+    region_positions: dict[str, tuple[float, float, float]] = {}
+    cumulative_members = 0
+    for community in sorted(community_members):
+        members = community_members[community]
+        community_angle = community * _GOLDEN_ANGLE
+        community_radius = 42.0 + 54.0 * math.sqrt(cumulative_members)
+        community_x = math.cos(community_angle) * community_radius
+        community_z = math.sin(community_angle) * community_radius
+        for member_index, region_id in enumerate(members):
+            local_angle = (
+                member_index * _GOLDEN_ANGLE
+                + _fraction(region_id, "phase") * 0.18
+            )
+            local_radius = 16.0 + 12.0 * math.sqrt(member_index)
+            region_positions[region_id] = (
+                _rounded(community_x + math.cos(local_angle) * local_radius),
+                _rounded(((_fraction(region_id, "height") * 2.0) - 1.0) * 28.0),
+                _rounded(community_z + math.sin(local_angle) * local_radius),
+            )
+        cumulative_members += len(members)
+
+    regions: list[Region] = []
+    positioned_nodes: list[Node] = []
+    for region_id in region_order:
         members = sorted(
             grouped[region_id],
             key=lambda node: (node.kind != "module", node.id),
         )
-        region_angle = region_index * _GOLDEN_ANGLE + _fraction(region_id, "phase") * 0.18
-        region_radius = 42.0 + 54.0 * math.sqrt(region_index)
-        region_x = _rounded(math.cos(region_angle) * region_radius)
-        region_y = _rounded(((_fraction(region_id, "height") * 2.0) - 1.0) * 28.0)
-        region_z = _rounded(math.sin(region_angle) * region_radius)
-
+        region_x, region_y, region_z = region_positions[region_id]
         module_nodes = [node for node in members if node.kind == "module"]
         loc = sum(node.loc for node in module_nodes) or sum(node.loc for node in members)
         regions.append(
@@ -54,6 +98,7 @@ def layout_graph(graph: Graph) -> Graph:
                 x=region_x,
                 y=region_y,
                 z=region_z,
+                community=communities[region_id],
             )
         )
 
@@ -85,34 +130,58 @@ def layout_graph(graph: Graph) -> Graph:
                     )
                 )
 
-    routes: dict[tuple[str, str], list[bool]] = defaultdict(list)
-    for edge in graph.edges:
-        if edge.kind != "import" or edge.external:
-            continue
-        src_node = node_by_id.get(edge.src)
-        dst_node = node_by_id.get(edge.dst)
-        if src_node is None or dst_node is None or src_node.region == dst_node.region:
-            continue
-        routes[(src_node.region, dst_node.region)].append(edge.certain)
-
-    # ``all``, deliberately, where ``mapview.py``'s ``_workflow`` uses ``any``
-    # for a call pair.  The two marks claim different things.  A workflow row
-    # asserts only that a relationship exists, so one proven call site settles
-    # it and the ambiguous ones beside it change nothing.  A route is a single
-    # line standing in for ``weight`` imports, so calling it certain asserts
-    # every one of them: one unproven import among them and the whole route
-    # drops to possible.  Under-claiming is the only direction that is safe
-    # when one mark speaks for many edges.
-    region_edges = tuple(
-        RegionEdge(src=src, dst=dst, weight=len(certainties), certain=all(certainties))
-        for (src, dst), certainties in sorted(routes.items())
-    )
     return replace(
         graph,
         nodes=tuple(sorted(positioned_nodes, key=lambda node: node.id)),
         regions=tuple(sorted(regions, key=lambda region: region.id)),
         region_edges=region_edges,
     )
+
+
+def _communities(
+    region_ids: tuple[str, ...], routes: tuple[RegionEdge, ...]
+) -> dict[str, int]:
+    """Find deterministic import communities with label propagation.
+
+    Label propagation after Raghavan, Albert & Kumara (2007), "Near linear
+    time algorithm to detect community structures in large-scale networks";
+    constellation idea inspired by graphify. Implemented independently; no
+    code copied.
+    """
+
+    ordered = sorted(region_ids)
+    neighbors: dict[str, set[str]] = {region_id: set() for region_id in ordered}
+    for route in sorted(routes, key=lambda edge: (edge.src, edge.dst)):
+        if route.src not in neighbors or route.dst not in neighbors or route.src == route.dst:
+            continue
+        neighbors[route.src].add(route.dst)
+        neighbors[route.dst].add(route.src)
+
+    labels = {region_id: index for index, region_id in enumerate(ordered)}
+    for _ in range(10):
+        next_labels = dict(labels)
+        for region_id in ordered:
+            if not neighbors[region_id]:
+                continue
+            frequencies: dict[int, int] = defaultdict(int)
+            for neighbor in sorted(neighbors[region_id]):
+                frequencies[labels[neighbor]] += 1
+            highest = max(frequencies.values())
+            next_labels[region_id] = min(
+                label for label, count in frequencies.items() if count == highest
+            )
+        if next_labels == labels:
+            break
+        labels = next_labels
+
+    dense_labels: dict[int, int] = {}
+    communities: dict[str, int] = {}
+    for region_id in ordered:
+        label = labels[region_id]
+        if label not in dense_labels:
+            dense_labels[label] = len(dense_labels)
+        communities[region_id] = dense_labels[label]
+    return communities
 
 
 def _call_depths(members: list[Node], edges: tuple[Edge, ...]) -> dict[str, int]:

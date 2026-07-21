@@ -234,6 +234,9 @@ fix, which lived in files the branch never touched. The Architecture map now
 uses deterministic barycenter ordering and backend-routed, directional,
 weight-scaled SVG paths; cycle and long-span routes use clear flank corridors,
 while possible relationships remain dashed and React remains a pure renderer.
+Galaxy regions now place in deterministic constellations derived only from
+parser-proven import communities, with the community ID exposed in graph schema
+5 and progress signatures remaining coordinate-independent.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -466,6 +469,7 @@ to before the index change.
 | 2026-07-20 | Phase C adds `DELETE /api/progress`, the `CLEAR_PROGRESS` session event, and a `clearProgress` adapter method beyond the shared contract's Phase C rows | The contract's Phase C rows covered parse progress only, while the no-reset-progress-control gap is mapped to Phase C by the spec; recorded here rather than silently widened |
 | 2026-07-20 | Generated check suites are pinned by a committed golden fixture before any performance work touches `checks/service.py` | The Correctness Contract makes suite drift top-severity, and a refactor that changes an answer is invisible without a byte-level pin |
 | 2026-07-20 | Architecture map edges get backend-computed ports, barycenter ordering, arrowheads, and weight-scaled strokes; `MAP_SCHEMA_VERSION` 2; directory groups stay payload metadata | Within-layer order was arbitrary and direction was invisible in 2D while being parser truth; ordering stays deterministic (fixed sweeps, sorted ties); group containers wait for hierarchical layout |
+| 2026-07-20 | Galaxy regions place by deterministic import-community constellations (pure-Python label propagation in `layout.py`); `community` is an additive Region field; layout bytes change once | Hash-order placement scattered coupled modules; communities are parser-truth-derived and deterministic; progress signatures hash file content so nothing re-dims (M12 precedent) |
 
 ## Non-Goals — do NOT build (point here when asked)
 

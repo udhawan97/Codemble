@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
@@ -108,6 +110,60 @@ def test_centrality_counts_distinct_callers_not_call_sites() -> None:
     assert next(region for region in graph.regions if region.id == "lib").centrality == 3
 
 
+def test_import_communities_are_deterministic_and_match_two_joined_cliques() -> None:
+    draft = _community_fixture()
+
+    first = finalize_graph(draft)
+    second = finalize_graph(draft)
+    communities = {region.id: region.community for region in first.regions}
+
+    assert first.to_json() == second.to_json()
+    assert {communities[region_id] for region_id in ("a0", "a1", "a2")} == {0}
+    assert {communities[region_id] for region_id in ("b0", "b1", "b2")} == {1}
+    assert len(set(communities.values())) == 2
+
+
+def test_constellations_keep_same_community_regions_closer() -> None:
+    graph = finalize_graph(_community_fixture())
+    regions = {region.id: region for region in graph.regions}
+    points = {
+        region_id: (region.x, region.y, region.z)
+        for region_id, region in regions.items()
+    }
+    within: list[float] = []
+    between: list[float] = []
+    region_ids = sorted(regions)
+    for index, first in enumerate(region_ids):
+        for second in region_ids[index + 1 :]:
+            bucket = (
+                within
+                if regions[first].community == regions[second].community
+                else between
+            )
+            bucket.append(math.dist(points[first], points[second]))
+
+    assert sum(within) / len(within) < sum(between) / len(between)
+
+
+def test_isolated_region_gets_its_own_finite_constellation_position() -> None:
+    draft = _community_fixture(include_isolated=True)
+
+    graph = finalize_graph(draft)
+    isolated = next(region for region in graph.regions if region.id == "isolated")
+
+    assert isolated.community not in {
+        region.community for region in graph.regions if region.id != "isolated"
+    }
+    assert all(math.isfinite(value) for value in (isolated.x, isolated.y, isolated.z))
+
+
+def test_region_community_is_serialized_in_graph_schema_five() -> None:
+    payload = finalize_graph(_community_fixture()).to_dict()
+
+    assert payload["schema_version"] == 5
+    assert all(isinstance(region["community"], int) for region in payload["regions"])
+
+
 def test_finalization_rejects_a_home_without_parser_evidence() -> None:
     draft = Graph(
         nodes=(_node("app", region="app", rank=0),),
@@ -119,3 +175,26 @@ def test_finalization_rejects_a_home_without_parser_evidence() -> None:
 
     with pytest.raises(GraphFinalizationError, match="not parser-ranked"):
         finalize_graph(draft, entrypoint="missing")
+
+
+def _community_fixture(*, include_isolated: bool = False) -> Graph:
+    first = ("a0", "a1", "a2")
+    second = ("b0", "b1", "b2")
+    region_ids = first + second + (("isolated",) if include_isolated else ())
+    clique_routes = tuple(
+        (members[index], members[target])
+        for members in (first, second)
+        for index in range(len(members))
+        for target in range(index + 1, len(members))
+    )
+    routes = clique_routes + (("a2", "b0"),)
+    return Graph(
+        nodes=tuple(_node(region_id, region=region_id) for region_id in region_ids),
+        edges=tuple(
+            Edge(src=src, dst=dst, kind="import", certain=True, lineno=1)
+            for src, dst in routes
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={f"{region_id}.py": region_id for region_id in region_ids},
+    )

@@ -1,7 +1,7 @@
 # OSS-inspired upgrades: Architecture map SVG + galaxy constellations
 
-Date: 2026-07-20 · Status: proposal (needs UD approval; Decision Log rows are
-drafted below and land only with the implementation)
+Date: 2026-07-20 · Status: implemented in two ordered branches; Task 1 merged
+before Task 2 began, with both Decision Log rows landed alongside the code
 
 Companion research file (per-project findings with citations):
 `docs/research/2026-07-20-opensource-graph-architecture-inspiration.md`
