@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-07-21
+
+### Fixed
+- **The first-run audience question is visible on a fresh narrow window.**
+  v0.6.1 moved the audience control into the compact Menu, but its native modal
+  stayed inside that closed disclosure. The browser opened an invisible modal
+  backdrop that blocked the page. The gate now portals directly to the document
+  top layer while the post-choice Easy/Expert toggle remains in the Menu.
+
 ## [0.6.1] - 2026-07-21
 
 ### Fixed
