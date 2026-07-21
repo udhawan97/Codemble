@@ -39,6 +39,10 @@ In a mixed project, the chart follows the current language focus. This changes
 only the rows and session counts you are viewing; the underlying project graph
 and persisted understanding remain intact when you return to **All**.
 
+**Modules** and **Find** remain available while the chart is open. The module
+index opens beside the chart, and `⌘K` / `Ctrl-K` opens the same project-wide
+finder used by the Map and Galaxy, including modules not yet charted.
+
 "Studied" counts the structures you have opened **in this session** and resets
 when you reload — that is deliberate. Opening a file is not evidence that you
 understood it, so only "Understood", which comes from passing graph-derived

@@ -26,6 +26,8 @@ import {
 import { PARSE_STAGES } from "./projectMapping.js";
 
 export function App() {
+  const mobileMenuRef = useRef(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const session = useMemo(
     () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
     [],
@@ -241,102 +243,147 @@ export function App() {
             </>
           )}
         </nav>
-        <div className="rail-actions">
-          <button
-            className="rail-action"
-            type="button"
-            aria-pressed={sidebarOpen}
-            onClick={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
-          >
-            Modules
-          </button>
-          <button
-            className="rail-action"
-            type="button"
-            onClick={() => session.dispatch({ type: "SET_FINDER_OPEN", open: true })}
-          >
-            Find <kbd>⌘K</kbd>
-          </button>
-          {showChart ? (
-            <button
-              className="rail-action"
-              type="button"
-              onClick={() => session.dispatch({ type: "HIDE_CHART" })}
-            >
-              Return to galaxy
-            </button>
-          ) : level !== LEVELS.GALAXY ? (
-            <button
-              className="rail-action"
-              type="button"
-              onClick={() => session.dispatch({ type: "RETREAT" })}
-            >
-              {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
-            </button>
-          ) : (
-            <button
-              className="rail-action"
-              type="button"
-              onClick={() => session.dispatch({ type: "SHOW_CHART" })}
-            >
-              Star chart
-            </button>
-          )}
-          {graph.entrypoint_candidates.length ? (
-            <button
-              className="rail-action"
-              type="button"
-              onClick={() => session.dispatch({ type: "CHANGE_HOME" })}
-            >
-              Change Home
-            </button>
-          ) : null}
-          <SwitchProject onConfirm={() => session.dispatch({ type: "RESET_PROJECT" })} />
-        </div>
-        <div className="rail-controls">
-          {/* A view preference over the immutable graph, exactly like language
-              focus: it changes how much sky is drawn, never what the parser
-              found. Galaxy-only, because reveal is a galaxy affordance. */}
-          {layer === "galaxy" ? (
-            <button
-              className="rail-action rail-action--toggle"
-              type="button"
-              aria-pressed={showAll}
-              title="Draw every module at once, including the ones no route from Home reaches"
-              onClick={() => session.dispatch({ type: "TOGGLE_SHOW_ALL" })}
-            >
-              Show all
-            </button>
-          ) : null}
-          <LayerSwitcher
-            layer={layer}
-            mode={mode}
-            onChange={(next) => session.dispatch({ type: "SET_LAYER", layer: next })}
-          />
-          <LanguageFocus
-            options={languageOptions}
-            value={languageFocus}
-            onChange={(language) =>
-              session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
+        <div
+          className="rail-overflow"
+          data-open={mobileMenuOpen || undefined}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && mobileMenuOpen) {
+              event.preventDefault();
+              setMobileMenuOpen(false);
+              mobileMenuRef.current?.focus();
             }
-          />
-          <ModeControl
-            mode={mode}
-            modeChosen={modeChosen}
-            onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
-          />
+          }}
+        >
+          <button
+            ref={mobileMenuRef}
+            className="mobile-menu-trigger"
+            type="button"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="rail-overflow-panel"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            Menu
+          </button>
+          <div
+            className="rail-overflow__panel"
+            id="rail-overflow-panel"
+            onClickCapture={(event) => {
+              if (
+                event.target.closest("button") &&
+                !event.target.closest(".switch-project")
+              ) {
+                setMobileMenuOpen(false);
+              }
+            }}
+          >
+            <div className="rail-actions">
+              <button
+                className="rail-action"
+                type="button"
+                aria-pressed={sidebarOpen}
+                onClick={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
+              >
+                Modules
+              </button>
+              <button
+                className="rail-action"
+                type="button"
+                onClick={() => session.dispatch({ type: "SET_FINDER_OPEN", open: true })}
+              >
+                Find <kbd>⌘K</kbd>
+              </button>
+              {showChart ? (
+                <button
+                  className="rail-action"
+                  type="button"
+                  onClick={() => session.dispatch({ type: "HIDE_CHART" })}
+                >
+                  Return to galaxy
+                </button>
+              ) : level !== LEVELS.GALAXY ? (
+                <button
+                  className="rail-action"
+                  type="button"
+                  onClick={() => session.dispatch({ type: "RETREAT" })}
+                >
+                  {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
+                </button>
+              ) : (
+                <button
+                  className="rail-action"
+                  type="button"
+                  onClick={() => session.dispatch({ type: "SHOW_CHART" })}
+                >
+                  Star chart
+                </button>
+              )}
+              {graph.entrypoint_candidates.length ? (
+                <button
+                  className="rail-action"
+                  type="button"
+                  onClick={() => session.dispatch({ type: "CHANGE_HOME" })}
+                >
+                  Change Home
+                </button>
+              ) : null}
+              <SwitchProject onConfirm={() => session.dispatch({ type: "RESET_PROJECT" })} />
+            </div>
+            <div className="rail-controls">
+              {/* A view preference over the immutable graph, exactly like language
+                  focus: it changes how much sky is drawn, never what the parser
+                  found. Galaxy-only, because reveal is a galaxy affordance. */}
+              {layer === "galaxy" ? (
+                <button
+                  className="rail-action rail-action--toggle"
+                  type="button"
+                  aria-pressed={showAll}
+                  title="Draw every module at once, including the ones no route from Home reaches"
+                  onClick={() => session.dispatch({ type: "TOGGLE_SHOW_ALL" })}
+                >
+                  Show all
+                </button>
+              ) : null}
+              <LayerSwitcher
+                layer={layer}
+                mode={mode}
+                onChange={(next) => session.dispatch({ type: "SET_LAYER", layer: next })}
+              />
+              <LanguageFocus
+                options={languageOptions}
+                value={languageFocus}
+                onChange={(language) =>
+                  session.dispatch({ type: "SET_LANGUAGE_FOCUS", language })
+                }
+              />
+              <ModeControl
+                mode={mode}
+                modeChosen={modeChosen}
+                onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
+              />
+            </div>
+          </div>
         </div>
       </header>
 
       {showChart ? (
-        <StarChart
-          chart={chart}
-          studiedCount={focusedStudiedCount}
-          projectName={projectName}
-          onClearProgress={() => session.dispatch({ type: "CLEAR_PROGRESS" })}
-        />
+        <section className="chart-stage" aria-label="Language concept progress">
+          {sidebarOpen ? (
+            <IndexSidebar
+              index={moduleIndex}
+              currentRegionId={null}
+              onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
+              onClose={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
+            />
+          ) : null}
+          <StarChart
+            chart={chart}
+            studiedCount={focusedStudiedCount}
+            projectName={projectName}
+            onClearProgress={() => session.dispatch({ type: "CLEAR_PROGRESS" })}
+          />
+        </section>
       ) : (
-      <section className="map-stage" aria-label="Parser-proven project map">
+        <section className="map-stage" aria-label="Parser-proven project map">
         {sidebarOpen ? (
           <IndexSidebar
             index={moduleIndex}
@@ -537,32 +584,34 @@ export function App() {
             }
           />
         ) : null}
-        {/* Gated on modeChosen === true so the audience gate (shown while
-            modeChosen === false) resolves first and onboarding follows it as
-            one sequence: on a genuine first run both are native <dialog>s and
-            would otherwise stack, the gate's backdrop over the coach-marks. */}
-        {modeChosen === true && !coachmarksSeen ? (
+        {/* First-run work is one ordered sequence: audience, then the
+            parser-required Home choice (when ambiguous), then coaching over
+            the final layer. Two native dialogs may never compete for focus. */}
+        {modeChosen === true && !entrypointOpen && !coachmarksSeen ? (
           <CoachMarks
             layer={layer}
             onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })}
           />
         ) : null}
-        {/* Mounted last so its modal backdrop sits over the stage, and gated on
-            the coach-marks being done for the same reason the coach-marks are
-            gated on the audience gate: two <dialog>s open at once stack. */}
-        {finderOpen ? (
-          <ModuleFinder
-            index={moduleIndex}
-            onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
-            onClose={() => session.dispatch({ type: "SET_FINDER_OPEN", open: false })}
-          />
-        ) : null}
+      </section>
+      )}
+
+      {/* Find is a global command promised by the header and Cmd/Ctrl-K. Keep
+          its modal outside the Map/Star-chart branch so the command is never
+          accepted into state without a surface to render it. */}
+      {finderOpen ? (
+        <ModuleFinder
+          index={moduleIndex}
+          onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
+          onClose={() => session.dispatch({ type: "SET_FINDER_OPEN", open: false })}
+        />
+      ) : null}
+      {!showChart ? (
         <HintChip
           hint={hint}
           onStudy={(regionId) => session.dispatch({ type: "ADVANCE_REGION", regionId })}
         />
-      </section>
-      )}
+      ) : null}
 
       <footer className="status-line">
         <span>

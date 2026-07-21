@@ -42,12 +42,14 @@ input:focus-visible {
 }
 
 .app-shell {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   width: 100%;
+  height: 100dvh;
   min-height: 100dvh;
-  overflow-x: clip;
+  overflow: hidden;
   background: var(--cm-ground);
   color: var(--cm-ink);
 }
@@ -58,13 +60,14 @@ input:focus-visible {
   display: grid;
   min-width: 0;
   max-width: 100%;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--cm-space-sm) var(--cm-space-md);
   padding: var(--cm-space-sm) max(var(--cm-space-md), env(safe-area-inset-right))
     var(--cm-space-sm) max(var(--cm-space-md), env(safe-area-inset-left));
   border-block-end: 1px solid var(--cm-hairline);
   background: var(--cm-ground);
+  grid-row: 1;
 }
 
 .brand-lockup {
@@ -106,8 +109,60 @@ input:focus-visible {
 
 .location {
   grid-column: 1 / -1;
-  grid-row: 3;
+  grid-row: 2;
   margin: 0;
+}
+
+/* Mobile gets the identity and location, then the learning surface. Every
+   secondary command remains available at its full 44px target inside one
+   compact disclosure instead of turning the header into four wrapping rows. */
+.rail-overflow {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.mobile-menu-trigger {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  padding-inline: var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  color: var(--cm-orbit);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rail-overflow__panel {
+  position: absolute;
+  z-index: var(--cm-z-panel);
+  inset-block-start: 100%;
+  inset-inline: 0;
+  display: none;
+  gap: var(--cm-space-md);
+  max-height: calc(100dvh - 5rem);
+  overflow-y: auto;
+  padding: var(--cm-space-md);
+  border-block: 1px solid var(--cm-hairline);
+  background: var(--cm-ground-2);
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.38);
+}
+
+.rail-overflow[data-open] .rail-overflow__panel {
+  display: grid;
+}
+
+.instrument-rail:has(.rail-overflow[data-open]) {
+  z-index: var(--cm-z-panel);
+}
+
+.rail-overflow__panel .rail-actions,
+.rail-overflow__panel .rail-controls {
+  grid-column: auto;
+  grid-row: auto;
+  justify-content: start;
 }
 
 .rail-action {
@@ -421,6 +476,20 @@ input:focus-visible {
   min-height: 0;
   overflow: clip;
   background: var(--cm-ground);
+  grid-row: 2;
+}
+
+.chart-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--cm-ground);
+  grid-row: 2;
+}
+
+.chart-stage .star-chart-screen {
+  height: 100%;
 }
 
 .galaxy-frame,
@@ -1735,10 +1804,18 @@ input:focus-visible {
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
   font-variant-numeric: tabular-nums;
+  grid-row: 4;
 }
 
 .status-line span {
   white-space: normal;
+}
+
+/* The movement sentence is useful beside the stage on larger screens. At a
+   phone width it doubles the footer height while the same controls are visible
+   in the stage and Menu, so keep the two durable facts: counts and local-only. */
+.status-line span:nth-child(2) {
+  display: none;
 }
 
 .load-state,
@@ -1801,6 +1878,19 @@ input:focus-visible {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
+  .rail-overflow {
+    display: contents;
+  }
+
+  .mobile-menu-trigger {
+    display: none;
+  }
+
+  .rail-overflow__panel {
+    position: static;
+    display: contents;
+  }
+
   .location {
     grid-column: 2;
     grid-row: 1;
@@ -1823,6 +1913,7 @@ input:focus-visible {
   }
 
   .status-line span {
+    display: inline;
     white-space: nowrap;
   }
 
@@ -1847,6 +1938,15 @@ input:focus-visible {
     max-height: none;
     border-block-start: 0;
     border-inline-start: 1px solid var(--cm-hairline);
+  }
+}
+
+@media (max-width: 39.999rem) {
+  .study-preview,
+  .check-panel {
+    inset: 0;
+    max-height: none;
+    border-block-start: 0;
   }
 }
 
@@ -1876,6 +1976,10 @@ input:focus-visible {
      aria-expanded while the panel stayed permanently open. */
   .map-legend:not([hidden]) {
     display: grid;
+  }
+
+  .chart-stage:has(.index-sidebar) .star-chart-screen {
+    margin-inline-start: var(--cm-sidebar-width);
   }
 }
 
@@ -2296,16 +2400,16 @@ input:focus-visible {
 }
 
 .hint-chip {
-  position: absolute;
+  position: static;
   z-index: var(--cm-z-raised);
-  inset-inline-start: var(--cm-space-md);
-  inset-block-end: var(--cm-space-md);
   display: flex;
+  grid-row: 3;
+  min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--cm-space-sm);
   padding: var(--cm-space-sm) var(--cm-space-md);
-  border: 1px solid var(--cm-orbit);
-  border-radius: var(--cm-radius);
+  border-block: 1px solid var(--cm-orbit);
   background: var(--cm-ground-2);
   color: var(--cm-ink);
   font-size: var(--cm-text-sm);
@@ -2325,6 +2429,18 @@ input:focus-visible {
   color: var(--cm-orbit);
   font-size: var(--cm-text-xs);
   cursor: pointer;
+}
+
+@media (min-width: 40rem) {
+  .hint-chip {
+    position: absolute;
+    inset-inline-start: var(--cm-space-md);
+    inset-block-end: calc(3.5rem + var(--cm-space-md));
+    grid-row: auto;
+    max-width: calc(100% - var(--cm-space-lg));
+    border: 1px solid var(--cm-orbit);
+    border-radius: var(--cm-radius);
+  }
 }
 
 .location button {
