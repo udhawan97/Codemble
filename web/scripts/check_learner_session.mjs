@@ -1207,12 +1207,15 @@ assert.equal(
 narrationFailureSession.dispose();
 
 // A refused reset must surface to the caller and leave the project bound.
+// `status` is what makes this a *refusal* rather than an unreachable server:
+// createHttpLearnerSessionAdapter stamps it on every error it raises from a
+// real HTTP response, and resetProject() keys the two failure modes off it.
 const refusedResetAdapter = createInMemoryLearnerSessionAdapter({ graph });
 const refusedResetSession = createLearnerSession({
   adapter: {
     ...refusedResetAdapter,
     resetProject() {
-      throw new Error("Project reset returned 409.");
+      throw httpRefusal("Project reset returned 409.", 409);
     },
   },
   clock,
@@ -1902,6 +1905,210 @@ assert.equal(cancelSnapshot.parseProgress, null);
 assert.equal(pendingTimers.size, 0, "reset cancels the scheduled poll");
 cancelSession.dispose();
 
+// Regression: the escape hatch must not depend on the server it is escaping.
+// A learner watching a parse whose server has died sees the poll fail forever;
+// "Cancel and pick another project" is their only way out, and it used to run
+// the local teardown *after* awaiting the reset request -- so when that request
+// rejected, stopPolling() and the commit that returns to the picker were both
+// skipped and the learner was trapped on the loading screen with no way back.
+{
+  const strandedAdapter = createInMemoryLearnerSessionAdapter(parseFixture());
+  const strandedSession = createLearnerSession({
+    adapter: {
+      ...strandedAdapter,
+      // Not a refusal: no HTTP response ever arrived, which is exactly what a
+      // killed server looks like from the browser.
+      resetProject() {
+        return Promise.reject(networkFailure());
+      },
+    },
+    clock,
+  });
+  await strandedSession.start();
+  await strandedSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+  assert.equal(
+    strandedSession.getSnapshot().parseProgress.stage,
+    "discovering",
+    "setup: the learner really is on the loading screen",
+  );
+  assert.equal(pendingTimers.size, 1, "setup: the poll loop really is running");
+
+  await strandedSession.dispatch({ type: "RESET_PROJECT" });
+  const strandedSnapshot = strandedSession.getSnapshot();
+  assert.equal(
+    strandedSnapshot.parseProgress,
+    null,
+    "an unreachable server must not keep the learner on the loading screen",
+  );
+  assert.equal(
+    pendingTimers.size,
+    0,
+    "the local teardown runs even when the reset request never reaches a server",
+  );
+  assert.equal(
+    strandedSnapshot.status,
+    "picking",
+    "cancelling against a dead reset endpoint still returns the learner to the picker",
+  );
+  strandedSession.dispose();
+}
+
+// The whole-server-gone case: every endpoint is unreachable, so start() cannot
+// rebuild the picker either. The learner must still leave the loading screen,
+// and the screen they land on must say what is actually wrong -- "Failed to
+// fetch" is the browser's words for it and names nothing they can act on.
+{
+  // Alive through the setup, then killed mid-parse -- the learner's exact
+  // sequence, and the only way the loading screen is reachable at all.
+  let serverDead = false;
+  const deadServerBase = createInMemoryLearnerSessionAdapter(parseFixture());
+  const whenAlive = (method) => (...args) =>
+    serverDead ? Promise.reject(networkFailure()) : deadServerBase[method](...args);
+  const deadServerSession = createLearnerSession({
+    adapter: {
+      ...deadServerBase,
+      resetProject: whenAlive("resetProject"),
+      loadPickerState: whenAlive("loadPickerState"),
+      loadGraph: whenAlive("loadGraph"),
+      browsePicker: whenAlive("browsePicker"),
+      loadRecents: whenAlive("loadRecents"),
+    },
+    clock,
+  });
+  await deadServerSession.start();
+  await deadServerSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+  assert.equal(deadServerSession.getSnapshot().parseProgress.stage, "discovering");
+  serverDead = true;
+
+  await deadServerSession.dispatch({ type: "RESET_PROJECT" });
+  const deadSnapshot = deadServerSession.getSnapshot();
+  assert.equal(
+    deadSnapshot.parseProgress,
+    null,
+    "a completely unreachable server still lets the learner off the loading screen",
+  );
+  assert.equal(pendingTimers.size, 0, "and stops the poll loop on the way out");
+  assert.equal(deadSnapshot.status, "error");
+  assert.match(
+    deadSnapshot.error,
+    /local server/i,
+    "the error names the local server rather than repeating the browser's 'Failed to fetch'",
+  );
+  assert.match(
+    deadSnapshot.error,
+    /codemble/i,
+    "and tells the learner the one command that brings it back",
+  );
+  deadServerSession.dispose();
+}
+
+// The other half of the same distinction: a server that answered and refused
+// still holds the project, so the app must stay exactly where it is. Blanking
+// it here would desync the browser from a server that is still bound.
+{
+  const refusedDuringParseSession = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter(parseFixture()),
+      resetProject() {
+        return Promise.reject(httpRefusal("Project reset returned 409.", 409));
+      },
+    },
+    clock,
+  });
+  await refusedDuringParseSession.start();
+  await refusedDuringParseSession.dispatch({
+    type: "SELECT_PROJECT",
+    path: "/home/u/demo",
+  });
+  await assert.rejects(
+    () => refusedDuringParseSession.dispatch({ type: "RESET_PROJECT" }),
+    /Project reset returned 409\./,
+    "a refusal from a live server still surfaces inline to the caller",
+  );
+  const refusedSnapshot = refusedDuringParseSession.getSnapshot();
+  assert.equal(
+    refusedSnapshot.parseProgress.stage,
+    "discovering",
+    "a refused reset leaves the loading screen up: the parse is still bound server-side",
+  );
+  assert.equal(refusedSnapshot.status, "picking");
+  assert.equal(pendingTimers.size, 1, "and the poll loop keeps running");
+  refusedDuringParseSession.dispose();
+  pendingTimers.clear();
+}
+
+// A brief poll blip may really be nothing, so the first failures keep the
+// reassuring copy. A sustained outage may not be reassured about at all: after
+// POLL_OUTAGE_ATTEMPTS consecutive failures (~18s of widening backoff) the
+// session says so, and the loading screen swaps in copy that stops implying the
+// parse is fine and points at restarting `codemble`.
+{
+  const outageSession = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter(parseFixture()),
+      fetchParseProgress: () => Promise.reject(networkFailure()),
+    },
+    clock,
+  });
+  await outageSession.start();
+  await outageSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+  await fireOnlyTimer();
+  assert.equal(outageSession.getSnapshot().parseProgress.attempts, 1);
+  assert.equal(
+    outageSession.getSnapshot().parseProgress.pollOutage,
+    false,
+    "one failed poll is a blip, not an outage",
+  );
+  for (let attempt = 2; attempt < 8; attempt += 1) {
+    await fireOnlyTimer();
+    assert.equal(
+      outageSession.getSnapshot().parseProgress.pollOutage,
+      false,
+      `${attempt} failures is still inside the blip window`,
+    );
+  }
+  await fireOnlyTimer();
+  const outageSnapshot = outageSession.getSnapshot();
+  assert.equal(outageSnapshot.parseProgress.attempts, 8);
+  assert.equal(
+    outageSnapshot.parseProgress.pollOutage,
+    true,
+    "a sustained outage is reported as one, instead of reassuring forever",
+  );
+  assert.equal(
+    outageSnapshot.parseProgress.pollError,
+    "Failed to fetch",
+    "the raw failure is still carried for the learner to report",
+  );
+  assert.equal(pendingTimers.size, 1, "an outage keeps retrying; it just stops over-promising");
+  outageSession.dispose();
+  pendingTimers.clear();
+}
+
+// The discriminator's foundation: the HTTP adapter must stamp the response
+// status on the errors it raises, or resetProject cannot tell a live server's
+// refusal from a server that is not there at all.
+{
+  const statusStampAdapter = createHttpLearnerSessionAdapter(async () => ({
+    ok: false,
+    status: 409,
+    json: async () => ({ detail: "Already bound." }),
+  }));
+  const refusal = await statusStampAdapter.resetProject().catch((error) => error);
+  assert.equal(refusal.message, "Already bound.");
+  assert.equal(refusal.status, 409, "an HTTP refusal carries the status that produced it");
+
+  const deadAdapter = createHttpLearnerSessionAdapter(async () => {
+    throw networkFailure();
+  });
+  const unreachable = await deadAdapter.resetProject().catch((error) => error);
+  assert.equal(
+    unreachable.status,
+    undefined,
+    "a request that never reached a server carries no status to key off",
+  );
+}
+
 // Regression class: a poll issued for a selection the learner has already
 // abandoned must not commit when it later resolves. The abort alone would miss
 // an adapter that ignores the signal and resolves anyway -- and this one lands
@@ -2025,6 +2232,20 @@ async function fireOnlyTimer() {
   const [timerId, callback] = pendingTimers.entries().next().value;
   pendingTimers.delete(timerId);
   await callback();
+}
+
+// The two shapes a failed request can take, mirroring what the real HTTP
+// adapter produces: a refusal always arrives with the status of the response
+// that carried it; an unreachable server never produces a response at all, so
+// fetch itself rejects with a bare TypeError.
+function httpRefusal(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+function networkFailure(message = "Failed to fetch") {
+  return new TypeError(message);
 }
 
 function makeGraph({ understood = false } = {}) {

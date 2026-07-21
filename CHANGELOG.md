@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed
+- "Cancel and pick another project" now works when the local server has stopped.
+  The teardown that returns you to the picker used to run only after the reset
+  request came back, so when that request could not reach the server at all, the
+  loading screen never released you — the one escape hatch depended on the very
+  server it was escaping. A reset the server *refuses* still stays put and
+  reports inline, because the project is genuinely still bound there.
+- The loading screen stops over-reassuring during a long outage. A brief failed
+  poll still says the parse may be running fine; after eight consecutive
+  failures (~18 seconds of no answer) it says instead that the local server has
+  not responded and may have stopped, and points at cancelling and running
+  `codemble` again. It keeps retrying either way.
+- A load failure with no server on the other end now names the local server and
+  what to do about it, instead of showing the browser's bare "Failed to fetch".
+
 ## [0.5.1] - 2026-07-20
 
 ### Fixed
