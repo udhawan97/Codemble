@@ -230,7 +230,10 @@ rebind a released project. Phase C plus that gap-fix wave shipped as **v0.5.0**;
 the parse work collided with an independent implementation of the same three
 foundational commits on `main`, reconciled by taking the branch's verified
 superset while preserving main's unique `CODEMBLE_DATA_DIR`/config-isolation
-fix, which lived in files the branch never touched.
+fix, which lived in files the branch never touched. The Architecture map now
+uses deterministic barycenter ordering and backend-routed, directional,
+weight-scaled SVG paths; cycle and long-span routes use clear flank corridors,
+while possible relationships remain dashed and React remains a pure renderer.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -462,6 +465,7 @@ to before the index change.
 | 2026-07-20 | Progress reporting is a thread-scoped per-file hook (`note_file_parsed`) bound by `ProjectParser`, not a new `LanguageAdapter` parameter | The public adapter seam must stay unchanged for Phase 2 languages; one hook site per adapter also gives cancellation its exact "between files" meaning |
 | 2026-07-20 | Phase C adds `DELETE /api/progress`, the `CLEAR_PROGRESS` session event, and a `clearProgress` adapter method beyond the shared contract's Phase C rows | The contract's Phase C rows covered parse progress only, while the no-reset-progress-control gap is mapped to Phase C by the spec; recorded here rather than silently widened |
 | 2026-07-20 | Generated check suites are pinned by a committed golden fixture before any performance work touches `checks/service.py` | The Correctness Contract makes suite drift top-severity, and a refactor that changes an answer is invisible without a byte-level pin |
+| 2026-07-20 | Architecture map edges get backend-computed ports, barycenter ordering, arrowheads, and weight-scaled strokes; `MAP_SCHEMA_VERSION` 2; directory groups stay payload metadata | Within-layer order was arbitrary and direction was invisible in 2D while being parser truth; ordering stays deterministic (fixed sweeps, sorted ties); group containers wait for hierarchical layout |
 
 ## Non-Goals — do NOT build (point here when asked)
 

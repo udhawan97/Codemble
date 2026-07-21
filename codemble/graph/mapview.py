@@ -10,9 +10,9 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import PurePosixPath
 
-from codemble.adapters.base import Graph
+from codemble.adapters.base import Graph, RegionEdge
 
-MAP_SCHEMA_VERSION = 1
+MAP_SCHEMA_VERSION = 2
 
 _MAP_WIDTH = 960.0
 _ROW_HEIGHT = 120.0
@@ -94,6 +94,7 @@ def _architecture(graph: Graph) -> dict[str, object]:
     rows: dict[int, list[str]] = defaultdict(list)
     for region_id in sorted(region_ids, key=lambda item: (group_of[item], item)):
         rows[layer_of[region_id]].append(region_id)
+    rows = _barycenter_order(rows, routes, layer_of, cut)
 
     partial_regions = {node.region for node in graph.nodes if node.partial}
     boxes: list[dict[str, object]] = []
@@ -134,6 +135,8 @@ def _architecture(graph: Graph) -> dict[str, object]:
                 )
             visual_row += 1
 
+    edge_payloads = _routed_edges(routes, boxes, layer_of, cut, _MAP_WIDTH)
+
     return {
         "home": home,
         "layer_count": layer_count,
@@ -146,18 +149,176 @@ def _architecture(graph: Graph) -> dict[str, object]:
             for group_id in sorted(grouped)
         ],
         "boxes": boxes,
-        "edges": [
+        "edges": edge_payloads,
+        "unreachable": unreachable,
+    }
+
+
+def _barycenter_order(
+    rows: dict[int, list[str]],
+    routes: list[RegionEdge],
+    layer_of: dict[str, int],
+    cut: set[tuple[str, str]],
+) -> dict[int, list[str]]:
+    """Minimize crossings with four deterministic adjacent-layer sweeps.
+
+    Barycenter crossing minimization after Sugiyama, Tagawa & Toda (1981);
+    approach popularized by dagre and Eclipse ELK. Implemented independently;
+    no code copied.
+    """
+
+    ordered = {layer: list(members) for layer, members in rows.items()}
+    predecessors: dict[str, list[str]] = defaultdict(list)
+    successors: dict[str, list[str]] = defaultdict(list)
+    for edge in routes:
+        if (edge.src, edge.dst) in cut:
+            continue
+        if layer_of.get(edge.dst) != layer_of.get(edge.src, -1) + 1:
+            continue
+        predecessors[edge.dst].append(edge.src)
+        successors[edge.src].append(edge.dst)
+
+    layer_ids = sorted(ordered)
+    for sweep in range(4):
+        downward = sweep % 2 == 0
+        visited_layers = layer_ids[1:] if downward else list(reversed(layer_ids[:-1]))
+        for layer in visited_layers:
+            reference_layer = layer - 1 if downward else layer + 1
+            reference = {
+                region_id: index
+                for index, region_id in enumerate(ordered.get(reference_layer, []))
+            }
+            neighbors = predecessors if downward else successors
+            current = {region_id: index for index, region_id in enumerate(ordered[layer])}
+
+            def position(region_id: str) -> tuple[float, str]:
+                adjacent = [
+                    reference[neighbor]
+                    for neighbor in sorted(neighbors.get(region_id, []))
+                    if neighbor in reference
+                ]
+                # An unconnected box keeps its seeded relative position instead
+                # of being pulled to an arbitrary edge of the layer.
+                barycenter = (
+                    sum(adjacent) / len(adjacent) if adjacent else float(current[region_id])
+                )
+                return (barycenter, region_id)
+
+            ordered[layer] = sorted(ordered[layer], key=position)
+    return ordered
+
+
+def _routed_edges(
+    routes: list[RegionEdge],
+    boxes: list[dict[str, object]],
+    layer_of: dict[str, int],
+    cut: set[tuple[str, str]],
+    width: float,
+) -> list[dict[str, object]]:
+    """Assign deterministic side ports and orthogonal waypoints to every route.
+
+    Orthogonal elbow routing with side anchors after tt-a1i/archify's renderer
+    (MIT). Implemented independently in Python; no code copied.
+    """
+
+    box_by_id = {str(box["id"]): box for box in boxes}
+    outgoing: dict[str, list[tuple[int, RegionEdge]]] = defaultdict(list)
+    incoming: dict[str, list[tuple[int, RegionEdge]]] = defaultdict(list)
+    for index, edge in enumerate(routes):
+        if edge.src not in box_by_id or edge.dst not in box_by_id:
+            continue
+        outgoing[edge.src].append((index, edge))
+        incoming[edge.dst].append((index, edge))
+
+    start_ports: dict[int, tuple[float, float]] = {}
+    end_ports: dict[int, tuple[float, float]] = {}
+    for region_id in sorted(outgoing):
+        ordered = sorted(
+            outgoing[region_id],
+            key=lambda item: (
+                layer_of[item[1].dst],
+                float(box_by_id[item[1].dst]["x"]),
+                item[1].dst,
+                item[0],
+            ),
+        )
+        box = box_by_id[region_id]
+        for port_index, (edge_index, _) in enumerate(ordered):
+            start_ports[edge_index] = (
+                _port_x(box, port_index, len(ordered)),
+                _rounded(float(box["y"]) + float(box["height"])),
+            )
+
+    for region_id in sorted(incoming):
+        ordered = sorted(
+            incoming[region_id],
+            key=lambda item: (
+                layer_of[item[1].src],
+                float(box_by_id[item[1].src]["x"]),
+                item[1].src,
+                item[0],
+            ),
+        )
+        box = box_by_id[region_id]
+        for port_index, (edge_index, _) in enumerate(ordered):
+            end_ports[edge_index] = (
+                _port_x(box, port_index, len(ordered)),
+                _rounded(float(box["y"])),
+            )
+
+    payloads: list[dict[str, object]] = []
+    for index, edge in enumerate(routes):
+        src_box = box_by_id.get(edge.src)
+        dst_box = box_by_id.get(edge.dst)
+        if src_box is None or dst_box is None:
+            continue
+        cycle = (edge.src, edge.dst) in cut
+        points = _route_points(
+            start_ports[index],
+            end_ports[index],
+            src_box,
+            dst_box,
+            width,
+            cycle=cycle,
+        )
+        payloads.append(
             {
                 "src": edge.src,
                 "dst": edge.dst,
                 "certain": edge.certain,
                 "weight": edge.weight,
-                "cycle": (edge.src, edge.dst) in cut,
+                "cycle": cycle,
+                "points": [[_rounded(x), _rounded(y)] for x, y in points],
             }
-            for edge in routes
-        ],
-        "unreachable": unreachable,
-    }
+        )
+    return payloads
+
+
+def _port_x(box: dict[str, object], index: int, count: int) -> float:
+    return _rounded(
+        float(box["x"]) + float(box["width"]) * (index + 1) / (count + 1)
+    )
+
+
+def _route_points(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    src_box: dict[str, object],
+    dst_box: dict[str, object],
+    width: float,
+    *,
+    cycle: bool,
+) -> list[tuple[float, float]]:
+    src_row = int(round(float(src_box["y"]) / _ROW_HEIGHT))
+    dst_row = int(round(float(dst_box["y"]) / _ROW_HEIGHT))
+    if cycle or dst_row <= src_row or dst_row > src_row + 1:
+        left_distance = start[0]
+        right_distance = width - start[0]
+        flank = -24.0 if left_distance <= right_distance else width + 24.0
+        return [start, (flank, start[1]), (flank, end[1]), end]
+
+    midpoint = _rounded((start[1] + end[1]) / 2.0)
+    return [start, (start[0], midpoint), (end[0], midpoint), end]
 
 
 def _workflow(graph: Graph) -> dict[str, object]:

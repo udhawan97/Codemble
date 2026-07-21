@@ -14,6 +14,16 @@ function tintFor(language) {
   return key ? TINT_VAR[key] : "var(--cm-hairline)";
 }
 
+function architectureEdgePath(points) {
+  return points
+    .map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
+    .join(" ");
+}
+
+function architectureEdgeWidth(weight) {
+  return 1 + Math.min(2.5, (Math.max(1, weight) - 1) * 0.5);
+}
+
 // Box geometry (box.width) is backend-computed and fixed regardless of label
 // length (codemble/graph/mapview.py: _BOX_WIDTH is a constant) -- this only
 // decides how much of the label fits inside that width, the way CSS
@@ -115,21 +125,46 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
             : `${architecture.boxes.length} modules in ${architecture.layer_count} import layers, measured from the modules nothing imports`
         }
       >
+        <defs>
+          <marker
+            id="architecture-arrow"
+            className="architecture-map__arrow"
+            markerWidth="8"
+            markerHeight="8"
+            refX="8"
+            refY="4"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M 0 0 L 8 4 L 0 8 Z" fill="currentColor" />
+          </marker>
+          <marker
+            id="architecture-cycle-arrow"
+            className="architecture-map__arrow is-cycle"
+            markerWidth="8"
+            markerHeight="8"
+            refX="8"
+            refY="4"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M 0 0 L 8 4 L 0 8 Z" fill="currentColor" />
+          </marker>
+        </defs>
         <g className="architecture-map__edges">
           {architecture.edges.map((edge) => {
             const from = boxes.get(edge.src);
             const to = boxes.get(edge.dst);
             if (!from || !to) return null;
             return (
-              <line
+              <path
                 key={`${edge.src}->${edge.dst}`}
-                x1={from.x + from.width / 2}
-                y1={from.y + from.height}
-                x2={to.x + to.width / 2}
-                y2={to.y}
+                d={architectureEdgePath(edge.points)}
                 // Uncertainty stays visible in 2D exactly as it does in 3D.
                 strokeDasharray={edge.certain ? undefined : "5 4"}
-                className={edge.cycle ? "is-cycle" : undefined}
+                strokeWidth={architectureEdgeWidth(edge.weight)}
+                markerEnd={`url(#${edge.cycle ? "architecture-cycle-arrow" : "architecture-arrow"})`}
+                className={`architecture-map__edge${edge.cycle ? " is-cycle" : ""}`}
               />
             );
           })}

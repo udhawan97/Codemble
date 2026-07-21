@@ -1749,15 +1749,30 @@ input:focus-visible {
   min-height: 0;
 }
 
-.architecture-map__edges line,
+.architecture-map__edges path {
+  color: var(--cm-hairline);
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.architecture-map__edges path.is-cycle {
+  color: var(--cm-route-possible);
+}
+
+.architecture-map__arrow {
+  color: var(--cm-hairline);
+}
+
+.architecture-map__arrow.is-cycle {
+  color: var(--cm-route-possible);
+}
+
 .workflow-tree__edges path {
   stroke: var(--cm-hairline);
   stroke-width: 1.2;
   fill: none;
-}
-
-.architecture-map__edges line.is-cycle {
-  stroke: var(--cm-route-possible);
 }
 
 .architecture-map__box rect {

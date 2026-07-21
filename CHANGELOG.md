@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Changed
+- The 2D Architecture map is now a deterministic layered diagram rather than
+  a straight-line grid: four barycenter sweeps reduce import-edge crossings,
+  backend-assigned ports keep fan-out distinct, weighted arrowed paths expose
+  direction, and cycles or long routes travel around the diagram flank. Possible
+  relationships remain dashed, and React still consumes graph-owned geometry.
+
 ## [0.5.2] - 2026-07-20
 
 ### Fixed

@@ -290,6 +290,12 @@ The [public roadmap](https://udhawan97.github.io/Codemble/roadmap/) separates
 shipped work from planned work. Milestones move only when their acceptance
 evidence exists.
 
+## Acknowledgements
+
+- [dagre](https://github.com/dagrejs/dagre) and [Eclipse ELK](https://github.com/eclipse-elk/elk) for the layered-diagram approach.
+- [tt-a1i/archify](https://github.com/tt-a1i/archify) for 2D architecture-diagram inspiration.
+- Codemble's shipped open-source stack: [3d-force-graph](https://github.com/vasturiano/3d-force-graph), [tree-sitter](https://github.com/tree-sitter/tree-sitter), [FastAPI](https://github.com/fastapi/fastapi), [Vite](https://github.com/vitejs/vite), and [React](https://github.com/facebook/react).
+
 ## License
 
 Codemble is released under the [Apache License 2.0](https://github.com/udhawan97/Codemble/blob/main/LICENSE).
