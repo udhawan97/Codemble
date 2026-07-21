@@ -23,6 +23,7 @@ import {
   createHttpLearnerSessionAdapter,
   createLearnerSession,
 } from "./learnerSession.js";
+import { PARSE_STAGES } from "./projectMapping.js";
 
 export function App() {
   const session = useMemo(
@@ -51,13 +52,6 @@ export function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [session]);
-  // The path the learner last handed to SELECT_PROJECT. The session reports a
-  // failed parse as `picker.error` and drops `parseProgress` -- which carried
-  // the path -- in the same commit, so the only place the attempted path
-  // survives the loading screen unmounting is here, in the component that
-  // never unmounts. Cleared on browse so a folder error can never be labelled
-  // with an unrelated earlier attempt.
-  const [attempt, setAttempt] = useState("");
   const {
     chart,
     checkData,
@@ -92,6 +86,7 @@ export function App() {
     pendingDawnRegionId,
     picker,
     projectName,
+    projectFailure,
     region,
     revealedRegionIds,
     selectedNode,
@@ -130,18 +125,9 @@ export function App() {
     return (
       <PickerScreen
         picker={picker}
-        // A select that came back with an error is the only failure a learner
-        // can retry in place; a browse error clears `attempt`, so it keeps the
-        // server's own plain wording instead of being dressed as a parse crash.
-        failure={attempt && picker.error ? { path: attempt, detail: picker.error } : null}
-        onBrowse={(path) => {
-          setAttempt("");
-          return session.dispatch({ type: "BROWSE_PICKER", path });
-        }}
-        onSelect={(path) => {
-          setAttempt(path);
-          return session.dispatch({ type: "SELECT_PROJECT", path });
-        }}
+        failure={projectFailure}
+        onBrowse={(path) => session.dispatch({ type: "BROWSE_PICKER", path })}
+        onSelect={(path) => session.dispatch({ type: "SELECT_PROJECT", path })}
       />
     );
   }
@@ -599,16 +585,10 @@ export function App() {
   );
 }
 
-// The five stages ParseJob reports, in the order it reports them. Copy matches
-// runtime.py's _STAGE_COPY so the terminal and the browser say the same thing.
-const STAGE_COPY = {
-  discovering: "Finding your source files",
-  parsing: "Reading each file",
-  resolving: "Connecting imports and calls",
-  checks: "Building graph-only checks",
-  layout: "Placing your galaxy",
-};
-const STAGE_ORDER = ["discovering", "parsing", "resolving", "checks", "layout"];
+const STAGE_COPY = Object.fromEntries(
+  PARSE_STAGES.map(({ id, copy }) => [id, copy]),
+);
+const STAGE_ORDER = PARSE_STAGES.map(({ id }) => id);
 
 function LoadingScreen({ progress, onCancel }) {
   const {

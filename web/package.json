@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "node scripts/check_graph_data.mjs && node scripts/check_learner_session.mjs && vite build"
+    "check": "node scripts/check_graph_data.mjs && node scripts/check_project_mapping.mjs && node scripts/check_learner_session.mjs && vite build"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "5.2.8",

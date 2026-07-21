@@ -10,3 +10,8 @@ browse root, that may become the current project.
 The atomic transition from a successfully parsed project to the live checks,
 study, graph, and map experience. Releasing a project cancels any unfinished
 activation and leaves no project bound.
+
+## Project Mapping Run
+
+The learner-visible run that begins when a selected folder is accepted and
+ends when its project activates, parsing fails, or the learner releases it.

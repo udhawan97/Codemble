@@ -8,6 +8,7 @@ import {
   projectLanguageOptions,
   revealedRegionIds,
 } from "./graphData.js";
+import { createProjectMapping } from "./projectMapping.js";
 
 const DEFAULT_CLOCK = Object.freeze({
   setTimeout(callback, delay) {
@@ -17,20 +18,6 @@ const DEFAULT_CLOCK = Object.freeze({
     globalThis.clearTimeout(timerId);
   },
 });
-
-// Parse polling: fast enough that the staged loading screen reads as live,
-// slow enough that a minute-long parse is a few hundred requests, not a spin.
-// A failed poll backs off exponentially from POLL_BACKOFF_BASE to the ceiling
-// so an unreachable server is retried patiently rather than hammered.
-const POLL_INTERVAL = 300;
-const POLL_BACKOFF_BASE = 400;
-const POLL_BACKOFF_CEILING = 4000;
-// How many consecutive poll failures stop counting as a blip. The backoff above
-// waits 400+800+1600+3200+4000+4000+4000 ms across the first seven, so the
-// eighth failure lands roughly 18 seconds after the first: long enough that a
-// momentary hiccup has cleared, short enough that a learner is not still being
-// told "the parse may be running fine" about a server that has stopped.
-const POLL_OUTAGE_ATTEMPTS = 8;
 
 export function createLearnerSession({
   adapter = createHttpLearnerSessionAdapter(),
@@ -61,6 +48,7 @@ export function createLearnerSession({
     languageFocus: "all",
     picker: null,
     parseProgress: null,
+    projectFailure: null,
     layer: "galaxy",
     layerChosen: false,
     mapTab: "architecture",
@@ -96,13 +84,9 @@ export function createLearnerSession({
   let checksController = null;
   let submissionController = null;
   let entrypointController = null;
-  let pickerController = null;
   let mapController = null;
   let modeController = null;
-  let resetController = null;
-  let progressController = null;
   let illuminationTimer = null;
-  let progressTimer = null;
 
   function getSnapshot() {
     return snapshot;
@@ -135,6 +119,32 @@ export function createLearnerSession({
     for (const listener of listeners) listener();
   }
 
+  const projectMapping = createProjectMapping({
+    adapter,
+    clock,
+    async onReady() {
+      lifecycle += 1;
+      const requestLifecycle = lifecycle;
+      abortController(graphController);
+      graphController = new AbortController();
+      return loadProjectGraph(graphController, requestLifecycle);
+    },
+  });
+  const unsubscribeProjectMapping = projectMapping.subscribe(() => {
+    const mapping = projectMapping.getSnapshot();
+    const patch = {
+      picker: mapping.picker,
+      parseProgress: mapping.progress,
+      projectFailure: mapping.failure,
+    };
+    if (mapping.phase === "picking") patch.status = "picking";
+    if (mapping.phase === "error") {
+      patch.status = "error";
+      patch.error = mapping.error;
+    }
+    commit(patch);
+  });
+
   async function start() {
     lifecycle += 1;
     const requestLifecycle = lifecycle;
@@ -153,7 +163,8 @@ export function createLearnerSession({
     }
     if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
     if (pickerState.state === "unpicked") {
-      return startPicker(controller, requestLifecycle);
+      await projectMapping.start();
+      return snapshot;
     }
     return loadProjectGraph(controller, requestLifecycle);
   }
@@ -223,218 +234,6 @@ export function createLearnerSession({
     if (statusResult.status === "fulfilled") commit({ llmStatus: statusResult.value });
   }
 
-  async function startPicker(controller, requestLifecycle) {
-    try {
-      const [recentsPayload, listing] = await Promise.all([
-        adapter.loadRecents({ signal: controller.signal }),
-        adapter.browsePicker(null, { signal: controller.signal }),
-      ]);
-      if (requestLifecycle !== lifecycle || controller.signal.aborted) return snapshot;
-      commit({
-        status: "picking",
-        picker: {
-          ...listing,
-          recents: recentsPayload.recents,
-          error: "",
-          scale: null,
-          busy: false,
-        },
-      });
-    } catch (requestError) {
-      if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
-        commit({ status: "error", error: errorMessage(requestError) });
-      }
-    }
-    return snapshot;
-  }
-
-  async function browsePickerFolder(path) {
-    if (snapshot.status !== "picking" || snapshot.picker?.busy) return;
-    abortController(pickerController);
-    pickerController = new AbortController();
-    const controller = pickerController;
-    try {
-      const listing = await adapter.browsePicker(path, { signal: controller.signal });
-      if (!controller.signal.aborted && snapshot.status === "picking") {
-        commit({ picker: { ...snapshot.picker, ...listing, error: "" } });
-      }
-    } catch (requestError) {
-      if (
-        pickerController === controller &&
-        !isAbortError(requestError) &&
-        snapshot.status === "picking"
-      ) {
-        commit({ picker: { ...snapshot.picker, error: errorMessage(requestError) } });
-      }
-    }
-  }
-
-  async function selectProject(path) {
-    if (snapshot.status !== "picking" || snapshot.picker?.busy) return undefined;
-    abortController(pickerController);
-    pickerController = new AbortController();
-    const controller = pickerController;
-    commit({ picker: { ...snapshot.picker, busy: true, error: "", scale: null } });
-    try {
-      const result = await adapter.selectProject(path, { signal: controller.signal });
-      if (controller.signal.aborted || snapshot.status !== "picking") return result;
-      // A 202: the server took the folder and is parsing it on a worker thread.
-      // The picker stays busy and the loading screen takes over from here, fed
-      // by the poll loop below rather than by this request.
-      if (result.state === "parsing") {
-        commit({
-          parseProgress: {
-            state: "parsing",
-            // Seeded, not fetched: the server is already in this stage by the
-            // time it answers 202, and claiming nothing until the first poll
-            // lands would show the learner an empty loading screen first.
-            stage: "discovering",
-            files_done: 0,
-            files_total: 0,
-            error: null,
-            pollError: "",
-            attempts: 0,
-            pollOutage: false,
-            path,
-          },
-        });
-        schedulePoll(0);
-        return result;
-      }
-      if (result.state === "ready") {
-        lifecycle += 1;
-        const requestLifecycle = lifecycle;
-        abortController(graphController);
-        graphController = new AbortController();
-        return loadProjectGraph(graphController, requestLifecycle);
-      }
-      if (result.state === "scale") {
-        const listing = await adapter.browsePicker(result.root, {
-          signal: controller.signal,
-        });
-        if (!controller.signal.aborted && snapshot.status === "picking") {
-          commit({
-            picker: { ...snapshot.picker, ...listing, busy: false, scale: result },
-          });
-        }
-        return result;
-      }
-      commit({ picker: { ...snapshot.picker, busy: false, error: result.detail } });
-      return result;
-    } catch (requestError) {
-      if (!isAbortError(requestError) && snapshot.status === "picking") {
-        commit({ picker: { ...snapshot.picker, busy: false, error: errorMessage(requestError) } });
-      }
-      return undefined;
-    }
-  }
-
-  // One scheduled poll at a time, always through here, so the timer handle and
-  // the loop can never disagree about whether a tick is outstanding.
-  function schedulePoll(delay) {
-    if (progressTimer !== null) clock.clearTimeout(progressTimer);
-    progressTimer = clock.setTimeout(async () => {
-      progressTimer = null;
-      await pollParseProgress();
-    }, delay);
-  }
-
-  // The single exit. Every terminal path -- ready, parse error, idle, reset,
-  // dispose -- goes through it, because a poll loop that outlives its reason to
-  // exist keeps hitting a server nobody is watching, with nothing on screen to
-  // say so.
-  function stopPolling() {
-    abortController(progressController);
-    progressController = null;
-    if (progressTimer !== null) {
-      clock.clearTimeout(progressTimer);
-      progressTimer = null;
-    }
-  }
-
-  async function pollParseProgress() {
-    if (!snapshot.parseProgress) return;
-    abortController(progressController);
-    progressController = new AbortController();
-    const controller = progressController;
-    // Captured like loadProjectGraph/selectEntrypoint/loadMap do, and re-checked
-    // on both sides of the await: stopPolling() aborts this controller, but an
-    // adapter that ignores the signal still resolves, and a response carrying
-    // `ready` would then bind a project the learner has already released.
-    const requestLifecycle = lifecycle;
-    const previous = snapshot.parseProgress;
-    let payload;
-    try {
-      payload = await adapter.fetchParseProgress({ signal: controller.signal });
-    } catch (requestError) {
-      if (
-        progressController !== controller ||
-        requestLifecycle !== lifecycle ||
-        isAbortError(requestError) ||
-        !snapshot.parseProgress
-      ) {
-        return;
-      }
-      // Reported, not swallowed: the parse itself may still be running fine, so
-      // the loading screen keeps its last known stage and says the *poll* is
-      // what failed, then retries on a widening interval. Past
-      // POLL_OUTAGE_ATTEMPTS that claim stops being defensible -- nothing here
-      // has heard from the server in ~18s -- so the flag below lets the screen
-      // swap reassurance for the truth. Retrying continues either way.
-      const attempts = previous.attempts + 1;
-      commit({
-        parseProgress: {
-          ...previous,
-          pollError: errorMessage(requestError),
-          attempts,
-          pollOutage: attempts >= POLL_OUTAGE_ATTEMPTS,
-        },
-      });
-      schedulePoll(
-        Math.min(POLL_BACKOFF_CEILING, POLL_BACKOFF_BASE * 2 ** (attempts - 1)),
-      );
-      return;
-    }
-    if (
-      progressController !== controller ||
-      requestLifecycle !== lifecycle ||
-      !snapshot.parseProgress
-    ) {
-      return;
-    }
-    if (payload.state === "ready") {
-      stopPolling();
-      commit({ parseProgress: null, picker: null });
-      lifecycle += 1;
-      const nextLifecycle = lifecycle;
-      abortController(graphController);
-      graphController = new AbortController();
-      await loadProjectGraph(graphController, nextLifecycle);
-      return;
-    }
-    // `idle` beside `error`: the job the learner was watching is gone (a server
-    // restart, or a reset that raced this poll). Either way there is no parse to
-    // report, so the picker comes back armed rather than the screen hanging.
-    if (payload.state === "error" || payload.state === "idle") {
-      stopPolling();
-      commit({
-        parseProgress: null,
-        picker: { ...snapshot.picker, busy: false, error: payload.error ?? "" },
-      });
-      return;
-    }
-    commit({
-      parseProgress: {
-        ...previous,
-        ...payload,
-        pollError: "",
-        attempts: 0,
-        pollOutage: false,
-      },
-    });
-    schedulePoll(POLL_INTERVAL);
-  }
-
   async function clearProgress() {
     // Deliberately uncaught, like resetProject and submitCheck: a refused clear
     // is a control failure the header shows inline, not a reason to blank the
@@ -454,28 +253,7 @@ export function createLearnerSession({
   }
 
   async function resetProject() {
-    abortController(resetController);
-    resetController = new AbortController();
-    const controller = resetController;
-    try {
-      await adapter.resetProject({ signal: controller.signal });
-    } catch (requestError) {
-      if (isAbortError(requestError)) return snapshot;
-      // Still deliberately uncaught, like submitCheck -- but only for the half
-      // of the failures that means "the reset genuinely did not happen". A
-      // *refusal* arrives on an HTTP response, so the server is alive and still
-      // holds this project: tearing the app down here would leave the browser
-      // and the server disagreeing about what is bound, and the header shows
-      // the refusal inline instead.
-      if (isServerRefusal(requestError)) throw requestError;
-      // The other half never reached a server at all (process exited, port
-      // closed). There is no binding left to release, so the local teardown
-      // below must not be conditional on that request succeeding -- this is the
-      // learner's only way off a loading screen whose poll will never advance
-      // again, and it used to be the one exit that depended on the very server
-      // it was escaping.
-    }
-    if (controller.signal.aborted) return snapshot;
+    if (!(await projectMapping.reset())) return snapshot;
     cancelStudy();
     abortController(entrypointController);
     entrypointController = null;
@@ -492,13 +270,10 @@ export function createLearnerSession({
     // next project's already-loading session.
     abortController(modeController);
     modeController = null;
-    // Reset is also the learner's cancel button on a running parse: the server
-    // drops the job, so the loop must stop rather than poll a job id that will
-    // never move again.
-    stopPolling();
     commit({
       graph: null,
       parseProgress: null,
+      projectFailure: null,
       region: null,
       selectedNode: null,
       level: LEVELS.GALAXY,
@@ -585,9 +360,9 @@ export function createLearnerSession({
         });
         return undefined;
       case "BROWSE_PICKER":
-        return browsePickerFolder(event.path);
+        return projectMapping.browse(event.path);
       case "SELECT_PROJECT":
-        return selectProject(event.path);
+        return projectMapping.select(event.path);
       case "RESET_PROJECT":
         return resetProject();
       case "CLEAR_PROGRESS":
@@ -1081,11 +856,8 @@ export function createLearnerSession({
       checksController,
       submissionController,
       entrypointController,
-      pickerController,
       mapController,
       modeController,
-      resetController,
-      progressController,
     ]) {
       abortController(controller);
     }
@@ -1095,13 +867,10 @@ export function createLearnerSession({
     checksController = null;
     submissionController = null;
     entrypointController = null;
-    pickerController = null;
     mapController = null;
     modeController = null;
-    resetController = null;
-    // Not just the controller: an unmount mid-parse leaves a scheduled tick
-    // behind, and a timer nobody owns keeps waking to poll a dead server.
-    stopPolling();
+    unsubscribeProjectMapping();
+    projectMapping.dispose();
     if (illuminationTimer !== null) {
       clock.clearTimeout(illuminationTimer);
       illuminationTimer = null;
