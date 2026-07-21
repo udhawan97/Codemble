@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
+import { createNameAtlas } from "./nameAtlas.js";
 
 const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
@@ -28,16 +29,6 @@ const MAX_POLAR_ANGLE = 1.5;
 // this is a projection plus a sort, and doing it 60 times a second to reprint
 // text that has not moved is how a readable sky becomes a slow one.
 const LABEL_TICK_MS = 110;
-const LABEL_CELL_PX = { width: 132, height: 30 };
-const LABEL_BUDGET = { far: 14, near: 44 };
-// Slots a name may take around its star, in plate-heights above it, tried in
-// this order. A star is a point feature, so its name can sit anywhere nearby;
-// offering only the resting slot threw away most of the sky's capacity, since
-// at galaxy zoom the systems cluster and nearly every plate lost to the one
-// already sitting above it. Kept vertical so a name is never ambiguous about
-// which star it belongs to.
-const LABEL_SLOTS = [0, -1, 1, -2, 2];
-const LABEL_SLOT_GAP_PX = 4;
 // 3d-force-graph mutates the scene on its own render tick, not the React
 // commit that flips `level` to GALAXY, so the newly-lit system's group may
 // not exist for a frame or two. A handful of retry frames covers that
@@ -76,10 +67,9 @@ export function GalaxyCanvas({
   const [renderError, setRenderError] = useState("");
   const palette = useMemo(readPalette, []);
   const reducedMotion = useMemo(prefersReducedMotion, []);
-  // The seed's *value*, not the identity of the object it came from: every
-  // session commit rebuilds file_hashes while a language focus is active
-  // (learnerSession.js deriveSnapshot), and depending on that identity rebuilt
-  // the whole starfield on unrelated state changes.
+  // The seed's *value*, not the identity of the object it came from. The
+  // Learner Projection now preserves focused-graph identity on unrelated
+  // commits too; value-keying here keeps that protection local to the sky.
   const starfieldSeed = seedFromHashes(graph.file_hashes);
   const data = useMemo(() => {
     if (level === LEVELS.GALAXY) return galaxyData(graph, palette, revealedRegionIds);
@@ -361,138 +351,29 @@ export function GalaxyCanvas({
       .linkDirectionalArrowColor(renderer.linkDirectionalArrowColor());
   }, [data, hoverNodeId, level, selectedNode?.id]);
 
-  // Label declutter. Ranking is graph truth (Home, then proven, then how many
-  // places call it); only the budget and the collision test depend on the
-  // camera. Nothing here decides what a node *is* -- it decides how many names
-  // fit on screen before they start overlapping each other.
-  const labelRank = useMemo(() => {
-    const ranked = data.nodes
-      .filter((node) => node.label)
-      .map((node) => ({
-        id: node.id,
-        weight:
-          (node.home ? 3_000_000 : 0) +
-          (node.understood ? 1_000_000 : 0) +
-          (node.centrality ?? 0) * 1000,
-        nodeId: node.id,
-      }))
-      .sort((left, right) => right.weight - left.weight || left.nodeId.localeCompare(right.nodeId));
-    return new Map(ranked.map((entry, index) => [entry.id, index]));
-  }, [data.nodes]);
+  const nameAtlas = useMemo(() => createNameAtlas(data.nodes), [data.nodes]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer || !labelRank.size) return undefined;
-    const projected = new THREE.Vector3();
-    const origin = new THREE.Vector3();
+    if (!renderer) return undefined;
+    const scene = renderer.scene();
 
     function relabel() {
-      // Read from the live scene rather than a map maintained alongside it.
-      // three-forcegraph re-runs nodeThreeObject on every refresh(), not only
-      // when the data changes, so a map accumulated a second sprite per node
-      // while the detached originals kept a non-null `parent` and sailed past
-      // the obvious guard -- those invisible leftovers then ate the whole
-      // budget and claimed the cells, leaving exactly one name on screen.
-      // A list derived per tick cannot go stale.
-      const sprites = [];
-      renderer.scene().traverse((object) => {
-        if (object.userData?.codembleLabel) sprites.push(object);
-      });
-      if (!sprites.length) return;
       const camera = renderer.camera();
       const controls = controlsRef.current;
-      const width = renderer.width();
-      const height = renderer.height();
       const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
       const distance = controls
         ? camera.position.distanceTo(controls.target)
         : camera.position.length();
-      // Closer camera, more names: at the near clamp the sky is sparse enough
-      // on screen to carry them, at the far clamp it is not.
-      const span = Math.max(1, bounds.max - bounds.min);
-      const nearness = 1 - Math.min(1, Math.max(0, (distance - bounds.min) / span));
-      const budget = Math.round(
-        LABEL_BUDGET.far + (LABEL_BUDGET.near - LABEL_BUDGET.far) * nearness,
-      );
-
-      // Screen position of a point `offsetY` world-units above the node, or
-      // null when it is behind the camera or off-screen.
-      function place(origin, offsetY) {
-        projected.set(origin.x, origin.y + offsetY, origin.z).project(camera);
-        if (projected.z > 1) return null;
-        const screenX = (projected.x * 0.5 + 0.5) * width;
-        const screenY = (-projected.y * 0.5 + 0.5) * height;
-        if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) return null;
-        return { screenX, screenY };
-      }
-
-      const candidates = [];
-      for (const sprite of sprites) {
-        const nodeId = sprite.userData.nodeId;
-        sprite.visible = false;
-        const star = sprite.parent;
-        if (!star) continue;
-        star.getWorldPosition(origin);
-        const base = sprite.userData.baseOffsetY ?? 0;
-        const anchor = place(origin, base);
-        if (!anchor) continue;
-        // How far one screen pixel is in world units at this node's depth,
-        // measured rather than assumed: the alternative slots below are
-        // expressed in plate-heights, and a fixed world offset would be a
-        // different number of pixels for a near star than a far one.
-        const oneUnit = place(origin, base + 1);
-        const pixelsPerUnit = oneUnit ? Math.abs(oneUnit.screenY - anchor.screenY) : 0;
-        candidates.push({
-          sprite,
-          origin: origin.clone(),
-          base,
-          pixelsPerUnit,
-          anchor,
-          // How wide this plate actually is on screen. Reserving one fixed cell
-          // per label regardless of its text let `parse_progress.py` overlap
-          // three neighbours while still passing the collision test.
-          halfWidth: ((sprite.userData.screenWidthFraction ?? 0.14) * height) / 2,
-          halfHeight: ((sprite.userData.screenHeightFraction ?? 0.034) * height) / 2,
-          // Hover always wins a slot: pointing at something and being told
-          // nothing is the exact failure labels exist to fix.
-          rank: nodeId === hoverNodeId ? -1 : labelRank.get(nodeId) ?? Infinity,
-        });
-      }
-      candidates.sort((left, right) => left.rank - right.rank);
-
-      // Highest-ranked plate claims every cell its rectangle actually covers;
-      // a later, lower-ranked plate overlapping any of them is dropped. Both
-      // axes matter: claiming a single cell let a wide name cover three
-      // neighbours, and claiming only a row of cells let two plates that
-      // straddle the same horizontal boundary still collide.
-      const taken = new Set();
-      let shown = 0;
-      for (const candidate of candidates) {
-        if (shown >= budget) break;
-        // Try the resting slot first, then alternates around the star. A star
-        // is a point feature and a name can sit anywhere near it, so testing
-        // only one spot threw away most of the sky's capacity: at galaxy zoom
-        // the systems cluster tightly and nearly every plate lost to the one
-        // above it, leaving a handful of names for twenty-odd charted systems.
-        const step = candidate.pixelsPerUnit
-          ? (candidate.halfHeight * 2 + LABEL_SLOT_GAP_PX) / candidate.pixelsPerUnit
-          : 0;
-        let placed = null;
-        for (const slot of LABEL_SLOTS) {
-          const offset = slot * step;
-          const at = slot === 0 ? candidate.anchor : place(candidate.origin, candidate.base + offset);
-          if (!at) continue;
-          const cells = coveredCells(at, candidate);
-          if (cells.some((cell) => taken.has(cell))) continue;
-          placed = { cells, offset };
-          break;
-        }
-        if (!placed) continue;
-        for (const cell of placed.cells) taken.add(cell);
-        candidate.sprite.position.y = candidate.base + placed.offset;
-        candidate.sprite.visible = true;
-        shown += 1;
-      }
+      nameAtlas.place({
+        scene,
+        camera,
+        width: renderer.width(),
+        height: renderer.height(),
+        distance,
+        distanceBounds: bounds,
+        hoverNodeId,
+      });
     }
 
     // Wrapped because this runs on a timer: an exception mid-pass leaves every
@@ -505,13 +386,17 @@ export function GalaxyCanvas({
         relabel();
       } catch (error) {
         if (timer !== null) clearInterval(timer);
+        nameAtlas.hide(scene);
         console.error("Codemble: label declutter failed, names disabled", error);
       }
     }
     tick();
     timer = setInterval(tick, LABEL_TICK_MS);
-    return () => clearInterval(timer);
-  }, [data, hoverNodeId, labelRank, level]);
+    return () => {
+      clearInterval(timer);
+      nameAtlas.hide(scene);
+    };
+  }, [hoverNodeId, level, nameAtlas]);
 
   useEffect(() => {
     const benchmarking = new URLSearchParams(window.location.search).has("benchmark");
@@ -642,21 +527,6 @@ function makeMarker(node, palette, dressing, focusedId) {
   }
   if (node.id === focusedId) group.add(dressing.reticle(radius));
   return group;
-}
-
-// Which screen cells a plate covers when its centre sits at `at`. Both axes
-// matter: claiming a single cell let a wide name cover three neighbours, and
-// claiming only a row let two plates straddling the same boundary collide.
-function coveredCells(at, { halfWidth, halfHeight }) {
-  const firstColumn = Math.floor((at.screenX - halfWidth) / LABEL_CELL_PX.width);
-  const lastColumn = Math.floor((at.screenX + halfWidth) / LABEL_CELL_PX.width);
-  const firstRow = Math.floor((at.screenY - halfHeight) / LABEL_CELL_PX.height);
-  const lastRow = Math.floor((at.screenY + halfHeight) / LABEL_CELL_PX.height);
-  const cells = [];
-  for (let column = firstColumn; column <= lastColumn; column += 1) {
-    for (let row = firstRow; row <= lastRow; row += 1) cells.push(`${column}:${row}`);
-  }
-  return cells;
 }
 
 // The force layout swaps link endpoints from ids to node objects in place.

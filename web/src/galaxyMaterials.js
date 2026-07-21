@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import { configureNamePlate } from "./nameAtlas.js";
+
 // Every texture here is drawn on a 2D canvas at runtime: no image assets ship,
 // and the same code always produces the same bytes. Textures and materials are
 // built once and shared, because these accessors run per node on every graph
@@ -153,21 +155,8 @@ export function createDressing(palette) {
       const material = labelMaterial(text);
       const sprite = new THREE.Sprite(material);
       const aspect = material.userData.aspect ?? 4;
-      sprite.scale.set(LABEL_SCREEN_HEIGHT * aspect, LABEL_SCREEN_HEIGHT, 1);
-      // Clear of the star and its halo, so the plate never sits on the glow.
-      // The declutter pass may move it to another slot around the star, so it
-      // keeps the resting offset to measure those alternatives from.
-      sprite.userData.baseOffsetY = radius * 2.2 + 1.2;
-      sprite.position.set(0, sprite.userData.baseOffsetY, 0);
+      configureNamePlate(sprite, { radius, aspect });
       sprite.renderOrder = 4;
-      sprite.visible = false;
-      sprite.userData.codembleLabel = true;
-      // The plate's width as a fraction of the viewport, published here because
-      // this is where the sizing constant lives. The declutter pass needs it to
-      // know how many screen cells a name actually covers, and deriving it over
-      // there meant duplicating a constant across modules.
-      sprite.userData.screenWidthFraction = LABEL_SCREEN_HEIGHT * aspect;
-      sprite.userData.screenHeightFraction = LABEL_SCREEN_HEIGHT;
       return sprite;
     },
     dispose() {
@@ -183,10 +172,6 @@ export function createDressing(palette) {
   };
 }
 
-// Fraction of the viewport height one name plate occupies. Sprites with
-// sizeAttenuation off measure their scale in that space, so this is literally
-// "labels are ~3.4% of the window tall" at any zoom.
-const LABEL_SCREEN_HEIGHT = 0.034;
 const LABEL_FONT_PX = 34;
 const LABEL_PADDING_PX = 12;
 

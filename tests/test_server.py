@@ -445,6 +445,10 @@ def test_picker_select_returns_202_and_binds_through_the_parse_job(
         client.post("/api/picker/select", json={"path": str(FIXTURE)}).status_code
         == 409
     )
+    assert (
+        client.post("/api/picker/select", json={"path": str(tmp_path / "missing")}).status_code
+        == 409
+    ), "an existing activation wins before a new path is resolved"
 
 
 def test_picker_progress_reports_ready_for_a_cli_bound_project(tmp_path: Path) -> None:

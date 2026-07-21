@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-21
+
 ### Added
 - **You can move the camera.** Dragging now orbits around whatever you are
   looking at, and the wheel zooms. Panning stays off and both rotation and zoom
@@ -22,6 +24,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   including ones the sky has not charted yet.
 
 ### Changed
+- Project selection, project activation, project mapping, the galaxy Name
+  Atlas, and the Learner Projection now each sit behind one focused module
+  interface. The HTTP API, parser graph, checks, persistence, and learner-visible
+  interactions are unchanged; focused contract suites pin each new seam.
+- Learner projections are now dependency-scoped and indexed instead of being
+  recomputed on every session commit. A 1,000-node hover benchmark dropped from
+  about 0.331 ms to 0.001 ms per commit, and hover-only commits preserve the
+  identity of every unaffected graph, map, chart, reveal, hint, and module-index
+  projection so the 3D renderer does not rebuild stable scene data.
 - **The galaxy no longer draws your whole project at once.** It opens on Home
   and everything within two import routes of it; proving a module reveals what
   it connects to, so the map is uncovered by understanding. Modules you have not

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,18 +15,25 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from codemble import __version__
 from codemble.adapters.base import Graph
-from codemble.adapters.parse_progress import ParseCancelled
-from codemble.graph import build_map
 from codemble.adapters.project import (
     ProjectParseError,
-    ProjectParser,
     ProjectScaleError,
 )
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
-from codemble.progress import list_recent_projects
-from codemble.server.parse_job import ParseJob
+from codemble.server.project_activation import (
+    LiveProject,
+    ProjectActivation,
+    ProjectActivationBusy,
+    ProjectUnavailable,
+)
+from codemble.server.project_selection import (
+    ProjectFolderForbidden,
+    ProjectFolderMissing,
+    ProjectFolderUnreadable,
+    ProjectSelector,
+)
 
 
 class CheckSubmission(BaseModel):
@@ -77,137 +82,6 @@ class PickerConfig:
     entrypoint: str | None = None
 
 
-class _ProjectState:
-    """Binding from picker selection to live project services, plus its parse.
-
-    Binding is one-*at-a-time*, not one-shot: ``POST /api/picker/reset`` unbinds
-    so the header's Switch project control can re-arm the picker without a
-    process restart, and ``serve_project`` attaches a ``PickerConfig`` for
-    exactly that reason.  An app built with no ``PickerConfig`` at all is the
-    only genuinely one-shot case -- there, reset refuses rather than stranding
-    the process with nothing to pick.
-    """
-
-    def __init__(self) -> None:
-        self.checks: CheckService | None = None
-        self.studies: StudyService | None = None
-        self.job = ParseJob()
-        self._lock = threading.Lock()
-        self._graph: Graph | None = None
-        self._graph_json: str | None = None
-        self._map_json: str | None = None
-
-    @property
-    def bound(self) -> bool:
-        return self.checks is not None
-
-    def bind(self, graph: Graph, progress: ParseJob | None = None) -> None:
-        if progress is not None:
-            progress.stage("checks")
-        studies = StudyService.from_environment(graph)
-        checks = CheckService(graph)
-        if progress is not None:
-            progress.stage("layout")
-        with self._lock:
-            # Re-check cancellation here, under the same lock as the commit --
-            # not just before this method was called. A parse cancelled while
-            # this construction was running (bind() outlives cancel()'s 2s
-            # wait on a large graph) must not resurrect the project reset just
-            # released, nor clobber whatever the learner selected next.
-            # `cancelled` never clears once set, so this is safe no matter how
-            # much later this commit is attempted.
-            if progress is not None and progress.cancelled:
-                return
-            self.studies = studies
-            self.checks = checks
-            self._graph = None
-            self._graph_json = None
-            self._map_json = None
-        self.graph_json()
-
-    def unbind(self) -> None:
-        """Drop the bound project so the picker can arm again.
-
-        Progress is already on disk per project root, so releasing the live
-        services loses nothing a re-select cannot restore.
-        """
-
-        with self._lock:
-            self.checks = None
-            self.studies = None
-            self._graph = None
-            self._graph_json = None
-            self._map_json = None
-
-    def _hydrated(self) -> Graph:
-        """Hydrate from progress once per invalidating event.
-
-        ``graph_json`` and ``map_json`` both need this same render-ready
-        graph -- sharing it means a cold cache after a light-up or Home
-        change pays hydration once, not once per endpoint a learner happens
-        to open next.
-        """
-
-        with self._lock:
-            cached = self._graph
-            checks = self.checks
-        if cached is not None:
-            return cached
-        if checks is None:
-            raise HTTPException(status_code=409, detail="No project selected yet.")
-        hydrated = checks.graph()
-        with self._lock:
-            self._graph = hydrated
-        return hydrated
-
-    def graph_json(self) -> str:
-        """Serialize the render document once per invalidating event."""
-
-        with self._lock:
-            cached = self._graph_json
-        if cached is not None:
-            return cached
-        payload = json.dumps(
-            self._hydrated().to_dict(), separators=(",", ":"), ensure_ascii=False
-        )
-        with self._lock:
-            self._graph_json = payload
-        return payload
-
-    def map_json(self) -> str:
-        """Serialize the 2D map layouts once per invalidating event.
-
-        Easy mode defaults to the Map layer, so it must not re-pay hydration
-        plus layout on every request either -- the same disease this class
-        was written to cure for the galaxy payload.
-        """
-
-        with self._lock:
-            cached = self._map_json
-        if cached is not None:
-            return cached
-        payload = json.dumps(
-            build_map(self._hydrated()), separators=(",", ":"), ensure_ascii=False
-        )
-        with self._lock:
-            self._map_json = payload
-        return payload
-
-    def invalidate_graph_json(self) -> None:
-        """Drop every cached payload derived from the live graph.
-
-        One trigger for all three: the hydrated ``Graph``, the galaxy JSON,
-        and the map JSON all become stale from the same three events (a
-        region lighting up, an entrypoint choice, or bind/unbind), so there
-        is nothing to gain from invalidating them separately.
-        """
-
-        with self._lock:
-            self._graph = None
-            self._graph_json = None
-            self._map_json = None
-
-
 def create_app(
     graph: Graph | None = None,
     web_dist: Path | None = None,
@@ -224,26 +98,28 @@ def create_app(
         raise ValueError("create_app needs a parsed graph or a PickerConfig")
     app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
-    state = _ProjectState()
-    if parse_runner is not None:
-        state.job = ParseJob(runner=parse_runner)
+    activation = ProjectActivation(
+        graph,
+        studies=study_service,
+        checks=check_service,
+        entrypoint=picker.entrypoint if picker is not None else None,
+        parse_runner=parse_runner,
+    )
+    selector = ProjectSelector(picker.browse_root) if picker is not None else None
 
-    def _new_job() -> ParseJob:
-        return ParseJob(runner=parse_runner) if parse_runner else ParseJob()
-
-    if graph is not None:
-        state.studies = study_service or StudyService.from_environment(graph)
-        state.checks = check_service or CheckService(graph)
-        state.graph_json()
+    def _project() -> LiveProject:
+        try:
+            return activation.project()
+        except ProjectUnavailable as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
 
     def _services() -> tuple[CheckService, StudyService]:
-        if state.checks is None or state.studies is None:
-            raise HTTPException(status_code=409, detail="No project selected yet.")
-        return state.checks, state.studies
+        project = _project()
+        return project.checks, project.studies
 
     @app.get("/api/picker/state")
     def get_picker_state() -> dict[str, str]:
-        return {"state": "ready" if state.bound else "unpicked"}
+        return {"state": "ready" if activation.bound else "unpicked"}
 
     @app.post("/api/picker/reset")
     def reset_picker(release: ProjectRelease) -> dict[str, str]:
@@ -256,9 +132,7 @@ def create_app(
                 status_code=409,
                 detail="This project was opened without a picker; restart Codemble to switch.",
             )
-        state.job.cancel()
-        state.job = _new_job()
-        state.unbind()
+        activation.release()
         return {"state": "unpicked"}
 
     @app.get("/api/llm/status")
@@ -266,7 +140,7 @@ def create_app(
         # Deliberately bypasses _services(): this reports LLM configuration,
         # not project data, and the setup guide it feeds is most useful
         # before a project is bound -- it must not 409 like /api/graph does.
-        provider = state.studies.provider if state.studies is not None else None
+        provider = activation.provider
         return {
             "configured_provider": getattr(provider, "name", None),
             "configured_model": getattr(provider, "model", None),
@@ -275,74 +149,40 @@ def create_app(
 
     @app.get("/api/picker/browse")
     def browse_picker(path: str | None = None) -> dict[str, object]:
-        if state.bound or picker is None:
+        if activation.bound or selector is None:
             raise HTTPException(status_code=409, detail="A project is already selected.")
-        jail = picker.browse_root.expanduser().resolve()
-        target = Path(path).expanduser() if path else jail
         try:
-            resolved = target.resolve(strict=True)
-        except OSError as error:
-            raise HTTPException(
-                status_code=404, detail="That folder does not exist."
-            ) from error
-        if not resolved.is_dir():
-            raise HTTPException(status_code=404, detail="That folder does not exist.")
-        if not resolved.is_relative_to(jail):
-            raise HTTPException(
-                status_code=403, detail="Choose a folder inside your home directory."
-            )
-        try:
-            children = [
-                child
-                for child in resolved.iterdir()
-                if child.is_dir() and not child.name.startswith(".")
-            ]
-        except OSError as error:
-            raise HTTPException(
-                status_code=403, detail="Codemble cannot read that folder."
-            ) from error
-        entries = sorted(
-            ({"name": child.name, "path": str(child)} for child in children),
-            key=lambda entry: str(entry["name"]).lower(),
-        )
-        parent = str(resolved.parent) if resolved != jail else None
-        return {"path": str(resolved), "parent": parent, "entries": entries}
+            return selector.browse(path).to_dict()
+        except ProjectFolderMissing as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except ProjectFolderForbidden as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
+        except ProjectFolderUnreadable as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
 
     @app.get("/api/picker/recents")
     def picker_recents() -> dict[str, object]:
-        if state.bound or picker is None:
+        if activation.bound or selector is None:
             raise HTTPException(status_code=409, detail="A project is already selected.")
-        jail = picker.browse_root.expanduser().resolve()
-        recents = [
-            entry
-            for entry in list_recent_projects()
-            if Path(str(entry["project_root"])).resolve().is_relative_to(jail)
-        ]
-        return {"recents": recents}
+        return {"recents": selector.recents()}
 
     @app.post("/api/picker/select", status_code=202)
     def select_project(selection: ProjectSelection) -> dict[str, object]:
-        if state.bound or picker is None or state.job.active:
+        if (
+            picker is None
+            or selector is None
+            or not activation.accepting_selection
+        ):
             raise HTTPException(status_code=409, detail="A project is already selected.")
-        jail = picker.browse_root.expanduser().resolve()
         try:
-            resolved = Path(selection.path).expanduser().resolve(strict=True)
-        except OSError as error:
-            raise HTTPException(
-                status_code=404, detail="That folder does not exist."
-            ) from error
-        if not resolved.is_relative_to(jail):
-            raise HTTPException(
-                status_code=403, detail="Choose a folder inside your home directory."
-            )
-        parser = ProjectParser()
-        job = _new_job()
-        state.job = job
-        job.begin()
+            resolved = selector.resolve(selection.path)
+        except ProjectFolderMissing as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except ProjectFolderForbidden as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
         try:
-            intake = parser.intake(resolved)
+            activation.activate(resolved)
         except ProjectScaleError as error:
-            state.job = _new_job()
             raise HTTPException(
                 status_code=409,
                 detail={
@@ -357,18 +197,9 @@ def create_app(
                 },
             ) from error
         except ProjectParseError as error:
-            state.job = _new_job()
             raise HTTPException(status_code=422, detail=str(error)) from error
-
-        def work(reporter: ParseJob) -> None:
-            bound_graph = parser.parse(
-                intake, entrypoint=picker.entrypoint, progress=reporter
-            )
-            if reporter.cancelled:
-                raise ParseCancelled("the learner reset the picker during this parse")
-            state.bind(bound_graph, progress=reporter)
-
-        job.start(work)
+        except ProjectActivationBusy as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
         return {"state": "parsing"}
 
     @app.get("/api/picker/progress")
@@ -376,15 +207,11 @@ def create_app(
         # Never guarded by _services(): the loading screen polls this while
         # nothing is bound yet, and it must answer honestly before, during,
         # and after a parse.
-        snapshot = state.job.snapshot()
-        if snapshot["state"] == "idle" and state.bound:
-            snapshot["state"] = "ready"
-        return snapshot
+        return activation.progress()
 
     @app.get("/api/graph")
     def get_graph() -> Response:
-        _services()
-        return Response(state.graph_json(), media_type="application/json")
+        return Response(_project().graph_json(), media_type="application/json")
 
     @app.get("/api/map")
     def get_map() -> Response:
@@ -393,20 +220,19 @@ def create_app(
         # like /api/graph -- Easy mode defaults to this layer, so it is the
         # beginner's first request and must not re-pay hydration + layout on
         # every read either.
-        _services()
-        return Response(state.map_json(), media_type="application/json")
+        return Response(_project().map_json(), media_type="application/json")
 
     @app.post("/api/entrypoint")
     def select_entrypoint(selection: EntrypointSelection) -> dict[str, object]:
-        checks, _ = _services()
+        project = _project()
         try:
-            selected = checks.select_entrypoint(selection.node_id)
+            selected = project.checks.select_entrypoint(selection.node_id)
         except ValueError as error:
             raise HTTPException(
                 status_code=422,
                 detail="Choose one of the parser-ranked entrypoint candidates.",
             ) from error
-        state.invalidate_graph_json()
+        project.invalidate_views()
         return selected.to_dict()
 
     @app.get("/api/regions/{region_id:path}/checks")
@@ -423,9 +249,9 @@ def create_app(
     def submit_region_check(
         region_id: str, check_id: str, submission: CheckSubmission
     ) -> dict[str, object]:
-        checks, _ = _services()
+        project = _project()
         try:
-            result = checks.submit(region_id, check_id, submission.selected_ids)
+            result = project.checks.submit(region_id, check_id, submission.selected_ids)
         except UnknownCheckError as error:
             raise HTTPException(
                 status_code=404, detail="That graph check does not exist."
@@ -435,7 +261,7 @@ def create_app(
         # Invalidated on every accepted submission, not only a completing one:
         # a submission is rare, and a light-up is the one thing that must
         # never be served stale.
-        state.invalidate_graph_json()
+        project.invalidate_views()
         return result
 
     @app.get("/api/node/{node_id:path}/study")
@@ -480,10 +306,12 @@ def create_app(
 
     @app.delete("/api/progress")
     def clear_progress() -> dict[str, int]:
-        checks, _ = _services()
-        checks.progress.clear()
-        state.invalidate_graph_json()
-        return {"understood_regions": len(checks.progress.understood_regions())}
+        project = _project()
+        project.checks.progress.clear()
+        project.invalidate_views()
+        return {
+            "understood_regions": len(project.checks.progress.understood_regions())
+        }
 
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():

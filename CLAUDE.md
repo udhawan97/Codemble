@@ -168,12 +168,21 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-21 ·
-Session note: architecture-deepening maintenance is complete after the verified
-v0.2.0 release; all four report recommendations are merged in phases while issue
-#13 remains open for human tester evidence. The public site was then redesigned
-to the Formal Edo palette and Edo star-atlas genre, with an expanding Pagefind
-search shared by the landing and docs; no parser, graph, checks, persistence, or
-app behaviour was touched. A tester-run rehearsal of the shipped loop then
+Session note: the v0.6.0 architecture-depth pass is complete in five
+behavior-preserving waves: project selection owns the home-jailed filesystem
+policy; project activation atomically owns parse-to-live binding and graph/map
+caches; project mapping owns picker attempts, polling, retry, outage, stale
+responses, and release; the Name Atlas owns deterministic plate placement; and
+the indexed Learner Projection reuses every unaffected derived view. The
+1,000-node hover benchmark moved from ~0.331 ms to ~0.001 ms per commit, while
+the HTTP, graph, check, persistence, and UI contracts stayed fixed. The current
+milestone does not advance: issue #13 still requires human tester evidence.
+Earlier architecture-deepening maintenance completed after the verified v0.2.0
+release; all four report recommendations merged in phases. The public site was
+then redesigned to the Formal Edo palette and Edo star-atlas genre, with an
+expanding Pagefind search shared by the landing and docs; no parser, graph,
+checks, persistence, or app behaviour was touched. A tester-run rehearsal of
+the shipped loop then
 verified Home calibration, study source, checks, illumination, and restart
 persistence end to end, and found one real defect: multi-answer checks with four
 or more answers offered no wrong option, so select-all lit a region without
@@ -431,6 +440,23 @@ interactive galaxy; re-fetching the graph does not re-sort the world; the scale
 prompt is actionable entirely in-app; generated check suites are byte-identical
 to before the index change.
 
+### M14 — Architecture depth and indexed learner views ✅ (2026-07-21)
+- [x] Put canonical browse-root resolution, folder listing, and recent-project
+      filtering behind `ProjectSelector`
+- [x] Make parse-to-live binding, stale-worker refusal, release, and graph/map
+      cache lifetime atomic behind `ProjectActivation`
+- [x] Put picker attempts, parse polling/backoff, retry, outage, reset, and
+      stale-response guards behind one Project Mapping Run
+- [x] Put name ranking, camera budget, projection, slots, collision cells,
+      sprite metadata, and cleanup behind one deterministic Name Atlas
+- [x] Index learner projections by their real dependencies and prove hover-only
+      commits reuse stable outputs; benchmark the 1,000-node case
+
+**Acceptance:** public HTTP payloads and parser/check/persistence contracts are
+unchanged; focused module suites and the existing end-to-end session/server
+suites pass; the production SPA is rebuilt; the 1,000-node projection benchmark
+shows lower repeated-commit work without changing derived values.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
@@ -507,6 +533,7 @@ to before the index change.
 | 2026-07-21 | Progressive reveal stays **galaxy-only**; the Map always draws every module | Approved by UD when the navigation work was extended to the Map. The Map's job is "how it all fits together", and a layered import diagram with holes in it teaches less than a complete one; the galaxy already offers the thinned view for learners who want it |
 | 2026-07-21 | Architecture boxes are named by the tail of their file path (`short_label`, map schema 3); `label` keeps the full identifier for title and aria | A box is a fixed width, so its text always truncates on a real project — and truncating a dotted region id rendered `codemble.server.app` and `codemble.server.runtime` as the same glyphs. Identical text for different modules is worse than no label, and it is exactly the kind of wrong a learner cannot detect. The path tail also survives the `__init__.py` collision a basename alone cannot |
 | 2026-07-21 | The Map gains zoom, Fit, and drag-to-pan; panning rides the container's own scroll and zoom only scales the rendered size | The 2D counterpart of bounded orbit: a 960x2640 diagram in a plain scroll box showed four of nine layers and no way to see the whole shape. Scroll-based panning keeps native scrollbars, keyboard scrolling and screen-reader behaviour intact, and because every coordinate inside the SVG stays backend-computed, React remains a pure renderer of graph-owned geometry. It opens at true size rather than auto-fitting: fitting on mount measured the scroller before layout settled and landed on a scale that was neither fitted nor honest |
+| 2026-07-21 | v0.6.0 deepens five private boundaries without changing the HTTP, graph, check, persistence, or learner-visible contracts: Project Selection, Project Activation, Project Mapping Run, Name Atlas, and Learner Projection | Approved by UD as five behavior-preserving waves in one release PR. The deletion test now holds at each seam, stale activation and mapping responses lose atomically, and dependency-scoped learner projections measured ~0.331 ms → ~0.001 ms per hover commit on a synthetic 1,000-node project while preserving derived outputs |
 
 ## Non-Goals — do NOT build (point here when asked)
 
