@@ -64,13 +64,19 @@ lit state — not a faster animation, none at all.
 Keyboard focus carries a visible reticle in the 3D scene as well as a live text
 readout, so arrow-key navigation is never a guess about where you are.
 
-## Semantic zoom, not free flight
+## Bounded orbit, not free flight
 
-Free-flight 3D looks fun in demos and is where comprehension goes to die.
-Codemble's camera moves on rails between three levels — galaxy for orientation,
-system for structure, study for learning — with scripted fly-to transitions.
-Reading never happens "in space": the study panel takes the foreground, and the
-sky behind it recedes to the structure you are reading and its connections.
+Drag to orbit the current subject and use the wheel to zoom. Panning is off,
+distance and polar angle are clamped for each level, and clicking a node moves
+between galaxy, system, and study with a scripted transition. The parser owns
+every node position, so nodes do not drag away from the graph. Reading never
+happens "in space": the study panel takes the foreground, and the sky behind it
+recedes to the structure you are reading and its connections.
+
+At narrow widths the header's secondary actions live behind **Menu**, guidance
+occupies its own row below the stage, and Study becomes a full-stage scrolling
+sheet. The map/canvas and the local-only status remain in the viewport instead
+of being squeezed behind controls.
 
 ## Two layers, one truth
 
@@ -139,3 +145,7 @@ works whether you started from the picker or passed a path.
 least one candidate. The Home you choose is remembered for the next run of the
 same project, and a saved choice the parser no longer ranks is dropped rather
 than restored.
+
+On a first run with more than one honest Home candidate, Codemble asks for your
+audience first, then Home, then opens the three-step coach. Those decisions do
+not stack on top of one another.

@@ -1,12 +1,12 @@
 {
   "name": "codemble-web",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "node scripts/check_graph_data.mjs && node scripts/check_name_atlas.mjs && node scripts/check_project_mapping.mjs && node scripts/check_learner_projection.mjs && node scripts/check_learner_session.mjs && vite build",
+    "check": "node scripts/check_graph_data.mjs && node scripts/check_name_atlas.mjs && node scripts/check_project_mapping.mjs && node scripts/check_learner_projection.mjs && node scripts/check_learner_session.mjs && node scripts/check_orbit_pointer_guard.mjs && vite build",
     "benchmark:projection": "node scripts/benchmark_learner_projection.mjs"
   },
   "dependencies": {

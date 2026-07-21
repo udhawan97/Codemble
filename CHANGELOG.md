@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-07-21
+
+### Fixed
+- **The full learning loop now fits a 320 px window.** A compact Menu replaces
+  the crowded action rail, the architecture Map waits for real layout
+  dimensions before fitting, guidance gets its own row instead of covering Map
+  controls, and Study becomes a full-stage reading sheet. The header, canvas,
+  guidance, and local-only status remain visible without horizontal overflow.
+- **Modules and Find work from the Star chart.** Both global commands now render
+  their surface in chart mode instead of accepting a click into hidden state
+  that only appeared after returning to the galaxy.
+- **First-run guidance no longer competes with Home calibration.** After an
+  audience is chosen, a required Home choice finishes before the three-step
+  coach opens, so there is one decision in the foreground at a time.
+- **Canvas clicks no longer corrupt OrbitControls pointer state.** Codemble's
+  parser-owned node layout is now explicitly non-draggable, preventing the 3D
+  dependency's drag-end bridge from injecting a synthetic touch release into a
+  mouse release. A stale-pointer guard and focused contract pin the fallback.
+
 ## [0.6.0] - 2026-07-21
 
 ### Added

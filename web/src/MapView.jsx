@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { nebulaTintKey } from "./graphData.js";
 
@@ -33,6 +33,7 @@ function MapCanvas({ contentWidth, contentHeight, label, children }) {
   const [scale, setScale] = useState(1);
   const [panning, setPanning] = useState(false);
   const drag = useRef(null);
+  const autoFitted = useRef(false);
 
   // Deliberately not run on mount. The map opens at true size, which already
   // fits horizontally and is the only scale its labels are readable at; Fit is
@@ -43,6 +44,41 @@ function MapCanvas({ contentWidth, contentHeight, label, children }) {
     const box = scrollRef.current?.getBoundingClientRect();
     if (!box || !contentWidth || !contentHeight) return;
     setScale(clampZoom(Math.min(box.width / contentWidth, box.height / contentHeight)));
+  }, [contentWidth, contentHeight]);
+
+  // A phone cannot show a true-size diagram and still reveal where the map
+  // begins: this project's first box sits hundreds of pixels from the left
+  // edge. Wait for the *settled* scroller size, then fit once at narrow widths.
+  // ResizeObserver avoids the old bug where mount-time measurement ran before
+  // the flex column had a height and produced a dishonest in-between scale.
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller || typeof ResizeObserver === "undefined") return undefined;
+    autoFitted.current = false;
+    let frame = 0;
+    const maybeFit = () => {
+      if (autoFitted.current) return;
+      const box = scroller.getBoundingClientRect();
+      if (box.width > 480 || box.width <= 0 || box.height <= 0) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const settled = scroller.getBoundingClientRect();
+        if (settled.width > 480 || settled.width <= 0 || settled.height <= 0) return;
+        setScale(
+          clampZoom(
+            Math.min(settled.width / contentWidth, settled.height / contentHeight),
+          ),
+        );
+        autoFitted.current = true;
+      });
+    };
+    const observer = new ResizeObserver(maybeFit);
+    observer.observe(scroller);
+    maybeFit();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [contentWidth, contentHeight]);
 
   function onPointerDown(event) {

@@ -6,6 +6,7 @@ import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffect
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 import { createNameAtlas } from "./nameAtlas.js";
+import { guardOrbitPointerState } from "./orbitPointerGuard.js";
 
 const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
@@ -138,6 +139,11 @@ export function GalaxyCanvas({
         .backgroundColor(palette.ground)
         .showNavInfo(false)
         .enableNavigationControls(true)
+        // The parser owns the layout, and moving a node is not a learner
+        // action. More importantly, 3d-force-graph's drag-end bridge emits a
+        // synthetic touch pointerup while OrbitControls is still completing
+        // the real mouse pointerup, which corrupts its pointer bookkeeping.
+        .enableNodeDrag(false)
         .warmupTicks(0)
         .cooldownTicks(0)
         .nodeId("id")
@@ -198,6 +204,7 @@ export function GalaxyCanvas({
       controls.minPolarAngle = MIN_POLAR_ANGLE;
       controls.maxPolarAngle = MAX_POLAR_ANGLE;
       controlsRef.current = controls;
+      const removePointerGuard = guardOrbitPointerState(host, controls);
 
       bloomRef.current = attachBloom(renderer);
       rendererRef.current = renderer;
@@ -209,6 +216,7 @@ export function GalaxyCanvas({
       return () => {
         resize.disconnect();
         cancelAnimationFrame(hideNavigationHint);
+        removePointerGuard();
         renderer.pauseAnimation();
         bloomRef.current?.dispose();
         bloomRef.current = null;

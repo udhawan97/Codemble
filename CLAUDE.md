@@ -168,7 +168,14 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-21 ·
-Session note: the v0.6.0 architecture-depth pass is complete in five
+Session note: v0.6.1 closes the four verified user-flow gaps from the
+2026-07-21 usability audit: the 320 px shell reserves a usable map/study stage,
+Modules and Find render from the Star chart, required Home calibration finishes
+before coach marks begin, and parser-owned 3D nodes no longer install drag
+controls that can corrupt OrbitControls pointer state. The release is verified
+against the real bundled app at desktop and 320 px widths; the milestone does
+not advance because issue #13 still requires human tester evidence. The v0.6.0
+architecture-depth pass is complete in five
 behavior-preserving waves: project selection owns the home-jailed filesystem
 policy; project activation atomically owns parse-to-live binding and graph/map
 caches; project mapping owns picker attempts, polling, retry, outage, stale
@@ -534,6 +541,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-21 | Architecture boxes are named by the tail of their file path (`short_label`, map schema 3); `label` keeps the full identifier for title and aria | A box is a fixed width, so its text always truncates on a real project — and truncating a dotted region id rendered `codemble.server.app` and `codemble.server.runtime` as the same glyphs. Identical text for different modules is worse than no label, and it is exactly the kind of wrong a learner cannot detect. The path tail also survives the `__init__.py` collision a basename alone cannot |
 | 2026-07-21 | The Map gains zoom, Fit, and drag-to-pan; panning rides the container's own scroll and zoom only scales the rendered size | The 2D counterpart of bounded orbit: a 960x2640 diagram in a plain scroll box showed four of nine layers and no way to see the whole shape. Scroll-based panning keeps native scrollbars, keyboard scrolling and screen-reader behaviour intact, and because every coordinate inside the SVG stays backend-computed, React remains a pure renderer of graph-owned geometry. It opens at true size rather than auto-fitting: fitting on mount measured the scroller before layout settled and landed on a scale that was neither fitted nor honest |
 | 2026-07-21 | v0.6.0 deepens five private boundaries without changing the HTTP, graph, check, persistence, or learner-visible contracts: Project Selection, Project Activation, Project Mapping Run, Name Atlas, and Learner Projection | Approved by UD as five behavior-preserving waves in one release PR. The deletion test now holds at each seam, stale activation and mapping responses lose atomically, and dependency-scoped learner projections measured ~0.331 ms → ~0.001 ms per hover commit on a synthetic 1,000-node project while preserving derived outputs |
+| 2026-07-21 | v0.6.1 treats Modules and Find as global surfaces, sequences first-run decisions as audience → required Home → coach, and makes the 3D parser-owned layout explicitly non-draggable | Approved by UD as implementation of every verified user-flow audit finding. Global commands must never accept hidden state, onboarding must expose one foreground decision at a time, and learners orbit the immutable graph rather than editing its coordinates. The compact shell is a structural breakpoint of the existing Formal Edo interface, not a new visual system |
 
 ## Non-Goals — do NOT build (point here when asked)
 
