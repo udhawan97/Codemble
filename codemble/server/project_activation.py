@@ -120,6 +120,13 @@ class ProjectActivation:
             return self._project is not None
 
     @property
+    def accepting_selection(self) -> bool:
+        """True only when a new selected path may start activation."""
+
+        with self._lock:
+            return self._project is None and not self._job.active
+
+    @property
     def provider(self) -> object | None:
         with self._lock:
             project = self._project

@@ -1,13 +1,5 @@
-import {
-  LEVELS,
-  buildConceptChart,
-  defaultRegion,
-  languageFocusGraph,
-  languageFocusMap,
-  moduleIndex,
-  projectLanguageOptions,
-  revealedRegionIds,
-} from "./graphData.js";
+import { LEVELS, defaultRegion } from "./graphData.js";
+import { createLearnerProjection } from "./learnerProjection.js";
 import { createProjectMapping } from "./projectMapping.js";
 
 const DEFAULT_CLOCK = Object.freeze({
@@ -24,7 +16,8 @@ export function createLearnerSession({
   clock = DEFAULT_CLOCK,
 } = {}) {
   const listeners = new Set();
-  let snapshot = deriveSnapshot({
+  const learnerProjection = createLearnerProjection();
+  let snapshot = learnerProjection.derive({
     status: "idle",
     error: "",
     graph: null,
@@ -99,7 +92,7 @@ export function createLearnerSession({
 
   function commit(patch, { preserveChecks = false } = {}) {
     const previous = snapshot;
-    let next = deriveSnapshot({ ...previous, ...patch });
+    let next = learnerProjection.derive({ ...previous, ...patch });
     const navigationChanged =
       next.level !== previous.level || next.region?.id !== previous.region?.id;
     if (navigationChanged) {
@@ -113,7 +106,7 @@ export function createLearnerSession({
         navigationPatch.checkData = null;
         navigationPatch.checkError = "";
       }
-      next = deriveSnapshot({ ...next, ...navigationPatch });
+      next = learnerProjection.derive({ ...next, ...navigationPatch });
     }
     snapshot = Object.freeze(next);
     for (const listener of listeners) listener();
@@ -1155,92 +1148,6 @@ export function createInMemoryLearnerSessionAdapter({
       return { understood_regions: 0 };
     },
   });
-}
-
-function deriveSnapshot(state) {
-  const graph = state.graph;
-  const focusedGraph = graph
-    ? languageFocusGraph(graph, state.languageFocus)
-    : null;
-  let level = state.level;
-  let region = state.region;
-  let selectedNode = state.selectedNode;
-  if (focusedGraph) {
-    region = focusedGraph.regions.find((candidate) => candidate.id === region?.id) ?? null;
-    if (!region) {
-      region = defaultRegion(focusedGraph);
-      selectedNode = null;
-      level = LEVELS.GALAXY;
-    } else if (selectedNode) {
-      selectedNode =
-        focusedGraph.nodes.find((candidate) => candidate.id === selectedNode.id) ?? null;
-      if (!selectedNode && level === LEVELS.STUDY) level = LEVELS.SYSTEM;
-    }
-  }
-  const studiedNodeIds = state.studiedNodeIds;
-  const hint = focusedGraph ? nearestUnlitRegion(focusedGraph, state.mode) : null;
-  return {
-    ...state,
-    focusedGraph,
-    // The Map's language projection lives here beside focusedGraph, not in
-    // React, so the renderer stays a pure consumer: focus means the same thing
-    // on both layers, and coordinates stay backend-owned.
-    focusedMapData: languageFocusMap(state.mapData, state.languageFocus),
-    entrypointOpen: Boolean(graph) && !state.entrypointDismissed,
-    level,
-    region,
-    selectedNode,
-    languageOptions: graph ? projectLanguageOptions(graph) : [],
-    projectName: graph
-      ? graph.project_root.split("/").filter(Boolean).at(-1) ?? graph.project_root
-      : "Loading local project",
-    chart: focusedGraph ? buildConceptChart(focusedGraph, studiedNodeIds) : [],
-    focusedStudiedCount: focusedGraph
-      ? focusedGraph.nodes.filter((node) => studiedNodeIds.has(node.id)).length
-      : 0,
-    hint,
-    // Derived here, never in React: which sky is charted is session truth the
-    // renderer consumes, the same rule that keeps layout out of components.
-    // The current region is the transient seed, so walking into a system
-    // reveals its neighbours for as long as it is the subject.
-    revealedRegionIds: focusedGraph
-      ? revealedRegionIds(focusedGraph, {
-          showAll: state.showAll,
-          selectionId: region?.id ?? null,
-        })
-      : new Set(),
-    moduleIndex: focusedGraph ? moduleIndex(focusedGraph) : [],
-  };
-}
-
-// Deterministic graph truth: the nearest unlit region to Home counted in route
-// hops, ties broken by region id. The distance itself is now `hops_from_home`,
-// computed once in the graph layer -- this used to re-walk the same undirected
-// breadth-first search in the browser, so the hint and the reveal floor could
-// in principle have disagreed about the same number.
-function nearestUnlitRegion(graph, mode) {
-  if (mode !== "easy") return null;
-  const unlit = graph.regions.filter((region) => !region.understood);
-  if (!unlit.length) return null;
-  const nearest = unlit
-    .map((region) => ({
-      regionId: region.id,
-      // No route from Home sorts last, and the caller words it as such rather
-      // than printing a distance the parser never found.
-      hops: typeof region.hops_from_home === "number" ? region.hops_from_home : Infinity,
-    }))
-    .sort(
-      (left, right) => left.hops - right.hops || left.regionId.localeCompare(right.regionId),
-    )[0];
-  return {
-    ...nearest,
-    reason:
-      nearest.hops === 0
-        ? "Home is not lit yet."
-        : Number.isFinite(nearest.hops)
-          ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
-          : "No import route reaches it from Home.",
-  };
 }
 
 // A UI preference, not progress: it belongs in localStorage, never in

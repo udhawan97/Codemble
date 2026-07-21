@@ -168,7 +168,11 @@ def create_app(
 
     @app.post("/api/picker/select", status_code=202)
     def select_project(selection: ProjectSelection) -> dict[str, object]:
-        if picker is None or selector is None:
+        if (
+            picker is None
+            or selector is None
+            or not activation.accepting_selection
+        ):
             raise HTTPException(status_code=409, detail="A project is already selected.")
         try:
             resolved = selector.resolve(selection.path)

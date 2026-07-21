@@ -21,3 +21,8 @@ ends when its project activates, parsing fails, or the learner releases it.
 The deterministic set of visible names placed around charted stars for the
 current camera view, prioritizing Home, understood systems, and the learner's
 current pointer subject without allowing name plates to collide.
+
+## Learner Projection
+
+The learner-facing view of the current project after language focus, proven
+progress, navigation selection, and view preferences are applied.

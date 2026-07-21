@@ -67,10 +67,9 @@ export function GalaxyCanvas({
   const [renderError, setRenderError] = useState("");
   const palette = useMemo(readPalette, []);
   const reducedMotion = useMemo(prefersReducedMotion, []);
-  // The seed's *value*, not the identity of the object it came from: every
-  // session commit rebuilds file_hashes while a language focus is active
-  // (learnerSession.js deriveSnapshot), and depending on that identity rebuilt
-  // the whole starfield on unrelated state changes.
+  // The seed's *value*, not the identity of the object it came from. The
+  // Learner Projection now preserves focused-graph identity on unrelated
+  // commits too; value-keying here keeps that protection local to the sky.
   const starfieldSeed = seedFromHashes(graph.file_hashes);
   const data = useMemo(() => {
     if (level === LEVELS.GALAXY) return galaxyData(graph, palette, revealedRegionIds);

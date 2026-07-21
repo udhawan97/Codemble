@@ -27,6 +27,7 @@ def test_initial_graph_is_immediately_active_and_renderable() -> None:
     project = activation.project()
 
     assert activation.bound is True
+    assert activation.accepting_selection is False
     assert activation.progress()["state"] == "ready"
     assert '"regions"' in project.graph_json()
     assert '"architecture"' in project.map_json()
@@ -35,6 +36,7 @@ def test_initial_graph_is_immediately_active_and_renderable() -> None:
 def test_selected_folder_becomes_one_live_project_through_the_parse_job() -> None:
     activation = ProjectActivation(parse_runner=_inline_runner)
 
+    assert activation.accepting_selection is True
     activation.activate(FIXTURE)
 
     assert activation.bound is True
