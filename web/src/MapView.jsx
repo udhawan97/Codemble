@@ -2,7 +2,13 @@ import { useCallback, useRef, useState } from "react";
 
 import { nebulaTintKey } from "./graphData.js";
 
-const ZOOM_MIN = 0.25;
+// Low enough that Fit can always reach a true fit. A deep call tree is far
+// taller than any architecture map -- this project's is 9484px against a ~600px
+// viewport -- and a floor of 0.25 meant the control labelled Fit stopped four
+// times short of fitting while disabling the button that would have gone
+// further. At these scales the drawing is a shape rather than a readable
+// diagram, which is exactly what an overview is for.
+const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 1.25;
 

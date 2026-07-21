@@ -491,20 +491,27 @@ input:focus-visible {
   background: var(--cm-ground-2);
 }
 
-/* An open sidebar reserves a gutter rather than covering the stage. Every child
-   here is absolutely positioned -- the galaxy frame, the map, the overlays --
-   so each one's start inset has to move; padding on the stage would do nothing,
-   because an absolute box resolves against the padding box, which includes the
-   padding. Without this the sidebar sat on top of the system panel, including
-   its Prove understanding button, the primary action on that screen. */
-.map-stage:has(.index-sidebar) .galaxy-frame,
-.map-stage:has(.index-sidebar) .map-view {
-  inset-inline-start: var(--cm-sidebar-width);
-}
+/* An open sidebar reserves a gutter rather than covering the stage -- but only
+   where a gutter still leaves a usable stage. Every child here is absolutely
+   positioned (the galaxy frame, the map, the overlays), so each one's start
+   inset has to move; padding on the stage would do nothing, because an absolute
+   box resolves against the padding box, which includes the padding. Without
+   this the sidebar sat on top of the system panel, including its Prove
+   understanding button, the primary action on that screen.
 
-.map-stage:has(.index-sidebar) .orientation-bar,
-.map-stage:has(.index-sidebar) .orientation-copy {
-  inset-inline-start: calc(var(--cm-sidebar-width) + var(--cm-space-md));
+   Below this width it overlays instead, the way a drawer does: at 320px the
+   sidebar is 262 of the 320 available, so reserving a gutter left the map 58px
+   wide -- drawn, and useless. */
+@media (min-width: 60rem) {
+  .map-stage:has(.index-sidebar) .galaxy-frame,
+  .map-stage:has(.index-sidebar) .map-view {
+    inset-inline-start: var(--cm-sidebar-width);
+  }
+
+  .map-stage:has(.index-sidebar) .orientation-bar,
+  .map-stage:has(.index-sidebar) .orientation-copy {
+    inset-inline-start: calc(var(--cm-sidebar-width) + var(--cm-space-md));
+  }
 }
 
 .index-sidebar > header {

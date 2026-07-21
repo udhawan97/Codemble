@@ -197,7 +197,11 @@ export function GalaxyCanvas({
       // calls controls.update() every frame.
       const controls = renderer.controls();
       controls.enablePan = false;
-      controls.enableDamping = true;
+      // Damping keeps the view gliding after the pointer is released, which is
+      // motion the learner did not ask for -- the same reason the drift
+      // particles and the nebula dawn check this. Reduced motion gets a camera
+      // that stops exactly when the drag stops.
+      controls.enableDamping = !reducedMotion;
       controls.dampingFactor = 0.12;
       controls.rotateSpeed = 0.55;
       controls.zoomSpeed = 0.7;
