@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-20
+
 ### Fixed
 - Cancelling a parse (returning to the picker) now stops the `resolving` stage
   too, not only the file-reading loop. Resolving is the slowest stage on a large
