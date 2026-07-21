@@ -156,6 +156,9 @@ computed in the graph layer and served as data.
 | **Map · Workflow** | The call tree from your entrypoint, depth by depth | Seeing what runs first |
 
 The Map is plain SVG, so it still works on a machine that cannot draw WebGL.
+On a compact screen it opens at readable 100% around Home or the selected
+target; **Fit** is an explicit whole-diagram overview. Zoom and pan survive Map
+refreshes and layer switches instead of snapping back after a passed check.
 
 ## Open a structure, read what the parser knows first
 
@@ -172,8 +175,10 @@ Sections other than the narration never involve a model at all.
 A header toggle changes how Codemble talks to you and how much it puts on
 screen: plain language, larger type, the Map by default, and a hint chip naming
 the nearest unlit region to Home — counted in import hops over the graph, not
-chosen by a model. It never changes graph truth, coordinates, progress, or how a
-check is scored.
+chosen by a model. The hint opens that system, switches from Map to Galaxy when
+its internal structures are the next step, then becomes an instruction rather
+than an enabled no-op. It never changes graph truth, coordinates, progress, or
+how a check is scored.
 
 You can also switch project or change Home without leaving the app.
 

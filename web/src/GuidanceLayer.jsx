@@ -3,18 +3,20 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 
-export function HintChip({ hint, onStudy }) {
+export function HintChip({ hint, onFollow }) {
   if (!hint) return null;
   return (
     <output className="hint-chip" aria-live="polite">
       <span aria-hidden="true">→</span>
       <span>
-        Study <strong>{hint.regionId}</strong> next
+        {hint.message}
       </span>
       <small>{hint.reason}</small>
-      <button type="button" onClick={() => onStudy(hint.regionId)}>
-        Take me there
-      </button>
+      {hint.action ? (
+        <button type="button" onClick={onFollow}>
+          {hint.actionLabel}
+        </button>
+      ) : null}
     </output>
   );
 }

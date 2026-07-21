@@ -76,7 +76,9 @@ recedes to the structure you are reading and its connections.
 At narrow widths the header's secondary actions live behind **Menu**, guidance
 occupies its own row below the stage, and Study becomes a full-stage scrolling
 sheet. The map/canvas and the local-only status remain in the viewport instead
-of being squeezed behind controls.
+of being squeezed behind controls. Opening Modules, Find, or the Star chart
+moves keyboard focus into the new surface; closing it returns focus to the
+invoking action or to the visible Menu button.
 
 ## Two layers, one truth
 
@@ -89,7 +91,12 @@ with no import route from Home are placed in their own row and labelled, never
 guessed into position. Clicking anything in either layer opens the same study
 panel, and a lit system is amber in both.
 
-The Map needs no WebGL, so it still works where the galaxy cannot draw.
+The Map opens at readable 100% on compact screens and centres Home or the
+selected target instead of shrinking every box into a whole-diagram thumbnail.
+Use **Fit** for that overview and the percentage button to return to 100%.
+Codemble remembers zoom and pan through fresh Map data and layer switches, but
+clears renderer-only view state when you switch projects. The Map needs no
+WebGL, so it still works where the galaxy cannot draw.
 
 ## A region = one star system
 
@@ -139,7 +146,9 @@ same things in plain language.
 
 **Switch project** in the header releases the current project and returns you to
 the picker; progress is stored per project, so the galaxy comes back lit. This
-works whether you started from the picker or passed a path.
+works whether you started from the picker or passed a path. In the compact Menu,
+the first click reveals the saved-progress confirmation without closing the
+Menu; Cancel returns focus to **Switch project**.
 
 **Change Home** reopens the entrypoint picker whenever the parser ranked at
 least one candidate. The Home you choose is remembered for the next run of the

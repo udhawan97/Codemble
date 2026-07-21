@@ -231,6 +231,10 @@ input:focus-visible {
 }
 
 .switch-project {
+  display: contents;
+}
+
+.switch-project[data-confirming] {
   display: grid;
   gap: var(--cm-space-xs);
   padding: var(--cm-space-sm);
@@ -239,7 +243,7 @@ input:focus-visible {
   background: var(--cm-ground-2);
 }
 
-.switch-project p {
+.switch-project[data-confirming] p {
   max-width: 26ch;
   margin: 0;
   color: var(--cm-ink-2);
@@ -251,7 +255,7 @@ input:focus-visible {
   color: var(--cm-error) !important;
 }
 
-.switch-project > div {
+.switch-project[data-confirming] > div {
   display: flex;
   gap: var(--cm-space-xs);
 }

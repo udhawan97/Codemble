@@ -1013,6 +1013,29 @@ assert.equal(
   "the hint is the nearest unlit region to Home",
 );
 assert.equal(layerSnapshot.hint.hops, Infinity, "an unrouted region still reports its distance");
+assert.deepEqual(
+  layerSnapshot.hint.action,
+  { type: "OPEN_REGION", regionId: "main.ts" },
+  "galaxy-level guidance owns a real session transition",
+);
+await layerSession.dispatch({ type: "FOLLOW_HINT" });
+layerSnapshot = layerSession.getSnapshot();
+assert.equal(layerSnapshot.level, LEVELS.SYSTEM);
+assert.equal(layerSnapshot.region.id, "main.ts");
+assert.equal(
+  layerSnapshot.hint.action,
+  null,
+  "once the target system is open in Galaxy, guidance asks for a structure without a no-op button",
+);
+await layerSession.dispatch({ type: "SET_LAYER", layer: "map" });
+assert.deepEqual(
+  layerSession.getSnapshot().hint.action,
+  { type: "SET_LAYER", layer: "galaxy" },
+  "the Map routes target-system guidance to its parser-proven structures",
+);
+await layerSession.dispatch({ type: "FOLLOW_HINT" });
+assert.equal(layerSession.getSnapshot().layer, "galaxy");
+assert.equal(layerSession.getSnapshot().level, LEVELS.SYSTEM);
 layerSession.dispose();
 
 // Easy mode defaults to the map layer when the learner has not chosen one.

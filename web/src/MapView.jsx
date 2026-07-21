@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { nebulaTintKey } from "./graphData.js";
+import {
+  centerMapPoint,
+  clampMapZoom,
+  fitMapZoom,
+} from "./mapViewport.js";
 
 // Low enough that Fit can always reach a true fit. A deep call tree is far
 // taller than any architecture map -- this project's is 9484px against a ~600px
@@ -8,13 +13,7 @@ import { nebulaTintKey } from "./graphData.js";
 // times short of fitting while disabling the button that would have gone
 // further. At these scales the drawing is a shape rather than a readable
 // diagram, which is exactly what an overview is for.
-const ZOOM_MIN = 0.05;
-const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 1.25;
-
-function clampZoom(scale) {
-  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
-}
 
 /**
  * The Map's answer to the galaxy's bounded orbit: zoom, fit, and drag-to-pan
@@ -28,12 +27,31 @@ function clampZoom(scale) {
  * inside the SVG is still the backend's, untouched, so this stays a pure
  * renderer of graph-owned geometry.
  */
-function MapCanvas({ contentWidth, contentHeight, label, children }) {
+function MapCanvas({
+  contentWidth,
+  contentHeight,
+  label,
+  viewKey,
+  viewportStore,
+  focusPoint,
+  children,
+}) {
   const scrollRef = useRef(null);
-  const [scale, setScale] = useState(1);
+  const initialViewRef = useRef(viewportStore.read(viewKey));
+  const [scale, setScale] = useState(() => initialViewRef.current?.scale ?? 1);
   const [panning, setPanning] = useState(false);
   const drag = useRef(null);
-  const autoFitted = useRef(false);
+  const initialized = useRef(false);
+
+  const rememberViewport = useCallback(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    viewportStore.write(viewKey, {
+      scale,
+      scrollLeft: scroller.scrollLeft,
+      scrollTop: scroller.scrollTop,
+    });
+  }, [scale, viewKey, viewportStore]);
 
   // Deliberately not run on mount. The map opens at true size, which already
   // fits horizontally and is the only scale its labels are readable at; Fit is
@@ -43,43 +61,44 @@ function MapCanvas({ contentWidth, contentHeight, label, children }) {
   const fit = useCallback(() => {
     const box = scrollRef.current?.getBoundingClientRect();
     if (!box || !contentWidth || !contentHeight) return;
-    setScale(clampZoom(Math.min(box.width / contentWidth, box.height / contentHeight)));
+    setScale(fitMapZoom(box.width, box.height, contentWidth, contentHeight));
   }, [contentWidth, contentHeight]);
 
-  // A phone cannot show a true-size diagram and still reveal where the map
-  // begins: this project's first box sits hundreds of pixels from the left
-  // edge. Wait for the *settled* scroller size, then fit once at narrow widths.
-  // ResizeObserver avoids the old bug where mount-time measurement ran before
-  // the flex column had a height and produced a dishonest in-between scale.
-  useEffect(() => {
+  // A compact viewport opens at readable 100%, centred on Home (or the selected
+  // parser-backed target). Fit remains an explicit overview command. If the
+  // map temporarily unmounts while refreshed graph data arrives, restore the
+  // exact scale and scroll position instead of silently auto-fitting again.
+  useLayoutEffect(() => {
     const scroller = scrollRef.current;
-    if (!scroller || typeof ResizeObserver === "undefined") return undefined;
-    autoFitted.current = false;
+    if (!scroller || initialized.current) return undefined;
     let frame = 0;
-    const maybeFit = () => {
-      if (autoFitted.current) return;
+    frame = requestAnimationFrame(() => {
       const box = scroller.getBoundingClientRect();
-      if (box.width > 480 || box.width <= 0 || box.height <= 0) return;
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const settled = scroller.getBoundingClientRect();
-        if (settled.width > 480 || settled.width <= 0 || settled.height <= 0) return;
-        setScale(
-          clampZoom(
-            Math.min(settled.width / contentWidth, settled.height / contentHeight),
-          ),
-        );
-        autoFitted.current = true;
-      });
-    };
-    const observer = new ResizeObserver(maybeFit);
-    observer.observe(scroller);
-    maybeFit();
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
-  }, [contentWidth, contentHeight]);
+      const saved = initialViewRef.current;
+      if (saved) {
+        scroller.scrollLeft = saved.scrollLeft;
+        scroller.scrollTop = saved.scrollTop;
+      } else if (box.width < 640 && focusPoint) {
+        const position = centerMapPoint({
+          viewportWidth: box.width,
+          viewportHeight: box.height,
+          scale,
+          point: focusPoint,
+        });
+        scroller.scrollLeft = position.scrollLeft;
+        scroller.scrollTop = position.scrollTop;
+      }
+      initialized.current = true;
+      rememberViewport();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusPoint, rememberViewport, scale]);
+
+  useEffect(() => {
+    if (!initialized.current) return undefined;
+    const frame = requestAnimationFrame(rememberViewport);
+    return () => cancelAnimationFrame(frame);
+  }, [rememberViewport]);
 
   function onPointerDown(event) {
     // Left button on empty diagram space only: boxes and rows are buttons, and
@@ -116,8 +135,8 @@ function MapCanvas({ contentWidth, contentHeight, label, children }) {
         <button
           type="button"
           aria-label="Zoom out"
-          disabled={scale <= ZOOM_MIN}
-          onClick={() => setScale((value) => clampZoom(value / ZOOM_STEP))}
+          disabled={scale <= 0.05}
+          onClick={() => setScale((value) => clampMapZoom(value / ZOOM_STEP))}
         >
           −
         </button>
@@ -128,8 +147,8 @@ function MapCanvas({ contentWidth, contentHeight, label, children }) {
         <button
           type="button"
           aria-label="Zoom in"
-          disabled={scale >= ZOOM_MAX}
-          onClick={() => setScale((value) => clampZoom(value * ZOOM_STEP))}
+          disabled={scale >= 2.5}
+          onClick={() => setScale((value) => clampMapZoom(value * ZOOM_STEP))}
         >
           +
         </button>
@@ -142,6 +161,9 @@ function MapCanvas({ contentWidth, contentHeight, label, children }) {
         onPointerMove={onPointerMove}
         onPointerUp={endPan}
         onPointerCancel={endPan}
+        onScroll={() => {
+          if (initialized.current) rememberViewport();
+        }}
       >
         <div
           className="map-canvas__sized"
@@ -212,6 +234,7 @@ export function MapView({
   onSelectRegion,
   onSelectNode,
   onRetry,
+  viewportStore,
   // The drill-down copy for the selected module, given a row of its own in
   // this column. The galaxy can float the same element over its canvas; the
   // drawing below starts at this component's top-left corner, so here it must
@@ -254,6 +277,7 @@ export function MapView({
           selectedRegionId={selectedRegionId}
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectRegion={onSelectRegion}
+          viewportStore={viewportStore}
         />
       ) : (
         <WorkflowTree
@@ -262,21 +286,36 @@ export function MapView({
           selectedRegionId={selectedRegionId}
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectNode={onSelectNode}
+          viewportStore={viewportStore}
         />
       )}
     </section>
   );
 }
 
-function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCandidates, onSelectRegion }) {
+function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore }) {
   const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
   const padding = 32;
+  const focusBox =
+    boxes.get(selectedRegionId) ??
+    boxes.get(architecture.home) ??
+    architecture.boxes.find((box) => box.home) ??
+    architecture.boxes[0];
+  const focusPoint = focusBox
+    ? {
+        x: focusBox.x + padding + focusBox.width / 2,
+        y: focusBox.y + padding + focusBox.height / 2,
+      }
+    : null;
   return (
     <>
     <MapCanvas
       contentWidth={architecture.width + padding * 2}
       contentHeight={architecture.height + padding * 2}
       label="the architecture map"
+      viewKey={`architecture:${architecture.home ?? "none"}`}
+      viewportStore={viewportStore}
+      focusPoint={focusPoint}
     >
       <svg
         className="architecture-map"
@@ -427,7 +466,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
   );
 }
 
-function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidates, onSelectNode }) {
+function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidates, onSelectNode, viewportStore }) {
   if (!workflow.root) {
     // Two ways to reach an empty workflow. With candidates, a Home just hasn't
     // been chosen and the "Change Home" control exists to fix it -- keep the
@@ -454,12 +493,20 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
     );
   }
   const rows = new Map(workflow.nodes.map((row) => [row.order, row]));
+  const focusRow =
+    workflow.nodes.find((row) => row.id === workflow.root) ?? workflow.nodes[0];
+  const focusPoint = focusRow
+    ? { x: focusRow.x + 24, y: focusRow.y + 32 }
+    : null;
   return (
     <>
     <MapCanvas
       contentWidth={workflow.width + 32}
       contentHeight={workflow.height + 32}
       label="the workflow tree"
+      viewKey={`workflow:${workflow.root}`}
+      viewportStore={viewportStore}
+      focusPoint={focusPoint}
     >
       <svg
         className="workflow-tree"

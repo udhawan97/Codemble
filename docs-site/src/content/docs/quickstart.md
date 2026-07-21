@@ -73,6 +73,11 @@ coordinates, progress, or graph evidence.
 | **Architecture** | Modules as boxes, grouped by folder, layered by import distance from Home | Seeing how the project fits together |
 | **Workflow** | The call tree from your entrypoint, depth by depth | Seeing what runs first |
 
+On a compact screen the Map opens at readable 100%, centred on Home or the
+selected parser-backed target. Use **Fit** when you want the whole diagram as an
+overview, and press the percentage button to return to 100%. Codemble keeps your
+zoom and pan when fresh Map data arrives or you briefly switch layers.
+
 No API key is required to inspect source and parser relationships. With a key,
 Codemble sends only the selected source context directly to your configured
 provider when you open Study; it does not run narration in the background.

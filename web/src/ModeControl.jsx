@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 // The first-run question frames each option as a description of the learner,
@@ -30,14 +30,6 @@ const TOGGLE_OPTIONS = [
  */
 export function ModeControl({ mode, modeChosen, onChoose }) {
   const dialogRef = useRef(null);
-  const checkedRadioRef = useRef(null);
-  // Remembers the previous render's modeChosen so the focus effect below can
-  // tell "the gate just closed because the learner chose" (false -> true)
-  // apart from "this is the first real paint and mode was already known"
-  // (null -> true, e.g. a returning learner) — the latter must never steal
-  // focus. modeChosen is null exactly until hydration resolves it once, so
-  // false -> true can now only happen through choose() below.
-  const previousModeChosenRef = useRef(modeChosen);
 
   // Open before the browser paints, so the gate is never visible closed first.
   useLayoutEffect(() => {
@@ -45,16 +37,6 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
     if (dialog && modeChosen === false && !dialog.open) {
       dialog.showModal();
     }
-  }, [modeChosen]);
-
-  // Land focus on the toggle only right after the learner's own choice
-  // closes the gate — never on an ordinary load, including the moment a
-  // returning learner's mode finishes hydrating.
-  useEffect(() => {
-    if (modeChosen === true && previousModeChosenRef.current === false) {
-      checkedRadioRef.current?.focus();
-    }
-    previousModeChosenRef.current = modeChosen;
   }, [modeChosen]);
 
   function choose(nextMode) {
@@ -107,7 +89,6 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
               name="audience-mode"
               value={option.mode}
               checked={mode === option.mode}
-              ref={mode === option.mode ? checkedRadioRef : undefined}
               onChange={() => choose(option.mode)}
             />
             <span>{option.label}</span>

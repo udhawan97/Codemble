@@ -168,18 +168,18 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-21 ·
-Session note: v0.6.2 is the immediate installed-artifact hotfix for v0.6.1:
-the first-run audience modal now portals to the document top layer, so the
-closed compact Menu cannot hide the dialog while its modal backdrop blocks a
-fresh narrow window. The public PyPI smoke caught the containment defect after
-v0.6.1 publication; v0.6.2 supersedes it rather than pretending an immutable
-artifact can be replaced. v0.6.1 closes the four verified user-flow gaps from the
-2026-07-21 usability audit: the 320 px shell reserves a usable map/study stage,
-Modules and Find render from the Star chart, required Home calibration finishes
-before coach marks begin, and parser-owned 3D nodes no longer install drag
-controls that can corrupt OrbitControls pointer state. The release is verified
-against the real bundled app at desktop and 320 px widths; the milestone does
-not advance because issue #13 still requires human tester evidence. The v0.6.0
+Session note: v0.6.3 closes the four follow-up findings from the 2026-07-21
+user-flow audit. Easy guidance is now level-aware and never offers an enabled
+no-op; compact Maps open at readable 100% around Home and preserve zoom/pan
+through data refreshes; Switch project confirms on the first compact-Menu click
+without leaking disclosure state across project or breakpoint changes; and Home
+calibration, the coach, Modules, Find, and the Star chart own explicit keyboard
+focus handoffs. Parser, graph, checks, progress, and provider contracts remain
+unchanged. The bundled app is verified across compact and desktop widths; the
+milestone does not advance because issue #13 still requires human tester
+evidence. v0.6.2 was the immediate installed-artifact fix that moved the
+first-run audience modal to the document top layer, and v0.6.1 remains the
+responsive learning-loop release. The v0.6.0
 architecture-depth pass is complete in five
 behavior-preserving waves: project selection owns the home-jailed filesystem
 policy; project activation atomically owns parse-to-live binding and graph/map
@@ -548,6 +548,9 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-21 | v0.6.0 deepens five private boundaries without changing the HTTP, graph, check, persistence, or learner-visible contracts: Project Selection, Project Activation, Project Mapping Run, Name Atlas, and Learner Projection | Approved by UD as five behavior-preserving waves in one release PR. The deletion test now holds at each seam, stale activation and mapping responses lose atomically, and dependency-scoped learner projections measured ~0.331 ms → ~0.001 ms per hover commit on a synthetic 1,000-node project while preserving derived outputs |
 | 2026-07-21 | v0.6.1 treats Modules and Find as global surfaces, sequences first-run decisions as audience → required Home → coach, and makes the 3D parser-owned layout explicitly non-draggable | Approved by UD as implementation of every verified user-flow audit finding. Global commands must never accept hidden state, onboarding must expose one foreground decision at a time, and learners orbit the immutable graph rather than editing its coordinates. The compact shell is a structural breakpoint of the existing Formal Edo interface, not a new visual system |
 | 2026-07-21 | First-run audience modal portals to `document.body`; the persistent Easy/Expert toggle remains in responsive header chrome | A native modal inside the closed compact Menu entered the top layer but inherited `display:none` from its ancestor, leaving an invisible backdrop that blocked fresh mobile runs. Modal ownership is a document boundary, not header layout. Caught only by the clean public v0.6.1 installed-artifact smoke; PyPI immutability requires v0.6.2 rather than replacing 0.6.1 |
+| 2026-07-21 | Easy guidance actions are derived from level, region, and layer, then executed by `LearnerSession`; the chip renders no button when the next step is already on screen | React must not guess a structure or own navigation truth, and an enabled action that commits the same state is a false promise. The nearest unlit region remains graph-derived; only the honest route to it changes with the learner's current context |
+| 2026-07-21 | Map zoom/pan is renderer-local state keyed by tab and Home, preserved through transient data remounts but cleared with the project lifecycle; compact Maps start at 100% centred on the parser-backed target | Auto-fitting made 56 px boxes as little as 8–18 px tall and re-ran after check-driven map refreshes. Fit is still a valid explicit overview, while session state stays reserved for graph and learning truth |
+| 2026-07-21 | Responsive disclosures and global surfaces own explicit focus handoffs; compact Menu closes on project exit and when crossing to the desktop rail | DOM focus and disclosure visibility are view concerns, but leaving focus on removed or hidden controls makes a successful navigation indistinguishable from a dead action to a keyboard or screen-reader user |
 
 ## Non-Goals — do NOT build (point here when asked)
 

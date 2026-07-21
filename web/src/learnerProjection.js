@@ -60,7 +60,9 @@ export function createLearnerProjection() {
       focusedStudiedCount: focusedGraph
         ? studiedCountFor(focusedGraph, studiedNodeIds)
         : 0,
-      hint: focusedGraph ? hintFor(focusedGraph, state.mode) : null,
+      hint: focusedGraph
+        ? hintFor(focusedGraph, state.mode, level, region?.id ?? null, state.layer)
+        : null,
       revealedRegionIds: focusedGraph
         ? revealFor(focusedGraph, state.showAll, region?.id ?? null)
         : EMPTY_REVEAL,
@@ -157,9 +159,23 @@ export function createLearnerProjection() {
     return studiedCountCache.value;
   }
 
-  function hintFor(graph, mode) {
-    if (!hintCache || hintCache.graph !== graph || hintCache.mode !== mode) {
-      hintCache = { graph, mode, value: nearestUnlitRegion(graph, mode) };
+  function hintFor(graph, mode, level, regionId, layer) {
+    if (
+      !hintCache ||
+      hintCache.graph !== graph ||
+      hintCache.mode !== mode ||
+      hintCache.level !== level ||
+      hintCache.regionId !== regionId ||
+      hintCache.layer !== layer
+    ) {
+      hintCache = {
+        graph,
+        mode,
+        level,
+        regionId,
+        layer,
+        value: nextStudyHint(graph, { mode, level, regionId, layer }),
+      };
     }
     return hintCache.value;
   }
@@ -184,8 +200,8 @@ export function createLearnerProjection() {
   return Object.freeze({ derive });
 }
 
-function nearestUnlitRegion(graph, mode) {
-  if (mode !== "easy") return null;
+function nextStudyHint(graph, { mode, level, regionId, layer }) {
+  if (mode !== "easy" || level === LEVELS.STUDY) return null;
   const unlit = graph.regions.filter((region) => !region.understood);
   if (!unlit.length) return null;
   const nearest = unlit
@@ -200,13 +216,35 @@ function nearestUnlitRegion(graph, mode) {
       (left, right) =>
         left.hops - right.hops || left.regionId.localeCompare(right.regionId),
     )[0];
-  return {
+  const hint = {
     ...nearest,
+    message: `Study ${nearest.regionId} next`,
     reason:
       nearest.hops === 0
         ? "Home is not lit yet."
         : Number.isFinite(nearest.hops)
           ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
           : "No import route reaches it from Home.",
+  };
+  if (level !== LEVELS.SYSTEM || regionId !== nearest.regionId) {
+    return {
+      ...hint,
+      action: { type: "OPEN_REGION", regionId: nearest.regionId },
+      actionLabel: `Open ${nearest.regionId}`,
+    };
+  }
+  if (layer === "map") {
+    return {
+      ...hint,
+      reason: "Its parser-proven structures are visible in Galaxy.",
+      action: { type: "SET_LAYER", layer: "galaxy" },
+      actionLabel: "View structures",
+    };
+  }
+  return {
+    ...hint,
+    reason: "Choose one of its parser-proven structures.",
+    action: null,
+    actionLabel: null,
   };
 }

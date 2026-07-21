@@ -300,6 +300,8 @@ export function createLearnerSession({
       case "ADVANCE_REGION":
         advanceRegion(event.regionId);
         return undefined;
+      case "FOLLOW_HINT":
+        return followHint();
       case "RETREAT":
         retreat();
         return undefined;
@@ -396,6 +398,21 @@ export function createLearnerSession({
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
+  }
+
+  // The projection supplies only actions that move the current session. React
+  // never interprets the learner's level or guesses a structure on their
+  // behalf; when the learner is already looking at the target system in the
+  // Galaxy, the hint becomes prose instead of an enabled no-op control.
+  function followHint() {
+    const action = snapshot.hint?.action;
+    if (!action) return undefined;
+    if (action.type === "OPEN_REGION") {
+      advanceRegion(action.regionId);
+      return undefined;
+    }
+    if (action.type === "SET_LAYER") return setLayer(action.layer);
+    return undefined;
   }
 
   // Region entry by id, for callers that hold a region *name* rather than a

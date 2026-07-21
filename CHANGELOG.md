@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-07-21
+
+### Fixed
+- **Easy guidance always advances or becomes an honest instruction.** Opening
+  the suggested system from the Map now changes the next action to **View
+  structures**, which switches to the Galaxy. Once those structures are on
+  screen, the chip asks the learner to choose one and removes the button instead
+  of offering an enabled action that leaves the session unchanged.
+- **The compact Map opens readable and stays where the learner put it.** A phone
+  now starts at 100% around Home or the selected parser-backed target; **Fit**
+  remains the explicit whole-diagram overview. Zoom and scroll survive Map data
+  refreshes and layer remounts, while a project lifecycle reset clears them.
+- **Switch project confirms on the first compact-Menu click.** The trigger and
+  its confirmation now share one disclosure boundary, and Menu state is cleared
+  when the project leaves ready state or the rail crosses to its desktop layout.
+- **Keyboard focus follows every global surface.** Home calibration, the coach,
+  Modules, Find, and the Star chart receive focus on entry and return it to the
+  invoking control—or the visible compact Menu fallback—when they close.
+
 ## [0.6.2] - 2026-07-21
 
 ### Fixed

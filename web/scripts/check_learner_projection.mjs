@@ -25,6 +25,7 @@ const state = {
   entrypointDismissed: false,
   showAll: false,
   mode: "easy",
+  layer: "map",
   hoverNodeId: null,
 };
 const projection = createLearnerProjection();
@@ -40,7 +41,6 @@ assert.deepEqual(
   revealedRegionIds(expectedGraph, { selectionId: "app.py" }),
 );
 assert.deepEqual(first.moduleIndex, moduleIndex(expectedGraph));
-
 const hovered = projection.derive({ ...state, hoverNodeId: "python:app.py:run" });
 assert.notEqual(hovered, first);
 for (const field of [
@@ -58,6 +58,64 @@ for (const field of [
     `hover-only commits reuse the ${field} projection`,
   );
 }
+
+assert.deepEqual(
+  first.hint,
+  {
+    regionId: "app.py",
+    hops: 0,
+    message: "Study app.py next",
+    reason: "Home is not lit yet.",
+    action: { type: "OPEN_REGION", regionId: "app.py" },
+    actionLabel: "Open app.py",
+  },
+  "galaxy-level guidance opens the nearest unlit region",
+);
+
+const sameRegionOnMap = projection.derive({
+  ...state,
+  level: LEVELS.SYSTEM,
+  layer: "map",
+});
+assert.deepEqual(
+  sameRegionOnMap.hint.action,
+  { type: "SET_LAYER", layer: "galaxy" },
+  "inside the target module, map guidance leads to the structures it cannot draw",
+);
+assert.equal(sameRegionOnMap.hint.actionLabel, "View structures");
+
+const sameRegionInGalaxy = projection.derive({
+  ...state,
+  level: LEVELS.SYSTEM,
+  layer: "galaxy",
+});
+assert.equal(
+  sameRegionInGalaxy.hint.action,
+  null,
+  "guidance never renders an enabled action that would leave the learner in place",
+);
+assert.equal(
+  sameRegionInGalaxy.hint.reason,
+  "Choose one of its parser-proven structures.",
+);
+
+const differentRegion = projection.derive({
+  ...state,
+  level: LEVELS.SYSTEM,
+  region: graph.regions[1],
+  layer: "galaxy",
+});
+assert.deepEqual(
+  differentRegion.hint.action,
+  { type: "OPEN_REGION", regionId: "app.py" },
+  "guidance can move from a different system to the target system",
+);
+
+assert.equal(
+  projection.derive({ ...state, level: LEVELS.STUDY }).hint,
+  null,
+  "the Study panel already owns the learner's next action",
+);
 
 const studied = projection.derive({
   ...state,

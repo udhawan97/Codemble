@@ -43,7 +43,11 @@ puts on screen at once:
 | Density | Opens on the Map, hides unrelated galaxy edges, larger type | Opens on the Galaxy, shows everything |
 
 Easy mode also shows a hint chip naming the nearest unlit region to Home,
-counted in import-route hops over the graph — no model picks it for you.
+counted in import-route hops over the graph — no model picks it for you. Its
+action follows the current level: open the suggested system, switch from Map to
+Galaxy to see that system's structures, then choose one. Once the correct next
+step is already on screen, the chip becomes an instruction instead of leaving a
+button that cannot move you forward.
 
 Mode never changes the graph, the coordinates, your progress, or how a check is
 scored: both question voices are generated up front and scoring compares option

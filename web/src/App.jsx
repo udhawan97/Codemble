@@ -24,10 +24,18 @@ import {
   createLearnerSession,
 } from "./learnerSession.js";
 import { PARSE_STAGES } from "./projectMapping.js";
+import { createMapViewportStore } from "./mapViewport.js";
 
 export function App() {
   const mobileMenuRef = useRef(null);
+  const modulesTriggerRef = useRef(null);
+  const finderTriggerRef = useRef(null);
+  const finderReturnRef = useRef(null);
+  const chartTriggerRef = useRef(null);
+  const stageRef = useRef(null);
+  const systemCopyRef = useRef(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mapViewportStore = useMemo(() => createMapViewportStore(), []);
   const session = useMemo(
     () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
     [],
@@ -41,6 +49,20 @@ export function App() {
     session.start();
     return () => session.dispose();
   }, [session]);
+  useEffect(() => {
+    if (state.status !== "ready") {
+      setMobileMenuOpen(false);
+      mapViewportStore.clear();
+    }
+  }, [mapViewportStore, state.status]);
+  useEffect(() => {
+    const wideRail = window.matchMedia("(min-width: 40rem)");
+    const closeDisclosure = (event) => {
+      if (event.matches) setMobileMenuOpen(false);
+    };
+    wideRail.addEventListener("change", closeDisclosure);
+    return () => wideRail.removeEventListener("change", closeDisclosure);
+  }, []);
   // Cmd/Ctrl-K opens the finder from anywhere, including with the galaxy
   // focused. Bound on the window rather than the canvas so it works no matter
   // which layer or panel currently holds focus.
@@ -48,6 +70,8 @@ export function App() {
     function onKeyDown(event) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
+        finderReturnRef.current =
+          document.activeElement === document.body ? null : document.activeElement;
         session.dispatch({ type: "SET_FINDER_OPEN", open: true });
       }
     }
@@ -101,6 +125,55 @@ export function App() {
     studyError,
   } = state;
 
+  function restoreRailFocus(primary, secondary) {
+    requestAnimationFrame(() => {
+      const values = [primary, secondary, mobileMenuRef];
+      for (const value of values) {
+        const candidate = value && "current" in value ? value.current : value;
+        if (candidate?.isConnected && candidate.getClientRects().length) {
+          candidate.focus();
+          return;
+        }
+      }
+    });
+  }
+
+  function toggleModules(event) {
+    session.dispatch({ type: "TOGGLE_SIDEBAR" });
+    if (sidebarOpen) restoreRailFocus(event.currentTarget, modulesTriggerRef);
+  }
+
+  function closeModules() {
+    session.dispatch({ type: "TOGGLE_SIDEBAR" });
+    restoreRailFocus(modulesTriggerRef);
+  }
+
+  function openFinder(event) {
+    finderReturnRef.current = event.currentTarget;
+    session.dispatch({ type: "SET_FINDER_OPEN", open: true });
+  }
+
+  function closeFinder() {
+    session.dispatch({ type: "SET_FINDER_OPEN", open: false });
+    restoreRailFocus(finderReturnRef.current, finderTriggerRef);
+    finderReturnRef.current = null;
+  }
+
+  function goFromFinder(regionId) {
+    session.dispatch({ type: "GO_TO_REGION", regionId });
+    requestAnimationFrame(() => systemCopyRef.current?.focus());
+  }
+
+  function followHint() {
+    session.dispatch({ type: "FOLLOW_HINT" });
+    requestAnimationFrame(() => systemCopyRef.current?.focus());
+  }
+
+  function dismissCoachmarks() {
+    session.dispatch({ type: "DISMISS_COACHMARKS" });
+    requestAnimationFrame(() => stageRef.current?.focus());
+  }
+
   if (error) {
     return (
       <main className="load-state" role="alert">
@@ -150,9 +223,11 @@ export function App() {
   const systemCopy =
     level === LEVELS.SYSTEM ? (
       <section
+        ref={systemCopyRef}
         className={`orientation-copy orientation-copy--system${
           layer === "map" ? " orientation-copy--inline" : ""
         }`}
+        tabIndex={-1}
       >
         {/* No heading here any more: the breadcrumb in the header already names
             this module, and rendering the full path at display size wrapped it
@@ -278,25 +353,31 @@ export function App() {
           >
             <div className="rail-actions">
               <button
+                ref={modulesTriggerRef}
                 className="rail-action"
                 type="button"
                 aria-pressed={sidebarOpen}
-                onClick={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
+                onClick={toggleModules}
               >
                 Modules
               </button>
               <button
+                ref={finderTriggerRef}
                 className="rail-action"
                 type="button"
-                onClick={() => session.dispatch({ type: "SET_FINDER_OPEN", open: true })}
+                onClick={openFinder}
               >
                 Find <kbd>⌘K</kbd>
               </button>
               {showChart ? (
                 <button
+                  ref={chartTriggerRef}
                   className="rail-action"
                   type="button"
-                  onClick={() => session.dispatch({ type: "HIDE_CHART" })}
+                  onClick={() => {
+                    session.dispatch({ type: "HIDE_CHART" });
+                    restoreRailFocus(chartTriggerRef);
+                  }}
                 >
                   Return to galaxy
                 </button>
@@ -310,6 +391,7 @@ export function App() {
                 </button>
               ) : (
                 <button
+                  ref={chartTriggerRef}
                   className="rail-action"
                   type="button"
                   onClick={() => session.dispatch({ type: "SHOW_CHART" })}
@@ -372,7 +454,7 @@ export function App() {
               index={moduleIndex}
               currentRegionId={null}
               onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
-              onClose={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
+              onClose={closeModules}
             />
           ) : null}
           <StarChart
@@ -383,13 +465,18 @@ export function App() {
           />
         </section>
       ) : (
-        <section className="map-stage" aria-label="Parser-proven project map">
+        <section
+          ref={stageRef}
+          className="map-stage"
+          aria-label="Parser-proven project map"
+          tabIndex={-1}
+        >
         {sidebarOpen ? (
           <IndexSidebar
             index={moduleIndex}
             currentRegionId={level === LEVELS.GALAXY ? null : region?.id}
             onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
-            onClose={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
+            onClose={closeModules}
           />
         ) : null}
         {layer === "map" ? (
@@ -411,6 +498,7 @@ export function App() {
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
             }
             onRetry={() => session.dispatch({ type: "SET_LAYER", layer: "map" })}
+            viewportStore={mapViewportStore}
           >
             {systemCopy}
           </MapView>
@@ -548,7 +636,7 @@ export function App() {
             }
           />
         ) : null}
-        {entrypointOpen && level === LEVELS.GALAXY ? (
+        {modeChosen === true && entrypointOpen && level === LEVELS.GALAXY ? (
           <EntrypointPicker
             candidates={graph.entrypoint_candidates}
             nodes={graph.nodes}
@@ -590,7 +678,7 @@ export function App() {
         {modeChosen === true && !entrypointOpen && !coachmarksSeen ? (
           <CoachMarks
             layer={layer}
-            onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })}
+            onDismiss={dismissCoachmarks}
           />
         ) : null}
       </section>
@@ -602,14 +690,14 @@ export function App() {
       {finderOpen ? (
         <ModuleFinder
           index={moduleIndex}
-          onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
-          onClose={() => session.dispatch({ type: "SET_FINDER_OPEN", open: false })}
+          onGo={goFromFinder}
+          onClose={closeFinder}
         />
       ) : null}
       {!showChart ? (
         <HintChip
           hint={hint}
-          onStudy={(regionId) => session.dispatch({ type: "ADVANCE_REGION", regionId })}
+          onFollow={followHint}
         />
       ) : null}
 
@@ -1044,11 +1132,20 @@ function ModuleFinder({ index, onGo, onClose }) {
  */
 function IndexSidebar({ index, currentRegionId, onGo, onClose }) {
   const groups = useMemo(() => groupByCommunity(index), [index]);
+  const closeButtonRef = useRef(null);
+  useLayoutEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
   return (
     <aside className="index-sidebar" aria-label="Project index">
       <header>
         <h2>Modules</h2>
-        <button type="button" onClick={onClose} aria-label="Close the project index">
+        <button
+          ref={closeButtonRef}
+          type="button"
+          onClick={onClose}
+          aria-label="Close the project index"
+        >
           ×
         </button>
       </header>
@@ -1159,8 +1256,19 @@ function SwitchProject({ onConfirm }) {
     }
   }
 
-  if (!confirming) {
-    return (
+  return (
+    <div
+      className="switch-project"
+      data-confirming={confirming || undefined}
+      role={confirming ? "group" : undefined}
+      aria-label={confirming ? "Switch project" : undefined}
+      tabIndex={confirming ? -1 : undefined}
+      ref={confirming ? groupRef : undefined}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && confirming && !busy) cancel();
+      }}
+    >
+      {!confirming ? (
       <button
         className="rail-action"
         type="button"
@@ -1169,39 +1277,34 @@ function SwitchProject({ onConfirm }) {
       >
         Switch project
       </button>
-    );
-  }
-  return (
-    <div
-      className="switch-project"
-      role="group"
-      aria-label="Switch project"
-      tabIndex={-1}
-      ref={groupRef}
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && !busy) cancel();
-      }}
-    >
-      <p>Progress is saved per project, so this galaxy comes back lit.</p>
-      {failure ? (
-        <p className="switch-project__error" role="alert">
-          {failure}
-        </p>
-      ) : null}
-      <div>
-        <button className="rail-action" type="button" disabled={busy} onClick={confirm}>
-          {busy ? "Releasing…" : "Switch"}
-        </button>
-        <button className="rail-action" type="button" disabled={busy} onClick={cancel}>
-          Cancel
-        </button>
-      </div>
+      ) : (
+        <>
+          <p>Progress is saved per project, so this galaxy comes back lit.</p>
+          {failure ? (
+            <p className="switch-project__error" role="alert">
+              {failure}
+            </p>
+          ) : null}
+          <div>
+            <button className="rail-action" type="button" disabled={busy} onClick={confirm}>
+              {busy ? "Releasing…" : "Switch"}
+            </button>
+            <button className="rail-action" type="button" disabled={busy} onClick={cancel}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSelect, onContinue }) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const firstActionRef = useRef(null);
+  useLayoutEffect(() => {
+    firstActionRef.current?.focus();
+  }, []);
   return (
     <aside className="entrypoint-picker" aria-labelledby="entrypoint-heading">
       <p>Home calibration</p>
@@ -1218,7 +1321,12 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
           {candidates.map((candidate) => {
             const node = nodeById.get(candidate);
             return (
-              <button type="button" key={candidate} onClick={() => onSelect(candidate)}>
+              <button
+                ref={candidate === candidates[0] ? firstActionRef : undefined}
+                type="button"
+                key={candidate}
+                onClick={() => onSelect(candidate)}
+              >
                 <span>{candidate}</span>
                 <small>{node?.file}:{node?.lineno} · parser rank {node?.entrypoint_rank}</small>
               </button>
@@ -1227,7 +1335,12 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
         </div>
       ) : null}
       {error ? <p className="entrypoint-error" role="alert">{error}</p> : null}
-      <button className="entrypoint-continue" type="button" onClick={onContinue}>
+      <button
+        ref={candidates.length ? undefined : firstActionRef}
+        className="entrypoint-continue"
+        type="button"
+        onClick={onContinue}
+      >
         {selectedEntrypoint ? "Keep current Home" : "Explore without Home"}
       </button>
     </aside>
@@ -1369,11 +1482,17 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
 
 function StarChart({ chart, studiedCount, projectName, onClearProgress }) {
   const understood = chart.filter((item) => item.understood_nodes > 0).length;
+  const headingRef = useRef(null);
+  useLayoutEffect(() => {
+    headingRef.current?.focus();
+  }, []);
   return (
     <section className="star-chart-screen" aria-labelledby="star-chart-heading">
       <header className="star-chart-intro">
         <p>Parser-detected concepts</p>
-        <h1 id="star-chart-heading">Your language star chart.</h1>
+        <h1 ref={headingRef} id="star-chart-heading" tabIndex={-1}>
+          Your language star chart.
+        </h1>
         <p>
           Encountered comes from real syntax. Studied tracks this session. Understood lights only after graph-derived checks pass.
         </p>

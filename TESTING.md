@@ -35,9 +35,15 @@ Then, without reading the docs first:
 1. Identify Home, or choose it if Codemble asks.
 2. If the project is mixed, focus one language and return to **All**; report any
    missing system or relationship.
-3. Enter one system and open one source structure.
+3. Enter one system and open one source structure. On a narrow window, also use
+   **Menu** to open and close **Modules** and **Find**; keyboard focus should
+   move into each surface and return to **Menu** when it closes.
 4. Return to the system, choose **Prove understanding**, and light it.
 5. Quit Codemble, run the same command again, and confirm the system stays lit.
+
+On the Map, compact screens should start at readable 100% around Home. **Fit**
+is the whole-diagram overview; after zooming or panning, a passed check should
+not throw you to a different scale or location.
 
 ## Report what happened
 
