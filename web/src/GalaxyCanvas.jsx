@@ -30,6 +30,14 @@ const MAX_POLAR_ANGLE = 1.5;
 const LABEL_TICK_MS = 110;
 const LABEL_CELL_PX = { width: 132, height: 30 };
 const LABEL_BUDGET = { far: 14, near: 44 };
+// Slots a name may take around its star, in plate-heights above it, tried in
+// this order. A star is a point feature, so its name can sit anywhere nearby;
+// offering only the resting slot threw away most of the sky's capacity, since
+// at galaxy zoom the systems cluster and nearly every plate lost to the one
+// already sitting above it. Kept vertical so a name is never ambiguous about
+// which star it belongs to.
+const LABEL_SLOTS = [0, -1, 1, -2, 2];
+const LABEL_SLOT_GAP_PX = 4;
 // 3d-force-graph mutates the scene on its own render tick, not the React
 // commit that flips `level` to GALAXY, so the newly-lit system's group may
 // not exist for a frame or two. A handful of retry frames covers that
@@ -54,7 +62,6 @@ export function GalaxyCanvas({
   const hostRef = useRef(null);
   const rendererRef = useRef(null);
   const controlsRef = useRef(null);
-  const labelSpritesRef = useRef(new Map());
   const advanceRef = useRef(onAdvance);
   const retreatRef = useRef(onRetreat);
   const hoverRef = useRef(onHoverNode);
@@ -153,9 +160,7 @@ export function GalaxyCanvas({
         // from unconnected nodes instead, so the selection's connections stay
         // visible while everything else recedes.
         .nodeOpacity(0.82)
-        .nodeThreeObject((node) =>
-          makeMarker(node, palette, dressing, focusedIdRef.current, labelSpritesRef.current),
-        )
+        .nodeThreeObject((node) => makeMarker(node, palette, dressing, focusedIdRef.current))
         .nodeThreeObjectExtend(true)
         .linkColor(linkColor)
         .linkLabel(linkLabel)
@@ -225,7 +230,6 @@ export function GalaxyCanvas({
         // is a no-op by design (see galaxyMaterials), so this is the real free.
         dressing.dispose();
         dressingRef.current = null;
-        labelSpritesRef.current.clear();
         controlsRef.current = null;
         host.replaceChildren();
         rendererRef.current = null;
@@ -239,11 +243,6 @@ export function GalaxyCanvas({
   useEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
-    // Cleared here, immediately before graphData rebuilds every node object,
-    // not in an effect of its own: a separate effect runs AFTER this one, so it
-    // wiped the very sprites the graphData call had just registered and the
-    // declutter pass then had almost nothing to place.
-    labelSpritesRef.current.clear();
     renderer
       .nodeResolution(data.nodes.length >= 900 ? 4 : 8)
       .linkVisibility((link) => !(mode === "easy" && link.focusDim))
@@ -381,10 +380,21 @@ export function GalaxyCanvas({
     const renderer = rendererRef.current;
     if (!renderer || !labelRank.size) return undefined;
     const projected = new THREE.Vector3();
+    const origin = new THREE.Vector3();
 
     function relabel() {
-      const sprites = labelSpritesRef.current;
-      if (!sprites.size) return;
+      // Read from the live scene rather than a map maintained alongside it.
+      // three-forcegraph re-runs nodeThreeObject on every refresh(), not only
+      // when the data changes, so a map accumulated a second sprite per node
+      // while the detached originals kept a non-null `parent` and sailed past
+      // the obvious guard -- those invisible leftovers then ate the whole
+      // budget and claimed the cells, leaving exactly one name on screen.
+      // A list derived per tick cannot go stale.
+      const sprites = [];
+      renderer.scene().traverse((object) => {
+        if (object.userData?.codembleLabel) sprites.push(object);
+      });
+      if (!sprites.length) return;
       const camera = renderer.camera();
       const controls = controlsRef.current;
       const width = renderer.width();
@@ -401,21 +411,39 @@ export function GalaxyCanvas({
         LABEL_BUDGET.far + (LABEL_BUDGET.near - LABEL_BUDGET.far) * nearness,
       );
 
-      const candidates = [];
-      for (const [nodeId, sprite] of sprites) {
-        sprite.visible = false;
-        if (!sprite.parent) continue;
-        sprite.parent.getWorldPosition(projected);
-        projected.project(camera);
-        // Behind the camera or off-screen: no slot, and no reason to sort it.
-        if (projected.z > 1) continue;
+      // Screen position of a point `offsetY` world-units above the node, or
+      // null when it is behind the camera or off-screen.
+      function place(origin, offsetY) {
+        projected.set(origin.x, origin.y + offsetY, origin.z).project(camera);
+        if (projected.z > 1) return null;
         const screenX = (projected.x * 0.5 + 0.5) * width;
         const screenY = (-projected.y * 0.5 + 0.5) * height;
-        if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) continue;
+        if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) return null;
+        return { screenX, screenY };
+      }
+
+      const candidates = [];
+      for (const sprite of sprites) {
+        const nodeId = sprite.userData.nodeId;
+        sprite.visible = false;
+        const star = sprite.parent;
+        if (!star) continue;
+        star.getWorldPosition(origin);
+        const base = sprite.userData.baseOffsetY ?? 0;
+        const anchor = place(origin, base);
+        if (!anchor) continue;
+        // How far one screen pixel is in world units at this node's depth,
+        // measured rather than assumed: the alternative slots below are
+        // expressed in plate-heights, and a fixed world offset would be a
+        // different number of pixels for a near star than a far one.
+        const oneUnit = place(origin, base + 1);
+        const pixelsPerUnit = oneUnit ? Math.abs(oneUnit.screenY - anchor.screenY) : 0;
         candidates.push({
           sprite,
-          screenX,
-          screenY,
+          origin: origin.clone(),
+          base,
+          pixelsPerUnit,
+          anchor,
           // How wide this plate actually is on screen. Reserving one fixed cell
           // per label regardless of its text let `parse_progress.py` overlap
           // three neighbours while still passing the collision test.
@@ -437,24 +465,27 @@ export function GalaxyCanvas({
       let shown = 0;
       for (const candidate of candidates) {
         if (shown >= budget) break;
-        const firstColumn = Math.floor(
-          (candidate.screenX - candidate.halfWidth) / LABEL_CELL_PX.width,
-        );
-        const lastColumn = Math.floor(
-          (candidate.screenX + candidate.halfWidth) / LABEL_CELL_PX.width,
-        );
-        const firstRow = Math.floor(
-          (candidate.screenY - candidate.halfHeight) / LABEL_CELL_PX.height,
-        );
-        const lastRow = Math.floor(
-          (candidate.screenY + candidate.halfHeight) / LABEL_CELL_PX.height,
-        );
-        const cells = [];
-        for (let column = firstColumn; column <= lastColumn; column += 1) {
-          for (let row = firstRow; row <= lastRow; row += 1) cells.push(`${column}:${row}`);
+        // Try the resting slot first, then alternates around the star. A star
+        // is a point feature and a name can sit anywhere near it, so testing
+        // only one spot threw away most of the sky's capacity: at galaxy zoom
+        // the systems cluster tightly and nearly every plate lost to the one
+        // above it, leaving a handful of names for twenty-odd charted systems.
+        const step = candidate.pixelsPerUnit
+          ? (candidate.halfHeight * 2 + LABEL_SLOT_GAP_PX) / candidate.pixelsPerUnit
+          : 0;
+        let placed = null;
+        for (const slot of LABEL_SLOTS) {
+          const offset = slot * step;
+          const at = slot === 0 ? candidate.anchor : place(candidate.origin, candidate.base + offset);
+          if (!at) continue;
+          const cells = coveredCells(at, candidate);
+          if (cells.some((cell) => taken.has(cell))) continue;
+          placed = { cells, offset };
+          break;
         }
-        if (cells.some((cell) => taken.has(cell))) continue;
-        for (const cell of cells) taken.add(cell);
+        if (!placed) continue;
+        for (const cell of placed.cells) taken.add(cell);
+        candidate.sprite.position.y = candidate.base + placed.offset;
         candidate.sprite.visible = true;
         shown += 1;
       }
@@ -567,7 +598,7 @@ export function GalaxyCanvas({
   );
 }
 
-function makeMarker(node, palette, dressing, focusedId, labelSprites) {
+function makeMarker(node, palette, dressing, focusedId) {
   const group = new THREE.Group();
   group.name = node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
   const radius = Math.cbrt(node.val ?? 1) * NODE_REL_SIZE;
@@ -584,8 +615,10 @@ function makeMarker(node, palette, dressing, focusedId, labelSprites) {
   }
   if (node.label) {
     const plate = dressing.label(node.label, radius);
+    // The declutter pass finds plates by walking the live scene, so the id it
+    // needs to rank them by has to travel on the sprite itself.
+    plate.userData.nodeId = node.id;
     group.add(plate);
-    labelSprites.set(node.id, plate);
   }
   if (node.home) {
     const homeRing = new THREE.Mesh(
@@ -605,6 +638,21 @@ function makeMarker(node, palette, dressing, focusedId, labelSprites) {
   }
   if (node.id === focusedId) group.add(dressing.reticle(radius));
   return group;
+}
+
+// Which screen cells a plate covers when its centre sits at `at`. Both axes
+// matter: claiming a single cell let a wide name cover three neighbours, and
+// claiming only a row let two plates straddling the same boundary collide.
+function coveredCells(at, { halfWidth, halfHeight }) {
+  const firstColumn = Math.floor((at.screenX - halfWidth) / LABEL_CELL_PX.width);
+  const lastColumn = Math.floor((at.screenX + halfWidth) / LABEL_CELL_PX.width);
+  const firstRow = Math.floor((at.screenY - halfHeight) / LABEL_CELL_PX.height);
+  const lastRow = Math.floor((at.screenY + halfHeight) / LABEL_CELL_PX.height);
+  const cells = [];
+  for (let column = firstColumn; column <= lastColumn; column += 1) {
+    for (let row = firstRow; row <= lastRow; row += 1) cells.push(`${column}:${row}`);
+  }
+  return cells;
 }
 
 // The force layout swaps link endpoints from ids to node objects in place.

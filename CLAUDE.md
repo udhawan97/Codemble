@@ -252,7 +252,12 @@ defects were caught by running it rather than by the suite: a sprite map cleared
 by an effect that ran after the one that filled it, an undefined constant that
 threw inside the declutter timer and silently erased every name, plates that
 claimed one screen cell regardless of their real width, and an open sidebar
-occluding the system panel's primary action.
+occluding the system panel's primary action. A fifth followed: labels offered
+only one position each, directly above their star, so at galaxy zoom nearly
+every plate lost its slot to a neighbour and a 90-system sky carried one name.
+Names now try a short list of slots around the star and collision-test where the
+plate actually draws rather than where its star sits — 1 name became roughly 24
+with everything shown, 9 by default.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,

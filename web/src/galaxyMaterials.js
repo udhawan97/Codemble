@@ -155,7 +155,10 @@ export function createDressing(palette) {
       const aspect = material.userData.aspect ?? 4;
       sprite.scale.set(LABEL_SCREEN_HEIGHT * aspect, LABEL_SCREEN_HEIGHT, 1);
       // Clear of the star and its halo, so the plate never sits on the glow.
-      sprite.position.set(0, radius * 2.2 + 1.2, 0);
+      // The declutter pass may move it to another slot around the star, so it
+      // keeps the resting offset to measure those alternatives from.
+      sprite.userData.baseOffsetY = radius * 2.2 + 1.2;
+      sprite.position.set(0, sprite.userData.baseOffsetY, 0);
       sprite.renderOrder = 4;
       sprite.visible = false;
       sprite.userData.codembleLabel = true;
