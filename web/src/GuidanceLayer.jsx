@@ -28,15 +28,15 @@ export function HintChip({ hint, onStudy }) {
 const GALAXY_STEPS = [
   {
     title: "What you see",
-    body: "Every star system is one file. Size is how much code it holds; brightness is how many places in your project call it.",
+    body: "Every star system is one file, named once you have charted it. Size is how much code it holds; brightness is how many places in your project call it. Faint unnamed markers are modules you have not reached yet.",
   },
   {
     title: "How to move",
-    body: "Scroll or press Enter to move closer, Escape to move back. Arrow keys step between systems. The camera stays on rails — you cannot get lost.",
+    body: "Drag to look around and scroll to zoom — the view stays locked on whatever you are studying, so you cannot get lost. Click a system to go in, Escape to come back, and press ⌘K to jump straight to any module by name.",
   },
   {
     title: "What lights stars",
-    body: "A system lights up only after you answer questions drawn from your own code. Nothing lights up just by looking at it.",
+    body: "A system lights up only after you answer questions drawn from your own code. Nothing lights up just by looking at it — and each one you light reveals the modules it connects to.",
   },
 ];
 
@@ -47,7 +47,7 @@ const MAP_STEPS = [
   },
   {
     title: "How to move",
-    body: "Click a box to study that module. The tabs above show how it fits together and what runs first. Switch to the Galaxy anytime to fly through the same code.",
+    body: "Click a box to study that module, or press ⌘K to jump to one by name. The tabs above show how it fits together and what runs first. Switch to the Galaxy anytime to fly through the same code.",
   },
   {
     title: "What lights up",

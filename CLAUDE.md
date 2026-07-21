@@ -167,7 +167,7 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-20 ·
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-21 ·
 Session note: architecture-deepening maintenance is complete after the verified
 v0.2.0 release; all four report recommendations are merged in phases while issue
 #13 remains open for human tester evidence. The public site was then redesigned
@@ -236,7 +236,23 @@ weight-scaled SVG paths; cycle and long-span routes use clear flank corridors,
 while possible relationships remain dashed and React remains a pure renderer.
 Galaxy regions now place in deterministic constellations derived only from
 parser-proven import communities, with the community ID exposed in graph schema
-5 and progress signatures remaining coordinate-independent.
+5 and progress signatures remaining coordinate-independent. A tester then
+reported the 169-system galaxy unnavigable and undifferentiated, which resolved
+into four separate defects: the camera could not move at all, no star carried a
+name and there was no search or index, every region route drew unconditionally
+so the mesh outshone the stars, and a display-size heading plus a twelve-row
+always-on legend covered the stage. All four are fixed — bounded orbit,
+progressive reveal keyed to a new `hops_from_home` graph field (schema 6),
+ranked and decluttered name plates, a command palette plus an index sidebar over
+one shared module index, and chrome demoted to a single line with the legend
+behind a disclosure. On this repository the default galaxy went from 90 systems
+with their whole route mesh to 22 charted with the rest drawn faint, unnamed and
+edgeless; nothing was removed from the graph and no region re-dimmed. Four
+defects were caught by running it rather than by the suite: a sprite map cleared
+by an effect that ran after the one that filled it, an undefined constant that
+threw inside the declutter timer and silently erased every name, plates that
+claimed one screen cell regardless of their real width, and an open sidebar
+occluding the system panel's primary action.
 
 ### M0 — Repo, docs & website scaffold ✅ (2026-07-19)
 - [x] Root: README, LICENSE (Apache-2.0), CoC, SECURITY, CONTRIBUTING,
@@ -470,10 +486,18 @@ to before the index change.
 | 2026-07-20 | Generated check suites are pinned by a committed golden fixture before any performance work touches `checks/service.py` | The Correctness Contract makes suite drift top-severity, and a refactor that changes an answer is invisible without a byte-level pin |
 | 2026-07-20 | Architecture map edges get backend-computed ports, barycenter ordering, arrowheads, and weight-scaled strokes; `MAP_SCHEMA_VERSION` 2; directory groups stay payload metadata | Within-layer order was arbitrary and direction was invisible in 2D while being parser truth; ordering stays deterministic (fixed sweeps, sorted ties); group containers wait for hierarchical layout |
 | 2026-07-20 | Galaxy regions place by deterministic import-community constellations (pure-Python label propagation in `layout.py`); `community` is an additive Region field; layout bytes change once | Hash-order placement scattered coupled modules; communities are parser-truth-derived and deterministic; progress signatures hash file content so nothing re-dims (M12 precedent) |
+| 2026-07-21 | **Bounded orbit** replaces the fixed camera, amending the free-flight Non-Goal: `controlType('orbit')` with panning disabled, per-level distance clamps, and clamped polar angle. The wheel becomes zoom; level changes move to click/Enter/Escape/breadcrumb | Approved by UD after a tester reported the galaxy unnavigable. Panning is the one degree of freedom that can strand a learner in empty space with nothing to navigate back by, so it stays off — rotation and zoom are clamped instead, which keeps "you cannot get lost" true. One gesture cannot mean both zoom and change-level, so the wheel's old meaning had to move |
+| 2026-07-21 | Galaxy uses **progressive reveal**: floor (within 2 import hops of Home) ∪ neighbours of every lit region ∪ the current selection's neighbours, with a persisted Show-all toggle. An unrevealed region is drawn faint, unnamed, edgeless — never removed | Approved by UD. 169 systems and their whole route mesh was the hairball; dropping the *edges* of what is not yet charted thins the sky without a separate density control. Regions stay drawn and clickable because hiding one would misreport the project's size, which is precisely the kind of wrong a learner cannot detect. Reveal is recomputed from proven progress, never stored, so it cannot drift out of step with it |
+| 2026-07-21 | `Region.hops_from_home` is graph-layer truth (schema 6): undirected BFS from Home over proven import routes, `None` when unreachable; `with_entrypoint` recomputes it | Reveal is game logic and belongs in `LearnerSession`, but the *distance* is a fact about the project and belongs in the graph. The frontend was already re-walking this exact BFS for the Easy-mode hint, so the two could in principle have disagreed about one number; there is now one source. `None` is never softened to a large number, or "unreachable" would read as "very far" |
+| 2026-07-21 | Canvas name plates are ranked (Home → lit → centrality), budgeted by camera distance, and decluttered by claiming the full screen-cell rectangle each plate covers | A name is the cheapest differentiation there is and the sky had none. Claiming one cell per plate let a wide name cover three neighbours, and claiming only a row let two plates straddling a boundary collide — the rectangle is the only version that actually holds. Plate geometry is published on the sprite by the module that sizes it, so the constant is not duplicated across files |
+| 2026-07-21 | Finding a module is a command palette **and** an index sidebar over one shared `moduleIndex`; sidebar rows show each path minus its group's shared prefix | Approved by UD. Progressive reveal makes targeted retrieval mandatory — a thinned sky must never hide a module from someone who knows its name — and both surfaces reach every module whether charted or not. Basenames alone are useless in a Python project where every package carries an `__init__.py`, so rows keep enough real path to be told apart |
 
 ## Non-Goals — do NOT build (point here when asked)
 
-- ❌ Free-flight 3D navigation — semantic zoom only
+- ❌ ~~Free-flight 3D navigation~~ — superseded 2026-07-21: **bounded orbit** is
+  approved (see Decision Log). The camera may rotate and zoom around the current
+  subject; panning, free translation, and any control that can leave the subject
+  off screen remain out
 - ❌ XP, streaks, levels, leaderboards
 - ❌ ~~A second 2D renderer/toggle in v1~~ — superseded 2026-07-19: the 2D Map layer is approved (see Decision Log); free-form/client-computed 2D layouts remain out
 - ❌ Accounts, cloud hosting, multi-user; share link waits for Phase 3

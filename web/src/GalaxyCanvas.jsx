@@ -8,6 +8,28 @@ import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } f
 
 const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
+// Bounded orbit, per the 2026-07-21 Decision Log entry. Free flight stays a
+// Non-Goal: panning is off, so the camera can only ever swing around the
+// current subject and never translate away from it. These clamps are what make
+// "you cannot get lost" still true once the mouse can move the view -- each
+// level's default distance sits inside its own range, so arriving somewhere
+// never fights the clamp.
+const CAMERA_BOUNDS = {
+  GALAXY: { min: 120, max: 640 },
+  SYSTEM: { min: 55, max: 320 },
+  STUDY: { min: 22, max: 170 },
+};
+// Never straight down and never edge-on: at 0 the galaxy plane collapses to a
+// line, and past ~86 degrees the learner is under the plane looking up at a sky
+// that reads as a different project.
+const MIN_POLAR_ANGLE = 0.16;
+const MAX_POLAR_ANGLE = 1.5;
+// Label declutter. Recomputed on a timer rather than per frame: at 169 systems
+// this is a projection plus a sort, and doing it 60 times a second to reprint
+// text that has not moved is how a readable sky becomes a slow one.
+const LABEL_TICK_MS = 110;
+const LABEL_CELL_PX = { width: 132, height: 30 };
+const LABEL_BUDGET = { far: 14, near: 44 };
 // 3d-force-graph mutates the scene on its own render tick, not the React
 // commit that flips `level` to GALAXY, so the newly-lit system's group may
 // not exist for a frame or two. A handful of retry frames covers that
@@ -22,6 +44,7 @@ export function GalaxyCanvas({
   selectedNode,
   hoverNodeId,
   pendingDawnRegionId,
+  revealedRegionIds,
   mode,
   onHoverNode,
   onAdvance,
@@ -30,6 +53,8 @@ export function GalaxyCanvas({
 }) {
   const hostRef = useRef(null);
   const rendererRef = useRef(null);
+  const controlsRef = useRef(null);
+  const labelSpritesRef = useRef(new Map());
   const advanceRef = useRef(onAdvance);
   const retreatRef = useRef(onRetreat);
   const hoverRef = useRef(onHoverNode);
@@ -37,7 +62,6 @@ export function GalaxyCanvas({
   const onDawnConsumedRef = useRef(onDawnConsumed);
   const dawnStartedRef = useRef(null);
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
-  const wheelLockRef = useRef(0);
   const dressingRef = useRef(null);
   const bloomRef = useRef(null);
   const focusedIdRef = useRef(null);
@@ -51,11 +75,11 @@ export function GalaxyCanvas({
   // the whole starfield on unrelated state changes.
   const starfieldSeed = seedFromHashes(graph.file_hashes);
   const data = useMemo(() => {
-    if (level === LEVELS.GALAXY) return galaxyData(graph, palette);
+    if (level === LEVELS.GALAXY) return galaxyData(graph, palette, revealedRegionIds);
     return systemData(graph, region?.id, palette, {
       selectedId: selectedNode?.id,
     });
-  }, [graph, level, palette, region?.id, selectedNode?.id]);
+  }, [graph, level, palette, region?.id, revealedRegionIds, selectedNode?.id]);
 
   useEffect(() => {
     advanceRef.current = onAdvance;
@@ -111,10 +135,12 @@ export function GalaxyCanvas({
     try {
       const dressing = createDressing(palette);
       dressingRef.current = dressing;
-      const renderer = ForceGraph3D()(host)
+      // controlType is construction-time only in this library, so orbit has to
+      // be chosen here rather than toggled later.
+      const renderer = ForceGraph3D({ controlType: "orbit" })(host)
         .backgroundColor(palette.ground)
         .showNavInfo(false)
-        .enableNavigationControls(false)
+        .enableNavigationControls(true)
         .warmupTicks(0)
         .cooldownTicks(0)
         .nodeId("id")
@@ -127,7 +153,9 @@ export function GalaxyCanvas({
         // from unconnected nodes instead, so the selection's connections stay
         // visible while everything else recedes.
         .nodeOpacity(0.82)
-        .nodeThreeObject((node) => makeMarker(node, palette, dressing, focusedIdRef.current))
+        .nodeThreeObject((node) =>
+          makeMarker(node, palette, dressing, focusedIdRef.current, labelSpritesRef.current),
+        )
         .nodeThreeObjectExtend(true)
         .linkColor(linkColor)
         .linkLabel(linkLabel)
@@ -156,6 +184,22 @@ export function GalaxyCanvas({
       const hideNavigationHint = requestAnimationFrame(() => {
         host.querySelector(".scene-nav-info")?.remove();
       });
+
+      // The bounded half of "bounded orbit". Panning is the degree of freedom
+      // that lets a learner drift into empty space with nothing on screen to
+      // navigate back by, so it is the one that stays off; rotation and zoom
+      // are clamped rather than removed. Damping is safe because the library
+      // calls controls.update() every frame.
+      const controls = renderer.controls();
+      controls.enablePan = false;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.12;
+      controls.rotateSpeed = 0.55;
+      controls.zoomSpeed = 0.7;
+      controls.minPolarAngle = MIN_POLAR_ANGLE;
+      controls.maxPolarAngle = MAX_POLAR_ANGLE;
+      controlsRef.current = controls;
+
       bloomRef.current = attachBloom(renderer);
       rendererRef.current = renderer;
 
@@ -181,6 +225,8 @@ export function GalaxyCanvas({
         // is a no-op by design (see galaxyMaterials), so this is the real free.
         dressing.dispose();
         dressingRef.current = null;
+        labelSpritesRef.current.clear();
+        controlsRef.current = null;
         host.replaceChildren();
         rendererRef.current = null;
       };
@@ -193,12 +239,26 @@ export function GalaxyCanvas({
   useEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
+    // Cleared here, immediately before graphData rebuilds every node object,
+    // not in an effect of its own: a separate effect runs AFTER this one, so it
+    // wiped the very sprites the graphData call had just registered and the
+    // declutter pass then had almost nothing to place.
+    labelSpritesRef.current.clear();
     renderer
       .nodeResolution(data.nodes.length >= 900 ? 4 : 8)
       .linkVisibility((link) => !(mode === "easy" && link.focusDim))
       // Arrows only where an edge means a direction the learner can act on.
       .linkDirectionalArrowLength(level === LEVELS.GALAXY ? 0 : 3.2)
       .graphData(data);
+    // Re-clamp before the move, so the tween never lands outside the range it
+    // is about to be held to. cameraPosition's lookAt writes controls.target
+    // directly now that controls are enabled (three-render-objects setLookAt),
+    // which is what re-anchors the orbit on every level change for free.
+    const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
+    if (controlsRef.current) {
+      controlsRef.current.minDistance = bounds.min;
+      controlsRef.current.maxDistance = bounds.max;
+    }
     if (level === LEVELS.GALAXY) {
       renderer.cameraPosition({ x: 0, y: 105, z: 310 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
     } else {
@@ -298,6 +358,126 @@ export function GalaxyCanvas({
       .linkDirectionalArrowColor(renderer.linkDirectionalArrowColor());
   }, [data, hoverNodeId, level, selectedNode?.id]);
 
+  // Label declutter. Ranking is graph truth (Home, then proven, then how many
+  // places call it); only the budget and the collision test depend on the
+  // camera. Nothing here decides what a node *is* -- it decides how many names
+  // fit on screen before they start overlapping each other.
+  const labelRank = useMemo(() => {
+    const ranked = data.nodes
+      .filter((node) => node.label)
+      .map((node) => ({
+        id: node.id,
+        weight:
+          (node.home ? 3_000_000 : 0) +
+          (node.understood ? 1_000_000 : 0) +
+          (node.centrality ?? 0) * 1000,
+        nodeId: node.id,
+      }))
+      .sort((left, right) => right.weight - left.weight || left.nodeId.localeCompare(right.nodeId));
+    return new Map(ranked.map((entry, index) => [entry.id, index]));
+  }, [data.nodes]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer || !labelRank.size) return undefined;
+    const projected = new THREE.Vector3();
+
+    function relabel() {
+      const sprites = labelSpritesRef.current;
+      if (!sprites.size) return;
+      const camera = renderer.camera();
+      const controls = controlsRef.current;
+      const width = renderer.width();
+      const height = renderer.height();
+      const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
+      const distance = controls
+        ? camera.position.distanceTo(controls.target)
+        : camera.position.length();
+      // Closer camera, more names: at the near clamp the sky is sparse enough
+      // on screen to carry them, at the far clamp it is not.
+      const span = Math.max(1, bounds.max - bounds.min);
+      const nearness = 1 - Math.min(1, Math.max(0, (distance - bounds.min) / span));
+      const budget = Math.round(
+        LABEL_BUDGET.far + (LABEL_BUDGET.near - LABEL_BUDGET.far) * nearness,
+      );
+
+      const candidates = [];
+      for (const [nodeId, sprite] of sprites) {
+        sprite.visible = false;
+        if (!sprite.parent) continue;
+        sprite.parent.getWorldPosition(projected);
+        projected.project(camera);
+        // Behind the camera or off-screen: no slot, and no reason to sort it.
+        if (projected.z > 1) continue;
+        const screenX = (projected.x * 0.5 + 0.5) * width;
+        const screenY = (-projected.y * 0.5 + 0.5) * height;
+        if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) continue;
+        candidates.push({
+          sprite,
+          screenX,
+          screenY,
+          // How wide this plate actually is on screen. Reserving one fixed cell
+          // per label regardless of its text let `parse_progress.py` overlap
+          // three neighbours while still passing the collision test.
+          halfWidth: ((sprite.userData.screenWidthFraction ?? 0.14) * height) / 2,
+          halfHeight: ((sprite.userData.screenHeightFraction ?? 0.034) * height) / 2,
+          // Hover always wins a slot: pointing at something and being told
+          // nothing is the exact failure labels exist to fix.
+          rank: nodeId === hoverNodeId ? -1 : labelRank.get(nodeId) ?? Infinity,
+        });
+      }
+      candidates.sort((left, right) => left.rank - right.rank);
+
+      // Highest-ranked plate claims every cell its rectangle actually covers;
+      // a later, lower-ranked plate overlapping any of them is dropped. Both
+      // axes matter: claiming a single cell let a wide name cover three
+      // neighbours, and claiming only a row of cells let two plates that
+      // straddle the same horizontal boundary still collide.
+      const taken = new Set();
+      let shown = 0;
+      for (const candidate of candidates) {
+        if (shown >= budget) break;
+        const firstColumn = Math.floor(
+          (candidate.screenX - candidate.halfWidth) / LABEL_CELL_PX.width,
+        );
+        const lastColumn = Math.floor(
+          (candidate.screenX + candidate.halfWidth) / LABEL_CELL_PX.width,
+        );
+        const firstRow = Math.floor(
+          (candidate.screenY - candidate.halfHeight) / LABEL_CELL_PX.height,
+        );
+        const lastRow = Math.floor(
+          (candidate.screenY + candidate.halfHeight) / LABEL_CELL_PX.height,
+        );
+        const cells = [];
+        for (let column = firstColumn; column <= lastColumn; column += 1) {
+          for (let row = firstRow; row <= lastRow; row += 1) cells.push(`${column}:${row}`);
+        }
+        if (cells.some((cell) => taken.has(cell))) continue;
+        for (const cell of cells) taken.add(cell);
+        candidate.sprite.visible = true;
+        shown += 1;
+      }
+    }
+
+    // Wrapped because this runs on a timer: an exception mid-pass leaves every
+    // plate in the hidden state the pass starts from, so the whole sky silently
+    // loses its names with nothing on screen to say why. Reporting it and
+    // stopping the timer turns that into something diagnosable.
+    let timer = null;
+    function tick() {
+      try {
+        relabel();
+      } catch (error) {
+        if (timer !== null) clearInterval(timer);
+        console.error("Codemble: label declutter failed, names disabled", error);
+      }
+    }
+    tick();
+    timer = setInterval(tick, LABEL_TICK_MS);
+    return () => clearInterval(timer);
+  }, [data, hoverNodeId, labelRank, level]);
+
   useEffect(() => {
     const benchmarking = new URLSearchParams(window.location.search).has("benchmark");
     if (!benchmarking || data.nodes.length < 900) return undefined;
@@ -348,13 +528,10 @@ export function GalaxyCanvas({
     }
   }
 
-  function handleWheel(event) {
-    const now = performance.now();
-    if (now < wheelLockRef.current || Math.abs(event.deltaY) < 24) return;
-    wheelLockRef.current = now + 620;
-    if (event.deltaY > 0 && focusedNode) advanceRef.current(focusedNode);
-    if (event.deltaY < 0) retreatRef.current();
-  }
+  // The wheel is the orbit's zoom now, so it no longer changes level: two
+  // meanings on one gesture meant every attempt to look closer also teleported
+  // the learner somewhere else. Level changes are click, Enter, Escape and the
+  // breadcrumb, all of which say what they will do before they do it.
 
   if (renderError) {
     return (
@@ -377,9 +554,8 @@ export function GalaxyCanvas({
       className="galaxy-frame"
       role="application"
       tabIndex="0"
-      aria-label={`Codemble ${level.toLowerCase()} view. Use arrow keys to choose a node and Enter to move closer.`}
+      aria-label={`Codemble ${level.toLowerCase()} view. Drag to orbit, scroll to zoom. Use arrow keys to choose a node and Enter to move closer.`}
       onKeyDown={handleKeyDown}
-      onWheel={handleWheel}
     >
       <div ref={hostRef} className="galaxy-canvas" aria-hidden="true" />
       {focusedNode ? (
@@ -391,16 +567,25 @@ export function GalaxyCanvas({
   );
 }
 
-function makeMarker(node, palette, dressing, focusedId) {
+function makeMarker(node, palette, dressing, focusedId, labelSprites) {
   const group = new THREE.Group();
   group.name = node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
   const radius = Math.cbrt(node.val ?? 1) * NODE_REL_SIZE;
+  // An uncharted region is drawn, not deleted: it keeps its true position and
+  // stays clickable, so the sky never misreports how large the project is. It
+  // simply carries no glow, no fog and no name until the learner reaches it.
+  const uncharted = node.charted === false;
   // Dimmed nodes keep their true colour and lose their glow. Dimming by
   // removing light rather than shifting hue keeps a lit star recognisably lit.
-  if (!node.focusDim) group.add(dressing.halo(node, radius));
-  if (node.kind === "region") {
+  if (!node.focusDim && !uncharted) group.add(dressing.halo(node, radius));
+  if (node.kind === "region" && !uncharted) {
     const tint = nebulaTintKey(node.language);
     if (tint) group.add(dressing.nebula(palette[tint], radius * 14));
+  }
+  if (node.label) {
+    const plate = dressing.label(node.label, radius);
+    group.add(plate);
+    labelSprites.set(node.id, plate);
   }
   if (node.home) {
     const homeRing = new THREE.Mesh(
@@ -462,5 +647,11 @@ function readPalette() {
     nebPython: value("--cm-neb-python"),
     nebJs: value("--cm-neb-js"),
     nebTs: value("--cm-neb-ts"),
+    // Read raw, NOT through toRenderableColor: these two are painted with a 2D
+    // canvas context, which understands any CSS colour including the plate's
+    // alpha. Flattening them to rgb() the way WebGL requires would silently
+    // make the label plate opaque.
+    labelPlate: styles.getPropertyValue("--cm-label-plate").trim(),
+    labelInk: styles.getPropertyValue("--cm-label-ink").trim(),
   });
 }

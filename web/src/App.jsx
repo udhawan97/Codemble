@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
 import { CoachMarks, HintChip } from "./GuidanceLayer.jsx";
@@ -9,6 +16,7 @@ import {
   LEVELS,
   conceptTitle,
   defaultRegion,
+  groupByCommunity,
   languageLabel,
 } from "./graphData.js";
 import {
@@ -30,6 +38,19 @@ export function App() {
     session.start();
     return () => session.dispose();
   }, [session]);
+  // Cmd/Ctrl-K opens the finder from anywhere, including with the galaxy
+  // focused. Bound on the window rather than the canvas so it works no matter
+  // which layer or panel currently holds focus.
+  useEffect(() => {
+    function onKeyDown(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        session.dispatch({ type: "SET_FINDER_OPEN", open: true });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [session]);
   // The path the learner last handed to SELECT_PROJECT. The session reports a
   // failed parse as `picker.error` and drops `parseProgress` -- which carried
   // the path -- in the same commit, so the only place the attempted path
@@ -48,6 +69,7 @@ export function App() {
     explanation,
     explanationError,
     explanationLoading,
+    finderOpen,
     focusedGraph,
     focusedMapData,
     focusedStudiedCount,
@@ -57,6 +79,7 @@ export function App() {
     languageFocus,
     languageOptions,
     layer,
+    legendOpen,
     level,
     litRegionId,
     llmStatus,
@@ -64,14 +87,18 @@ export function App() {
     mapTab,
     mode,
     modeChosen,
+    moduleIndex,
     parseProgress,
     pendingDawnRegionId,
     picker,
     projectName,
     region,
+    revealedRegionIds,
     selectedNode,
+    showAll,
     showChart,
     showChecks,
+    sidebarOpen,
     status,
     studyData,
     studyError,
@@ -187,6 +214,21 @@ export function App() {
           )}
         </nav>
         <div className="rail-actions">
+          <button
+            className="rail-action"
+            type="button"
+            aria-pressed={sidebarOpen}
+            onClick={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
+          >
+            Modules
+          </button>
+          <button
+            className="rail-action"
+            type="button"
+            onClick={() => session.dispatch({ type: "SET_FINDER_OPEN", open: true })}
+          >
+            Find <kbd>⌘K</kbd>
+          </button>
           {showChart ? (
             <button
               className="rail-action"
@@ -224,6 +266,20 @@ export function App() {
           <SwitchProject onConfirm={() => session.dispatch({ type: "RESET_PROJECT" })} />
         </div>
         <div className="rail-controls">
+          {/* A view preference over the immutable graph, exactly like language
+              focus: it changes how much sky is drawn, never what the parser
+              found. Galaxy-only, because reveal is a galaxy affordance. */}
+          {layer === "galaxy" ? (
+            <button
+              className="rail-action rail-action--toggle"
+              type="button"
+              aria-pressed={showAll}
+              title="Draw every module at once, including the ones no route from Home reaches"
+              onClick={() => session.dispatch({ type: "TOGGLE_SHOW_ALL" })}
+            >
+              Show all
+            </button>
+          ) : null}
           <LayerSwitcher
             layer={layer}
             mode={mode}
@@ -253,6 +309,14 @@ export function App() {
         />
       ) : (
       <section className="map-stage" aria-label="Parser-proven project map">
+        {sidebarOpen ? (
+          <IndexSidebar
+            index={moduleIndex}
+            currentRegionId={level === LEVELS.GALAXY ? null : region?.id}
+            onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
+            onClose={() => session.dispatch({ type: "TOGGLE_SIDEBAR" })}
+          />
+        ) : null}
         {layer === "map" ? (
           <MapView
             data={focusedMapData}
@@ -281,6 +345,7 @@ export function App() {
             selectedNode={selectedNode}
             hoverNodeId={hoverNodeId}
             pendingDawnRegionId={pendingDawnRegionId}
+            revealedRegionIds={revealedRegionIds}
             mode={mode}
             onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
             onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
@@ -301,8 +366,20 @@ export function App() {
             (NodeKind is module/class/function), so at system and study level
             the sky carries no tint at all and the rows must go. A learner in a
             mixed project reads "no fog here" as "no language evidence here". */}
+        {/* The legend was twelve always-on rows that owned the top-right corner
+            and clipped off-screen at system level. It is the same content, now
+            behind a disclosure: a key you consult, not a wall you read past. */}
+        <button
+          className="legend-toggle"
+          type="button"
+          aria-expanded={legendOpen}
+          onClick={() => session.dispatch({ type: "TOGGLE_LEGEND" })}
+        >
+          Key
+        </button>
         <aside
           className="map-legend"
+          hidden={!legendOpen}
           aria-label={layer === "map" ? "Map legend" : "Galaxy legend"}
         >
           {layer === "galaxy" ? (
@@ -357,27 +434,36 @@ export function App() {
                 ))
             : null}
         </aside>
+        {/* One line of body text where a display-size heading used to own the
+            left half of the canvas. The counts are the same facts; the stage
+            they were covering is the point. */}
         {layer === "galaxy" && level === LEVELS.GALAXY ? (
-          <section className="orientation-copy">
-            <h1>
+          <p className="orientation-bar">
+            <span>
               {focusedGraph.regions.length}{" "}
               {languageFocus === "all"
                 ? focusedGraph.regions.length === 1
                   ? "system"
                   : "systems"
-                : `${languageLabel(languageFocus)} ${focusedGraph.regions.length === 1 ? "system" : "systems"}`} from real source.
-            </h1>
-            <p>Choose a system. Size follows lines of code; brightness follows how many places call it.</p>
+                : `${languageLabel(languageFocus)} ${focusedGraph.regions.length === 1 ? "system" : "systems"}`}
+            </span>
+            <span className="orientation-bar__charted">
+              {showAll
+                ? "all charted"
+                : `${revealedRegionIds.size} charted`}
+            </span>
             {focusedGraph.partial_files.length ? (
-              <p className="partial-summary">
-                {focusedGraph.partial_files.length} {focusedGraph.partial_files.length === 1 ? "file is" : "files are"} unchartable because {focusedGraph.partial_files.length === 1 ? "its" : "their"} language parser reported a syntax error.
-              </p>
+              <span className="partial-summary">
+                {focusedGraph.partial_files.length} unchartable · syntax error
+              </span>
             ) : null}
-          </section>
+          </p>
         ) : null}
         {level === LEVELS.SYSTEM ? (
           <section className="orientation-copy orientation-copy--system">
-            <h1>{region.id}</h1>
+            {/* No heading here any more: the breadcrumb in the header already
+                names this module, and rendering the full path at display size
+                wrapped it across three lines over the system it described. */}
             <p>
               {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
                 ? `${region.node_count} source ${region.node_count === 1 ? "file remains" : "files remain"} visible · ${region.loc} lines. The module is unchartable beyond raw source because it has a syntax error.`
@@ -460,6 +546,16 @@ export function App() {
             onDismiss={() => session.dispatch({ type: "DISMISS_COACHMARKS" })}
           />
         ) : null}
+        {/* Mounted last so its modal backdrop sits over the stage, and gated on
+            the coach-marks being done for the same reason the coach-marks are
+            gated on the audience gate: two <dialog>s open at once stack. */}
+        {finderOpen ? (
+          <ModuleFinder
+            index={moduleIndex}
+            onGo={(regionId) => session.dispatch({ type: "GO_TO_REGION", regionId })}
+            onClose={() => session.dispatch({ type: "SET_FINDER_OPEN", open: false })}
+          />
+        ) : null}
         <HintChip
           hint={hint}
           onStudy={(regionId) => session.dispatch({ type: "ADVANCE_REGION", regionId })}
@@ -480,7 +576,7 @@ export function App() {
             ? `${focusedStudiedCount} focused structures studied this session`
             : layer === "map"
               ? "Click a box or row to study · Switch tabs to change view"
-              : "Scroll or Enter to move closer · Escape to move back"}
+              : "Drag to orbit · Scroll to zoom · Click to move closer · Escape to move back"}
         </span>
         <span>Local only</span>
       </footer>
@@ -801,6 +897,141 @@ function ProjectFailure({ failure, busy, onSelect }) {
         Try <span className="picker-recent-path">{failure.path}</span> again
       </button>
     </section>
+  );
+}
+
+/**
+ * Filter-as-you-type jump to any module in the project.
+ *
+ * Both this and the sidebar consume `moduleIndex` from the session, so neither
+ * can disagree with the other about what exists. Every module is reachable
+ * here whether or not it is currently charted -- progressive reveal thins the
+ * sky, and this is the guarantee that thinning it never hides anything from
+ * someone who knows what they are looking for.
+ */
+function ModuleFinder({ index, onGo, onClose }) {
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
+  const dialogRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const matches = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const rows = needle
+      ? index.filter(
+          (row) =>
+            row.label.toLowerCase().includes(needle) || row.file.toLowerCase().includes(needle),
+        )
+      : index;
+    return rows.slice(0, 60);
+  }, [index, query]);
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => setCursor(0), [query]);
+
+  const active = matches[Math.min(cursor, matches.length - 1)] ?? null;
+
+  function handleKeyDown(event) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setCursor((value) => Math.min(value + 1, matches.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setCursor((value) => Math.max(value - 1, 0));
+    } else if (event.key === "Enter" && active) {
+      event.preventDefault();
+      onGo(active.id);
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="module-finder"
+      aria-label="Find a module"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClose={onClose}
+    >
+      <input
+        ref={inputRef}
+        type="search"
+        value={query}
+        placeholder="Find a module…"
+        aria-label="Find a module by name or path"
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+      <ul role="listbox" aria-label="Matching modules">
+        {matches.map((row, position) => (
+          <li key={row.id}>
+            <button
+              type="button"
+              role="option"
+              aria-selected={position === cursor}
+              data-active={position === cursor || undefined}
+              onMouseEnter={() => setCursor(position)}
+              onClick={() => onGo(row.id)}
+            >
+              <strong>{row.label}</strong>
+              <small>{row.file}</small>
+              {row.home ? <em>Home</em> : row.understood ? <em>lit</em> : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {matches.length ? null : <p className="module-finder__empty">No module matches that.</p>}
+    </dialog>
+  );
+}
+
+/**
+ * A browsable index of every module, grouped by the import communities the
+ * graph layer already computed. Those communities placed related modules near
+ * each other in the sky but were otherwise invisible; naming them here is what
+ * turns a constellation into something a learner can read.
+ */
+function IndexSidebar({ index, currentRegionId, onGo, onClose }) {
+  const groups = useMemo(() => groupByCommunity(index), [index]);
+  return (
+    <aside className="index-sidebar" aria-label="Project index">
+      <header>
+        <h2>Modules</h2>
+        <button type="button" onClick={onClose} aria-label="Close the project index">
+          ×
+        </button>
+      </header>
+      <div className="index-sidebar__scroll">
+        {groups.map((group) => (
+          <section key={group.community}>
+            <h3 title={group.name}>{group.name}</h3>
+            <ul>
+              {group.members.map((row) => (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    aria-current={row.id === currentRegionId ? "true" : undefined}
+                    data-lit={row.understood || undefined}
+                    title={row.file}
+                    onClick={() => onGo(row.id)}
+                  >
+                    <span>{row.display ?? row.label}</span>
+                    {row.home ? <em>Home</em> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </aside>
   );
 }
 

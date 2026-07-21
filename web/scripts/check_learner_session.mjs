@@ -1091,6 +1091,110 @@ assert.deepEqual(mapCalls, ["/api/map"]);
 
 console.log("phase B layer + map contracts passed");
 
+// --- progressive reveal through the session ---------------------------------
+
+function revealGraph() {
+  const ids = ["home", "near", "mid", "far"];
+  return {
+    project_root: "/tmp/reveal",
+    nodes: ids.map((id) => ({
+      id,
+      name: id,
+      language: "python",
+      region: id,
+      file: `src/${id}.py`,
+      understood: false,
+    })),
+    edges: [],
+    entrypoint_candidates: ["home"],
+    selected_entrypoint: "home",
+    file_hashes: Object.fromEntries(ids.map((id) => [`src/${id}.py`, id])),
+    concept_annotations: [],
+    regions: ids.map((id, index) => ({
+      id,
+      language: "python",
+      home: index === 0,
+      understood: false,
+      community: 0,
+      centrality: 0,
+      loc: 1,
+      hops_from_home: index,
+    })),
+    region_edges: [
+      { src: "home", dst: "near", certain: true, weight: 1 },
+      { src: "near", dst: "mid", certain: true, weight: 1 },
+      { src: "mid", dst: "far", certain: true, weight: 1 },
+    ],
+    partial_files: [],
+  };
+}
+
+const revealSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph: revealGraph() }),
+  clock,
+});
+await revealSession.start();
+
+assert.deepEqual(
+  [...revealSession.getSnapshot().revealedRegionIds].sort(),
+  ["home", "mid", "near"],
+  "a first run opens on the floor, never an empty sky and never the whole hairball",
+);
+assert.deepEqual(
+  revealSession.getSnapshot().moduleIndex.map((row) => row.label),
+  ["far.py", "home.py", "mid.py", "near.py"],
+  "the index lists every module the parser found, charted or not",
+);
+
+// Walking into a region reveals its neighbours while it is the subject.
+await revealSession.dispatch({ type: "GO_TO_REGION", regionId: "far" });
+assert.equal(revealSession.getSnapshot().region.id, "far");
+assert.equal(
+  revealSession.getSnapshot().finderOpen,
+  false,
+  "a jump closes the finder in the same commit, so it cannot land over the new scene",
+);
+assert.ok(
+  revealSession.getSnapshot().revealedRegionIds.has("far"),
+  "the region the learner is standing in is always charted",
+);
+
+// Show all is a view preference: it changes the drawing, never the graph.
+const beforeToggle = revealSession.getSnapshot().focusedGraph.regions.length;
+await revealSession.dispatch({ type: "TOGGLE_SHOW_ALL" });
+assert.equal(revealSession.getSnapshot().showAll, true);
+assert.deepEqual(
+  [...revealSession.getSnapshot().revealedRegionIds].sort(),
+  ["far", "home", "mid", "near"],
+);
+assert.equal(
+  revealSession.getSnapshot().focusedGraph.regions.length,
+  beforeToggle,
+  "Show all reveals; it must not add or remove a single region",
+);
+await revealSession.dispatch({ type: "TOGGLE_SHOW_ALL" });
+assert.equal(revealSession.getSnapshot().showAll, false);
+revealSession.dispose();
+
+// A lit region permanently earns its neighbours, with no Show all involved.
+const litGraph = revealGraph();
+litGraph.regions = litGraph.regions.map((region) =>
+  region.id === "far" ? { ...region, understood: true } : region,
+);
+const litSession = createLearnerSession({
+  adapter: createInMemoryLearnerSessionAdapter({ graph: litGraph }),
+  clock,
+});
+await litSession.start();
+assert.deepEqual(
+  [...litSession.getSnapshot().revealedRegionIds].sort(),
+  ["far", "home", "mid", "near"],
+  "proving a region charts it and its import neighbours for good",
+);
+litSession.dispose();
+
+console.log("reveal contracts passed");
+
 // A failing mode write reverts the optimistic value: mode is a preference,
 // never truth, so the UI must not claim a setting the server refused.
 const modeFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "easy" });

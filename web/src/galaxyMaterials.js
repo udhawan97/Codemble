@@ -66,6 +66,18 @@ export function createDressing(palette) {
   const reticleTexture = owned(ringTexture(HALO_TEXTURE_SIZE));
   const haloMaterials = new Map();
   const nebulaMaterials = new Map();
+  // One texture per distinct label string, not per node: a project repeats
+  // basenames (index.ts, __init__.py) constantly, and re-rasterising each of
+  // 169 names on every graph refresh is the sort of thing that turns a
+  // 60fps sky into a slideshow.
+  const labelMaterials = new Map();
+
+  function labelMaterial(text) {
+    if (!labelMaterials.has(text)) {
+      labelMaterials.set(text, owned(makeLabelMaterial(text, palette)));
+    }
+    return labelMaterials.get(text);
+  }
 
   function haloMaterial(color) {
     if (!haloMaterials.has(color)) {
@@ -129,6 +141,32 @@ export function createDressing(palette) {
       sprite.renderOrder = 3;
       return sprite;
     },
+    /**
+     * A name plate that keeps a constant on-screen size.
+     *
+     * `sizeAttenuation: false` is the whole point: a perspective-scaled label
+     * is unreadable at the far camera clamp and cartoonish at the near one,
+     * and the label has to stay legible across the entire orbit range.
+     * Starts hidden -- the declutter pass decides which plates earn a slot.
+     */
+    label(text, radius) {
+      const material = labelMaterial(text);
+      const sprite = new THREE.Sprite(material);
+      const aspect = material.userData.aspect ?? 4;
+      sprite.scale.set(LABEL_SCREEN_HEIGHT * aspect, LABEL_SCREEN_HEIGHT, 1);
+      // Clear of the star and its halo, so the plate never sits on the glow.
+      sprite.position.set(0, radius * 2.2 + 1.2, 0);
+      sprite.renderOrder = 4;
+      sprite.visible = false;
+      sprite.userData.codembleLabel = true;
+      // The plate's width as a fraction of the viewport, published here because
+      // this is where the sizing constant lives. The declutter pass needs it to
+      // know how many screen cells a name actually covers, and deriving it over
+      // there meant duplicating a constant across modules.
+      sprite.userData.screenWidthFraction = LABEL_SCREEN_HEIGHT * aspect;
+      sprite.userData.screenHeightFraction = LABEL_SCREEN_HEIGHT;
+      return sprite;
+    },
     dispose() {
       // The only real free: every shared texture and material registered above,
       // in creation order. The per-call reticle material is not shared and is
@@ -137,8 +175,68 @@ export function createDressing(palette) {
       releases.length = 0;
       haloMaterials.clear();
       nebulaMaterials.clear();
+      labelMaterials.clear();
     },
   };
+}
+
+// Fraction of the viewport height one name plate occupies. Sprites with
+// sizeAttenuation off measure their scale in that space, so this is literally
+// "labels are ~3.4% of the window tall" at any zoom.
+const LABEL_SCREEN_HEIGHT = 0.034;
+const LABEL_FONT_PX = 34;
+const LABEL_PADDING_PX = 12;
+
+function makeLabelMaterial(text, palette) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const font = `${LABEL_FONT_PX}px "JetBrains Mono", ui-monospace, monospace`;
+  context.font = font;
+  const width = Math.ceil(context.measureText(text).width) + LABEL_PADDING_PX * 2;
+  const height = LABEL_FONT_PX + LABEL_PADDING_PX * 2;
+  canvas.width = width;
+  canvas.height = height;
+  // Resizing the canvas resets every context property, so the font must be set
+  // again here -- measuring with one font and drawing with another produced
+  // clipped plates.
+  context.font = font;
+  context.textBaseline = "middle";
+  context.textAlign = "center";
+  // A dark plate behind the text: a name floating on a starfield loses its
+  // contrast the moment it crosses a bright nebula or a lit star's halo.
+  context.fillStyle = palette.labelPlate;
+  roundedRect(context, 0, 0, width, height, 8);
+  context.fill();
+  context.fillStyle = palette.labelInk;
+  context.fillText(text, width / 2, height / 2 + 1);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+    // Depth test off so a plate is never half-swallowed by the star it names.
+    depthTest: false,
+    sizeAttenuation: false,
+  });
+  material.userData.aspect = width / height;
+  const disposeMaterial = material.dispose.bind(material);
+  material.dispose = () => {
+    texture.dispose();
+    disposeMaterial();
+  };
+  return material;
+}
+
+function roundedRect(context, x, y, width, height, radius) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + width, y, x + width, y + height, radius);
+  context.arcTo(x + width, y + height, x, y + height, radius);
+  context.arcTo(x, y + height, x, y, radius);
+  context.arcTo(x, y, x + width, y, radius);
+  context.closePath();
 }
 
 // FNV-1a over the project's own file hashes. Same code -> same seed -> same sky.

@@ -4,7 +4,9 @@ import {
   defaultRegion,
   languageFocusGraph,
   languageFocusMap,
+  moduleIndex,
   projectLanguageOptions,
+  revealedRegionIds,
 } from "./graphData.js";
 
 const DEFAULT_CLOCK = Object.freeze({
@@ -71,6 +73,13 @@ export function createLearnerSession({
     coachmarksSeen: readCoachmarksSeen(),
     llmStatus: null,
     hoverNodeId: null,
+    // A view preference over the immutable graph, exactly like languageFocus:
+    // it changes what is drawn, never what is true. Read once here and owned
+    // only by TOGGLE_SHOW_ALL below.
+    showAll: readShowAll(),
+    finderOpen: false,
+    sidebarOpen: false,
+    legendOpen: false,
     mode: "easy",
     // Three states, not two: null means hydration hasn't resolved yet
     // (unknown), false means the backend confirmed nobody has ever chosen,
@@ -596,6 +605,26 @@ export function createLearnerSession({
         cancelStudy();
         commit({ level: LEVELS.GALAXY, selectedNode: null });
         return undefined;
+      case "TOGGLE_SHOW_ALL":
+        writeShowAll(!snapshot.showAll);
+        commit({ showAll: !snapshot.showAll });
+        return undefined;
+      case "SET_FINDER_OPEN":
+        commit({ finderOpen: event.open });
+        return undefined;
+      case "TOGGLE_SIDEBAR":
+        commit({ sidebarOpen: !snapshot.sidebarOpen });
+        return undefined;
+      case "TOGGLE_LEGEND":
+        commit({ legendOpen: !snapshot.legendOpen });
+        return undefined;
+      // The palette and the sidebar both land here. Closing the finder in the
+      // same commit as the jump keeps the two from racing: a separate close
+      // dispatch could land after the region change and re-render the overlay
+      // over the scene the learner just asked to see.
+      case "GO_TO_REGION":
+        commit({ finderOpen: false });
+        return advanceRegion(event.regionId);
       default:
         throw new Error(`Unknown learner-session event: ${event.type}`);
     }
@@ -1401,43 +1430,35 @@ function deriveSnapshot(state) {
       ? focusedGraph.nodes.filter((node) => studiedNodeIds.has(node.id)).length
       : 0,
     hint,
+    // Derived here, never in React: which sky is charted is session truth the
+    // renderer consumes, the same rule that keeps layout out of components.
+    // The current region is the transient seed, so walking into a system
+    // reveals its neighbours for as long as it is the subject.
+    revealedRegionIds: focusedGraph
+      ? revealedRegionIds(focusedGraph, {
+          showAll: state.showAll,
+          selectionId: region?.id ?? null,
+        })
+      : new Set(),
+    moduleIndex: focusedGraph ? moduleIndex(focusedGraph) : [],
   };
 }
 
 // Deterministic graph truth: the nearest unlit region to Home counted in route
-// hops, ties broken by region id. Routes are walked undirected because a route
-// connects two modules regardless of which one imports the other. No model,
-// no heuristic, no stored state -- recomputed from the graph on every snapshot.
+// hops, ties broken by region id. The distance itself is now `hops_from_home`,
+// computed once in the graph layer -- this used to re-walk the same undirected
+// breadth-first search in the browser, so the hint and the reveal floor could
+// in principle have disagreed about the same number.
 function nearestUnlitRegion(graph, mode) {
   if (mode !== "easy") return null;
   const unlit = graph.regions.filter((region) => !region.understood);
   if (!unlit.length) return null;
-  const home = graph.regions.find((region) => region.home);
-  const hops = new Map();
-  if (home) {
-    const neighbours = new Map();
-    for (const edge of graph.region_edges) {
-      if (!neighbours.has(edge.src)) neighbours.set(edge.src, []);
-      if (!neighbours.has(edge.dst)) neighbours.set(edge.dst, []);
-      neighbours.get(edge.src).push(edge.dst);
-      neighbours.get(edge.dst).push(edge.src);
-    }
-    hops.set(home.id, 0);
-    const queue = [home.id];
-    while (queue.length) {
-      const current = queue.shift();
-      for (const next of (neighbours.get(current) ?? []).slice().sort()) {
-        if (!hops.has(next)) {
-          hops.set(next, hops.get(current) + 1);
-          queue.push(next);
-        }
-      }
-    }
-  }
   const nearest = unlit
     .map((region) => ({
       regionId: region.id,
-      hops: hops.has(region.id) ? hops.get(region.id) : Infinity,
+      // No route from Home sorts last, and the caller words it as such rather
+      // than printing a distance the parser never found.
+      hops: typeof region.hops_from_home === "number" ? region.hops_from_home : Infinity,
     }))
     .sort(
       (left, right) => left.hops - right.hops || left.regionId.localeCompare(right.regionId),
@@ -1484,6 +1505,30 @@ function writeCoachmarksSeen() {
     browserStorage()?.setItem(COACHMARK_KEY, "1");
   } catch {
     // Storage refused; the session field still hides it for this session.
+  }
+}
+
+// Same class of fact as the coach-mark flag: a view preference, so localStorage
+// rather than ~/.codemble/. Reveal state itself is never stored -- it is
+// recomputed from what the learner has proven, so it can never drift out of
+// step with progress or survive a project whose regions have changed.
+const SHOW_ALL_KEY = "codemble.galaxy.showAll";
+
+function readShowAll() {
+  try {
+    return browserStorage()?.getItem(SHOW_ALL_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeShowAll(showAll) {
+  try {
+    const storage = browserStorage();
+    if (showAll) storage?.setItem(SHOW_ALL_KEY, "1");
+    else storage?.removeItem(SHOW_ALL_KEY);
+  } catch {
+    // Storage refused; the session field still carries it for this session.
   }
 }
 

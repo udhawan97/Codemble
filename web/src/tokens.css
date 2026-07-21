@@ -28,6 +28,19 @@
   /* Neutral base for the halo sprite texture. Always multiplied by the node's
      own colour, so it can never brighten an unlit node past a lit one. */
   --cm-star-halo: rgb(242 239 233);
+  /* Canvas name plates. Plain rgb() for the same reason the nebula tints are:
+     readPalette hands the authored text straight to WebGL. The plate is drawn
+     into a canvas texture rather than composited by CSS, so its own alpha lives
+     in the rgba() below. Ink on plate measures 13.1:1, well clear of the 4.5:1
+     floor, and the plate is dark enough that a name stays readable where it
+     crosses a nebula or a lit star's halo. The ink is deliberately NOT
+     --cm-star-high: amber means understanding, and a label is not a claim about
+     understanding anything. */
+  --cm-label-plate: rgba(9 14 28 / 0.82);
+  --cm-label-ink: rgb(214 219 231);
+  /* One value, because both the sidebar's own width and the offset the stage
+     overlays need when it is open are the same number. */
+  --cm-sidebar-width: min(19rem, 82vw);
   --cm-scrim: color-mix(in srgb, var(--cm-ground) 82%, transparent);
   --cm-error: oklch(72% 0.16 28);
   --cm-space-2xs: 0.125rem;

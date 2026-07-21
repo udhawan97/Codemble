@@ -5,7 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- **You can move the camera.** Dragging now orbits around whatever you are
+  looking at, and the wheel zooms. Panning stays off and both rotation and zoom
+  are clamped per level, so the thing you are studying can never leave the
+  screen — "you cannot get lost" still holds. Changing level is now click,
+  Enter, Escape, or the breadcrumb, because one gesture cannot mean both zoom
+  and travel.
+- **Systems have names.** The most important stars carry their filename on the
+  canvas — Home first, then modules you have proved, then the ones most of your
+  project calls — with more names appearing as you zoom in and none allowed to
+  overlap another.
+- **Find any module by name.** `⌘K` / `Ctrl-K` opens a filter-as-you-type jump
+  list, and a new Modules rail lists every file grouped by the import
+  communities the galaxy already places together. Both reach every module,
+  including ones the sky has not charted yet.
+
 ### Changed
+- **The galaxy no longer draws your whole project at once.** It opens on Home
+  and everything within two import routes of it; proving a module reveals what
+  it connects to, so the map is uncovered by understanding. Modules you have not
+  reached are still drawn — faint, unnamed, and without their routes — so the
+  project's real size is never misreported, and they stay clickable. A
+  **Show all** toggle draws everything whenever you want it. On a 90-system
+  project this is 22 systems and their routes instead of 90 and theirs.
+- **The canvas got its stage back.** The display-size heading that covered the
+  left half of the view is now one line of text (`90 systems · 22 charted`), the
+  module path at system level lives in the breadcrumb instead of wrapping across
+  three lines, and the twelve-row legend is behind a **Key** button.
 - The 2D Architecture map is now a deterministic layered diagram rather than
   a straight-line grid: four barycenter sweeps reduce import-edge crossings,
   backend-assigned ports keep fan-out distinct, weighted arrowed paths expose

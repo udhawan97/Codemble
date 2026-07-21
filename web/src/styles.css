@@ -451,6 +451,266 @@ input:focus-visible {
   font-size: var(--cm-text-xs);
 }
 
+/* What replaced the display-size headline that used to cover the left half of
+   the canvas: the same counts, one line, out of the scene's way. */
+.orientation-bar {
+  position: absolute;
+  z-index: var(--cm-z-raised);
+  inset-block-start: var(--cm-space-md);
+  inset-inline-start: max(var(--cm-space-md), env(safe-area-inset-left));
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-sm);
+  margin: 0;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  pointer-events: none;
+}
+
+.orientation-bar > * + *::before {
+  content: "· ";
+  color: var(--cm-hairline);
+}
+
+.orientation-bar__charted {
+  color: var(--cm-ink-2);
+}
+
+/* --- project index sidebar ------------------------------------------------ */
+
+.index-sidebar {
+  position: absolute;
+  z-index: var(--cm-z-panel);
+  inset-block: 0;
+  inset-inline-start: 0;
+  display: flex;
+  flex-direction: column;
+  width: var(--cm-sidebar-width);
+  border-inline-end: 1px solid var(--cm-hairline);
+  background: var(--cm-ground-2);
+}
+
+/* The stage's absolutely-positioned overlays start at the canvas edge, which
+   the open sidebar covers. Without this the system panel -- including its
+   Prove understanding button, the primary action on that screen -- sat behind
+   the sidebar and could be neither read nor clicked. */
+.map-stage:has(.index-sidebar) .orientation-bar,
+.map-stage:has(.index-sidebar) .orientation-copy {
+  inset-inline-start: calc(var(--cm-sidebar-width) + var(--cm-space-md));
+}
+
+.index-sidebar > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border-block-end: 1px solid var(--cm-hairline);
+}
+
+.index-sidebar h2 {
+  margin: 0;
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.index-sidebar > header button {
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--cm-radius);
+  background: none;
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.index-sidebar > header button:hover,
+.index-sidebar > header button:focus-visible {
+  border-color: var(--cm-orbit);
+  color: var(--cm-ink);
+}
+
+.index-sidebar__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-block-end: var(--cm-space-lg);
+}
+
+.index-sidebar section {
+  padding-block-start: var(--cm-space-sm);
+}
+
+.index-sidebar h3 {
+  margin: 0;
+  padding: var(--cm-space-2xs) var(--cm-space-md);
+  overflow: hidden;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.index-sidebar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.index-sidebar li button {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cm-space-sm);
+  width: 100%;
+  min-height: 32px;
+  padding: var(--cm-space-2xs) var(--cm-space-md);
+  border: 0;
+  border-inline-start: 2px solid transparent;
+  background: none;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  text-align: start;
+  cursor: pointer;
+}
+
+/* A deep path is longer than the rail; clip it with an ellipsis rather than
+   letting it run under the border. The full path stays available as a title. */
+.index-sidebar li button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.index-sidebar li button:hover,
+.index-sidebar li button:focus-visible {
+  border-inline-start-color: var(--cm-orbit);
+  background: var(--cm-ground);
+  color: var(--cm-ink);
+}
+
+.index-sidebar li button[aria-current="true"] {
+  border-inline-start-color: var(--cm-orbit);
+  color: var(--cm-ink);
+}
+
+/* Amber marks understanding here exactly as it does in the sky. */
+.index-sidebar li button[data-lit] span {
+  color: var(--cm-star-high);
+}
+
+.index-sidebar li em {
+  color: var(--cm-ink-3);
+  font-size: var(--cm-text-xs);
+  font-style: normal;
+}
+
+/* --- module finder -------------------------------------------------------- */
+
+.module-finder {
+  width: min(34rem, 92vw);
+  max-height: 70vh;
+  padding: 0;
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink);
+}
+
+.module-finder::backdrop {
+  background: var(--cm-scrim);
+}
+
+.module-finder input {
+  width: 100%;
+  padding: var(--cm-space-md);
+  border: 0;
+  border-block-end: 1px solid var(--cm-hairline);
+  background: none;
+  color: var(--cm-ink);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-base);
+}
+
+.module-finder input:focus-visible {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: -2px;
+}
+
+.module-finder ul {
+  max-height: 50vh;
+  margin: 0;
+  padding: var(--cm-space-2xs) 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.module-finder li button {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cm-space-sm);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--cm-space-2xs) var(--cm-space-md);
+  border: 0;
+  border-inline-start: 2px solid transparent;
+  background: none;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  text-align: start;
+  cursor: pointer;
+}
+
+.module-finder li button[data-active] {
+  border-inline-start-color: var(--cm-orbit);
+  background: var(--cm-ground);
+  color: var(--cm-ink);
+}
+
+.module-finder li strong {
+  font-weight: 400;
+}
+
+.module-finder li small {
+  flex: 1;
+  overflow: hidden;
+  color: var(--cm-ink-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-finder li em {
+  color: var(--cm-star-high);
+  font-style: normal;
+}
+
+.module-finder__empty {
+  margin: 0;
+  padding: var(--cm-space-md);
+  color: var(--cm-ink-3);
+  font-size: var(--cm-text-sm);
+}
+
+.rail-action kbd {
+  margin-inline-start: var(--cm-space-2xs);
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.rail-action--toggle[aria-pressed="true"] {
+  border-color: var(--cm-orbit);
+  color: var(--cm-orbit);
+}
+
 .orientation-copy {
   position: absolute;
   z-index: var(--cm-z-raised);
@@ -540,12 +800,42 @@ input:focus-visible {
   transform: none;
 }
 
+.legend-toggle {
+  position: absolute;
+  z-index: var(--cm-z-sticky);
+  inset-inline-end: var(--cm-space-md);
+  inset-block-start: var(--cm-space-md);
+  min-height: 32px;
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.legend-toggle:hover,
+.legend-toggle:focus-visible {
+  border-color: var(--cm-orbit);
+  color: var(--cm-ink);
+}
+
+.legend-toggle[aria-expanded="true"] {
+  border-color: var(--cm-orbit);
+  color: var(--cm-orbit);
+}
+
 .map-legend {
   position: absolute;
   z-index: var(--cm-z-raised);
   inset-inline-end: var(--cm-space-md);
-  inset-block-start: var(--cm-space-md);
+  /* Clear of the toggle that now owns the corner. */
+  inset-block-start: calc(var(--cm-space-md) + 40px);
   display: none;
+  max-height: min(60vh, 30rem);
+  overflow-y: auto;
   grid-template-columns: repeat(2, auto);
   gap: var(--cm-space-2xs) var(--cm-space-md);
   padding: var(--cm-space-sm) var(--cm-space-md);
@@ -1530,7 +1820,10 @@ input:focus-visible {
 }
 
 @media (min-width: 60rem) {
-  .map-legend {
+  /* :not([hidden]) matters: a bare `display: grid` here outranks the hidden
+     attribute's UA `display: none`, so the disclosure button would toggle
+     aria-expanded while the panel stayed permanently open. */
+  .map-legend:not([hidden]) {
     display: grid;
   }
 }

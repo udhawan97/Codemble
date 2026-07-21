@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 
 import {
   buildConceptChart,
+  communityName,
   galaxyData,
+  groupByCommunity,
   languageFocusGraph,
   languageFocusMap,
   linkLabel,
+  moduleIndex,
   projectLanguageOptions,
+  revealedRegionIds,
   systemData,
 } from "../src/graphData.js";
 
@@ -229,6 +233,132 @@ assert.equal(
   galaxyData({ ...ramp, nodes: [] }, swatches).nodes[0].color,
   "DIM",
   "a region with no partial member falls back to its own centrality ramp",
+);
+
+// --- progressive reveal -----------------------------------------------------
+
+// home -> near -> mid -> far, plus `lit` (understood, off the Home chain) with
+// its own neighbour `beside`, plus `island`, which nothing imports at all.
+const sky = {
+  nodes: [
+    "home",
+    "near",
+    "mid",
+    "far",
+    "lit",
+    "beside",
+    "island",
+  ].map((id) => ({ id, region: id, file: `src/${id}.py`, language: "python" })),
+  edges: [],
+  regions: [
+    { id: "home", home: true, hops_from_home: 0, understood: false, community: 0, centrality: 0, loc: 1, language: "python" },
+    { id: "near", home: false, hops_from_home: 1, understood: false, community: 0, centrality: 0, loc: 1, language: "python" },
+    { id: "mid", home: false, hops_from_home: 2, understood: false, community: 0, centrality: 0, loc: 1, language: "python" },
+    { id: "far", home: false, hops_from_home: 3, understood: false, community: 0, centrality: 0, loc: 1, language: "python" },
+    { id: "lit", home: false, hops_from_home: null, understood: true, community: 1, centrality: 0, loc: 1, language: "python" },
+    { id: "beside", home: false, hops_from_home: null, understood: false, community: 1, centrality: 0, loc: 1, language: "python" },
+    { id: "island", home: false, hops_from_home: null, understood: false, community: 2, centrality: 0, loc: 1, language: "python" },
+  ],
+  region_edges: [
+    { src: "home", dst: "near", certain: true, weight: 1 },
+    { src: "near", dst: "mid", certain: true, weight: 1 },
+    { src: "mid", dst: "far", certain: true, weight: 1 },
+    { src: "beside", dst: "lit", certain: true, weight: 1 },
+  ],
+};
+
+assert.deepEqual(
+  [...revealedRegionIds(sky)].sort(),
+  ["beside", "home", "lit", "mid", "near"],
+  "floor reaches two routes from Home; a lit region and its neighbour are earned; far and island stay uncharted",
+);
+assert.ok(
+  !revealedRegionIds(sky).has("far"),
+  "three routes out is beyond the first-run floor",
+);
+assert.deepEqual(
+  [...revealedRegionIds(sky, { showAll: true })].sort(),
+  ["beside", "far", "home", "island", "lit", "mid", "near"],
+  "Show all reveals every region including the unreachable island",
+);
+assert.ok(
+  revealedRegionIds(sky, { selectionId: "far" }).has("far"),
+  "selecting an uncharted region reveals it while it is the subject",
+);
+assert.ok(
+  !revealedRegionIds(sky).has("far"),
+  "and that transient reveal leaves no trace once the selection moves on",
+);
+assert.deepEqual(
+  [...revealedRegionIds({ ...sky, regions: sky.regions.map((r) => ({ ...r, home: false })) })].sort(),
+  ["beside", "far", "home", "island", "lit", "mid", "near"],
+  "with no Home there is no distance to measure, so nothing may be hidden",
+);
+
+const skyData = galaxyData(sky, swatches, revealedRegionIds(sky));
+assert.deepEqual(
+  skyData.links.map((link) => `${link.src}->${link.dst}`),
+  ["home->near", "near->mid", "beside->lit"],
+  "routes touching an uncharted region are dropped, which is what thins the mesh",
+);
+assert.equal(
+  skyData.nodes.length,
+  sky.regions.length,
+  "every region is still drawn: reveal must never misreport the project's size",
+);
+assert.equal(
+  skyData.nodes.find((node) => node.id === "far").label,
+  "",
+  "an uncharted region carries no label",
+);
+assert.equal(
+  skyData.nodes.find((node) => node.id === "near").label,
+  "near.py",
+  "a charted region is labelled with the parser's own filename, basename only",
+);
+
+// --- module index and constellation names ------------------------------------
+
+const index = moduleIndex(sky);
+assert.deepEqual(
+  index.map((row) => row.id),
+  ["beside", "far", "home", "island", "lit", "mid", "near"],
+  "the index is sorted by label so both the palette and the sidebar are stable",
+);
+assert.equal(index.find((row) => row.id === "home").hops, 0);
+assert.equal(index.find((row) => row.id === "island").hops, null);
+
+assert.equal(
+  communityName([{ file: "web/src/a.js" }, { file: "web/src/b.js" }]),
+  "web/src/",
+  "a constellation is named by the directory its members actually share",
+);
+assert.equal(
+  communityName([{ file: "web/a.js" }, { file: "api/b.py" }]),
+  "2 modules",
+  "members sharing no directory get a count, never a borrowed name",
+);
+assert.deepEqual(
+  groupByCommunity(index).map((group) => group.community),
+  [0, 1, 2],
+  "constellations are ordered by size, ties broken by community id",
+);
+assert.deepEqual(
+  groupByCommunity(index)[0].members.map((row) => row.display),
+  ["far.py", "home.py", "mid.py", "near.py"],
+  "a row drops the prefix its group heading already states",
+);
+// Two packages, each with its own __init__.py: the case where basenames alone
+// are useless, because every row would read identically.
+const collide = groupByCommunity([
+  { id: "a", file: "pkg/a/__init__.py", label: "__init__.py", community: 0 },
+  { id: "b", file: "pkg/b/__init__.py", label: "__init__.py", community: 0 },
+]);
+assert.equal(collide[0].name, "pkg/");
+assert.deepEqual(
+  collide[0].members.map((row) => row.display),
+  ["a/__init__.py", "b/__init__.py"],
+  "colliding basenames keep enough real path to tell them apart",
 );
 
 console.log("graph-data contracts passed");

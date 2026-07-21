@@ -158,35 +158,201 @@ export function nebulaTintKey(language) {
   return null;
 }
 
+// How far from Home a region may sit and still be visible on a first run. Two
+// routes is the floor that guarantees run one is never an empty sky: Home, what
+// Home imports, and what those import. Everything beyond it is earned.
+const REVEAL_FLOOR_HOPS = 2;
+
+/**
+ * The regions currently drawn as charted sky.
+ *
+ * Three sources union together: the floor (within REVEAL_FLOOR_HOPS of Home,
+ * so a first run is never empty), the earned set (every lit region and its
+ * import neighbours, which is what makes understanding uncover the map), and
+ * the transient set (the current selection and its neighbours).
+ *
+ * A region outside the result is NOT removed from the graph -- the renderer
+ * draws it as an uncharted marker and it stays clickable. Hiding a module
+ * outright would misreport the project's size, which is exactly the kind of
+ * wrong a learner cannot detect.
+ */
+export function revealedRegionIds(
+  graph,
+  { showAll = false, selectionId = null } = {},
+) {
+  const everything = () => new Set(graph.regions.map((region) => region.id));
+  if (showAll) return everything();
+  // No Home means no origin to measure distance from. Revealing everything is
+  // the honest fallback: hiding regions by a distance the graph could not
+  // compute would be guessing, and reveal must never outrun the parser.
+  if (!graph.regions.some((region) => region.home)) return everything();
+
+  const revealed = new Set();
+  const seeds = new Set();
+  for (const region of graph.regions) {
+    if (typeof region.hops_from_home === "number" && region.hops_from_home <= REVEAL_FLOOR_HOPS) {
+      revealed.add(region.id);
+    }
+    // A region you proved you understand can never go dark again.
+    if (region.understood) seeds.add(region.id);
+  }
+  if (selectionId) seeds.add(selectionId);
+  for (const id of seeds) revealed.add(id);
+  for (const edge of graph.region_edges) {
+    // Undirected, matching hops_from_home: a route is a relationship, and the
+    // module that imports your lit one is as much its neighbour as the reverse.
+    if (seeds.has(edge.src) || seeds.has(edge.dst)) {
+      revealed.add(edge.src);
+      revealed.add(edge.dst);
+    }
+  }
+  return revealed;
+}
+
+// The real filename the parser recorded for a region's members, never a name
+// derived from the region id: Python regions are dotted module paths while
+// JS/TS regions are file paths, and only `Node.file` is true for both.
+export function regionFiles(graph) {
+  const files = new Map();
+  for (const node of graph.nodes) {
+    if (!files.has(node.region)) files.set(node.region, node.file);
+  }
+  return files;
+}
+
+export function basename(file) {
+  return file.split("/").filter(Boolean).at(-1) ?? file;
+}
+
+/**
+ * One flat, searchable row per region, shared by the palette and the sidebar so
+ * the two can never disagree about what exists or where it is.
+ */
+export function moduleIndex(graph) {
+  const files = regionFiles(graph);
+  return graph.regions
+    .map((region) => ({
+      id: region.id,
+      file: files.get(region.id) ?? region.id,
+      label: basename(files.get(region.id) ?? region.id),
+      language: region.language,
+      community: region.community,
+      understood: region.understood,
+      home: region.home,
+      hops: typeof region.hops_from_home === "number" ? region.hops_from_home : null,
+      centrality: region.centrality,
+      loc: region.loc,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label) || left.id.localeCompare(right.id));
+}
+
+/**
+ * Name a constellation by the directory its members actually share.
+ *
+ * The name is the members' own longest shared path prefix, so it is a fact
+ * about the project rather than a theme invented for it. Members that share no
+ * directory get a count instead of a borrowed label.
+ */
+export function communityName(rows) {
+  if (!rows.length) return "";
+  const segments = rows.map((row) => row.file.split("/").slice(0, -1));
+  let shared = segments[0];
+  for (const candidate of segments.slice(1)) {
+    let index = 0;
+    while (index < shared.length && index < candidate.length && shared[index] === candidate[index]) {
+      index += 1;
+    }
+    shared = shared.slice(0, index);
+    if (!shared.length) break;
+  }
+  if (shared.length) return `${shared.join("/")}/`;
+  return `${rows.length} ${rows.length === 1 ? "module" : "modules"}`;
+}
+
+export function groupByCommunity(rows) {
+  const groups = new Map();
+  for (const row of rows) {
+    if (!groups.has(row.community)) groups.set(row.community, []);
+    groups.get(row.community).push(row);
+  }
+  return [...groups]
+    .map(([community, members]) => {
+      const name = communityName(members);
+      // Basenames collide hard in real projects -- a Python package puts an
+      // __init__.py in every directory -- so a list of basenames alone is a
+      // list of things the learner cannot tell apart. Each row shows its real
+      // path with the group's own shared prefix removed: still parser truth,
+      // just without repeating the part the heading already says.
+      const prefix = name.endsWith("/") ? name : "";
+      return {
+        community,
+        name,
+        members: members
+          .map((row) => ({
+            ...row,
+            display: prefix && row.file.startsWith(prefix)
+              ? row.file.slice(prefix.length)
+              : row.file,
+          }))
+          .sort((left, right) => left.display.localeCompare(right.display)),
+      };
+    })
+    // Biggest constellation first, so the sidebar opens on the project's bulk;
+    // community id breaks ties so the order never depends on Map insertion.
+    .sort(
+      (left, right) =>
+        right.members.length - left.members.length || left.community - right.community,
+    );
+}
+
 // Summed over a region's members, so the top step stays where it was.
 const REGION_BRIGHT_AT = 5;
 // Distinct callers of one structure. See brightness() below.
 const NODE_BRIGHT_AT = 2;
 
-export function galaxyData(graph, palette) {
+export function galaxyData(graph, palette, revealed = null) {
+  const isRevealed = (regionId) => revealed === null || revealed.has(regionId);
+  const files = regionFiles(graph);
   return {
-    nodes: graph.regions.map((region) => ({
-      ...region,
-      kind: "region",
-      name: region.id,
-      fx: region.x,
-      fy: region.y,
-      fz: region.z,
-      val: sizeFromLoc(region.loc, 5, 24),
-      color: region.understood
-        ? palette.star
-        : graph.nodes.some((node) => node.region === region.id && node.partial)
-          ? palette.routePossible
-          : brightness(region.centrality, palette, REGION_BRIGHT_AT),
-      focusDim: false,
-    })),
-    links: graph.region_edges.map((edge) => ({
-      ...edge,
-      source: edge.src,
-      target: edge.dst,
-      color: edge.certain ? palette.route : palette.routePossible,
-      focusDim: false,
-    })),
+    nodes: graph.regions.map((region) => {
+      const charted = isRevealed(region.id);
+      return {
+        ...region,
+        kind: "region",
+        name: region.id,
+        // The label is the parser's own filename for the module, shortened to
+        // its basename so a 60-character path cannot become a 60-character
+        // sprite. Uncharted regions carry none -- a name is the reward for
+        // reaching them, and labelling all 169 was the original hairball.
+        label: charted ? basename(files.get(region.id) ?? region.id) : "",
+        charted,
+        fx: region.x,
+        fy: region.y,
+        fz: region.z,
+        val: sizeFromLoc(region.loc, 5, 24),
+        color: !charted
+          ? palette.nodeDim
+          : region.understood
+            ? palette.star
+            : graph.nodes.some((node) => node.region === region.id && node.partial)
+              ? palette.routePossible
+              : brightness(region.centrality, palette, REGION_BRIGHT_AT),
+        focusDim: false,
+      };
+    }),
+    // An uncharted region contributes no routes. This is what dissolves the
+    // hairball: at 169 systems the route mesh outdrew the stars, and dropping
+    // the edges of what is not yet charted removes the noise without ever
+    // removing a module or misreporting how many there are.
+    links: graph.region_edges
+      .filter((edge) => isRevealed(edge.src) && isRevealed(edge.dst))
+      .map((edge) => ({
+        ...edge,
+        source: edge.src,
+        target: edge.dst,
+        color: edge.certain ? palette.route : palette.routePossible,
+        focusDim: false,
+      })),
   };
 }
 
