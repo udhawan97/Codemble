@@ -15,3 +15,9 @@ activation and leaves no project bound.
 
 The learner-visible run that begins when a selected folder is accepted and
 ends when its project activates, parsing fails, or the learner releases it.
+
+## Name Atlas
+
+The deterministic set of visible names placed around charted stars for the
+current camera view, prioritizing Home, understood systems, and the learner's
+current pointer subject without allowing name plates to collide.
