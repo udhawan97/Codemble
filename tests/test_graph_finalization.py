@@ -8,6 +8,7 @@ import pytest
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
 from codemble.graph import GraphFinalizationError, finalize_graph
+from codemble.graph.layout import with_entrypoint
 
 
 def _node(
@@ -157,10 +158,9 @@ def test_isolated_region_gets_its_own_finite_constellation_position() -> None:
     assert all(math.isfinite(value) for value in (isolated.x, isolated.y, isolated.z))
 
 
-def test_region_community_is_serialized_in_graph_schema_five() -> None:
+def test_region_community_is_serialized_in_the_graph_schema() -> None:
     payload = finalize_graph(_community_fixture()).to_dict()
 
-    assert payload["schema_version"] == 5
     assert all(isinstance(region["community"], int) for region in payload["regions"])
 
 
@@ -175,6 +175,83 @@ def test_finalization_rejects_a_home_without_parser_evidence() -> None:
 
     with pytest.raises(GraphFinalizationError, match="not parser-ranked"):
         finalize_graph(draft, entrypoint="missing")
+
+
+def _hops_fixture() -> Graph:
+    """Home -> mid -> far, plus a reverse importer and an unreachable island.
+
+    ``side`` imports ``app`` rather than the other way round, so the fixture
+    pins the undirected traversal: an import route is a relationship between two
+    regions, and a learner reaches the importer from Home just as readily as the
+    imported.  ``far`` is parser-ranked too so the Home-change test has a second
+    legitimate candidate to move to.
+    """
+
+    region_ids = ("app", "mid", "far", "side", "island")
+    ranks = {"app": 0, "far": 1}
+    routes = (("app", "mid"), ("mid", "far"), ("side", "app"))
+    return Graph(
+        nodes=tuple(
+            _node(region_id, region=region_id, rank=ranks.get(region_id))
+            for region_id in region_ids
+        ),
+        edges=tuple(
+            Edge(src=src, dst=dst, kind="import", certain=True, lineno=1)
+            for src, dst in routes
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={f"{region_id}.py": region_id for region_id in region_ids},
+    )
+
+
+def test_hops_from_home_measures_undirected_import_distance() -> None:
+    graph = finalize_graph(_hops_fixture())
+    hops = {region.id: region.hops_from_home for region in graph.regions}
+
+    assert hops["app"] == 0, "Home is its own origin"
+    assert hops["mid"] == 1, "a region Home imports is one route away"
+    assert hops["far"] == 2, "distance accumulates along the route chain"
+    assert hops["side"] == 1, "a region that imports Home is reachable from Home"
+
+
+def test_hops_from_home_reports_no_route_as_none_never_a_guessed_distance() -> None:
+    graph = finalize_graph(_hops_fixture())
+    island = next(region for region in graph.regions if region.id == "island")
+
+    assert island.hops_from_home is None
+
+
+def test_hops_from_home_is_none_everywhere_without_a_selected_home() -> None:
+    """No Home means no origin to measure from, and the graph must not pick one."""
+
+    graph = finalize_graph(_community_fixture())
+
+    assert graph.selected_entrypoint is None
+    assert all(region.hops_from_home is None for region in graph.regions)
+
+
+def test_choosing_a_different_home_recomputes_every_distance() -> None:
+    graph = finalize_graph(_hops_fixture())
+    moved = with_entrypoint(graph, "far")
+    hops = {region.id: region.hops_from_home for region in moved.regions}
+
+    assert hops == {"far": 0, "mid": 1, "app": 2, "side": 3, "island": None}
+
+
+def test_hops_from_home_is_deterministic_and_serialized_in_schema_six() -> None:
+    draft = _hops_fixture()
+    payload = finalize_graph(draft).to_dict()
+
+    assert finalize_graph(draft).to_json() == finalize_graph(draft).to_json()
+    assert payload["schema_version"] == 6
+    assert {region["id"]: region["hops_from_home"] for region in payload["regions"]} == {
+        "app": 0,
+        "mid": 1,
+        "far": 2,
+        "side": 1,
+        "island": None,
+    }
 
 
 def _community_fixture(*, include_isolated: bool = False) -> Graph:

@@ -90,6 +90,12 @@ class Region:
     y: float
     z: float
     community: int
+    # Undirected breadth-first distance from the Home region over proven import
+    # routes. ``None`` means no route reaches this region -- or that no Home is
+    # selected yet -- and is never softened into a large number, because the
+    # renderer reveals the sky by this distance and a guessed one would quietly
+    # promise a path the parser never found.
+    hops_from_home: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +122,7 @@ class Graph:
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
-    schema_version: int = field(default=5, init=False)
+    schema_version: int = field(default=6, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""

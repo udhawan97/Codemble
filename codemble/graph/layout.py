@@ -76,6 +76,12 @@ def layout_graph(graph: Graph) -> Graph:
             )
         cumulative_members += len(members)
 
+    home_region = next(
+        (node.region for node in graph.nodes if node.id == graph.selected_entrypoint),
+        None,
+    )
+    hops = _hops_from_home(tuple(grouped), region_edges, home_region)
+
     regions: list[Region] = []
     positioned_nodes: list[Node] = []
     for region_id in region_order:
@@ -99,6 +105,7 @@ def layout_graph(graph: Graph) -> Graph:
                 y=region_y,
                 z=region_z,
                 community=communities[region_id],
+                hops_from_home=hops.get(region_id),
             )
         )
 
@@ -184,6 +191,44 @@ def _communities(
     return communities
 
 
+def _hops_from_home(
+    region_ids: tuple[str, ...],
+    routes: tuple[RegionEdge, ...],
+    home: str | None,
+) -> dict[str, int]:
+    """Return each region's import-route distance from Home.
+
+    Undirected on purpose: an import route is a relationship between two
+    modules, and a learner following it from Home arrives just as surely at the
+    importer as at the imported.  Direction is still parser truth and is still
+    drawn as an arrow -- it just is not what "how far from Home" means.
+
+    Regions absent from the result have no route to Home at all.  The caller
+    stores that as ``None`` rather than a sentinel distance, so "unreachable"
+    can never be mistaken for "very far".
+    """
+
+    if home is None or home not in set(region_ids):
+        return {}
+
+    neighbors: dict[str, set[str]] = {region_id: set() for region_id in region_ids}
+    for route in routes:
+        if route.src not in neighbors or route.dst not in neighbors:
+            continue
+        neighbors[route.src].add(route.dst)
+        neighbors[route.dst].add(route.src)
+
+    hops = {home: 0}
+    queue: deque[str] = deque([home])
+    while queue:
+        current = queue.popleft()
+        for neighbor in sorted(neighbors[current]):
+            if neighbor not in hops:
+                hops[neighbor] = hops[current] + 1
+                queue.append(neighbor)
+    return hops
+
+
 def _call_depths(members: list[Node], edges: tuple[Edge, ...]) -> dict[str, int]:
     """Return each member's orbit ring: call depth from the system's entry node.
 
@@ -238,8 +283,20 @@ def with_entrypoint(graph: Graph, node_id: str) -> Graph:
         raise ValueError(f"entrypoint is not a parser-ranked candidate: {node_id}")
     node_by_id = {node.id: node for node in graph.nodes}
     selected = node_by_id[node_id]
+    # Every distance is measured from Home, so moving Home invalidates all of
+    # them. Coordinates and communities are untouched: they depend on the import
+    # structure, not on which entrypoint the learner chose, so a Home change
+    # must not re-sort the sky or re-dim a region.
+    hops = _hops_from_home(
+        tuple(region.id for region in graph.regions), graph.region_edges, selected.region
+    )
     regions = tuple(
-        replace(region, home=region.id == selected.region) for region in graph.regions
+        replace(
+            region,
+            home=region.id == selected.region,
+            hops_from_home=hops.get(region.id),
+        )
+        for region in graph.regions
     )
     return replace(graph, selected_entrypoint=node_id, regions=regions)
 

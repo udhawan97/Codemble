@@ -126,7 +126,7 @@ def test_serialization_is_byte_deterministic(graph) -> None:  # type: ignore[no-
 
     assert graph.to_json().encode() == second.to_json().encode()
     payload = json.loads(graph.to_json())
-    assert payload["schema_version"] == 5
+    assert payload["schema_version"] == 6
     assert payload["nodes"] == sorted(payload["nodes"], key=lambda node: node["id"])
     assert list(payload["file_hashes"]) == sorted(payload["file_hashes"])
     assert payload["concept_annotations"] == sorted(
@@ -346,5 +346,5 @@ def test_parse_cli_writes_graph_json(tmp_path: Path, capsys) -> None:  # type: i
 
     assert main(["parse", str(FIXTURE), "--out", str(destination)]) == 0
     payload = json.loads(destination.read_text(encoding="utf-8"))
-    assert payload["schema_version"] == 5
+    assert payload["schema_version"] == 6
     assert "Wrote" in capsys.readouterr().out
