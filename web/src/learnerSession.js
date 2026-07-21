@@ -23,6 +23,12 @@ const DEFAULT_CLOCK = Object.freeze({
 const POLL_INTERVAL = 300;
 const POLL_BACKOFF_BASE = 400;
 const POLL_BACKOFF_CEILING = 4000;
+// How many consecutive poll failures stop counting as a blip. The backoff above
+// waits 400+800+1600+3200+4000+4000+4000 ms across the first seven, so the
+// eighth failure lands roughly 18 seconds after the first: long enough that a
+// momentary hiccup has cleared, short enough that a learner is not still being
+// told "the parse may be running fine" about a server that has stopped.
+const POLL_OUTAGE_ATTEMPTS = 8;
 
 export function createLearnerSession({
   adapter = createHttpLearnerSessionAdapter(),
@@ -132,7 +138,7 @@ export function createLearnerSession({
       pickerState = await adapter.loadPickerState({ signal: controller.signal });
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
-        commit({ status: "error", error: errorMessage(requestError) });
+        commit({ status: "error", error: appDownMessage(requestError) });
       }
       return snapshot;
     }
@@ -157,7 +163,7 @@ export function createLearnerSession({
       });
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
-        commit({ status: "error", error: errorMessage(requestError) });
+        commit({ status: "error", error: appDownMessage(requestError) });
       }
     }
     // Outside the try on purpose, and never awaited into it: preferences are
@@ -279,6 +285,7 @@ export function createLearnerSession({
             error: null,
             pollError: "",
             attempts: 0,
+            pollOutage: false,
             path,
           },
         });
@@ -361,10 +368,18 @@ export function createLearnerSession({
       }
       // Reported, not swallowed: the parse itself may still be running fine, so
       // the loading screen keeps its last known stage and says the *poll* is
-      // what failed, then retries on a widening interval.
+      // what failed, then retries on a widening interval. Past
+      // POLL_OUTAGE_ATTEMPTS that claim stops being defensible -- nothing here
+      // has heard from the server in ~18s -- so the flag below lets the screen
+      // swap reassurance for the truth. Retrying continues either way.
       const attempts = previous.attempts + 1;
       commit({
-        parseProgress: { ...previous, pollError: errorMessage(requestError), attempts },
+        parseProgress: {
+          ...previous,
+          pollError: errorMessage(requestError),
+          attempts,
+          pollOutage: attempts >= POLL_OUTAGE_ATTEMPTS,
+        },
       });
       schedulePoll(
         Math.min(POLL_BACKOFF_CEILING, POLL_BACKOFF_BASE * 2 ** (attempts - 1)),
@@ -400,7 +415,13 @@ export function createLearnerSession({
       return;
     }
     commit({
-      parseProgress: { ...previous, ...payload, pollError: "", attempts: 0 },
+      parseProgress: {
+        ...previous,
+        ...payload,
+        pollError: "",
+        attempts: 0,
+        pollOutage: false,
+      },
     });
     schedulePoll(POLL_INTERVAL);
   }
@@ -427,9 +448,24 @@ export function createLearnerSession({
     abortController(resetController);
     resetController = new AbortController();
     const controller = resetController;
-    // Deliberately uncaught, like submitCheck: a refused reset is a control
-    // failure the header shows inline, not a reason to blank the galaxy.
-    await adapter.resetProject({ signal: controller.signal });
+    try {
+      await adapter.resetProject({ signal: controller.signal });
+    } catch (requestError) {
+      if (isAbortError(requestError)) return snapshot;
+      // Still deliberately uncaught, like submitCheck -- but only for the half
+      // of the failures that means "the reset genuinely did not happen". A
+      // *refusal* arrives on an HTTP response, so the server is alive and still
+      // holds this project: tearing the app down here would leave the browser
+      // and the server disagreeing about what is bound, and the header shows
+      // the refusal inline instead.
+      if (isServerRefusal(requestError)) throw requestError;
+      // The other half never reached a server at all (process exited, port
+      // closed). There is no binding left to release, so the local teardown
+      // below must not be conditional on that request succeeding -- this is the
+      // learner's only way off a loading screen whose poll will never advance
+      // again, and it used to be the one exit that depended on the very server
+      // it was escaping.
+    }
     if (controller.signal.aborted) return snapshot;
     cancelStudy();
     abortController(entrypointController);
@@ -1061,11 +1097,18 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
       // growing its own copy.
       const payload = await response.json().catch(() => null);
       const detail = payload?.detail;
-      throw new Error(
+      const failure = new Error(
         typeof detail === "string" && detail
           ? detail
           : `${label} returned ${response.status}.`,
       );
+      // The one fact that tells a refusal apart from a server that is not there
+      // at all: this error exists *because* a response arrived. `fetch` rejects
+      // with a bare TypeError when nothing answered, and that carries no status
+      // to read. See isServerRefusal, which resetProject keys its two very
+      // different recoveries off.
+      failure.status = response.status;
+      throw failure;
     }
     return response.json();
   }
@@ -1452,8 +1495,28 @@ function isAbortError(error) {
   return error instanceof Error && error.name === "AbortError";
 }
 
+// True only when an HTTP response actually arrived and said no: the adapter's
+// request() stamps `status` on every error it raises from one. A fetch that
+// never reached the server rejects with a bare TypeError ("Failed to fetch"),
+// which carries no status -- and a deliberate cancel is an AbortError, which
+// every caller checks first, so it can never be mistaken for either.
+function isServerRefusal(error) {
+  return Number.isInteger(error?.status);
+}
+
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+
+// The message behind the app-level "did not load" screen. A refusal already
+// carries the server's own learner-facing sentence, so it is passed through --
+// but an unreachable server produces the browser's words for it ("Failed to
+// fetch"), which name nothing the learner can do anything about. The one thing
+// that is certainly true, and the one action that fixes it, is said instead.
+function appDownMessage(error) {
+  return isServerRefusal(error)
+    ? errorMessage(error)
+    : `Codemble's local server is not responding, so nothing can be loaded from it. It may have stopped — start it again by running codemble in your terminal. (${errorMessage(error)})`;
 }
 
 function requiredFixture(fixtures, key, description) {

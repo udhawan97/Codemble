@@ -500,7 +500,16 @@ const STAGE_COPY = {
 const STAGE_ORDER = ["discovering", "parsing", "resolving", "checks", "layout"];
 
 function LoadingScreen({ progress, onCancel }) {
-  const { stage, detail, files_done: done, files_total: total, pollError, path } = progress;
+  const {
+    stage,
+    detail,
+    files_done: done,
+    files_total: total,
+    pollError,
+    pollOutage,
+    attempts,
+    path,
+  } = progress;
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const headingRef = useRef(null);
@@ -581,11 +590,28 @@ function LoadingScreen({ progress, onCancel }) {
       <p className="loading-live" role="status">
         {detail ?? STAGE_COPY[stage] ?? "Starting"}
       </p>
+      {/* Two different truths, and the session decides which one it can back
+          up. A first failed poll really may be nothing, so it keeps the
+          reassuring wording. Once nothing has answered for POLL_OUTAGE_ATTEMPTS
+          tries (~18s) that reassurance is a claim this screen cannot support --
+          it has no evidence the parse is alive, only that it cannot ask. The
+          keys keep these as two elements, so the live region is announced with
+          the role it escalates to rather than the one it started with. */}
       {pollError ? (
-        <p className="loading-error" role="status">
-          Lost contact with the local server ({pollError}). Still retrying — the
-          parse itself may be running fine.
-        </p>
+        pollOutage ? (
+          <p className="loading-error" key="outage" role="alert">
+            The local server has not answered for the last {attempts} tries (
+            {pollError}). It may have stopped. Codemble keeps retrying, but it
+            cannot tell you whether the parse is still running. Cancel below,
+            then run codemble again in your terminal — nothing you have already
+            lit is lost.
+          </p>
+        ) : (
+          <p className="loading-error" key="blip" role="status">
+            Lost contact with the local server ({pollError}). Still retrying —
+            the parse itself may be running fine.
+          </p>
+        )
       ) : null}
       {cancelError ? (
         <p className="loading-error" role="alert">
