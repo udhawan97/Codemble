@@ -14,10 +14,12 @@ import { ModeControl } from "./ModeControl.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
   LEVELS,
+  communityPaletteIndex,
   conceptTitle,
   defaultRegion,
   groupByCommunity,
   languageLabel,
+  sharedTopSegment,
 } from "./graphData.js";
 import {
   createHttpLearnerSessionAdapter,
@@ -155,6 +157,19 @@ export function App() {
     studyData,
     studyError,
   } = state;
+
+  // Region id -> palette slot for the Map's box tints. Derived once per
+  // focused graph; the arithmetic lives in graphData so the galaxy's colours
+  // and the Map's can never disagree about a community's family.
+  const communityIndexByRegion = useMemo(() => {
+    if (!focusedGraph) return null;
+    const byRegion = new Map();
+    for (const item of focusedGraph.regions) {
+      const index = communityPaletteIndex(item.community);
+      if (index !== null) byRegion.set(item.id, index);
+    }
+    return byRegion;
+  }, [focusedGraph]);
 
   function restoreRailFocus(primary, secondary) {
     requestAnimationFrame(() => {
@@ -575,6 +590,7 @@ export function App() {
             data={focusedMapData}
             mapTab={mapTab}
             mode={mode}
+            communityIndexByRegion={communityIndexByRegion}
             // Only once a region is actually the drill-down (SYSTEM/STUDY): at
             // GALAXY level `region` is just the default Home, which the learner
             // has not chosen, so highlighting it would fake a selection.
@@ -680,15 +696,25 @@ export function App() {
             {mode === "easy" ? "Possible connection" : "Possible relationship"}
           </span>
           {(layer === "galaxy" && level === LEVELS.GALAXY) ||
-          (layer === "map" && mapTab === "architecture")
-            ? languageOptions
+          (layer === "map" && mapTab === "architecture") ? (
+            <>
+              <span>
+                <span className="legend-communities" aria-hidden="true">
+                  <i /><i /><i /><i />
+                </span>
+                {mode === "easy"
+                  ? "Colour family · files that work together"
+                  : "Hue family · one import community"}
+              </span>
+              {languageOptions
                 .filter((option) => option.id !== "all")
                 .map((option) => (
                   <span key={option.id}>
                     <i className={`legend-tint legend-tint--${option.id}`} /> {option.label}
                   </span>
-                ))
-            : null}
+                ))}
+            </>
+          ) : null}
         </aside>
         {/* One line of body text where a display-size heading used to own the
             left half of the canvas. The counts are the same facts; the stage
@@ -710,7 +736,15 @@ export function App() {
             </span>
             {focusedGraph.partial_files.length ? (
               <span className="partial-summary">
-                {focusedGraph.partial_files.length} unchartable · syntax error
+                {focusedGraph.partial_files.length}{" "}
+                {mode === "easy" ? "could not be read" : "unchartable · syntax error"}
+                {/* Attribute the scariest words in the chrome: on this repo
+                    both broken files are deliberate test fixtures, and a
+                    learner deserves to know the error is not in their code.
+                    The scope is the files' own shared directory, computed. */}
+                {sharedTopSegment(focusedGraph.partial_files)
+                  ? ` · ${focusedGraph.partial_files.length === 1 ? "in" : "all under"} ${sharedTopSegment(focusedGraph.partial_files)}/`
+                  : ""}
               </span>
             ) : null}
           </p>

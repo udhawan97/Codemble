@@ -258,6 +258,7 @@ export function MapView({
   data,
   mapTab,
   mode,
+  communityIndexByRegion,
   selectedRegionId,
   hasEntrypointCandidates,
   error,
@@ -305,6 +306,7 @@ export function MapView({
         <ArchitectureMap
           architecture={data.architecture}
           mode={mode}
+          communityIndexByRegion={communityIndexByRegion}
           selectedRegionId={selectedRegionId}
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectRegion={onSelectRegion}
@@ -324,8 +326,28 @@ export function MapView({
   );
 }
 
-function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore }) {
+// Above this many unrouted modules, the shelf opens collapsed: on this repo 80
+// of 109 boxes were test fixtures and scripts whose block made the drawing
+// 1:3.2 tall, so the connected core the tab exists to show fit at 7%.
+const SHELF_AUTO_COLLAPSE = 8;
+
+function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore }) {
   const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
+  // View state, like zoom -- never graph truth. Collapsed, the unrouted block
+  // is REPRESENTED by its count in the note below (with the control to expand),
+  // so every module stays accounted for even while its box is folded away.
+  const [showUnreached, setShowUnreached] = useState(
+    architecture.unreachable.length <= SHELF_AUTO_COLLAPSE,
+  );
+  const unreachableSet = new Set(architecture.unreachable);
+  const visibleBoxes = showUnreached
+    ? architecture.boxes
+    : architecture.boxes.filter((box) => !unreachableSet.has(box.id));
+  // Cropping the empty band the folded shelf leaves behind is presentation of
+  // backend geometry, not layout: every visible coordinate is untouched.
+  const contentHeight = showUnreached
+    ? architecture.height
+    : visibleBoxes.reduce((max, box) => Math.max(max, box.y + box.height), 0);
   const padding = 32;
   const focusBox =
     boxes.get(selectedRegionId) ??
@@ -342,7 +364,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
     <>
     <MapCanvas
       contentWidth={architecture.width + padding * 2}
-      contentHeight={architecture.height + padding * 2}
+      contentHeight={contentHeight + padding * 2}
       label="the architecture map"
       viewKey={`architecture:${architecture.home ?? "none"}`}
       viewportStore={viewportStore}
@@ -353,7 +375,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMin meet"
-        viewBox={`${-padding} ${-padding} ${architecture.width + padding * 2} ${architecture.height + padding * 2}`}
+        viewBox={`${-padding} ${-padding} ${architecture.width + padding * 2} ${contentHeight + padding * 2}`}
         // group, not img: `img` is children-presentational in ARIA, so it
         // stripped the name and role off every box below -- a screen-reader
         // user tabbed into focusable elements announced as nothing at all.
@@ -397,6 +419,11 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
             const from = boxes.get(edge.src);
             const to = boxes.get(edge.dst);
             if (!from || !to) return null;
+            // A folded box takes its edges with it (fixtures import each
+            // other); an edge to a hidden anchor would point at nothing.
+            if (!showUnreached && (unreachableSet.has(edge.src) || unreachableSet.has(edge.dst))) {
+              return null;
+            }
             return (
               <path
                 key={`${edge.src}->${edge.dst}`}
@@ -405,12 +432,12 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
                 strokeDasharray={edge.certain ? undefined : "5 4"}
                 strokeWidth={architectureEdgeWidth(edge.weight)}
                 markerEnd={`url(#${edge.cycle ? "architecture-cycle-arrow" : "architecture-arrow"})`}
-                className={`architecture-map__edge${edge.cycle ? " is-cycle" : ""}`}
+                className={`architecture-map__edge${edge.cycle ? " is-cycle" : ""}${edge.certain ? "" : " is-possible"}`}
               />
             );
           })}
         </g>
-        {architecture.boxes.map((box) => (
+        {visibleBoxes.map((box) => (
           <g
             key={box.id}
             className="architecture-map__box"
@@ -418,6 +445,16 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
             data-home={box.home}
             data-reachable={box.reachable}
             data-partial={box.partial}
+            // The community family hue rides a custom property the fill rule
+            // mixes a few percent of into the box ground -- zones form without
+            // touching the stroke channels that carry understood/Home/
+            // reachability. Undefined (no community fact) falls back to the
+            // plain ground in CSS.
+            style={
+              communityIndexByRegion?.has(box.id)
+                ? { "--box-com": `var(--cm-com-${communityIndexByRegion.get(box.id)})` }
+                : undefined
+            }
             // Selection is the interaction accent (--cm-orbit), never amber:
             // the box you clicked (or drilled into) reads as "you chose this",
             // which is distinct from "understood". A persistent attribute, not
@@ -499,8 +536,18 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
         <p className="map-note">
           {architecture.unreachable.length}{" "}
           {architecture.unreachable.length === 1 ? "module has" : "modules have"} no import
-          route from Home, so {architecture.unreachable.length === 1 ? "it sits" : "they sit"}{" "}
-          in the bottom row rather than being placed by guesswork.
+          route from Home
+          {showUnreached
+            ? `, so ${architecture.unreachable.length === 1 ? "it sits" : "they sit"} in the bottom rows rather than being placed by guesswork.`
+            : ". They are folded away so your connected code stays readable — nothing is hidden from the count."}{" "}
+          <button
+            type="button"
+            className="map-note__toggle"
+            aria-expanded={showUnreached}
+            onClick={() => setShowUnreached((value) => !value)}
+          >
+            {showUnreached ? "Fold them away" : "Show them"}
+          </button>
         </p>
       ) : null}
     </>
@@ -571,6 +618,7 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
                 key={`${row.order}`}
                 d={`M ${parent.x + 8} ${parent.y + 20} V ${row.y + 12} H ${row.x + 8}`}
                 strokeDasharray={row.certain ? undefined : "5 4"}
+                className={row.certain ? undefined : "is-possible"}
               />
             );
           })}

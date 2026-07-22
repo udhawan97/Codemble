@@ -1036,11 +1036,19 @@ input:focus-visible {
 
 .legend-dot--partial {
   background: var(--cm-route-possible);
+  /* A corner-flag triangle, not a third grey circle: beside the dim dot this
+     swatch was visually identical, so two different meanings shared one mark.
+     The triangle is the same flag the map draws on an unchartable box. */
+  border-radius: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
 .legend-route {
   width: var(--cm-space-md);
-  border-block-start: 1px solid var(--cm-ink-3);
+  /* The swatch previews the ink the edge is actually drawn in. It used to show
+     --cm-ink-3 while the surface drew --cm-hairline: a legend promising a
+     visibility the map never delivered. */
+  border-block-start: 2px solid var(--cm-route);
 }
 
 /* Declared after .legend-route: both are single-class selectors, so equal
@@ -2371,19 +2379,22 @@ input:focus-visible {
 }
 
 .architecture-map__edges path {
-  color: var(--cm-hairline);
+  /* Route ink, not --cm-hairline: sharing the border ink made every edge
+     invisible against the chrome it ran beside (audit gap 3). */
+  color: var(--cm-route);
   stroke: currentColor;
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
+.architecture-map__edges path.is-possible,
 .architecture-map__edges path.is-cycle {
   color: var(--cm-route-possible);
 }
 
 .architecture-map__arrow {
-  color: var(--cm-hairline);
+  color: var(--cm-route);
 }
 
 .architecture-map__arrow.is-cycle {
@@ -2391,13 +2402,22 @@ input:focus-visible {
 }
 
 .workflow-tree__edges path {
-  stroke: var(--cm-hairline);
+  stroke: var(--cm-route);
   stroke-width: 1.2;
   fill: none;
 }
 
+.workflow-tree__edges path.is-possible {
+  stroke: var(--cm-route-possible);
+}
+
 .architecture-map__box rect {
-  fill: var(--cm-ground-2);
+  /* A few percent of the box's community family hue (D1), set per box as
+     --box-com. Zones of related modules form at a glance while the stroke
+     channels stay free for understood (colour), Home (width) and
+     reachability (dash). Without a community fact the mix collapses to the
+     plain panel ground. */
+  fill: color-mix(in srgb, var(--box-com, var(--cm-ground-2)) 16%, var(--cm-ground-2));
   stroke: var(--cm-hairline);
 }
 
@@ -2632,6 +2652,42 @@ input:focus-visible {
 .legend-tint--python { background: var(--cm-neb-python); }
 .legend-tint--javascript { background: var(--cm-neb-js); }
 .legend-tint--typescript { background: var(--cm-neb-ts); }
+
+/* The community-family row previews four of the eight hues as one composite
+   swatch: the legend teaches the ENCODING (hue = one import community), not an
+   index of every community, which the Modules sidebar already is. */
+.legend-communities {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.legend-communities i {
+  display: inline-block;
+  width: calc(var(--cm-space-sm) / 1.6);
+  height: var(--cm-space-sm);
+  border-radius: 2px;
+}
+
+.legend-communities i:nth-child(1) { background: var(--cm-com-0); }
+.legend-communities i:nth-child(2) { background: var(--cm-com-1); }
+.legend-communities i:nth-child(3) { background: var(--cm-com-2); }
+.legend-communities i:nth-child(4) { background: var(--cm-com-3); }
+
+.map-note__toggle {
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: none;
+  color: var(--cm-orbit);
+  font: inherit;
+  font-size: var(--cm-text-xs);
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
+  cursor: pointer;
+}
+
+.map-note__toggle:hover,
+.map-note__toggle:focus-visible {
+  border-color: var(--cm-orbit);
+}
 
 /* Opt-in dash, applied only for the 2D map swatch (see App.jsx): the galaxy
    is a distinct COLOUR only (3d-force-graph cannot dash a link), so

@@ -3,14 +3,18 @@ import assert from "node:assert/strict";
 import {
   buildConceptChart,
   communityName,
+  communityPaletteIndex,
+  communityShade,
   galaxyData,
   groupByCommunity,
+  isTestScopedPath,
   languageFocusGraph,
   languageFocusMap,
   linkLabel,
   moduleIndex,
   projectLanguageOptions,
   revealedRegionIds,
+  sharedTopSegment,
   systemData,
 } from "../src/graphData.js";
 
@@ -390,5 +394,95 @@ assert.deepEqual(
   ["a/__init__.py", "b/__init__.py"],
   "colliding basenames keep enough real path to tell them apart",
 );
+
+// --- Community colour families (D1) -----------------------------------------
+const communityPalette = {
+  ground: "rgb(7, 11, 28)",
+  star: "rgb(244, 196, 106)",
+  node: "rgb(125, 138, 168)",
+  nodeBright: "rgb(154, 168, 196)",
+  nodeDim: "rgb(101, 111, 135)",
+  routePossible: "rgb(137, 148, 175)",
+  route: "rgb(96, 113, 152)",
+  communities: [
+    "rgb(109, 181, 153)",
+    "rgb(187, 155, 211)",
+    "rgb(155, 175, 113)",
+    "rgb(110, 177, 190)",
+    "rgb(215, 149, 167)",
+    "rgb(191, 158, 175)",
+    "rgb(94, 185, 133)",
+    "rgb(170, 160, 218)",
+  ],
+};
+
+// Deterministic slot arithmetic, wrap included; a missing fact maps to null.
+assert.equal(communityPaletteIndex(0), 0);
+assert.equal(communityPaletteIndex(9), 1);
+assert.equal(communityPaletteIndex(-1), 7, "negative ids stay in range");
+assert.equal(communityPaletteIndex(null), null);
+assert.equal(communityPaletteIndex(2.5), null, "non-integer ids claim nothing");
+
+// Same community, same colour, every time.
+assert.equal(
+  communityShade(communityPalette, 3, 9, 5),
+  communityShade(communityPalette, 3, 9, 5),
+);
+// Bright tier IS the token; lower centrality recedes toward the ground but
+// keeps the hue's channel ordering (green stays the dominant channel).
+assert.equal(communityShade(communityPalette, 0, 9, 5), "rgb(109, 181, 153)");
+const midShade = communityShade(communityPalette, 0, 1, 5);
+const dimShade = communityShade(communityPalette, 0, 0, 5);
+const channel = (rgb, index) => Number(/(\d+),\s*(\d+),\s*(\d+)/.exec(rgb)[index + 1]);
+assert.ok(
+  channel(midShade, 1) > channel(dimShade, 1),
+  "mid tier is brighter than dim tier",
+);
+assert.ok(
+  channel(midShade, 1) > channel(midShade, 0) &&
+    channel(midShade, 1) > channel(midShade, 2),
+  "the hue survives the tier mix",
+);
+// No community id -> the old neutral ramp, never a borrowed hue.
+assert.equal(communityShade(communityPalette, undefined, 9, 5), communityPalette.nodeBright);
+assert.equal(communityShade(communityPalette, undefined, 1, 5), communityPalette.node);
+assert.equal(communityShade(communityPalette, undefined, 0, 5), communityPalette.nodeDim);
+
+// Amber's monopoly survives D1: an understood region ignores its community.
+const hueGraph = {
+  ...graph,
+  regions: graph.regions.map((region, index) => ({
+    ...region,
+    community: index,
+    understood: region.id === "ts",
+    centrality: 9,
+    loc: 10,
+  })),
+  region_edges: [],
+};
+const huedGalaxy = galaxyData(hueGraph, communityPalette, null);
+const understoodNode = huedGalaxy.nodes.find((node) => node.id === "ts");
+assert.equal(understoodNode.color, communityPalette.star, "lit stays amber");
+const unlitNode = huedGalaxy.nodes.find((node) => node.id === "py");
+assert.equal(
+  unlitNode.color,
+  communityShade(communityPalette, 0, 9, 5),
+  "unlit charted regions wear their community family",
+);
+
+// Test-scope detection is directory-based parser truth.
+assert.equal(isTestScopedPath("tests/test_server.py"), true);
+assert.equal(isTestScopedPath("tests/fixtures/impact/alpha.py"), true);
+assert.equal(isTestScopedPath("web/src/App.jsx"), false);
+assert.equal(isTestScopedPath("attestation/report.py"), false, "substring never matches");
+assert.equal(isTestScopedPath("test_top.py"), false, "a basename alone is not a directory");
+
+// Fixture-error attribution names the files' own shared directory, or nothing.
+assert.equal(
+  sharedTopSegment(["tests/fixtures/a.py", "tests/b.ts"]),
+  "tests",
+);
+assert.equal(sharedTopSegment(["tests/a.py", "web/b.js"]), null);
+assert.equal(sharedTopSegment([]), null);
 
 console.log("graph-data contracts passed");
