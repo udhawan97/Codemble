@@ -1,4 +1,4 @@
-name: v0.2.0 early-tester report
+name: Early-tester report
 description: Report your first unaided run without sharing private code.
 labels: ["feedback"]
 body:
@@ -7,14 +7,35 @@ body:
       value: |
         Thank you. Do not paste source, private project names, credentials, or API keys.
         Quote your confusion in your own words—the rough edges are the evidence we need.
+  - type: input
+    id: version
+    attributes:
+      label: Codemble version
+      description: Run `codemble --version`, or paste what `uvx codemble --version` printed.
+      placeholder: "0.7.0"
+    validations:
+      required: true
   - type: dropdown
     id: install
     attributes:
       label: Install route
       options:
-        - pipx from v0.2.0 Git tag
-        - uvx from v0.2.0 Git tag
+        - uvx codemble (recommended)
+        - pipx install codemble
+        - pip install codemble
         - source checkout
+        - other (describe below)
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: What is your project written in?
+      options:
+        - Python
+        - JavaScript
+        - TypeScript
+        - A mix
     validations:
       required: true
   - type: input
