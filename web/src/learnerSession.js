@@ -412,6 +412,7 @@ export function createLearnerSession({
       return undefined;
     }
     if (action.type === "SET_LAYER") return setLayer(action.layer);
+    if (action.type === "OPEN_STUDY") return selectStudyNode(action.nodeId);
     return undefined;
   }
 
@@ -470,6 +471,19 @@ export function createLearnerSession({
       const selectedNode =
         snapshot.focusedGraph.nodes.find((candidate) => candidate.id === node.id) ?? node;
       commit({ selectedNode, level: LEVELS.STUDY });
+      return loadStudy(selectedNode.id);
+    }
+    // Already at study level: arrow keys move the announced selection between
+    // siblings, so Enter has to re-target the panel. Without this it was a
+    // no-op -- the canvas announced "choose_project_scope" while the panel
+    // still showed the module, which is exactly what the canvas's own
+    // aria-label promises would not happen.
+    if (snapshot.level === LEVELS.STUDY) {
+      const selectedNode = snapshot.focusedGraph.nodes.find(
+        (candidate) => candidate.id === node.id,
+      );
+      if (!selectedNode || selectedNode.id === snapshot.selectedNode?.id) return;
+      commit({ selectedNode });
       return loadStudy(selectedNode.id);
     }
   }

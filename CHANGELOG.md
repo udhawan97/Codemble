@@ -5,6 +5,60 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-07-21
+
+### Fixed
+- **A missed check no longer hands back its own answer.** Getting a question
+  wrong printed the parser answer and its evidence, and the same question then
+  accepted that answer — so a region could light without understanding. A miss
+  now returns neither the answer nor the citations (an importer check's
+  evidence *is* its answer); both appear once the learner has proven it.
+- **The Map can show you the code it is asking about.** Easy mode lands on the
+  Map, which offered checks but no way to read a module. Region focus now
+  carries **Read the source** beside **Prove understanding**, and Easy guidance
+  recommends reading before proving instead of sending the learner to another
+  layer. Escape steps back a level on the Map, as it always has in the Galaxy.
+- **The checks panel is usable from the keyboard.** Opening it hands focus to
+  the panel instead of leaving it on the trigger behind ~114 tab stops, and
+  submitting keeps focus on the result rather than dropping it to the document.
+- **Enter opens the structure the arrow keys selected.** At study level the
+  canvas announced a sibling while the panel kept showing the old one; Enter
+  was a no-op despite the view's own instructions.
+- **Guidance is docked, and waits its turn.** The hint chip took its own strip
+  above the footer instead of floating over captions, name plates and its own
+  button, and it no longer appears during the audience, Home and coach steps —
+  where it used to recommend a target "because no import route reaches it from
+  Home" while no Home existed.
+- **Compact Map controls no longer stack.** At 375 px the Key button covered
+  40% of the "What runs first" tab and the zoom pill covered the top row of
+  boxes. Measured at 320 and 375: zero overlapping interactive rectangles.
+- **The study panel stops contradicting itself.** Easy mode showed "Used by 0"
+  above a summary saying five other parts use the file; the call-edge stat is
+  now "Called by", leaving "use" to imports.
+- **The audience question is asked once per learner, not once per project.**
+  A new project inherits the last answer; the header toggle still overrides any
+  single project.
+- **Home calibration is navigable on real projects.** It is now a modal sized
+  to the window rather than a card capped to a short stage, states how many
+  candidates exist, groups them by their real top-level scope (so test fixtures
+  no longer sit unmarked beside your entrypoint), and keeps "Explore without
+  Home" on screen instead of thousands of pixels below the fold.
+- **The star chart is reachable from anywhere and closes with Escape.** It kept
+  its header slot at every level instead of surrendering it to the level-return
+  button, and every exit now names the layer it returns to.
+- **Galaxy plates are named by path tail**, the rule the Map's boxes already
+  use, so two different `__init__.py` modules no longer wear identical names.
+- **Find opens on Home and the most-used modules** instead of a screen of
+  identical `__init__.py` rows.
+- **Easy guidance prefers a substantive module** when several sit the same
+  number of import hops from Home, instead of the alphabetically-first
+  four-line package init.
+- **The exception-handling lens note is true of `raise`,** not only of
+  `try`/`except`, since the parser files all three under one concept.
+- **Counts of one read as one** ("1 structure", not "1 structures").
+- **The picker opens beside your last project** rather than at your home
+  directory every time.
+
 ## [0.6.3] - 2026-07-21
 
 ### Fixed

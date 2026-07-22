@@ -34,6 +34,40 @@ def test_browse_lists_only_visible_directories_in_name_order(tmp_path: Path) -> 
     assert child.parent == tmp_path.resolve()
 
 
+def test_browse_opens_beside_the_most_recent_project(tmp_path: Path) -> None:
+    """Sibling projects share a parent, so re-walking from home every time is toil."""
+
+    workspace = tmp_path / "developer" / "github"
+    (workspace / "Codemble").mkdir(parents=True)
+    (workspace / "Golavo").mkdir()
+
+    selector = ProjectSelector(
+        tmp_path,
+        recent_projects=lambda: [
+            {"project_root": str(workspace / "Codemble"), "understood_count": 2}
+        ],
+    )
+
+    listing = selector.browse()
+
+    assert listing.path == workspace.resolve()
+    assert [entry.name for entry in listing.entries] == ["Codemble", "Golavo"]
+    assert listing.parent == workspace.resolve().parent, "Up must still walk outward"
+
+
+def test_browse_falls_back_to_the_root_when_no_recent_parent_survives(
+    tmp_path: Path,
+) -> None:
+    selector = ProjectSelector(
+        tmp_path,
+        recent_projects=lambda: [
+            {"project_root": str(tmp_path / "deleted" / "gone"), "understood_count": 1}
+        ],
+    )
+
+    assert selector.browse().path == tmp_path.resolve()
+
+
 def test_resolve_refuses_missing_and_outside_paths(tmp_path: Path) -> None:
     selector = ProjectSelector(tmp_path / "jail")
 

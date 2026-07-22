@@ -220,6 +220,15 @@ export function App() {
   // in normal flow from that same corner, so there it is handed to MapView and
   // takes its own row above the drawing instead of sitting on the first rows
   // of the tree.
+  // What "all the way out" is called on the layer the learner is looking at.
+  const overviewNoun = layer === "map" ? "map" : "galaxy";
+
+  // The module node the parser produced for this region carries the region's
+  // own id; anything else would be React choosing a structure for the learner.
+  const studyEntryNodeId = focusedGraph.nodes.some((node) => node.id === region.id)
+    ? region.id
+    : null;
+
   const systemCopy =
     level === LEVELS.SYSTEM ? (
       <section
@@ -243,19 +252,37 @@ export function App() {
                 // Only claim what is true for every module — an unreachable
                 // one has no rows in the Workflow tab, so never promise it.
                 `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect, not what is inside them.`
-              : `${region.node_count} parser-proven structures · ${region.loc} lines in this system.`}
+              : `${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} · ${region.loc} ${region.loc === 1 ? "line" : "lines"} in this system.`}
         </p>
-        <button
-          className="check-launch"
-          type="button"
-          onClick={() => session.dispatch({ type: "OPEN_CHECKS" })}
-        >
-          {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
-            ? "Check availability"
-            : region.understood
-              ? "Review understanding"
-              : "Prove understanding"}
-        </button>
+        <div className="orientation-copy__actions">
+          {/* The Map is where Easy mode lands, and it had no way to read a
+              module's source: the only action was a quiz about code the
+              learner had never been shown. The study panel is layer-neutral
+              (it renders from /api/node/:id/study), so the Map just needs to
+              select the module node the parser already produced. */}
+          {layer === "map" && studyEntryNodeId ? (
+            <button
+              className="check-launch check-launch--read"
+              type="button"
+              onClick={() =>
+                session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: studyEntryNodeId })
+              }
+            >
+              Read the source
+            </button>
+          ) : null}
+          <button
+            className="check-launch"
+            type="button"
+            onClick={() => session.dispatch({ type: "OPEN_CHECKS" })}
+          >
+            {focusedGraph.nodes.some((node) => node.region === region.id && node.partial)
+              ? "Check availability"
+              : region.understood
+                ? "Review understanding"
+                : "Prove understanding"}
+          </button>
+        </div>
       </section>
     ) : null;
 
@@ -369,6 +396,14 @@ export function App() {
               >
                 Find <kbd>⌘K</kbd>
               </button>
+              {/* Progress is global, so the star chart is a global surface --
+                  the same rule Modules and Find already follow. It used to
+                  give up its slot to the level-return button, which made "what
+                  have I learned so far" cost two level exits from inside a
+                  module. The return button is additional now, not a
+                  replacement, and every exit names the layer it lands on
+                  rather than promising a galaxy the learner may never have
+                  opened. */}
               {showChart ? (
                 <button
                   ref={chartTriggerRef}
@@ -379,25 +414,28 @@ export function App() {
                     restoreRailFocus(chartTriggerRef);
                   }}
                 >
-                  Return to galaxy
-                </button>
-              ) : level !== LEVELS.GALAXY ? (
-                <button
-                  className="rail-action"
-                  type="button"
-                  onClick={() => session.dispatch({ type: "RETREAT" })}
-                >
-                  {level === LEVELS.STUDY ? "Return to system" : "Return to galaxy"}
+                  Back to {overviewNoun}
                 </button>
               ) : (
-                <button
-                  ref={chartTriggerRef}
-                  className="rail-action"
-                  type="button"
-                  onClick={() => session.dispatch({ type: "SHOW_CHART" })}
-                >
-                  Star chart
-                </button>
+                <>
+                  {level !== LEVELS.GALAXY ? (
+                    <button
+                      className="rail-action"
+                      type="button"
+                      onClick={() => session.dispatch({ type: "RETREAT" })}
+                    >
+                      {level === LEVELS.STUDY ? "Back to system" : `Back to ${overviewNoun}`}
+                    </button>
+                  ) : null}
+                  <button
+                    ref={chartTriggerRef}
+                    className="rail-action"
+                    type="button"
+                    onClick={() => session.dispatch({ type: "SHOW_CHART" })}
+                  >
+                    Star chart
+                  </button>
+                </>
               )}
               {graph.entrypoint_candidates.length ? (
                 <button
@@ -448,7 +486,19 @@ export function App() {
       </header>
 
       {showChart ? (
-        <section className="chart-stage" aria-label="Language concept progress">
+        <section
+          className="chart-stage"
+          aria-label="Language concept progress"
+          // A full-screen takeover with no Escape reads as a trap even when
+          // the header carries an exit. StarChart focuses its own heading, so
+          // the key lands inside this subtree.
+          onKeyDown={(event) => {
+            if (event.key !== "Escape" || finderOpen || sidebarOpen) return;
+            event.preventDefault();
+            session.dispatch({ type: "HIDE_CHART" });
+            restoreRailFocus(chartTriggerRef);
+          }}
+        >
           {sidebarOpen ? (
             <IndexSidebar
               index={moduleIndex}
@@ -470,6 +520,24 @@ export function App() {
           className="map-stage"
           aria-label="Parser-proven project map"
           tabIndex={-1}
+          // Escape steps back a level on the Map too. The galaxy has always
+          // had this on its canvas; the Map only gained somewhere to step back
+          // *from* when reading source became possible here.
+          onKeyDown={(event) => {
+            if (
+              event.key !== "Escape" ||
+              layer !== "map" ||
+              level === LEVELS.GALAXY ||
+              finderOpen ||
+              sidebarOpen ||
+              showChecks ||
+              entrypointOpen
+            ) {
+              return;
+            }
+            event.preventDefault();
+            session.dispatch({ type: "RETREAT" });
+          }}
         >
         {sidebarOpen ? (
           <IndexSidebar
@@ -630,6 +698,7 @@ export function App() {
             suite={checkData}
             error={checkError}
             mode={mode}
+            overviewNoun={overviewNoun}
             onClose={() => session.dispatch({ type: "CLOSE_CHECKS" })}
             onSubmit={(checkId, selectedIds) =>
               session.dispatch({ type: "SUBMIT_CHECK", checkId, selectedIds })
@@ -694,7 +763,13 @@ export function App() {
           onClose={closeFinder}
         />
       ) : null}
-      {!showChart ? (
+      {/* Guidance waits for the first-run decisions to finish. It used to
+          render behind the audience gate and beside the required Home
+          calibration, recommending a target "because no import route reaches
+          it from Home" while the breadcrumb still said Home unselected -- a
+          second, contradictory call to action during the one decision the
+          flow actually requires. */}
+      {!showChart && modeChosen === true && !entrypointOpen && coachmarksSeen ? (
         <HintChip
           hint={hint}
           onFollow={followHint}
@@ -1049,13 +1124,28 @@ function ModuleFinder({ index, onGo, onClose }) {
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const rows = needle
-      ? index.filter(
+    if (needle) {
+      return index
+        .filter(
           (row) =>
             row.label.toLowerCase().includes(needle) || row.file.toLowerCase().includes(needle),
         )
-      : index;
-    return rows.slice(0, 60);
+        .slice(0, 60);
+    }
+    // Unfiltered, the palette is an opening move, not a search result: it led
+    // with a screen of identical `__init__.py` rows because the shared index is
+    // sorted by name. Ranked the way the sky already ranks its plates -- Home,
+    // then what is lit, then how many places call it -- all parser facts.
+    return [...index]
+      .sort(
+        (left, right) =>
+          Number(right.home) - Number(left.home) ||
+          Number(right.understood) - Number(left.understood) ||
+          right.centrality - left.centrality ||
+          left.label.localeCompare(right.label) ||
+          left.id.localeCompare(right.id),
+      )
+      .slice(0, 60);
   }, [index, query]);
 
   useLayoutEffect(() => {
@@ -1301,12 +1391,51 @@ function SwitchProject({ onConfirm }) {
 
 function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSelect, onContinue }) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const scopes = useMemo(() => {
+    const byScope = new Map();
+    for (const candidate of candidates) {
+      const node = nodeById.get(candidate);
+      const parts = (node?.file ?? candidate).split("/").filter(Boolean);
+      const name = parts.length > 1 ? `${parts[0]}/` : "project root";
+      if (!byScope.has(name)) byScope.set(name, []);
+      byScope.get(name).push({ candidate, node });
+    }
+    // Best parser rank first, so the scope holding the strongest candidates
+    // opens at the top; ties by name keep it deterministic. Groups holding a
+    // top-ranked candidate start expanded, and so does the leading group
+    // whatever its rank -- a project whose best candidate is rank 1 would
+    // otherwise open with every scope collapsed and no candidate in sight.
+    return [...byScope]
+      .map(([name, rows]) => {
+        const bestRank = Math.min(
+          ...rows.map((row) => row.node?.entrypoint_rank ?? Number.MAX_SAFE_INTEGER),
+        );
+        return { name, rows, bestRank };
+      })
+      .sort((left, right) => left.bestRank - right.bestRank || left.name.localeCompare(right.name))
+      .map((scope, index) => ({ ...scope, open: index === 0 || scope.bestRank === 0 }));
+  }, [candidates, nodes]);
+  const firstCandidate = scopes[0]?.rows[0]?.candidate ?? null;
   const firstActionRef = useRef(null);
+  const dialogRef = useRef(null);
+  // The second step of the required first-run sequence, so it gets the same
+  // shape as the first: a native modal in the top layer. As a panel inside the
+  // stage it was capped at a share of a 405px-tall region, which left one
+  // candidate of eleven visible with no room for the list to grow.
   useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
     firstActionRef.current?.focus();
   }, []);
   return (
-    <aside className="entrypoint-picker" aria-labelledby="entrypoint-heading">
+    <dialog
+      ref={dialogRef}
+      className="entrypoint-picker"
+      aria-labelledby="entrypoint-heading"
+      // Escape is not a dismissal here: Home is a decision the parser cannot
+      // make, and "Explore without Home" is the explicit way past it.
+      onCancel={(event) => event.preventDefault()}
+    >
       <p>Home calibration</p>
       <h1 id="entrypoint-heading">
         {candidates.length ? "Where does your project start?" : "No clear entrypoint found."}
@@ -1317,22 +1446,45 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
           : "No file here declares a startup structure the parser recognises, and Codemble will not guess one. Explore the map without Home — every system, check, explanation, and lens note still works."}
       </p>
       {candidates.length ? (
-        <div className="entrypoint-candidates">
-          {candidates.map((candidate) => {
-            const node = nodeById.get(candidate);
-            return (
-              <button
-                ref={candidate === candidates[0] ? firstActionRef : undefined}
-                type="button"
-                key={candidate}
-                onClick={() => onSelect(candidate)}
-              >
-                <span>{candidate}</span>
-                <small>{node?.file}:{node?.lineno} · parser rank {node?.entrypoint_rank}</small>
-              </button>
-            );
-          })}
-        </div>
+        <>
+          {/* A required decision that never says how big it is: on a real
+              project this was 68 identical-looking rows, 2.5 of them visible,
+              with the escape hatch 2,500px below the fold. The scope is the
+              first segment of the parser's own path for the candidate, so
+              grouping by it invents nothing -- and it is what separates the
+              learner's app from the test fixtures that rank beside it. */}
+          <p className="entrypoint-count">
+            {candidates.length} ranked{" "}
+            {candidates.length === 1 ? "candidate" : "candidates"} in {scopes.length}{" "}
+            {scopes.length === 1 ? "scope" : "scopes"}
+          </p>
+          <div className="entrypoint-scroll">
+            {scopes.map((scope) => (
+              <details key={scope.name} open={scope.open}>
+                <summary>
+                  <span>{scope.name}</span>
+                  <small>
+                    {scope.rows.length}{" "}
+                    {scope.rows.length === 1 ? "candidate" : "candidates"}
+                  </small>
+                </summary>
+                <div className="entrypoint-candidates">
+                  {scope.rows.map(({ candidate, node }) => (
+                    <button
+                      ref={candidate === firstCandidate ? firstActionRef : undefined}
+                      type="button"
+                      key={candidate}
+                      onClick={() => onSelect(candidate)}
+                    >
+                      <span>{candidate}</span>
+                      <small>{node?.file}:{node?.lineno} · parser rank {node?.entrypoint_rank}</small>
+                    </button>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        </>
       ) : null}
       {error ? <p className="entrypoint-error" role="alert">{error}</p> : null}
       <button
@@ -1343,11 +1495,11 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
       >
         {selectedEntrypoint ? "Keep current Home" : "Explore without Home"}
       </button>
-    </aside>
+    </dialog>
   );
 }
 
-function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
+function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
   const current = suite?.checks.find((check) => !check.passed) ?? null;
   const passed = suite?.checks.filter((check) => check.passed).length ?? 0;
   const [selected, setSelected] = useState(() => new Set());
@@ -1355,12 +1507,31 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
   const [affirmation, setAffirmation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const headingRef = useRef(null);
+  const feedbackRef = useRef(null);
+  const affirmationRef = useRef(null);
+  const completeRef = useRef(null);
 
   useEffect(() => {
     setSelected(new Set());
     setFeedback(null);
     setSubmitError("");
   }, [current?.id]);
+
+  // The panel renders after the whole map region in DOM order, so opening it
+  // without a handoff left a keyboard learner tabbing past the zoom controls
+  // and every module box to reach question one -- and every submit re-rendered
+  // the button under their focus, dropping it to <body>. Each outcome now
+  // names where focus goes next, the same rule the coach, Modules and Find
+  // already follow.
+  useLayoutEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+  useLayoutEffect(() => {
+    if (suite?.region_understood) completeRef.current?.focus();
+    else if (feedback) feedbackRef.current?.focus();
+    else if (affirmation) affirmationRef.current?.focus();
+  }, [suite?.region_understood, feedback, affirmation]);
 
   function choose(optionId, multiple) {
     setAffirmation("");
@@ -1401,7 +1572,7 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
       <header className="check-panel__header">
         <div>
           <p>Active recall · graph only</p>
-          <h1>{suite?.region_id ?? "Loading checks"}</h1>
+          <h1 ref={headingRef} tabIndex={-1}>{suite?.region_id ?? "Loading checks"}</h1>
         </div>
         <button className="check-close" type="button" onClick={onClose}>Close</button>
       </header>
@@ -1420,7 +1591,9 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
           <span className="check-complete__star" aria-hidden="true">✦</span>
           <h2>System lit.</h2>
           <p>This region's source hash matches the checks you passed. Edit its file and only this system will dim again.</p>
-          <button className="check-primary" type="button" onClick={onClose}>Return to the system</button>
+          <button ref={completeRef} className="check-primary" type="button" onClick={onClose}>
+            Back to the {overviewNoun === "map" ? "module" : "system"}
+          </button>
         </div>
       ) : null}
       {suite && !suite.region_understood && suite.checks.length === 0 ? (
@@ -1442,7 +1615,7 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
             <progress value={passed} max={suite.checks.length} />
           </div>
           {affirmation ? (
-            <p className="check-affirmation" role="status">
+            <p ref={affirmationRef} className="check-affirmation" role="status" tabIndex={-1}>
               <span aria-hidden="true">✦</span> {affirmation}
             </p>
           ) : null}
@@ -1464,11 +1637,13 @@ function CheckPanel({ suite, error, mode, onClose, onSubmit }) {
               ))}
             </div>
           </fieldset>
+          {/* A miss shows no answer and no citations -- the server stopped
+              sending either, because an importer check's evidence names the
+              very files that are its answer. Re-reading the code is the
+              retry; replaying what the screen just told you is not. */}
           {feedback && !feedback.correct ? (
-            <div className="check-feedback" role="status">
+            <div ref={feedbackRef} className="check-feedback" role="status" tabIndex={-1}>
               <strong>{feedback.message}</strong>
-              <span>Parser answer: {feedback.answer_labels.join(", ")}</span>
-              <span>Evidence: {feedback.evidence.join(", ")}</span>
             </div>
           ) : null}
           <button className="check-primary" type="submit" disabled={!selected.size || submitting}>
@@ -1509,7 +1684,7 @@ function StarChart({ chart, studiedCount, projectName, onClearProgress }) {
               <h2>{conceptTitle(item.concept)}</h2>
               <span>{conceptTitle(item.language)} · {item.occurrences} parser {item.occurrences === 1 ? "occurrence" : "occurrences"}</span>
             </div>
-            <div className="concept-meter" aria-label={`${item.understood_nodes} of ${item.nodes} structures understood`}>
+            <div className="concept-meter" aria-label={`${item.understood_nodes} of ${item.nodes} ${item.nodes === 1 ? "structure" : "structures"} understood`}>
               <span style={{ width: `${item.nodes ? (item.understood_nodes / item.nodes) * 100 : 0}%` }} />
             </div>
             <dl>

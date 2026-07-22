@@ -396,7 +396,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
             transform={`translate(${box.x} ${box.y})`}
             role="button"
             tabIndex={0}
-            aria-label={`${box.label}, ${box.node_count} structures, ${box.loc} lines${box.understood ? ", understood" : ", not yet understood"}${box.home ? ", Home" : ""}${box.reachable ? "" : ", no import route from Home"}${box.partial ? ", unchartable, syntax error" : ""}`}
+            aria-label={`${box.label}, ${box.node_count} ${box.node_count === 1 ? "structure" : "structures"}, ${box.loc} ${box.loc === 1 ? "line" : "lines"}${box.understood ? ", understood" : ", not yet understood"}${box.home ? ", Home" : ""}${box.reachable ? "" : ", no import route from Home"}${box.partial ? ", unchartable, syntax error" : ""}`}
             onClick={() => onSelectRegion(box.id)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
@@ -432,7 +432,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
             <text className="box-meta" x="14" y="42">
               {mode === "easy"
                 ? `${box.node_count} ${box.node_count === 1 ? "piece" : "pieces"}`
-                : `${box.node_count} nodes · ${box.loc} LOC`}
+                : `${box.node_count} ${box.node_count === 1 ? "node" : "nodes"} · ${box.loc} LOC`}
             </text>
           </g>
         ))}

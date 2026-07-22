@@ -12,6 +12,11 @@ from codemble.adapters.base import Graph
 from codemble.paths import data_dir
 
 _SCHEMA_VERSION = 1
+_MODES = frozenset({"easy", "expert"})
+# The audience answer is about the learner, not the project, so it is also kept
+# once per data directory. Project payloads still win, which is what keeps the
+# header toggle a genuine per-project override.
+_LEARNER_FILE = "learner.json"
 
 
 class UnknownRegionError(KeyError):
@@ -26,6 +31,7 @@ class ProgressStore:
         self._root = root or data_dir() / "progress"
         project_key = hashlib.sha256(graph.project_root.encode()).hexdigest()[:20]
         self.path = self._root / f"{project_key}.json"
+        self._learner_path = self._root / _LEARNER_FILE
         self._signatures = _region_signatures(graph)
 
     def understood_regions(self) -> frozenset[str]:
@@ -72,24 +78,55 @@ class ProgressStore:
     def mode(self) -> str:
         """Return the learner's audience mode; this never affects progress."""
 
-        payload = self._read()
-        value = payload.get("mode")
-        return value if value in {"easy", "expert"} else "easy"
+        value = self._read().get("mode")
+        if value in _MODES:
+            return value
+        return self._learner_mode() or "easy"
 
     def mode_chosen(self) -> bool:
-        """Return whether the learner has explicitly chosen an audience mode."""
+        """Return whether this learner has answered the audience question.
 
-        payload = self._read()
-        return payload.get("mode") in {"easy", "expert"}
+        Per project first, then the learner-level answer. The gate asks who
+        the *learner* is, so re-asking it on every project would be asking a
+        question they have already answered; the header toggle still overrides
+        any single project.
+        """
+
+        return self._read().get("mode") in _MODES or self._learner_mode() is not None
 
     def set_mode(self, mode: str) -> None:
         """Persist the audience mode beside progress without touching signatures."""
 
-        if mode not in {"easy", "expert"}:
+        if mode not in _MODES:
             raise ValueError("Mode must be 'easy' or 'expert'.")
         payload = self._read()
         payload["mode"] = mode
         self._write(payload)
+        self._write_learner_mode(mode)
+
+    def _learner_mode(self) -> str | None:
+        """Read the last audience answered on any project in this data dir."""
+
+        try:
+            payload = json.loads(self._learner_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            return None
+        if not isinstance(payload, dict):
+            return None
+        value = payload.get("mode")
+        return value if value in _MODES else None
+
+    def _write_learner_mode(self, mode: str) -> None:
+        self._root.mkdir(parents=True, exist_ok=True)
+        temporary = self._learner_path.with_suffix(f".{os.getpid()}.tmp")
+        try:
+            temporary.write_text(
+                json.dumps({"mode": mode}, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            temporary.replace(self._learner_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def selected_entrypoint(self) -> str | None:
         """Return the learner's persisted Home choice, if one was stored.

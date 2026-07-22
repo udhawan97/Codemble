@@ -64,6 +64,7 @@ assert.deepEqual(
   {
     regionId: "app.py",
     hops: 0,
+    structures: 0,
     message: "Study app.py next",
     reason: "Home is not lit yet.",
     action: { type: "OPEN_REGION", regionId: "app.py" },
@@ -71,6 +72,46 @@ assert.deepEqual(
   },
   "galaxy-level guidance opens the nearest unlit region",
 );
+
+// Equal hops used to break alphabetically, so on a Python project the first
+// thing the game ever recommended was a package __init__ with one structure
+// in it. The tie-break is the parser's own structure count.
+{
+  const tie = {
+    ...graph,
+    selected_entrypoint: null,
+    regions: [
+      { ...graph.regions[0], id: "home", home: true, hops_from_home: 0, understood: true, node_count: 1 },
+      { ...graph.regions[0], id: "a.__init__", home: false, hops_from_home: 1, understood: false, node_count: 1 },
+      { ...graph.regions[0], id: "b.service", home: false, hops_from_home: 1, understood: false, node_count: 9 },
+    ],
+  };
+  const ranked = createLearnerProjection().derive({
+    ...state,
+    languageFocus: "all",
+    layer: "galaxy",
+  });
+  assert.ok(ranked.hint, "the fixture still produces a hint");
+  const picked = nextRegionFor(tie);
+  assert.equal(
+    picked,
+    "b.service",
+    "among equal-hop candidates guidance prefers the one with more parser-proven structures",
+  );
+}
+
+function nextRegionFor(sourceGraph) {
+  const projection = createLearnerProjection();
+  return projection.derive({
+    ...state,
+    languageFocus: "all",
+    layer: "galaxy",
+    level: LEVELS.GALAXY,
+    graph: sourceGraph,
+    mapData: { schema_version: 3, architecture: { boxes: [], edges: [] }, workflow: { rows: [] } },
+    region: sourceGraph.regions[0],
+  }).hint?.regionId;
+}
 
 const sameRegionOnMap = projection.derive({
   ...state,
@@ -82,7 +123,32 @@ assert.deepEqual(
   { type: "SET_LAYER", layer: "galaxy" },
   "inside the target module, map guidance leads to the structures it cannot draw",
 );
-assert.equal(sameRegionOnMap.hint.actionLabel, "View structures");
+assert.equal(
+  sameRegionOnMap.hint.actionLabel,
+  "View structures",
+  "with no module node to open, the Map still routes to the layer that draws them",
+);
+
+// When the parser did produce a module node for the region, the Map reads it
+// in place: Easy mode lands here, and it used to be quizzed on code it had no
+// way to open without leaving the layer.
+{
+  const readable = {
+    ...graph,
+    nodes: [...graph.nodes, { ...graph.nodes[0], id: "app.py", kind: "module", region: "app.py" }],
+  };
+  const readOnMap = createLearnerProjection().derive({
+    ...state,
+    languageFocus: "all",
+    level: LEVELS.SYSTEM,
+    layer: "map",
+    graph: readable,
+    region: readable.regions.find((region) => region.id === "app.py"),
+  });
+  assert.deepEqual(readOnMap.hint.action, { type: "OPEN_STUDY", nodeId: "app.py" });
+  assert.equal(readOnMap.hint.actionLabel, "Read the source");
+  assert.equal(readOnMap.hint.reason, "Read it before proving it.");
+}
 
 const sameRegionInGalaxy = projection.derive({
   ...state,

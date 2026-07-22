@@ -124,22 +124,28 @@ class CheckService:
         if complete:
             self._progress.mark_understood(region_id)
 
-        answer_labels = [
-            option.label for option in check.options if option.id in check.answer_ids
-        ]
-        return {
+        result: dict[str, object] = {
             "correct": correct,
             "check_id": check.id,
-            "answer_ids": list(check.answer_ids),
-            "answer_labels": answer_labels,
-            "evidence": list(check.evidence),
             "message": (
                 "Correct. That answer is fixed by the parser graph."
                 if correct
-                else "Not yet. Re-read the graph relationship and try again."
+                else "Not yet. Re-read the relationship in your own code and try again."
             ),
             "region_understood": complete,
         }
+        if not correct:
+            # A miss returns no answer and no citations. An importer check
+            # cites the very files that are its answer, so handing either back
+            # let the next submission replay what the screen had just shown --
+            # and a region lit that way proves nothing.
+            return result
+        result["answer_ids"] = list(check.answer_ids)
+        result["answer_labels"] = [
+            option.label for option in check.options if option.id in check.answer_ids
+        ]
+        result["evidence"] = list(check.evidence)
+        return result
 
     def _region_checks(self, region_id: str) -> tuple[Check, ...]:
         if region_id not in self._checks:

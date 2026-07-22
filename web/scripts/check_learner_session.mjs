@@ -1165,8 +1165,8 @@ assert.deepEqual(
 );
 assert.deepEqual(
   revealSession.getSnapshot().moduleIndex.map((row) => row.label),
-  ["far.py", "home.py", "mid.py", "near.py"],
-  "the index lists every module the parser found, charted or not",
+  ["src/far.py", "src/home.py", "src/mid.py", "src/near.py"],
+  "the index lists every module the parser found, charted or not, by path tail",
 );
 
 // Walking into a region reveals its neighbours while it is the subject.

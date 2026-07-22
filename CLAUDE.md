@@ -168,8 +168,28 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-21 ·
-Session note: v0.6.3 closes the four follow-up findings from the 2026-07-21
-user-flow audit. Easy guidance is now level-aware and never offers an enabled
+Session note: v0.6.4 closes all twenty findings of a fresh end-to-end user-flow
+audit run against the served build on three real projects (Codemble, Golavo,
+FolioOrb) at 1280/375/320 px with a keyboard pass. The headline fix is a
+Correctness Contract one: a missed check printed the parser answer and its
+evidence and then accepted that answer, so a region could light without
+understanding; a miss now returns neither, and both appear only after the
+learner proves it. The Easy default layer gained the reading path it never had
+(**Read the source** on the Map, guidance that says read-before-prove, Escape
+stepping back a level), the checks panel became keyboard-usable (focus handoff
+on open, focus preserved across submits), Enter now opens the arrow-selected
+structure at study level, and the guidance chip is docked into its own strip
+and hidden until the first-run decisions finish. Home calibration is now a
+viewport-sized modal that states its candidate count, groups candidates by
+their real scope, and keeps its escape hatch on screen; the audience question
+is asked once per learner instead of once per project; the star chart is
+reachable from every level and closes with Escape; exits name the layer they
+return to; galaxy plates and the module index use path tails; Find opens on
+Home and the busiest modules; and compact Map controls no longer share touch
+targets (zero overlapping interactive rectangles at 320 and 375). Parser,
+graph, checks, progress, and provider contracts are unchanged except for the
+deliberate withholding of answers on a failed submission. Previously, v0.6.3
+closed the four follow-up findings from the earlier user-flow audit. Easy guidance is now level-aware and never offers an enabled
 no-op; compact Maps open at readable 100% around Home and preserve zoom/pan
 through data refreshes; Switch project confirms on the first compact-Menu click
 without leaking disclosure state across project or breakpoint changes; and Home
@@ -551,6 +571,11 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-21 | Easy guidance actions are derived from level, region, and layer, then executed by `LearnerSession`; the chip renders no button when the next step is already on screen | React must not guess a structure or own navigation truth, and an enabled action that commits the same state is a false promise. The nearest unlit region remains graph-derived; only the honest route to it changes with the learner's current context |
 | 2026-07-21 | Map zoom/pan is renderer-local state keyed by tab and Home, preserved through transient data remounts but cleared with the project lifecycle; compact Maps start at 100% centred on the parser-backed target | Auto-fitting made 56 px boxes as little as 8–18 px tall and re-ran after check-driven map refreshes. Fit is still a valid explicit overview, while session state stays reserved for graph and learning truth |
 | 2026-07-21 | Responsive disclosures and global surfaces own explicit focus handoffs; compact Menu closes on project exit and when crossing to the desktop rail | DOM focus and disclosure visibility are view concerns, but leaving focus on removed or hidden controls makes a successful navigation indistinguishable from a dead action to a keyboard or screen-reader user |
+| 2026-07-21 | A wrong check submission returns no answer, no answer labels and no evidence; all three are returned only once the learner answers correctly | The response printed the parser answer on every miss and the same question then accepted it, so a region could light on an answer the app itself had just displayed — illumination stopped meaning understanding, the same failure class as the 2026-07-19 "every check needs a wrong option" fix. Evidence is withheld with the answer because an importer check cites exactly the files that *are* its answer |
+| 2026-07-21 | The 2D Map gets a reading path: region focus offers **Read the source** beside the checks, Easy guidance recommends reading before proving, and Escape steps back a level there as it does in the Galaxy | Easy mode lands on the Map, where the only action was a quiz about code the layer could not show. The study panel is layer-neutral (`/api/node/:id/study`), so the Map only needed to select the module node the parser already produced — no new truth, and the audience that most needs to read first stops being sent to another layer to do it |
+| 2026-07-21 | The audience answer is stored per learner as well as per project (`learner.json` beside progress); a fresh bind seeds from it and skips the gate, while the header toggle still overrides one project | The gate asks who the *learner* is, but the answer lived only under the project key, so every new project re-asked an expert whether they were new to coding. The file carries no `schema_version`, which is what keeps recents from reading it as a project |
+| 2026-07-21 | Home calibration is a native modal sized to the viewport, grouped by the candidates' real top-level scope, with the candidate count stated and "Explore without Home" outside the scrolling list | It is the second step of the same required sequence as the audience gate and deserves the same shape. As a card capped to a share of the stage it showed one candidate of eleven with the escape hatch thousands of pixels below the fold, and a flat list put `tests/fixtures/...` beside the learner's entrypoint with nothing to tell them apart. Scope and rank are parser facts already in the payload; the leading group always opens so a project whose best candidate is rank 1 is never met by an all-collapsed list |
+| 2026-07-21 | Galaxy name plates use the same path-tail rule as map schema 3's `short_label`; the shared module index and the command palette use it too, and the palette's unfiltered order is Home → lit → centrality | Basenames collide hard in a Python project — every package carries an `__init__.py` — so identical plates named different modules, which is precisely the wrong a learner cannot detect, and the palette opened on a screen of indistinguishable rows |
 
 ## Non-Goals — do NOT build (point here when asked)
 

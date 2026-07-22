@@ -118,6 +118,35 @@ def test_only_the_complete_exact_suite_lights_a_region(tmp_path: Path) -> None:
     assert restarted.for_region("app")["region_understood"] is True
 
 
+def test_a_missed_check_never_hands_back_its_own_answer(tmp_path: Path) -> None:
+    """Revealing the answer on a miss lets a resubmission light a region.
+
+    The evidence citations are withheld too: an importer check cites the very
+    files that are its answer, so returning them is the same reveal by another
+    name. Both are returned once the learner has proven the answer.
+    """
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    service = CheckService(graph, ProgressStore(graph, tmp_path))
+    check = generate_checks(graph, "app")[0]
+    wrong = next(option.id for option in check.options if option.id not in check.answer_ids)
+
+    missed = service.submit("app", check.id, [wrong])
+
+    assert missed["correct"] is False
+    assert "answer_ids" not in missed
+    assert "answer_labels" not in missed
+    assert "evidence" not in missed
+    assert not any(
+        answer in str(missed) for answer in check.answer_ids
+    ), f"the miss response still names an answer: {missed}"
+
+    proven = service.submit("app", check.id, list(check.answer_ids))
+    assert proven["correct"] is True
+    assert proven["answer_ids"] == list(check.answer_ids)
+    assert proven["evidence"] == list(check.evidence)
+
+
 def test_every_check_offers_at_least_one_wrong_option(tmp_path: Path) -> None:
     """A check whose options are all correct lights a region without understanding."""
 

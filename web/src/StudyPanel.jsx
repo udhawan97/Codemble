@@ -19,11 +19,16 @@ export function StudyPanel({
         <h1>{node.name}</h1>
         <dl>
           <div><dt>Kind</dt><dd>{node.kind}</dd></div>
-          <div><dt>Span</dt><dd>{node.loc} lines</dd></div>
+          <div><dt>Span</dt><dd>{node.loc} {node.loc === 1 ? "line" : "lines"}</dd></div>
           <div>
             {/* "Callers", not "Calls in": centrality counts the distinct
-                structures that call this one, not the call sites they contain. */}
-            <dt>{mode === "easy" ? "Used by" : "Callers"}</dt>
+                structures that call this one, not the call sites they contain.
+                The easy label says "Called by" and not "Used by" because the
+                summary right below counts *imports* when it says five other
+                parts use this file -- one panel showing "Used by 0" above
+                "five other parts use it" is a contradiction a learner cannot
+                resolve, and "use"/"brings this in" is import vocabulary. */}
+            <dt>{mode === "easy" ? "Called by" : "Callers"}</dt>
             <dd>{node.centrality}</dd>
           </div>
           <div><dt>Resolution</dt><dd>{node.partial ? "Partial parse" : "Parser-proven"}</dd></div>

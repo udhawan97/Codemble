@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 
+import pytest
+
 from codemble.progress import list_recent_projects
 
 
@@ -95,3 +97,56 @@ def test_clear_forgets_only_this_projects_regions(tmp_path: Path) -> None:
     assert other_store.understood_regions() == frozenset({"solo"})
     assert store.mode() == "expert", "clearing progress must not reset preferences"
     assert other_store.path.exists()
+
+
+def test_a_new_project_inherits_the_audience_the_learner_already_chose(
+    tmp_path: Path,
+) -> None:
+    """The gate asks about the learner, so it must not re-ask per project.
+
+    Mode stays per project -- it drives the default layer and can be changed
+    from the header on any one of them -- but a fresh bind seeds itself from
+    the last answer instead of showing the first-run gate again.
+    """
+
+    from codemble.adapters.python_ast import PythonAstAdapter
+    from codemble.progress import ProgressStore
+
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    for project in (first, second):
+        project.mkdir()
+        (project / "solo.py").write_text("def go() -> None:\n    pass\n", encoding="utf-8")
+    root = tmp_path / "progress"
+
+    answered = ProgressStore(PythonAstAdapter().parse(first), root)
+    answered.set_mode("expert")
+
+    fresh = ProgressStore(PythonAstAdapter().parse(second), root)
+    assert fresh.mode() == "expert"
+    assert fresh.mode_chosen() is True, "a seeded project must not re-open the gate"
+
+    fresh.set_mode("easy")
+    assert fresh.mode() == "easy"
+    assert answered.mode() == "expert", "per-project override must not rewrite the other"
+
+
+def test_the_learner_preference_file_is_never_offered_as_a_recent_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """It shares the progress directory, so recents must not read it as a project."""
+
+    from codemble.adapters.python_ast import PythonAstAdapter
+    from codemble.progress import ProgressStore, list_recent_projects
+
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "solo.py").write_text("def go() -> None:\n    pass\n", encoding="utf-8")
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+
+    store = ProgressStore(PythonAstAdapter().parse(project))
+    store.set_mode("expert")
+    store.mark_understood("solo")
+
+    recents = list_recent_projects()
+    assert [entry["project_root"] for entry in recents] == [str(project.resolve())]

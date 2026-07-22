@@ -204,6 +204,9 @@ function nextStudyHint(graph, { mode, level, regionId, layer }) {
   if (mode !== "easy" || level === LEVELS.STUDY) return null;
   const unlit = graph.regions.filter((region) => !region.understood);
   if (!unlit.length) return null;
+  // Asked of the graph, not of how the choice was made: a region flagged home
+  // is what makes hops mean anything at all.
+  const homeChosen = graph.regions.some((region) => region.home);
   const nearest = unlit
     .map((region) => ({
       regionId: region.id,
@@ -211,16 +214,27 @@ function nextStudyHint(graph, { mode, level, regionId, layer }) {
         typeof region.hops_from_home === "number"
           ? region.hops_from_home
           : Infinity,
+      // Equal-hops ties broke alphabetically, and on a Python project hop 1
+      // from Home is usually a package `__init__` -- so the first thing the
+      // game ever recommended was a four-line file with one structure in it.
+      // Still pure graph arithmetic: the parser counted these structures.
+      structures: typeof region.node_count === "number" ? region.node_count : 0,
     }))
     .sort(
       (left, right) =>
-        left.hops - right.hops || left.regionId.localeCompare(right.regionId),
+        left.hops - right.hops ||
+        right.structures - left.structures ||
+        left.regionId.localeCompare(right.regionId),
     )[0];
   const hint = {
     ...nearest,
     message: `Study ${nearest.regionId} next`,
-    reason:
-      nearest.hops === 0
+    reason: !homeChosen
+      ? // Without a Home there is no route to measure, so the unreachable
+        // copy would blame the project for something the learner has simply
+        // not chosen yet.
+        "No Home is chosen, so there is no route to measure from."
+      : nearest.hops === 0
         ? "Home is not lit yet."
         : Number.isFinite(nearest.hops)
           ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
@@ -234,6 +248,18 @@ function nextStudyHint(graph, { mode, level, regionId, layer }) {
     };
   }
   if (layer === "map") {
+    // The Map can open the module's real source itself now, so the next step
+    // here is reading it -- not leaving the layer the learner was put on. The
+    // module node carries the region's id, and it is only offered when the
+    // parser actually produced that node.
+    if (graph.nodes.some((node) => node.id === nearest.regionId)) {
+      return {
+        ...hint,
+        reason: "Read it before proving it.",
+        action: { type: "OPEN_STUDY", nodeId: nearest.regionId },
+        actionLabel: "Read the source",
+      };
+    }
     return {
       ...hint,
       reason: "Its parser-proven structures are visible in Galaxy.",

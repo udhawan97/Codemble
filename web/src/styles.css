@@ -870,6 +870,26 @@ input:focus-visible {
   margin-block-start: var(--cm-space-sm);
 }
 
+/* Read, then prove. On the Map these are the two halves of one step, so they
+   share a row rather than stacking a quiz on top of a reading action. */
+.orientation-copy__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-sm);
+  align-items: center;
+}
+
+.check-launch--read {
+  border-color: var(--cm-hairline);
+  color: var(--cm-ink);
+}
+
+.check-launch--read:hover,
+.check-launch--read:focus-visible {
+  border-color: var(--cm-orbit);
+  color: var(--cm-orbit);
+}
+
 .check-launch,
 .check-primary,
 .check-close {
@@ -1017,22 +1037,28 @@ input:focus-visible {
   font-size: var(--cm-text-xs);
 }
 
+/* A native modal, like the audience gate it follows: sized against the
+   viewport instead of a share of the stage, which in Easy mode is only ~405px
+   tall and left one candidate of eleven visible. */
 .entrypoint-picker {
-  position: absolute;
   z-index: var(--cm-z-panel);
-  inset-inline: max(var(--cm-space-md), env(safe-area-inset-left));
-  inset-block-start: 50%;
-  width: min(36rem, calc(100% - var(--cm-space-xl)));
-  max-height: min(76%, 42rem);
-  margin-inline: auto;
-  overflow: auto;
+  width: min(36rem, calc(100vw - var(--cm-space-xl)));
+  max-height: min(80dvh, 42rem);
   padding: var(--cm-space-lg);
-  border-block: 1px solid var(--cm-hairline);
+  border: 1px solid var(--cm-hairline);
   background: var(--cm-ground-2);
-  box-shadow: 0 0 0 100vmax var(--cm-ground);
   color: var(--cm-ink);
-  transform: translateY(-50%);
   animation: entrypoint-enter var(--cm-dur-reveal) var(--cm-ease) both;
+}
+
+.entrypoint-picker[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.entrypoint-picker::backdrop {
+  background: color-mix(in srgb, var(--cm-ground) 88%, transparent);
 }
 
 .entrypoint-picker > p:first-child {
@@ -1055,8 +1081,43 @@ input:focus-visible {
   color: var(--cm-ink-2);
 }
 
+.entrypoint-count {
+  margin-block: var(--cm-space-md) 0;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+/* Only the list scrolls, so the escape hatch under it is always on screen. */
+.entrypoint-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin-block-start: var(--cm-space-sm);
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.entrypoint-scroll details {
+  border-block-end: 1px solid var(--cm-hairline);
+}
+
+.entrypoint-scroll summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--cm-space-sm);
+  padding: var(--cm-space-sm) 0;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  cursor: pointer;
+}
+
+.entrypoint-scroll summary small {
+  color: var(--cm-ink-3);
+}
+
 .entrypoint-candidates {
-  margin-block-start: var(--cm-space-lg);
   border-block-start: 1px solid var(--cm-hairline);
 }
 
@@ -1092,9 +1153,18 @@ input:focus-visible {
 
 .entrypoint-continue {
   min-height: 44px;
-  margin-block-start: var(--cm-space-lg);
-  padding: 0;
+  /* Pinned to the bottom edge of the card: the way out of a required decision
+     is never allowed to be below the fold. On a real project this sat 2,500px
+     down a scrolling card, which is indistinguishable from not existing. */
+  /* Outside the scrolling list on purpose: the way out of a required decision
+     is never allowed to be below the fold. On a real project it sat 2,500px
+     down a scrolling card, which is indistinguishable from not existing. */
+  flex: 0 0 auto;
+  width: 100%;
+  margin-block-start: var(--cm-space-md);
+  padding: var(--cm-space-xs) 0 0;
   border: 0;
+  border-block-start: 1px solid var(--cm-hairline);
   background: transparent;
   color: var(--cm-ink-2);
   cursor: pointer;
@@ -1851,14 +1921,17 @@ input:focus-visible {
   }
 }
 
+/* The -50% pair belonged to the old absolutely-positioned card, which centred
+   itself with a transform. As a dialog the browser centres it, so the same
+   keyframes were dragging the heading off the top of the screen. */
 @keyframes entrypoint-enter {
   from {
     opacity: 0;
-    transform: translateY(calc(-50% + var(--cm-space-md)));
+    transform: translateY(var(--cm-space-md));
   }
   to {
     opacity: 1;
-    transform: translateY(-50%);
+    transform: translateY(0);
   }
 }
 
@@ -2197,6 +2270,7 @@ input:focus-visible {
   min-height: 0;
 }
 
+
 .map-zoom {
   position: absolute;
   z-index: var(--cm-z-raised);
@@ -2228,6 +2302,26 @@ input:focus-visible {
 .map-zoom button:disabled {
   color: var(--cm-ink-3);
   cursor: default;
+}
+
+/* Compact widths: two floating controls landed on content instead of beside
+   it. Measured at 375px, "Key" (x 296-353) covered the right 40% of the "What
+   runs first" tab (x 210-353), so a tap in that strip opened the legend
+   instead of switching tabs; the zoom pill covered the topmost box. The tab
+   row reserves the corner the Key button owns, and zoom rejoins the flow.
+   Placed after .map-zoom's own rule: a media query adds no specificity, so
+   ordering is what decides this. */
+@media (max-width: 40rem) {
+  .map-tabs {
+    flex-wrap: wrap;
+    padding-inline-end: 4.5rem;
+  }
+
+  .map-zoom {
+    position: static;
+    align-self: flex-end;
+    margin-block-end: var(--cm-space-xs);
+  }
 }
 
 .map-scroll {
@@ -2435,17 +2529,12 @@ input:focus-visible {
   cursor: pointer;
 }
 
-@media (min-width: 40rem) {
-  .hint-chip {
-    position: absolute;
-    inset-inline-start: var(--cm-space-md);
-    inset-block-end: calc(3.5rem + var(--cm-space-md));
-    grid-row: auto;
-    max-width: calc(100% - var(--cm-space-lg));
-    border: 1px solid var(--cm-orbit);
-    border-radius: var(--cm-radius);
-  }
-}
+/* Docked at every width, never floated. As an overlay it covered the very
+   things it was guiding toward: the Map's teaching caption read "…y rather
+   than being placed by guesswork.", galaxy name plates sat behind it, and
+   beside the System-lit panel its own button was clipped to "Open codemble.".
+   The shell grid already reserves this row (grid-template-rows: auto 1fr auto
+   auto), so docking costs the stage a strip instead of covering it. */
 
 .location button {
   padding: 0;

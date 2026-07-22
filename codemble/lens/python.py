@@ -47,10 +47,15 @@ _PYTHON_NOTES = {
             "expert": "Python calls this specially named method through a language protocol such as length, comparison, or display.",
         },
     ),
+    # One concept id covers `try`, `try*` and `raise` (python_ast visits all
+    # three), so the copy has to be true of a line that *signals* a problem as
+    # well as one that catches it. The old easy note taught catching only, and
+    # anchored to `raise SystemExit(main())` it claimed roughly the opposite of
+    # what that line does.
     "exception-handling": (
         "Exception handling",
         {
-            "easy": "This plans for something going wrong, so the program can react instead of crashing.",
+            "easy": "This treats failure as part of the plan: code like this either raises a problem for whoever called it, or catches one so the program can react instead of crashing.",
             "expert": "This construct makes failure part of explicit control flow by catching, grouping, or raising an exception.",
         },
     ),

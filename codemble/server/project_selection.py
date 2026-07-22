@@ -69,7 +69,7 @@ class ProjectSelector:
     def browse(self, path: str | Path | None = None) -> FolderListing:
         """List non-hidden child directories for one allowed folder."""
 
-        resolved = self.resolve(path if path is not None else self._root)
+        resolved = self.resolve(path if path is not None else self._default_start())
         if not resolved.is_dir():
             raise ProjectFolderMissing("That folder does not exist.")
         try:
@@ -96,6 +96,21 @@ class ProjectSelector:
             for entry in self._recent_projects()
             if self._is_inside_root(Path(str(entry["project_root"])).resolve())
         )
+
+    def _default_start(self) -> Path:
+        """Open browsing beside the newest remembered project, else at the root.
+
+        Projects tend to live as siblings, so starting at the browse root made
+        every switch re-walk the same folders. Derived from recents rather than
+        stored, so it cannot drift, and it stays inside the same jail because
+        ``recents`` already filtered by it.
+        """
+
+        for entry in self.recents():
+            parent = Path(str(entry["project_root"])).parent
+            if self._is_inside_root(parent) and parent.is_dir():
+                return parent
+        return self._root
 
     def _require_inside_root(self, path: Path) -> None:
         if not self._is_inside_root(path):

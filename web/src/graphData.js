@@ -225,6 +225,20 @@ export function basename(file) {
 }
 
 /**
+ * Name something by the tail of its real path, the same rule map schema 3 gave
+ * the Architecture boxes (`mapview._short_label`).
+ *
+ * A basename alone collides hard: every Python package carries an
+ * `__init__.py`, so a sky of plates showed the same six characters over
+ * different modules -- identical text for different things, which is worse
+ * than no label and is exactly what a learner cannot detect.
+ */
+export function pathTail(file) {
+  const parts = file.split("/").filter(Boolean);
+  return parts.length > 1 ? parts.slice(-2).join("/") : (parts[0] ?? file);
+}
+
+/**
  * One flat, searchable row per region, shared by the palette and the sidebar so
  * the two can never disagree about what exists or where it is.
  */
@@ -234,7 +248,9 @@ export function moduleIndex(graph) {
     .map((region) => ({
       id: region.id,
       file: files.get(region.id) ?? region.id,
-      label: basename(files.get(region.id) ?? region.id),
+      // Path tail, not basename: `cli.py` twice over tells a learner nothing
+      // about which project file they are about to open.
+      label: pathTail(files.get(region.id) ?? region.id),
       language: region.language,
       community: region.community,
       understood: region.understood,
@@ -320,11 +336,13 @@ export function galaxyData(graph, palette, revealed = null) {
         ...region,
         kind: "region",
         name: region.id,
-        // The label is the parser's own filename for the module, shortened to
-        // its basename so a 60-character path cannot become a 60-character
-        // sprite. Uncharted regions carry none -- a name is the reward for
-        // reaching them, and labelling all 169 was the original hairball.
-        label: charted ? basename(files.get(region.id) ?? region.id) : "",
+        // The label is the parser's own path for the module, shortened to its
+        // last two segments so a 60-character path cannot become a
+        // 60-character sprite while `__init__.py` plates stay distinguishable
+        // from one another. Uncharted regions carry none -- a name is the
+        // reward for reaching them, and labelling all 169 was the original
+        // hairball.
+        label: charted ? pathTail(files.get(region.id) ?? region.id) : "",
         charted,
         fx: region.x,
         fy: region.y,

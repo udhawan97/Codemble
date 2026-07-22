@@ -313,9 +313,39 @@ assert.equal(
 );
 assert.equal(
   skyData.nodes.find((node) => node.id === "near").label,
-  "near.py",
-  "a charted region is labelled with the parser's own filename, basename only",
+  "src/near.py",
+  "a charted region is labelled with the tail of the parser's own path",
 );
+
+// Basenames collide hard -- every Python package carries an __init__.py -- and
+// identical plates over different modules are worse than none. This is the
+// same rule map schema 3 gave the Architecture boxes.
+{
+  const collides = {
+    ...sky,
+    regions: sky.regions.map((region) => ({ ...region })),
+    nodes: sky.regions.map((region) => ({
+      id: `${region.id}.mod`,
+      region: region.id,
+      file: `${region.id}/__init__.py`,
+      kind: "module",
+      language: "python",
+      loc: 1,
+      centrality: 0,
+      partial: false,
+      understood: false,
+      name: "__init__",
+    })),
+  };
+  const labels = galaxyData(collides, swatches, null)
+    .nodes.map((node) => node.label)
+    .filter(Boolean);
+  assert.equal(
+    new Set(labels).size,
+    labels.length,
+    `every charted plate stays distinguishable: ${labels.join(", ")}`,
+  );
+}
 
 // --- module index and constellation names ------------------------------------
 
