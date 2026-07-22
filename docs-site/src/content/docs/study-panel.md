@@ -5,7 +5,7 @@ description: What the parser knows, what a model adds, and what happens when you
 
 ## Five sections, in order of certainty
 
-![The study panel for create_app: kind, span, thirty-six callers, a structural summary marked "No model needed", guidance for setting a provider key or pointing Codemble at the local Ollama already running, and a parser connections diagram above an inbound call citing a real file and line.](/Codemble/shots/study-panel.png)
+![The study panel for create_app: kind, span, fifty-three callers, parser-proven resolution, and the start of a structural summary marked "No model needed".](/Codemble/shots/study-panel.png)
 
 Open a planet and the panel builds itself from the most certain evidence
 outward:
@@ -38,16 +38,25 @@ puts on screen at once:
 | --- | --- | --- |
 | Narration | Short sentences, every term explained in place | Concise, assumes fluency |
 | Check questions | "Which piece of code…" | "Which structure…" |
-| Labels | "Used by", "Possible connection" | "Callers", "Possible relationship" |
+| Labels | "Called by", "Possible connection" | "Callers", "Possible relationship" |
 | Lens notes | The idiom in plain words | The precise language mechanic |
 | Density | Opens on the Map, hides unrelated galaxy edges, larger type | Opens on the Galaxy, shows everything |
 
+Some surface names change with the mode as well: the flat layer is labelled
+**Diagram** in Easy and **Map** in Expert, and its two tabs read **How it fits
+together** / **What runs first** in Easy against **Architecture** / **Workflow**
+in Expert. They are the same two views of the same parser evidence; this
+documentation uses the Expert names throughout.
+
 Easy mode also shows a hint chip naming the nearest unlit region to Home,
-counted in import-route hops over the graph — no model picks it for you. Its
-action follows the current level: open the suggested system, switch from Map to
-Galaxy to see that system's structures, then choose one. Once the correct next
-step is already on screen, the chip becomes an instruction instead of leaving a
-button that cannot move you forward.
+counted in import-route hops over the graph — no model picks it for you. Where
+several regions sit the same number of hops away, it prefers the one with more
+parser-proven structures, so the first suggestion is rarely a one-line package
+init. Its action follows the current level: open the suggested system, read its
+source, then prove it. Once the correct next step is already on screen, the chip
+becomes an instruction instead of leaving a button that cannot move you forward.
+Guidance stays out of the way until the first-run choices — audience, Home, and
+the coach marks — are finished.
 
 Mode never changes the graph, the coordinates, your progress, or how a check is
 scored: both question voices are generated up front and scoring compares option

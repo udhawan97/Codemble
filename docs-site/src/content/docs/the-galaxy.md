@@ -5,7 +5,7 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 ## Your code, mapped honestly
 
-![Codemble at galaxy level: eighty dim star systems parsed from real source, with the legend, the language focus buttons, and a notice that two files are unchartable because their parser reported a syntax error.](/Codemble/shots/galaxy.png)
+![Codemble at galaxy level: 109 star systems parsed from real source, 23 of them charted and named by their file path, with the language focus buttons, a Key disclosure, and a notice that two files are unchartable because their parser reported a syntax error.](/Codemble/shots/galaxy.png)
 
 The galaxy is not an artist's impression. Every visual property encodes a fact
 from the parsed structure of your code:
@@ -73,12 +73,19 @@ every node position, so nodes do not drag away from the graph. Reading never
 happens "in space": the study panel takes the foreground, and the sky behind it
 recedes to the structure you are reading and its connections.
 
+Keyboard: arrow keys move the selection between siblings and **Enter** opens the
+selected one, at every level including study, where it re-targets the panel.
+**Escape** steps back a level — on the Map as well as in the Galaxy — and closes
+the star chart, returning focus to the control that opened it.
+
 At narrow widths the header's secondary actions live behind **Menu**, guidance
 occupies its own row below the stage, and Study becomes a full-stage scrolling
 sheet. The map/canvas and the local-only status remain in the viewport instead
-of being squeezed behind controls. Opening Modules, Find, or the Star chart
-moves keyboard focus into the new surface; closing it returns focus to the
-invoking action or to the visible Menu button.
+of being squeezed behind controls. Opening Modules, Find, the Star chart or a
+region's checks moves keyboard focus into the new surface; closing it returns
+focus to the invoking action or to the visible Menu button. Within the checks
+panel, answering keeps focus on the result rather than dropping it back to the
+page.
 
 ## Two layers, one truth
 
@@ -157,4 +164,9 @@ than restored.
 
 On a first run with more than one honest Home candidate, Codemble asks for your
 audience first, then Home, then opens the three-step coach. Those decisions do
-not stack on top of one another.
+not stack on top of one another, and Easy-mode guidance waits until all three
+are finished before it suggests anything.
+
+The audience question is about **you**, so it is asked once and remembered for
+the next project you open. Each project still keeps its own mode, which the
+header's Easy/Expert toggle changes at any time.

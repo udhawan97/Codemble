@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: eighty dim star systems parsed from real source, with a legend, language focus buttons, and a notice that two files are unchartable because their parser reported a syntax error" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: 109 star systems parsed from real source, 23 of them charted and named by their file path, with the language focus buttons, a Key disclosure, and a notice that two files are unchartable because their parser reported a syntax error" width="960">
 </p>
 
 <p align="center"><sub>
@@ -116,7 +116,7 @@ of your own code becomes a sky you understand.
 ## What it looks like
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, showing its functions and classes in orbits with call edges and a keyboard focus reticle" width="900">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, showing its functions and classes in call-depth orbits with the call edges between them" width="900">
 </p>
 
 <p align="center"><sub>
@@ -124,7 +124,7 @@ of your own code becomes a sky you understand.
 </sub></p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/study-panel.png" alt="The study panel for create_app, showing kind, span, 36 callers, a structural summary marked no model needed, guidance for configuring a provider or a local Ollama, and a parser connections diagram with an inbound call citing a real file and line" width="900">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/study-panel.png" alt="The study panel for create_app, showing kind, span, 53 callers, parser-proven resolution, and a structural summary marked no model needed" width="900">
 </p>
 
 <p align="center"><sub>
@@ -156,9 +156,17 @@ computed in the graph layer and served as data.
 | **Map · Workflow** | The call tree from your entrypoint, depth by depth | Seeing what runs first |
 
 The Map is plain SVG, so it still works on a machine that cannot draw WebGL.
-On a compact screen it opens at readable 100% around Home or the selected
-target; **Fit** is an explicit whole-diagram overview. Zoom and pan survive Map
-refreshes and layer switches instead of snapping back after a passed check.
+Click a box and it offers both halves of a step — **Read the source** opens that
+module's real source, lens notes and relationships without leaving the layer,
+and **Prove understanding** starts its checks. Escape steps back a level, as in
+the Galaxy. On a compact screen the Map opens at readable 100% around Home or
+the selected target; **Fit** is an explicit whole-diagram overview. Zoom and pan
+survive Map refreshes and layer switches instead of snapping back after a passed
+check.
+
+In Easy mode these surfaces carry plainer labels — the layer is **Diagram** and
+the tabs are **How it fits together** and **What runs first**. Same views, same
+evidence; only the wording follows the audience.
 
 ## Open a structure, read what the parser knows first
 
@@ -175,10 +183,14 @@ Sections other than the narration never involve a model at all.
 A header toggle changes how Codemble talks to you and how much it puts on
 screen: plain language, larger type, the Map by default, and a hint chip naming
 the nearest unlit region to Home — counted in import hops over the graph, not
-chosen by a model. The hint opens that system, switches from Map to Galaxy when
-its internal structures are the next step, then becomes an instruction rather
-than an enabled no-op. It never changes graph truth, coordinates, progress, or
-how a check is scored.
+chosen by a model, and broken by parser-proven structure count when several sit
+the same distance away. The hint opens that system, offers to read its source,
+then becomes an instruction rather than an enabled no-op. It waits until the
+first-run choices are done before it appears at all, and it never changes graph
+truth, coordinates, progress, or how a check is scored.
+
+Codemble asks which audience you are **once** — the question is about you, not
+about the project — and each project still keeps its own mode.
 
 You can also switch project or change Home without leaving the app.
 

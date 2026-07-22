@@ -28,9 +28,10 @@ four parser-owned evidence families:
 
 The provider is not called to phrase, score, or explain a check. The response
 sent to the browser withholds the answer; submission is compared against the
-immutable generated option IDs. After an attempt, Codemble shows the graph-owned
-answer and its real `file:line` evidence. A check that cannot be derived with
-certainty is not offered.
+immutable generated option IDs. A **correct** answer is confirmed with the
+graph-owned answer and its real `file:line` evidence; a **wrong** one is not,
+so a second attempt cannot simply replay what the screen just showed. A check
+that cannot be derived with certainty is not offered.
 
 ## Lighting rules
 
@@ -49,11 +50,17 @@ bound to a deterministic signature of its current parser file hashes. On the
 next run, matching regions light and changed regions stay dim; no background
 watcher or network service is involved.
 
-## Right answers say so
+## Right answers say so — wrong ones send you back to the code
 
 A correct answer is confirmed in place — "Correct. That answer is fixed by the
-parser graph." — before the next question loads. A wrong answer still shows the
-graph's answer and the evidence behind it.
+parser graph." — along with the answer and the `file:line` evidence behind it,
+before the next question loads.
+
+A wrong answer says only "Not yet. Re-read the relationship in your own code and
+try again." It withholds both the answer and the citations, because for a
+question like *which of your files imports this one* the evidence lines **are**
+the answer. You can retry as often as you like; what you cannot do is light a
+region with an answer Codemble just handed you.
 
 ## Why a region can stay dim forever
 

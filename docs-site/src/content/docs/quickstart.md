@@ -53,6 +53,12 @@ entrypoint is ambiguous, Codemble shows only parser-ranked candidates and you
 pick. The CLI equivalent is `--entrypoint module.qualname`; an unranked value
 is rejected rather than guessed.
 
+The picker states how many candidates there are and groups them by the
+top-level folder each one really lives in — so a candidate under `tests/` is
+never mistaken for your application's entrypoint. The best-ranked group opens
+first, and **Explore without Home** stays on screen however long the list is:
+every system, check, explanation and lens note works without a Home.
+
 ## 4. Choose a layer, then zoom in
 
 The header switches between two layers. **Galaxy** is the 3D view; its camera
@@ -72,6 +78,15 @@ coordinates, progress, or graph evidence.
 | --- | --- | --- |
 | **Architecture** | Modules as boxes, grouped by folder, layered by import distance from Home | Seeing how the project fits together |
 | **Workflow** | The call tree from your entrypoint, depth by depth | Seeing what runs first |
+
+Easy mode labels the same surfaces in plainer words — the layer is **Diagram**
+and the tabs are **How it fits together** and **What runs first**. The views are
+identical; only the wording follows the audience.
+
+Click a box and the Map offers both halves of a step: **Read the source** opens
+that module's real source, lens notes and relationships without leaving the
+layer, and **Prove understanding** starts its checks. Escape steps back a level,
+as it does in the Galaxy.
 
 On a compact screen the Map opens at readable 100%, centred on Home or the
 selected parser-backed target. Use **Fit** when you want the whole diagram as an
