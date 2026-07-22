@@ -5,7 +5,7 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 ## Your code, mapped honestly
 
-![Codemble at galaxy level: 109 star systems parsed from real source, 23 of them charted and named by their file path, with the language focus buttons, a Key disclosure, and a notice that two files are unchartable because their parser reported a syntax error.](/Codemble/shots/galaxy.png)
+![Codemble at galaxy level: 109 star systems parsed from real source, 23 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an amber lit Home, with the language focus buttons, a Key disclosure, and a notice that two files could not be read — all under tests/.](/Codemble/shots/galaxy.png)
 
 The galaxy is not an artist's impression. Every visual property encodes a fact
 from the parsed structure of your code:
@@ -18,6 +18,7 @@ from the parsed structure of your code:
 | Edge between planets | A call (uncertain calls are labeled "possible call") |
 | Size | Lines of code |
 | Brightness and glow | How many distinct places call it (centrality) |
+| Colour family | Import community — modules that import each other share a hue |
 | Nebula tint | Language |
 | Lit amber / dim | Understood / not yet |
 | Drifting particles | A call the parser proved; possible calls stay still |
@@ -27,6 +28,17 @@ Nothing that is merely busy can outshine something you understand: the unlit
 brightness ramp stops below the amber a lit star uses. Brightness counts the
 distinct places that call a structure, not how many call sites they contain —
 a helper hammered in one loop is not more depended-on than a shared utility.
+
+Hue answers a different question: **which part of the project is this?** The
+parser proves import communities — groups of modules that import each other —
+and each community wears one of eight traditional Japanese colours (seiji,
+fuji, koke, asagi, toki, umenezumi, wakatake, kikyō), assigned
+deterministically from the community's own id: same code, same sky, same
+colours. Every hue is lightness-capped at the unlit ceiling, so a lit amber
+star remains the brightest object by a wide margin, and the amber band itself
+is excluded from the wheel so no community can ever read as "understood".
+Inside a system its planets inherit the family hue, with lightness still
+answering callers.
 
 ## While a large project loads
 
@@ -94,20 +106,28 @@ two tabs: *Architecture* lays your modules out by folder and by how far they sit
 from Home along import routes, and *Workflow* walks the call tree from your
 entrypoint. Both layouts are computed by the same parser-backed graph the galaxy
 draws — the map cannot show you a relationship the galaxy does not have. Modules
-with no import route from Home are placed in their own row and labelled, never
-guessed into position. Clicking anything in either layer opens the same study
-panel, and a lit system is amber in both.
+with no import route from Home are never guessed into position: when more than a
+handful exist they fold into a counted shelf — the note says exactly how many
+and **Show them** draws every one — so a project whose test fixtures outnumber
+its source keeps a readable connected core without hiding a single module from
+the count. Clicking anything in either layer opens the same study panel, and a
+lit system is amber in both. Architecture boxes carry their community's colour
+family and a language stripe, and routes are drawn in their own ink so a
+connection never disappears beside a box border.
 
 The Map opens at readable 100% on compact screens and centres Home or the
 selected target instead of shrinking every box into a whole-diagram thumbnail.
-Use **Fit** for that overview and the percentage button to return to 100%.
-Codemble remembers zoom and pan through fresh Map data and layer switches, but
-clears renderer-only view state when you switch projects. The Map needs no
-WebGL, so it still works where the galaxy cannot draw.
+**Fit** gives the overview: on a wide drawing it fits the whole shape, and on a
+tall one it fits the width so layers stay readable while the height scrolls,
+instead of landing on an unreadable thumbnail. The percentage button returns to
+100%. Codemble remembers zoom and pan through fresh Map data and layer
+switches, re-centres on your focus when a window resize would leave it staring
+at empty space, and clears renderer-only view state when you switch projects.
+The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 ## A region = one star system
 
-![One star system, codemble.server.app, with its functions and classes in call-depth orbits, the call edges between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
+![One star system, codemble.server.app, its 31 functions and classes as planets in the system's own colour family, laid out in call-depth orbits with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
 
 A **region** is one module — the unit of checks, illumination, and progress.
 Change a file and only its region goes dim again; the rest of your sky stays lit.
@@ -144,10 +164,14 @@ Drifting particles travel a call edge the parser proved, below the galaxy level
 where call edges exist. A possible call stays still, so motion can never imply
 proof — and under `prefers-reduced-motion` nothing drifts at all.
 
-The legend in the corner names every encoding: size, brightness, amber for
-understood, the unchartable colour for syntax-error files, one swatch per
-language, and certain versus possible relationships. In Easy mode it says the
-same things in plain language.
+Certain connections are drawn in a dedicated route ink on both layers, distinct
+from panel rules and box borders, and a possible relationship is deliberately
+the *more* visible of the two — an unproven claim should never be the one you
+miss. The legend in the corner names every encoding: size, brightness, amber
+for understood, a corner-flag mark for syntax-error files, the colour-family
+row, one swatch per language, and certain versus possible relationships — and
+every swatch is drawn in the same ink the sky actually uses. In Easy mode it
+says the same things in plain language.
 
 ## Switching project and changing Home
 

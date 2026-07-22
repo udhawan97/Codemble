@@ -5,6 +5,74 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-22
+
+### Added
+- **Constellations you can tell apart.** Every parser-proven import community
+  now wears one of eight traditional Japanese colour families (seiji, fuji,
+  koke, asagi, toki, umenezumi, wakatake, kikyō), assigned deterministically
+  from the community id — same code, same sky, same colours. Galaxy stars keep
+  centrality as lightness inside the family hue, planets inherit their
+  system's family, and Architecture boxes tint toward it. Every hue is
+  lightness-capped beneath the unlit ceiling and the amber band is excluded
+  from the wheel, so a lit star stays the brightest object in the sky and
+  nothing unproven can read as understood. The Key gains a colour-family row.
+- **A counted shelf for unreachable modules.** On the Architecture map, modules
+  with no import route from Home fold away behind their exact count with a
+  **Show them** control (auto-folded above eight). On this repository that
+  turns a 1:3.2-tall drawing dominated by 80 test fixtures into a readable
+  connected core — with nothing hidden from the count and every module still
+  one click away.
+- **Class rings.** A structure the parser knows is a class wears a thin ring in
+  the system view — parser fact, not decoration.
+
+### Fixed
+- **Connections are visible.** Routes on both layers used to borrow the border
+  hairline at ~1.6:1 contrast — and the galaxy multiplied it to 32% opacity —
+  so the relationships the app teaches were its least visible marks. Both
+  layers now draw a dedicated route ink (4.0:1), arrowheads included, and a
+  *possible* relationship stays deliberately the more visible claim, dashed on
+  the map as before.
+- **The map's language stripe actually renders.** It set its colour through an
+  SVG presentation attribute, where `var()` is invalid, and silently fell back
+  to the box navy — the Key advertised Python/JS/TS colours the map never
+  drew. The stripe now paints through a style property.
+- **The nebula dawn no longer corrupts the lit system's name plate.** The
+  animation snapshotted one scale axis and restored all three from it, so the
+  celebration squashed the plate into a blurry square until a level change
+  rebuilt it. It now restores the full vector — the one bold moment ends
+  crisp.
+- **Escape steps back from anywhere on the Map.** The handler listened only
+  inside the stage, and the most common Easy path leaves focus on the page
+  body, so the documented recovery silently did nothing; the study exit also
+  said "Back to system" on the Diagram. Escape is now a window-level handler
+  (with dialog and typing guards) and the exit says "Back to the module".
+- **A resize cannot strand you in empty space.** Restored map viewports are
+  replayed only while they still show your focus; shrinking a desktop window
+  to phone width used to keep the desktop scroll and show empty layer bands.
+  Both the restore path and live resizes now re-centre on the parser-backed
+  target.
+- **Fit lands on something readable.** On tall drawings a true fit reached 7% —
+  a thumbnail with no names — so Fit now fits the width and lets the height
+  scroll when the whole shape would be unreadable, and keeps whole-shape fit
+  otherwise. The open Key also no longer covers the zoom controls, and the
+  region panel's actions no longer clip at desktop heights.
+- **Easy mode speaks its own register end to end.** "parser rank 0" became
+  "candidate 1", the checks header reads "Quiz · answers come from your code,
+  not AI", the lit celebration explains what the source hash means instead of
+  naming it, study metadata reads "What it is / Length / Evidence", and the
+  chrome attributes fixture errors to their shared directory ("2 could not be
+  read · all under tests/"). Expert keeps every precise term.
+- **Guidance stops sending beginners into tests first.** The nearest-unlit
+  ranking now charges test-scoped paths a bounded +1.5-hop penalty — a real
+  source module one hop farther wins the tie, an all-tests project is still
+  guided, and the displayed hop count stays the real one. On this repository
+  the second stop changed from `tests.test_python_ast` to
+  `codemble.adapters.project`.
+- **The study panel's connection diagram names its dots.** Six anonymous dots
+  used to decorate the labelled list below; each now carries its structure's
+  own (tail-truncated) name.
+
 ## [0.6.4] - 2026-07-21
 
 ### Fixed
