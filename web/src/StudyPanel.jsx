@@ -18,8 +18,11 @@ export function StudyPanel({
         <p className="study-preview__path">{node.file}:{node.lineno}</p>
         <h1>{node.name}</h1>
         <dl>
-          <div><dt>Kind</dt><dd>{node.kind}</dd></div>
-          <div><dt>Span</dt><dd>{node.loc} {node.loc === 1 ? "line" : "lines"}</dd></div>
+          {/* Easy reads its own register end to end: "Kind/Span/Resolution"
+              are parser vocabulary the coach-marks never taught. The facts
+              are identical; only the labels change. */}
+          <div><dt>{mode === "easy" ? "What it is" : "Kind"}</dt><dd>{node.kind}</dd></div>
+          <div><dt>{mode === "easy" ? "Length" : "Span"}</dt><dd>{node.loc} {node.loc === 1 ? "line" : "lines"}</dd></div>
           <div>
             {/* "Callers", not "Calls in": centrality counts the distinct
                 structures that call this one, not the call sites they contain.
@@ -31,7 +34,14 @@ export function StudyPanel({
             <dt>{mode === "easy" ? "Called by" : "Callers"}</dt>
             <dd>{node.centrality}</dd>
           </div>
-          <div><dt>Resolution</dt><dd>{node.partial ? "Partial parse" : "Parser-proven"}</dd></div>
+          <div>
+            <dt>{mode === "easy" ? "Evidence" : "Resolution"}</dt>
+            <dd>
+              {node.partial
+                ? mode === "easy" ? "Could not be fully read" : "Partial parse"
+                : mode === "easy" ? "Proven from your code" : "Parser-proven"}
+            </dd>
+          </div>
         </dl>
       </header>
 
@@ -171,6 +181,14 @@ function certaintyWords(item, mode) {
   return mode === "easy" ? "possible link, not certain" : "possible call";
 }
 
+// Room above a dot fits about eighteen monospace glyphs at 9px; the TAIL of a
+// long name survives truncation because that is the distinguishing part
+// (basenames repeat, suffixes differ).
+function shortConnectionName(name) {
+  const text = String(name ?? "");
+  return text.length <= 18 ? text : `…${text.slice(-17)}`;
+}
+
 function MiniConstellation({ inbound, outbound, node }) {
   // Seat coordinates ARE computed here, unlike the galaxy and the 2D map, whose
   // every coordinate is backend-owned. This is presentation of an already-
@@ -198,6 +216,31 @@ function MiniConstellation({ inbound, outbound, node }) {
           y2={middle}
           strokeDasharray={item.certain ? undefined : "3 3"}
         />
+      ))}
+      {/* Each dot names its structure (audit gap 13): six anonymous dots
+          decorated the labelled list below without informing. The name is the
+          item's own, shortened the way every other surface shortens. */}
+      {left.map((item, index) => (
+        <text
+          key={`in-name-${item.node_id}`}
+          className="mini-constellation__name"
+          x="8"
+          y={seat(index, left.length) - 7}
+          textAnchor="start"
+        >
+          {shortConnectionName(item.name)}
+        </text>
+      ))}
+      {right.map((item, index) => (
+        <text
+          key={`out-name-${item.node_id}`}
+          className="mini-constellation__name"
+          x="272"
+          y={seat(index, right.length) - 7}
+          textAnchor="end"
+        >
+          {shortConnectionName(item.name)}
+        </text>
       ))}
       {right.map((item, index) => (
         <line

@@ -13,6 +13,14 @@
      from 1.60:1 to 4.04:1 -- uncertainty is now the more visible of the two,
      which is the right way round for a claim the parser could not prove. */
   --cm-route-possible: color-mix(in srgb, var(--cm-ink-2) 30%, var(--cm-ink-3));
+  /* The ink a proven connection is DRAWN in, on both layers. It exists because
+     routes used to borrow --cm-hairline -- the same ink as box borders and
+     panel rules -- at 1.6:1 on the canvas ground, so the relationships the app
+     exists to teach were its least visible marks. Plain rgb() (readPalette
+     hands it to WebGL): 4.0:1 on --cm-ground, 3.5:1 on --cm-ground-2, and
+     deliberately BELOW --cm-route-possible (6.4:1) so an unproven claim stays
+     the more visible of the two. */
+  --cm-route: rgb(96 113 152);
   /* Floor of the unlit centrality ramp. The ramp stops at --cm-ink-2 so that a
      lit star (--cm-star-high) is always the brightest object in the sky —
      understanding, not call centrality, owns the top of the range. */
@@ -28,6 +36,25 @@
   /* Neutral base for the halo sprite texture. Always multiplied by the node's
      own colour, so it can never brighten an unlit node past a lit one. */
   --cm-star-halo: rgb(242 239 233);
+  /* Community colour families (Decision Log 2026-07-22): each parser-proven
+     import community takes one of eight traditional Japanese hues,
+     deterministically (community id mod 8 -- same code, same sky). Plain rgb()
+     because readPalette hands these to WebGL. Every value is lightness-tuned
+     to the SAME luminance as --cm-ink-2 (0.389), the unlit ramp's ceiling:
+     measured 8.1:1 on --cm-ground and 7.0:1 on --cm-ground-2 as legend
+     swatches, while a lit star (--cm-star-high, luminance 0.60) stays the
+     brightest object in the sky by a wide margin. Hues sit between 79 and 344
+     degrees -- the kohaku amber band (~40) is excluded, so no community can
+     read as "understood", and the ordering interleaves the wheel so adjacent
+     community ids land on distant hues. */
+  --cm-com-0: rgb(109 181 153); /* 青磁 seiji · celadon */
+  --cm-com-1: rgb(187 155 211); /* 藤 fuji · wisteria */
+  --cm-com-2: rgb(155 175 113); /* 苔 koke · moss */
+  --cm-com-3: rgb(110 177 190); /* 浅葱 asagi · pale indigo-teal */
+  --cm-com-4: rgb(215 149 167); /* 鴇 toki · ibis rose */
+  --cm-com-5: rgb(191 158 175); /* 梅鼠 umenezumi · plum mauve */
+  --cm-com-6: rgb(94 185 133);  /* 若竹 wakatake · young bamboo */
+  --cm-com-7: rgb(170 160 218); /* 桔梗 kikyō · bellflower */
   /* Canvas name plates. Plain rgb() for the same reason the nebula tints are:
      readPalette hands the authored text straight to WebGL. The plate is drawn
      into a canvas texture rather than composited by CSS, so its own alpha lives

@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: 109 star systems parsed from real source, 23 of them charted and named by their file path, with the language focus buttons, a Key disclosure, and a notice that two files are unchartable because their parser reported a syntax error" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: 109 star systems parsed from real source, 23 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an amber lit Home, with language focus buttons, a Key disclosure, and a notice that two files could not be read — all under tests/" width="960">
 </p>
 
 <p align="center"><sub>
@@ -116,7 +116,7 @@ of your own code becomes a sky you understand.
 ## What it looks like
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, showing its functions and classes in call-depth orbits with the call edges between them" width="900">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, its functions and classes as planets in the system's own colour family, in call-depth orbits with the call edges between them" width="900">
 </p>
 
 <p align="center"><sub>
@@ -204,6 +204,7 @@ You can also switch project or change Home without leaving the app.
 | A route or edge | An import or call; approximate calls are labeled **possible** |
 | Size | Lines of code |
 | Brightness and glow | How many **distinct** structures call it |
+| Colour family | Import community — modules that import each other share one of eight traditional Japanese hues |
 | Nebula tint | Language, at galaxy level |
 | Orbit ring | Call depth — the inner ring runs first |
 | Drifting particles | A call the parser proved; a possible call stays still |
@@ -211,9 +212,13 @@ You can also switch project or change Home without leaving the app.
 
 Understanding owns the top of the brightness range: the unlit ramp stops below
 the amber a lit star uses, so a busy module you have not proven can never
-outshine one you have. Pass a region's checks and that system plays a short
-amber "nebula dawn" — after the light is already saved, so the animation marks
-a fact rather than delivering one.
+outshine one you have — every community hue is lightness-capped beneath it, and
+the amber band is excluded from the community wheel entirely. Pass a region's
+checks and that system plays a short amber "nebula dawn" — after the light is
+already saved, so the animation marks a fact rather than delivering one. On the
+flat Map, modules with no import route from Home fold into a counted shelf
+(**Show them** draws every one), so test scaffolding never buries the connected
+core it cannot reach.
 
 Python-only, JavaScript-only, TypeScript-only, and mixed projects share the same
 graph contract. Language focus changes only what you are looking at; it never

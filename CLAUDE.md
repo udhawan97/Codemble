@@ -167,8 +167,36 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-21 ·
-Session note: v0.6.4 closes all twenty findings of a fresh end-to-end user-flow
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-22 ·
+Session note: v0.7.0 implements all fourteen findings of a fresh evidence-based
+user-flow audit of the served v0.6.4 build (run as a first-run Easy learner on
+this repository at 1280/375/320, with before/after screenshots) plus the
+approved D1 design direction: parser-proven import communities now wear eight
+deterministic traditional Japanese colour families (galaxy stars, planets, and
+Architecture-box tints), lightness-capped beneath the unlit ceiling with the
+amber band excluded so understanding stays the brightest claim in the sky.
+Routes on both layers moved from the 1.6:1 border hairline to a dedicated
+4.0:1 route ink (possible relationships stay dashed and deliberately more
+visible); the Architecture map folds modules with no route from Home into a
+counted shelf behind a Show-them control; Fit fits width when whole-shape fit
+would be unreadable; and Easy guidance charges test-scoped paths a bounded
++1.5-hop penalty so a learner's own code outranks its test suite at equal
+distance. Mechanical fixes: the nebula dawn restores sprite scale as a vector
+(it squashed the lit system's name plate square), the map's language stripe
+paints via a style property (an SVG fill attribute cannot resolve var() and
+silently rendered navy), Escape on the Map is a window-level handler that
+works with focus on body, stale map viewports re-centre on the focus point on
+restore and on live resizes, the open Key stacks below the zoom controls, the
+region panel's actions no longer clip, study connection dots carry names, and
+the Easy register replaces parser vocabulary end to end ("candidate 1",
+"Quiz · answers come from your code, not AI", "What it is / Length /
+Evidence", fixture errors attributed "all under tests/"). Parser, graph,
+checks, progress, provider, and HTTP contracts are byte-unchanged; the suite
+grew a nebula-dawn scale-restore check plus community-colour, viewport, and
+guidance-penalty contract assertions (241 pytest, ruff clean, 12 frontend
+checks, rebuilt web_dist). Full planet realism explicitly remains a Phase 3
+decision under the game-art Non-Goal. The milestone does not advance: issue
+#13 still requires human tester evidence. Previously: v0.6.4 closes all twenty findings of a fresh end-to-end user-flow
 audit run against the served build on three real projects (Codemble, Golavo,
 FolioOrb) at 1280/375/320 px with a keyboard pass. The headline fix is a
 Correctness Contract one: a missed check printed the parser answer and its
@@ -576,6 +604,10 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-21 | The audience answer is stored per learner as well as per project (`learner.json` beside progress); a fresh bind seeds from it and skips the gate, while the header toggle still overrides one project | The gate asks who the *learner* is, but the answer lived only under the project key, so every new project re-asked an expert whether they were new to coding. The file carries no `schema_version`, which is what keeps recents from reading it as a project |
 | 2026-07-21 | Home calibration is a native modal sized to the viewport, grouped by the candidates' real top-level scope, with the candidate count stated and "Explore without Home" outside the scrolling list | It is the second step of the same required sequence as the audience gate and deserves the same shape. As a card capped to a share of the stage it showed one candidate of eleven with the escape hatch thousands of pixels below the fold, and a flat list put `tests/fixtures/...` beside the learner's entrypoint with nothing to tell them apart. Scope and rank are parser facts already in the payload; the leading group always opens so a project whose best candidate is rank 1 is never met by an all-collapsed list |
 | 2026-07-21 | Galaxy name plates use the same path-tail rule as map schema 3's `short_label`; the shared module index and the command palette use it too, and the palette's unfiltered order is Home → lit → centrality | Basenames collide hard in a Python project — every package carries an `__init__.py` — so identical plates named different modules, which is precisely the wrong a learner cannot detect, and the palette opened on a screen of indistinguishable rows |
+| 2026-07-22 | **Hue means import community.** Each parser-proven community takes one of eight traditional Japanese colour tokens (`--cm-com-0..7`) by `community id mod 8`; stars, planets and Architecture boxes all read the same arithmetic in `graphData.communityShade`. This amends the M2 encoding row: colour was "language", which is now the nebula/stripe channel only | Approved by UD. The sky had one hue for 109 systems, so nothing could be tracked without reading every plate — and the graph had proven communities since schema 5 that nothing rendered. Guardrails that keep the Correctness Contract intact: every token is lightness-tuned to `--cm-ink-2`'s luminance (0.389) so a lit star at 0.598 always wins, the kohaku band (~40°) is excluded so no community can read as "understood", a missing community id falls back to the old neutral ramp rather than borrowing a hue, and the mapping is pure arithmetic on graph truth so the same code always yields the same sky |
+| 2026-07-22 | Routes get their own ink (`--cm-route`, 4.0:1) on both layers, and it sits deliberately BELOW `--cm-route-possible` (6.4:1) | Edges borrowed `--cm-hairline`, the ink of box borders and panel rules, measuring 1.57:1 on the canvas ground — the relationships the product exists to teach were its least visible marks, which is the literal complaint that opened the audit. Ordering the two inks this way keeps the 2026-07-19 rule that an unproven claim must be the more visible one |
+| 2026-07-22 | Architecture-map modules with no import route from Home fold into a counted shelf behind an explicit control (auto-folded above 8), and Fit fits WIDTH when a whole-shape fit would land below 35% | On this repository 80 of 109 boxes are test fixtures and scripts, making the drawing 1:3.2 tall so the connected core fit at an unreadable 7%. Folding is view state, never truth: the note carries the exact count, **Show them** draws every one, and both surfaces still reach every module. Distinct from progressive reveal, which stays galaxy-only |
+| 2026-07-22 | Easy guidance charges test-scoped paths a bounded +1.5-hop penalty; the displayed hop count stays the real one | A CLI's nearest neighbour is usually its own test suite, so pure hop-distance sent a brand-new learner from Home straight into `tests/`. The penalty is bounded so a non-test module one hop farther wins while a distant one does not, and an all-tests project is still guided. Both inputs stay parser truth (the BFS count and the recorded file path); only the ranking key is biased, never the reported fact |
 
 ## Non-Goals — do NOT build (point here when asked)
 
@@ -588,7 +620,11 @@ shows lower repeated-commit work without changing derived values.
 - ❌ Accounts, cloud hosting, multi-user; share link waits for Phase 3
 - ❌ Extra quest types before Phase 3
 - ❌ GitHub-URL ingestion in v1
-- ❌ Elaborate game art before the loop teaches well
+- ❌ Elaborate game art before the loop teaches well — **still holds**: the
+  2026-07-22 visual pass shipped only encodings that carry parser facts
+  (community hue, class rings). Procedural planet surfaces, atmospheres and
+  rotation ("almost real planets, like a game") remain OUT until Phase 1
+  tester evidence lands, and would need their own Decision Log entry
 
 ## Gotchas
 
@@ -616,6 +652,11 @@ shows lower repeated-commit work without changing derived values.
 - **Canvas colours must be plain values, never `color-mix()`** — WebGL receives
   a custom property's authored text, so a computed token renders black. Add new
   canvas tokens through `readPalette`, which resolves them.
+- **`var()` never works in an SVG presentation attribute** — `fill="var(--x)"`
+  is invalid and falls back to the cascade *silently*, which is how the map's
+  language stripe rendered box-navy for a release while the legend advertised
+  three colours. Use `style={{ fill: … }}` (a CSS property) for any
+  token-driven SVG paint.
 
 ## Edge cases & limits
 

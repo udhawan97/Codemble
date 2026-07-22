@@ -100,6 +100,42 @@ assert.deepEqual(
   );
 }
 
+// D3: test scaffolding pays a bounded hop penalty (+1.5), so a learner's own
+// module one hop farther still beats a test file, while a project that is
+// only tests keeps being guided. Both facts below are parser truth: hops and
+// the region's recorded file path.
+{
+  const testBias = {
+    ...graph,
+    nodes: [
+      { id: "app.py", region: "app.py", file: "app.py", language: "python", understood: true, loc: 5, centrality: 1 },
+      { id: "tests.test_app", region: "tests.test_app", file: "tests/test_app.py", language: "python", understood: false, loc: 50, centrality: 1 },
+      { id: "server.py", region: "server.py", file: "server.py", language: "python", understood: false, loc: 40, centrality: 1 },
+    ],
+    regions: [
+      { id: "app.py", language: "python", home: true, understood: true, hops_from_home: 0, node_count: 1, centrality: 1, loc: 5 },
+      { id: "tests.test_app", language: "python", home: false, understood: false, hops_from_home: 1, node_count: 9, centrality: 1, loc: 50 },
+      { id: "server.py", language: "python", home: false, understood: false, hops_from_home: 2, node_count: 3, centrality: 1, loc: 40 },
+    ],
+    region_edges: [],
+  };
+  assert.equal(
+    nextRegionFor(testBias),
+    "server.py",
+    "a non-test module one hop farther outranks a test file",
+  );
+  const onlyTests = {
+    ...testBias,
+    regions: testBias.regions.filter((region) => region.id !== "server.py"),
+    nodes: testBias.nodes.filter((node) => node.id !== "server.py"),
+  };
+  assert.equal(
+    nextRegionFor(onlyTests),
+    "tests.test_app",
+    "an all-tests project is still guided",
+  );
+}
+
 function nextRegionFor(sourceGraph) {
   const projection = createLearnerProjection();
   return projection.derive({

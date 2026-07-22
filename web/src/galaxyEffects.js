@@ -83,7 +83,11 @@ export function runNebulaDawn({ scene, regionId, palette }) {
   if (!target) return () => {};
   const sprites = [];
   target.traverse((child) => {
-    if (child.isSprite) sprites.push([child, child.material.opacity, child.scale.x]);
+    // The full scale VECTOR, never scale.x alone: a name plate is non-uniform
+    // (x = aspect * y), and a scalar snapshot restored through setScalar
+    // squashed the lit system's plate square and left it that way until the
+    // next level change rebuilt the marker.
+    if (child.isSprite) sprites.push([child, child.material.opacity, child.scale.clone()]);
   });
   const amber = new THREE.Color(palette.star);
   const originals = sprites.map(([sprite]) => sprite.material.color.clone());
@@ -98,7 +102,7 @@ export function runNebulaDawn({ scene, regionId, palette }) {
     sprites.forEach(([sprite, baseOpacity, baseScale], index) => {
       sprite.material.color.copy(originals[index]).lerp(amber, wash * 0.85);
       sprite.material.opacity = baseOpacity + wash * 0.5;
-      sprite.scale.setScalar(baseScale * (1 + wash * 0.45));
+      sprite.scale.copy(baseScale).multiplyScalar(1 + wash * 0.45);
     });
     if (progress < 1) {
       frame = requestAnimationFrame(step);
@@ -107,7 +111,7 @@ export function runNebulaDawn({ scene, regionId, palette }) {
     sprites.forEach(([sprite, baseOpacity, baseScale], index) => {
       sprite.material.color.copy(originals[index]);
       sprite.material.opacity = baseOpacity;
-      sprite.scale.setScalar(baseScale);
+      sprite.scale.copy(baseScale);
     });
   };
   frame = requestAnimationFrame(step);
@@ -116,7 +120,7 @@ export function runNebulaDawn({ scene, regionId, palette }) {
     sprites.forEach(([sprite, baseOpacity, baseScale], index) => {
       sprite.material.color.copy(originals[index]);
       sprite.material.opacity = baseOpacity;
-      sprite.scale.setScalar(baseScale);
+      sprite.scale.copy(baseScale);
     });
   };
 }

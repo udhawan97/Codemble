@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codemble"
-version = "0.6.4"
+version = "0.7.0"
 description = "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it."
 readme = "README.md"
 license = "Apache-2.0"

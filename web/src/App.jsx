@@ -14,10 +14,12 @@ import { ModeControl } from "./ModeControl.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
   LEVELS,
+  communityPaletteIndex,
   conceptTitle,
   defaultRegion,
   groupByCommunity,
   languageLabel,
+  sharedTopSegment,
 } from "./graphData.js";
 import {
   createHttpLearnerSessionAdapter,
@@ -78,6 +80,37 @@ export function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [session]);
+  // Escape steps back one level on the Map from anywhere, matching what the
+  // galaxy canvas has always done from its own frame. Bound on the window
+  // because the most common Easy path -- following the guidance chip into the
+  // study panel -- leaves focus on <body>, and a container keydown never hears
+  // that Escape: the documented recovery silently did nothing. Fresh state is
+  // read from the session at event time, so the listener binds once.
+  useEffect(() => {
+    function onEscape(event) {
+      if (event.key !== "Escape") return;
+      const current = session.getSnapshot();
+      if (
+        current.status !== "ready" ||
+        current.layer !== "map" ||
+        current.level === LEVELS.GALAXY ||
+        current.showChart ||
+        current.finderOpen ||
+        current.sidebarOpen ||
+        current.showChecks ||
+        current.entrypointOpen ||
+        // Native dialogs (audience gate, coach marks, confirms) own Escape.
+        document.querySelector("dialog[open]") ||
+        isEditableTarget(document.activeElement)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      session.dispatch({ type: "RETREAT" });
+    }
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [session]);
   const {
     chart,
     checkData,
@@ -124,6 +157,19 @@ export function App() {
     studyData,
     studyError,
   } = state;
+
+  // Region id -> palette slot for the Map's box tints. Derived once per
+  // focused graph; the arithmetic lives in graphData so the galaxy's colours
+  // and the Map's can never disagree about a community's family.
+  const communityIndexByRegion = useMemo(() => {
+    if (!focusedGraph) return null;
+    const byRegion = new Map();
+    for (const item of focusedGraph.regions) {
+      const index = communityPaletteIndex(item.community);
+      if (index !== null) byRegion.set(item.id, index);
+    }
+    return byRegion;
+  }, [focusedGraph]);
 
   function restoreRailFocus(primary, secondary) {
     requestAnimationFrame(() => {
@@ -424,7 +470,14 @@ export function App() {
                       type="button"
                       onClick={() => session.dispatch({ type: "RETREAT" })}
                     >
-                      {level === LEVELS.STUDY ? "Back to system" : `Back to ${overviewNoun}`}
+                      {level === LEVELS.STUDY
+                        ? // The exit names the layer it returns to: "system" is
+                          // galaxy vocabulary, and on the Diagram the level
+                          // below study is the module's own focus panel.
+                          layer === "map"
+                          ? "Back to the module"
+                          : "Back to system"
+                        : `Back to ${overviewNoun}`}
                     </button>
                   ) : null}
                   <button
@@ -520,24 +573,9 @@ export function App() {
           className="map-stage"
           aria-label="Parser-proven project map"
           tabIndex={-1}
-          // Escape steps back a level on the Map too. The galaxy has always
-          // had this on its canvas; the Map only gained somewhere to step back
-          // *from* when reading source became possible here.
-          onKeyDown={(event) => {
-            if (
-              event.key !== "Escape" ||
-              layer !== "map" ||
-              level === LEVELS.GALAXY ||
-              finderOpen ||
-              sidebarOpen ||
-              showChecks ||
-              entrypointOpen
-            ) {
-              return;
-            }
-            event.preventDefault();
-            session.dispatch({ type: "RETREAT" });
-          }}
+          // Escape used to be handled here, but a container keydown only hears
+          // the key while focus is inside this subtree -- the window-level
+          // listener above covers every focus position exactly once.
         >
         {sidebarOpen ? (
           <IndexSidebar
@@ -552,6 +590,7 @@ export function App() {
             data={focusedMapData}
             mapTab={mapTab}
             mode={mode}
+            communityIndexByRegion={communityIndexByRegion}
             // Only once a region is actually the drill-down (SYSTEM/STUDY): at
             // GALAXY level `region` is just the default Home, which the learner
             // has not chosen, so highlighting it would fake a selection.
@@ -657,15 +696,25 @@ export function App() {
             {mode === "easy" ? "Possible connection" : "Possible relationship"}
           </span>
           {(layer === "galaxy" && level === LEVELS.GALAXY) ||
-          (layer === "map" && mapTab === "architecture")
-            ? languageOptions
+          (layer === "map" && mapTab === "architecture") ? (
+            <>
+              <span>
+                <span className="legend-communities" aria-hidden="true">
+                  <i /><i /><i /><i />
+                </span>
+                {mode === "easy"
+                  ? "Colour family · files that work together"
+                  : "Hue family · one import community"}
+              </span>
+              {languageOptions
                 .filter((option) => option.id !== "all")
                 .map((option) => (
                   <span key={option.id}>
                     <i className={`legend-tint legend-tint--${option.id}`} /> {option.label}
                   </span>
-                ))
-            : null}
+                ))}
+            </>
+          ) : null}
         </aside>
         {/* One line of body text where a display-size heading used to own the
             left half of the canvas. The counts are the same facts; the stage
@@ -687,7 +736,15 @@ export function App() {
             </span>
             {focusedGraph.partial_files.length ? (
               <span className="partial-summary">
-                {focusedGraph.partial_files.length} unchartable · syntax error
+                {focusedGraph.partial_files.length}{" "}
+                {mode === "easy" ? "could not be read" : "unchartable · syntax error"}
+                {/* Attribute the scariest words in the chrome: on this repo
+                    both broken files are deliberate test fixtures, and a
+                    learner deserves to know the error is not in their code.
+                    The scope is the files' own shared directory, computed. */}
+                {sharedTopSegment(focusedGraph.partial_files)
+                  ? ` · ${focusedGraph.partial_files.length === 1 ? "in" : "all under"} ${sharedTopSegment(focusedGraph.partial_files)}/`
+                  : ""}
               </span>
             ) : null}
           </p>
@@ -710,6 +767,7 @@ export function App() {
             candidates={graph.entrypoint_candidates}
             nodes={graph.nodes}
             selectedEntrypoint={graph.selected_entrypoint}
+            mode={mode}
             error={entrypointError}
             onSelect={(nodeId) =>
               session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId })
@@ -801,6 +859,19 @@ const STAGE_COPY = Object.fromEntries(
   PARSE_STAGES.map(({ id, copy }) => [id, copy]),
 );
 const STAGE_ORDER = PARSE_STAGES.map(({ id }) => id);
+
+// The window-level Escape must never hijack typing: a learner clearing a
+// half-typed path in the picker or finder is editing text, not navigating.
+function isEditableTarget(element) {
+  if (!element) return false;
+  const tag = element.tagName;
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    element.isContentEditable === true
+  );
+}
 
 function LoadingScreen({ progress, onCancel }) {
   const {
@@ -1389,7 +1460,7 @@ function SwitchProject({ onConfirm }) {
   );
 }
 
-function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSelect, onContinue }) {
+function EntrypointPicker({ candidates, nodes, selectedEntrypoint, mode, error, onSelect, onContinue }) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const scopes = useMemo(() => {
     const byScope = new Map();
@@ -1442,7 +1513,9 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
       </h1>
       <p>
         {candidates.length
-          ? "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
+          ? mode === "easy"
+            ? "Your project could start from more than one place, and Codemble will not guess. Pick the one you actually run — best guess first."
+            : "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
           : "No file here declares a startup structure the parser recognises, and Codemble will not guess one. Explore the map without Home — every system, check, explanation, and lens note still works."}
       </p>
       {candidates.length ? (
@@ -1477,7 +1550,16 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
                       onClick={() => onSelect(candidate)}
                     >
                       <span>{candidate}</span>
-                      <small>{node?.file}:{node?.lineno} · parser rank {node?.entrypoint_rank}</small>
+                      <small>
+                        {node?.file}:{node?.lineno} ·{" "}
+                        {/* "candidate 1", not "parser rank 0": zero-indexed
+                            parser vocabulary shown to someone who just said
+                            they are new to coding (audit gap 8). The order is
+                            the same parser fact either way. */}
+                        {mode === "easy"
+                          ? `candidate ${(node?.entrypoint_rank ?? 0) + 1}`
+                          : `parser rank ${node?.entrypoint_rank}`}
+                      </small>
                     </button>
                   ))}
                 </div>
@@ -1571,7 +1653,14 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
     <aside className="check-panel" aria-label="Graph-derived understanding checks">
       <header className="check-panel__header">
         <div>
-          <p>Active recall · graph only</p>
+          {/* "Active recall · graph only" is learning-science plus parser
+              vocabulary in one breath (audit gap 8). Easy states the same two
+              facts in its own words; Expert keeps the precise ones. */}
+          <p>
+            {mode === "easy"
+              ? "Quiz · answers come from your code, not AI"
+              : "Active recall · graph only"}
+          </p>
           <h1 ref={headingRef} tabIndex={-1}>{suite?.region_id ?? "Loading checks"}</h1>
         </div>
         <button className="check-close" type="button" onClick={onClose}>Close</button>
@@ -1589,8 +1678,15 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
       {suite?.region_understood ? (
         <div className="check-complete" aria-live="polite">
           <span className="check-complete__star" aria-hidden="true">✦</span>
-          <h2>System lit.</h2>
-          <p>This region's source hash matches the checks you passed. Edit its file and only this system will dim again.</p>
+          {/* The celebration speaks the layer's vocabulary ("system" is the
+              galaxy's word) and, in Easy, drops "source hash" for what the
+              hash means (audit gaps 8 and 9). */}
+          <h2>{overviewNoun === "map" ? "Module lit." : "System lit."}</h2>
+          <p>
+            {mode === "easy"
+              ? `Codemble remembers the exact code you proved. Edit this file and only this ${overviewNoun === "map" ? "module" : "system"} dims again.`
+              : "This region's source hash matches the checks you passed. Edit its file and only this system will dim again."}
+          </p>
           <button ref={completeRef} className="check-primary" type="button" onClick={onClose}>
             Back to the {overviewNoun === "map" ? "module" : "system"}
           </button>

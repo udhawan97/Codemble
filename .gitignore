@@ -35,3 +35,4 @@ graphify-out/
 # Subagent-driven-development scratch coordination (not product truth)
 .superpowers/
 .remember
+.playwright-mcp/

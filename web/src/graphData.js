@@ -321,10 +321,87 @@ export function groupByCommunity(rows) {
     );
 }
 
+// Directory-based only, so it stays a fact about the path the parser recorded
+// rather than a guess about intent: a file is test-scoped when any of its
+// directories is a conventional test container. Used to attribute fixture
+// errors honestly in the chrome and to tie-break Easy guidance away from test
+// scaffolding -- never to hide anything.
+const TEST_DIR_SEGMENTS = new Set(["tests", "test", "__tests__", "spec", "specs"]);
+
+export function isTestScopedPath(file) {
+  return String(file)
+    .split("/")
+    .slice(0, -1)
+    .some((segment) => TEST_DIR_SEGMENTS.has(segment));
+}
+
+/**
+ * The first path segment every file shares, or null.
+ *
+ * Lets the chrome say "2 unchartable · all under tests/" instead of leading the
+ * learner's headline with a syntax error that belongs to fixture files. The
+ * attribution is the files' own common directory -- computed, never assumed.
+ */
+export function sharedTopSegment(files) {
+  if (!files?.length) return null;
+  const firstSegment = (file) => String(file).split("/").filter(Boolean)[0] ?? null;
+  const candidate = firstSegment(files[0]);
+  if (!candidate) return null;
+  return files.every((file) => firstSegment(file) === candidate) ? candidate : null;
+}
+
 // Summed over a region's members, so the top step stays where it was.
 const REGION_BRIGHT_AT = 5;
 // Distinct callers of one structure. See brightness() below.
 const NODE_BRIGHT_AT = 2;
+
+/* --- Community colour families (D1, Decision Log 2026-07-22) ---------------
+   Hue answers "which part of the project is this?", lightness keeps answering
+   centrality, amber keeps its monopoly on understanding. The mapping is pure
+   arithmetic on the graph's own community id, so the same code always wears
+   the same colours. */
+export const COMMUNITY_PALETTE_SIZE = 8;
+
+export function communityPaletteIndex(community) {
+  if (!Number.isInteger(community)) return null;
+  return ((community % COMMUNITY_PALETTE_SIZE) + COMMUNITY_PALETTE_SIZE) % COMMUNITY_PALETTE_SIZE;
+}
+
+// The centrality ramp expressed as a mix toward the sky ground: bright keeps
+// the token's full (ink-2-capped) luminance, the lower steps recede exactly
+// like the old neutral ramp did. Fractions chosen so the mid step sits near
+// --cm-ink-3's weight and dim near --cm-node-unlit's.
+const COMMUNITY_TIER_MIX = Object.freeze({ bright: 1, mid: 0.72, dim: 0.5 });
+
+function parseRgb(value) {
+  const match = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(String(value));
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+}
+
+function mixRgb(colorValue, groundValue, fraction) {
+  const color = parseRgb(colorValue);
+  const ground = parseRgb(groundValue);
+  if (!color || !ground) return colorValue;
+  const channel = (index) =>
+    Math.round(color[index] * fraction + ground[index] * (1 - fraction));
+  return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
+}
+
+/**
+ * The colour an unlit, charted, cleanly-parsed marker wears.
+ *
+ * Falls back to the old neutral ramp when the graph carries no community id
+ * (an older payload, or a node outside any region), so a missing fact renders
+ * as the absence of a claim rather than a wrong one.
+ */
+export function communityShade(palette, community, centrality, brightAt) {
+  const index = communityPaletteIndex(community);
+  const base = index === null ? null : palette.communities?.[index];
+  if (!base) return brightness(centrality, palette, brightAt);
+  const tier =
+    centrality >= brightAt ? "bright" : centrality >= 1 ? "mid" : "dim";
+  return mixRgb(base, palette.ground, COMMUNITY_TIER_MIX[tier]);
+}
 
 export function galaxyData(graph, palette, revealed = null) {
   const isRevealed = (regionId) => revealed === null || revealed.has(regionId);
@@ -348,13 +425,17 @@ export function galaxyData(graph, palette, revealed = null) {
         fy: region.y,
         fz: region.z,
         val: sizeFromLoc(region.loc, 5, 24),
+        // Precedence is meaning, not decoration: uncharted stays dim (a name
+        // and a colour are the reward for reaching it), amber stays the sole
+        // mark of understanding, uncertainty keeps its own channel, and only
+        // then does the community hue say which part of the project this is.
         color: !charted
           ? palette.nodeDim
           : region.understood
             ? palette.star
             : graph.nodes.some((node) => node.region === region.id && node.partial)
               ? palette.routePossible
-              : brightness(region.centrality, palette, REGION_BRIGHT_AT),
+              : communityShade(palette, region.community, region.centrality, REGION_BRIGHT_AT),
         focusDim: false,
       };
     }),
@@ -377,6 +458,9 @@ export function galaxyData(graph, palette, revealed = null) {
 export function systemData(graph, regionId, palette, { selectedId = null } = {}) {
   const members = graph.nodes.filter((node) => node.region === regionId);
   const memberIds = new Set(members.map((node) => node.id));
+  // Planets wear their system's family hue: the community is a fact about the
+  // region, and every member inherits it (lightness still answers callers).
+  const community = graph.regions.find((region) => region.id === regionId)?.community;
   const callEdges = graph.edges.filter(
     (edge) =>
       edge.kind === "call" &&
@@ -405,7 +489,7 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
         ? palette.star
         : node.partial
           ? palette.routePossible
-          : brightness(node.centrality, palette, NODE_BRIGHT_AT),
+          : communityShade(palette, community, node.centrality, NODE_BRIGHT_AT),
       selected: node.id === selectedId,
       focusDim: Boolean(selectedId) && !connected.has(node.id),
     })),

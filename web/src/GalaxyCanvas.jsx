@@ -160,7 +160,11 @@ export function GalaxyCanvas({
         .nodeThreeObjectExtend(true)
         .linkColor(linkColor)
         .linkLabel(linkLabel)
-        .linkOpacity(0.32)
+        // 0.5, not the old 0.32: routes were already drawn in low-contrast ink
+        // and the global opacity multiplied them near-invisible (audit gap 3).
+        // The route token itself stays below --cm-route-possible, so raising
+        // opacity cannot make a proven edge outshout an unproven one.
+        .linkOpacity(0.5)
         .linkWidth(linkWidth)
         .linkCurvature(0.12)
         .linkVisibility((link) => !(mode === "easy" && link.focusDim))
@@ -525,6 +529,18 @@ function makeMarker(node, palette, dressing, focusedId) {
     homeRing.rotation.x = Math.PI / 2.8;
     group.add(homeRing);
   }
+  // A class wears a thin ring (D2's cheap half): "this planet is a container
+  // of methods" is a parser fact (NodeKind), and the ring gives the system
+  // view bodies with character without inventing anything. Route ink, not
+  // amber and not ruri -- a ring is structure, not progress or interaction.
+  if (node.kind === "class" && !node.focusDim) {
+    const classRing = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 1.45, Math.max(0.1, radius * 0.045), 6, 28),
+      new THREE.MeshBasicMaterial({ color: palette.route }),
+    );
+    classRing.rotation.x = Math.PI / 2.4;
+    group.add(classRing);
+  }
   if (node.selected) {
     const selectedRing = new THREE.Mesh(
       new THREE.TorusGeometry(radius * 2.1, Math.max(0.16, radius * 0.05), 6, 24),
@@ -567,7 +583,9 @@ function readPalette() {
     nodeBright: value("--cm-ink-2"),
     node: value("--cm-ink-3"),
     nodeDim: value("--cm-node-unlit"),
-    route: value("--cm-hairline"),
+    // The dedicated route ink (audit gap 3): --cm-hairline belongs to borders
+    // and panel rules, and an edge drawn in chrome ink disappears beside it.
+    route: value("--cm-route"),
     routePossible: value("--cm-route-possible"),
     // Everything outside the current selection or hover recedes to this;
     // it stays a plain value so readPalette can hand WebGL real rgb().
@@ -577,6 +595,11 @@ function readPalette() {
     nebPython: value("--cm-neb-python"),
     nebJs: value("--cm-neb-js"),
     nebTs: value("--cm-neb-ts"),
+    // The eight community family hues (D1). Read in index order so
+    // communityPaletteIndex's arithmetic and this array can never disagree.
+    communities: Object.freeze(
+      Array.from({ length: 8 }, (_, index) => value(`--cm-com-${index}`)),
+    ),
     // Read raw, NOT through toRenderableColor: these two are painted with a 2D
     // canvas context, which understands any CSS colour including the plate's
     // alpha. Flattening them to rgb() the way WebGL requires would silently

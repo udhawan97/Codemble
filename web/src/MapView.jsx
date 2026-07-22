@@ -4,7 +4,9 @@ import { nebulaTintKey } from "./graphData.js";
 import {
   centerMapPoint,
   clampMapZoom,
+  fitMapWidthZoom,
   fitMapZoom,
+  viewportShowsPoint,
 } from "./mapViewport.js";
 
 // Low enough that Fit can always reach a true fit. A deep call tree is far
@@ -58,10 +60,20 @@ function MapCanvas({
   // the zoom-out you ask for when you want the whole shape. Auto-fitting also
   // measured the scroller before flex layout had settled and landed on a scale
   // that was neither fitted nor honest.
+  //
+  // Below MIN_READABLE_FIT, a true fit stops being an overview at all: this
+  // project's architecture fit at 7%, a thumbnail with no names, no boxes, no
+  // routes. There Fit fits the WIDTH instead -- layers stay readable and the
+  // height scrolls, which is what an overview of a layered import diagram is
+  // for. Wide drawings that genuinely fit keep the whole-shape behaviour.
+  const MIN_READABLE_FIT = 0.35;
   const fit = useCallback(() => {
     const box = scrollRef.current?.getBoundingClientRect();
     if (!box || !contentWidth || !contentHeight) return;
-    setScale(fitMapZoom(box.width, box.height, contentWidth, contentHeight));
+    const whole = fitMapZoom(box.width, box.height, contentWidth, contentHeight);
+    setScale(
+      whole >= MIN_READABLE_FIT ? whole : fitMapWidthZoom(box.width, contentWidth),
+    );
   }, [contentWidth, contentHeight]);
 
   // A compact viewport opens at readable 100%, centred on Home (or the selected
@@ -75,7 +87,21 @@ function MapCanvas({
     frame = requestAnimationFrame(() => {
       const box = scroller.getBoundingClientRect();
       const saved = initialViewRef.current;
-      if (saved) {
+      // A saved viewport is replayed only while it still shows the focus
+      // point. Restoring a desktop scroll into a phone-sized viewport pointed
+      // the learner at empty layer bands with nothing on screen to say why.
+      const savedStillHonest =
+        saved &&
+        (!focusPoint ||
+          viewportShowsPoint({
+            viewportWidth: box.width,
+            viewportHeight: box.height,
+            scale: saved.scale,
+            scrollLeft: saved.scrollLeft,
+            scrollTop: saved.scrollTop,
+            point: focusPoint,
+          }));
+      if (savedStillHonest) {
         scroller.scrollLeft = saved.scrollLeft;
         scroller.scrollTop = saved.scrollTop;
       } else if (box.width < 640 && focusPoint) {
@@ -87,6 +113,11 @@ function MapCanvas({
         });
         scroller.scrollLeft = position.scrollLeft;
         scroller.scrollTop = position.scrollTop;
+      } else if (saved && !savedStillHonest) {
+        // Desktop fallback: the stale scroll is dropped and the drawing opens
+        // from its origin, the same first-landing state as a fresh session.
+        scroller.scrollLeft = 0;
+        scroller.scrollTop = 0;
       }
       initialized.current = true;
       rememberViewport();
@@ -99,6 +130,44 @@ function MapCanvas({
     const frame = requestAnimationFrame(rememberViewport);
     return () => cancelAnimationFrame(frame);
   }, [rememberViewport]);
+
+  // The mount-time honesty check has a live twin: a window RESIZE never
+  // remounts this component, so shrinking a desktop window to phone width
+  // kept the desktop scroll and showed empty layer bands. When a size change
+  // pushes the focus point fully off screen, re-centre on it; a learner who
+  // keeps their focus visible keeps their scroll position untouched.
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return undefined;
+    let last = null;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      const previous = last;
+      last = { width, height };
+      if (!previous || !focusPoint || !initialized.current) return;
+      if (Math.abs(width - previous.width) < 1 && Math.abs(height - previous.height) < 1) return;
+      const honest = viewportShowsPoint({
+        viewportWidth: width,
+        viewportHeight: height,
+        scale,
+        scrollLeft: scroller.scrollLeft,
+        scrollTop: scroller.scrollTop,
+        point: focusPoint,
+      });
+      if (honest) return;
+      const position = centerMapPoint({
+        viewportWidth: width,
+        viewportHeight: height,
+        scale,
+        point: focusPoint,
+      });
+      scroller.scrollLeft = position.scrollLeft;
+      scroller.scrollTop = position.scrollTop;
+      rememberViewport();
+    });
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, [focusPoint, rememberViewport, scale]);
 
   function onPointerDown(event) {
     // Left button on empty diagram space only: boxes and rows are buttons, and
@@ -227,6 +296,7 @@ export function MapView({
   data,
   mapTab,
   mode,
+  communityIndexByRegion,
   selectedRegionId,
   hasEntrypointCandidates,
   error,
@@ -274,6 +344,7 @@ export function MapView({
         <ArchitectureMap
           architecture={data.architecture}
           mode={mode}
+          communityIndexByRegion={communityIndexByRegion}
           selectedRegionId={selectedRegionId}
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectRegion={onSelectRegion}
@@ -293,8 +364,28 @@ export function MapView({
   );
 }
 
-function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore }) {
+// Above this many unrouted modules, the shelf opens collapsed: on this repo 80
+// of 109 boxes were test fixtures and scripts whose block made the drawing
+// 1:3.2 tall, so the connected core the tab exists to show fit at 7%.
+const SHELF_AUTO_COLLAPSE = 8;
+
+function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore }) {
   const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
+  // View state, like zoom -- never graph truth. Collapsed, the unrouted block
+  // is REPRESENTED by its count in the note below (with the control to expand),
+  // so every module stays accounted for even while its box is folded away.
+  const [showUnreached, setShowUnreached] = useState(
+    architecture.unreachable.length <= SHELF_AUTO_COLLAPSE,
+  );
+  const unreachableSet = new Set(architecture.unreachable);
+  const visibleBoxes = showUnreached
+    ? architecture.boxes
+    : architecture.boxes.filter((box) => !unreachableSet.has(box.id));
+  // Cropping the empty band the folded shelf leaves behind is presentation of
+  // backend geometry, not layout: every visible coordinate is untouched.
+  const contentHeight = showUnreached
+    ? architecture.height
+    : visibleBoxes.reduce((max, box) => Math.max(max, box.y + box.height), 0);
   const padding = 32;
   const focusBox =
     boxes.get(selectedRegionId) ??
@@ -311,7 +402,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
     <>
     <MapCanvas
       contentWidth={architecture.width + padding * 2}
-      contentHeight={architecture.height + padding * 2}
+      contentHeight={contentHeight + padding * 2}
       label="the architecture map"
       viewKey={`architecture:${architecture.home ?? "none"}`}
       viewportStore={viewportStore}
@@ -322,7 +413,7 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMin meet"
-        viewBox={`${-padding} ${-padding} ${architecture.width + padding * 2} ${architecture.height + padding * 2}`}
+        viewBox={`${-padding} ${-padding} ${architecture.width + padding * 2} ${contentHeight + padding * 2}`}
         // group, not img: `img` is children-presentational in ARIA, so it
         // stripped the name and role off every box below -- a screen-reader
         // user tabbed into focusable elements announced as nothing at all.
@@ -366,6 +457,11 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
             const from = boxes.get(edge.src);
             const to = boxes.get(edge.dst);
             if (!from || !to) return null;
+            // A folded box takes its edges with it (fixtures import each
+            // other); an edge to a hidden anchor would point at nothing.
+            if (!showUnreached && (unreachableSet.has(edge.src) || unreachableSet.has(edge.dst))) {
+              return null;
+            }
             return (
               <path
                 key={`${edge.src}->${edge.dst}`}
@@ -374,12 +470,12 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
                 strokeDasharray={edge.certain ? undefined : "5 4"}
                 strokeWidth={architectureEdgeWidth(edge.weight)}
                 markerEnd={`url(#${edge.cycle ? "architecture-cycle-arrow" : "architecture-arrow"})`}
-                className={`architecture-map__edge${edge.cycle ? " is-cycle" : ""}`}
+                className={`architecture-map__edge${edge.cycle ? " is-cycle" : ""}${edge.certain ? "" : " is-possible"}`}
               />
             );
           })}
         </g>
-        {architecture.boxes.map((box) => (
+        {visibleBoxes.map((box) => (
           <g
             key={box.id}
             className="architecture-map__box"
@@ -387,6 +483,16 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
             data-home={box.home}
             data-reachable={box.reachable}
             data-partial={box.partial}
+            // The community family hue rides a custom property the fill rule
+            // mixes a few percent of into the box ground -- zones form without
+            // touching the stroke channels that carry understood/Home/
+            // reachability. Undefined (no community fact) falls back to the
+            // plain ground in CSS.
+            style={
+              communityIndexByRegion?.has(box.id)
+                ? { "--box-com": `var(--cm-com-${communityIndexByRegion.get(box.id)})` }
+                : undefined
+            }
             // Selection is the interaction accent (--cm-orbit), never amber:
             // the box you clicked (or drilled into) reads as "you chose this",
             // which is distinct from "understood". A persistent attribute, not
@@ -409,7 +515,17 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
                 aria-label above regardless of what the glyphs below fit. */}
             <title>{box.label}{box.partial ? " — unchartable, syntax error" : ""}</title>
             <rect width={box.width} height={box.height} rx="3" />
-            <rect className="box-tint" width="4" height={box.height} fill={tintFor(box.language)} />
+            {/* style, never the fill ATTRIBUTE: var() is invalid in an SVG
+                presentation attribute, so the attribute form silently fell
+                back to the box navy and the legend advertised language
+                colours the map never drew. The style property is CSS, where
+                var() resolves. */}
+            <rect
+              className="box-tint"
+              width="4"
+              height={box.height}
+              style={{ fill: tintFor(box.language) }}
+            />
             {/* A corner flag, not just a colour: the box outline already
                 carries understood (colour), Home (width), and reachability
                 (dash), so a fourth signal on the same property would collide
@@ -458,8 +574,18 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
         <p className="map-note">
           {architecture.unreachable.length}{" "}
           {architecture.unreachable.length === 1 ? "module has" : "modules have"} no import
-          route from Home, so {architecture.unreachable.length === 1 ? "it sits" : "they sit"}{" "}
-          in the bottom row rather than being placed by guesswork.
+          route from Home
+          {showUnreached
+            ? `, so ${architecture.unreachable.length === 1 ? "it sits" : "they sit"} in the bottom rows rather than being placed by guesswork.`
+            : ". They are folded away so your connected code stays readable — nothing is hidden from the count."}{" "}
+          <button
+            type="button"
+            className="map-note__toggle"
+            aria-expanded={showUnreached}
+            onClick={() => setShowUnreached((value) => !value)}
+          >
+            {showUnreached ? "Fold them away" : "Show them"}
+          </button>
         </p>
       ) : null}
     </>
@@ -530,6 +656,7 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
                 key={`${row.order}`}
                 d={`M ${parent.x + 8} ${parent.y + 20} V ${row.y + 12} H ${row.x + 8}`}
                 strokeDasharray={row.certain ? undefined : "5 4"}
+                className={row.certain ? undefined : "is-possible"}
               />
             );
           })}
