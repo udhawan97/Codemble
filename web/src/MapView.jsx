@@ -4,7 +4,9 @@ import { nebulaTintKey } from "./graphData.js";
 import {
   centerMapPoint,
   clampMapZoom,
+  fitMapWidthZoom,
   fitMapZoom,
+  viewportShowsPoint,
 } from "./mapViewport.js";
 
 // Low enough that Fit can always reach a true fit. A deep call tree is far
@@ -58,10 +60,20 @@ function MapCanvas({
   // the zoom-out you ask for when you want the whole shape. Auto-fitting also
   // measured the scroller before flex layout had settled and landed on a scale
   // that was neither fitted nor honest.
+  //
+  // Below MIN_READABLE_FIT, a true fit stops being an overview at all: this
+  // project's architecture fit at 7%, a thumbnail with no names, no boxes, no
+  // routes. There Fit fits the WIDTH instead -- layers stay readable and the
+  // height scrolls, which is what an overview of a layered import diagram is
+  // for. Wide drawings that genuinely fit keep the whole-shape behaviour.
+  const MIN_READABLE_FIT = 0.35;
   const fit = useCallback(() => {
     const box = scrollRef.current?.getBoundingClientRect();
     if (!box || !contentWidth || !contentHeight) return;
-    setScale(fitMapZoom(box.width, box.height, contentWidth, contentHeight));
+    const whole = fitMapZoom(box.width, box.height, contentWidth, contentHeight);
+    setScale(
+      whole >= MIN_READABLE_FIT ? whole : fitMapWidthZoom(box.width, contentWidth),
+    );
   }, [contentWidth, contentHeight]);
 
   // A compact viewport opens at readable 100%, centred on Home (or the selected
@@ -75,7 +87,21 @@ function MapCanvas({
     frame = requestAnimationFrame(() => {
       const box = scroller.getBoundingClientRect();
       const saved = initialViewRef.current;
-      if (saved) {
+      // A saved viewport is replayed only while it still shows the focus
+      // point. Restoring a desktop scroll into a phone-sized viewport pointed
+      // the learner at empty layer bands with nothing on screen to say why.
+      const savedStillHonest =
+        saved &&
+        (!focusPoint ||
+          viewportShowsPoint({
+            viewportWidth: box.width,
+            viewportHeight: box.height,
+            scale: saved.scale,
+            scrollLeft: saved.scrollLeft,
+            scrollTop: saved.scrollTop,
+            point: focusPoint,
+          }));
+      if (savedStillHonest) {
         scroller.scrollLeft = saved.scrollLeft;
         scroller.scrollTop = saved.scrollTop;
       } else if (box.width < 640 && focusPoint) {
@@ -87,6 +113,11 @@ function MapCanvas({
         });
         scroller.scrollLeft = position.scrollLeft;
         scroller.scrollTop = position.scrollTop;
+      } else if (saved && !savedStillHonest) {
+        // Desktop fallback: the stale scroll is dropped and the drawing opens
+        // from its origin, the same first-landing state as a fresh session.
+        scroller.scrollLeft = 0;
+        scroller.scrollTop = 0;
       }
       initialized.current = true;
       rememberViewport();
@@ -409,7 +440,17 @@ function ArchitectureMap({ architecture, mode, selectedRegionId, hasEntrypointCa
                 aria-label above regardless of what the glyphs below fit. */}
             <title>{box.label}{box.partial ? " — unchartable, syntax error" : ""}</title>
             <rect width={box.width} height={box.height} rx="3" />
-            <rect className="box-tint" width="4" height={box.height} fill={tintFor(box.language)} />
+            {/* style, never the fill ATTRIBUTE: var() is invalid in an SVG
+                presentation attribute, so the attribute form silently fell
+                back to the box navy and the legend advertised language
+                colours the map never drew. The style property is CSS, where
+                var() resolves. */}
+            <rect
+              className="box-tint"
+              width="4"
+              height={box.height}
+              style={{ fill: tintFor(box.language) }}
+            />
             {/* A corner flag, not just a colour: the box outline already
                 carries understood (colour), Home (width), and reachability
                 (dash), so a fourth signal on the same property would collide

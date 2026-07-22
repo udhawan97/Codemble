@@ -844,6 +844,8 @@ input:focus-visible {
 .orientation-copy--inline {
   position: static;
   z-index: auto;
+  display: flex;
+  flex-direction: column;
   flex: 0 0 auto;
   /* Never starve the drawing. On a short viewport this copy is tall enough to
      take the whole column and leave the map zero height -- trading an overlap
@@ -851,8 +853,19 @@ input:focus-visible {
      scarce; at ordinary window heights the band is shorter than this and the
      rule does nothing. */
   max-block-size: 45%;
-  overflow-y: auto;
   pointer-events: auto;
+}
+
+/* When the height cap binds, the PROSE scrolls and the action row stays whole:
+   the old overflow on the panel itself cut "Read the source" and "Prove
+   understanding" to slivers at 1280x800, which read as broken buttons. */
+.orientation-copy--inline > p {
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+.orientation-copy--inline .orientation-copy__actions {
+  flex: 0 0 auto;
 }
 
 /* Sized to sit above a drawing rather than float over open space: the display
@@ -978,6 +991,14 @@ input:focus-visible {
   /* Clear of the toggle that now owns the corner. */
   inset-block-start: calc(var(--cm-space-md) + 40px);
   display: none;
+}
+
+/* On the Map layer the same corner also holds the zoom group (inside
+   .map-canvas). The open Key used to paint straight over it and intercept its
+   clicks -- Fit and the zoom steps went dead until the Key was closed. One
+   extra offset stacks the corner instead: toggle, zoom row, then the Key. */
+.map-stage:has(.map-view) .map-legend {
+  inset-block-start: calc(var(--cm-space-md) + 40px + 44px);
   max-height: min(60vh, 30rem);
   overflow-y: auto;
   grid-template-columns: repeat(2, auto);

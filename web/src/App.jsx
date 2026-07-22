@@ -78,6 +78,37 @@ export function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [session]);
+  // Escape steps back one level on the Map from anywhere, matching what the
+  // galaxy canvas has always done from its own frame. Bound on the window
+  // because the most common Easy path -- following the guidance chip into the
+  // study panel -- leaves focus on <body>, and a container keydown never hears
+  // that Escape: the documented recovery silently did nothing. Fresh state is
+  // read from the session at event time, so the listener binds once.
+  useEffect(() => {
+    function onEscape(event) {
+      if (event.key !== "Escape") return;
+      const current = session.getSnapshot();
+      if (
+        current.status !== "ready" ||
+        current.layer !== "map" ||
+        current.level === LEVELS.GALAXY ||
+        current.showChart ||
+        current.finderOpen ||
+        current.sidebarOpen ||
+        current.showChecks ||
+        current.entrypointOpen ||
+        // Native dialogs (audience gate, coach marks, confirms) own Escape.
+        document.querySelector("dialog[open]") ||
+        isEditableTarget(document.activeElement)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      session.dispatch({ type: "RETREAT" });
+    }
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [session]);
   const {
     chart,
     checkData,
@@ -424,7 +455,14 @@ export function App() {
                       type="button"
                       onClick={() => session.dispatch({ type: "RETREAT" })}
                     >
-                      {level === LEVELS.STUDY ? "Back to system" : `Back to ${overviewNoun}`}
+                      {level === LEVELS.STUDY
+                        ? // The exit names the layer it returns to: "system" is
+                          // galaxy vocabulary, and on the Diagram the level
+                          // below study is the module's own focus panel.
+                          layer === "map"
+                          ? "Back to the module"
+                          : "Back to system"
+                        : `Back to ${overviewNoun}`}
                     </button>
                   ) : null}
                   <button
@@ -520,24 +558,9 @@ export function App() {
           className="map-stage"
           aria-label="Parser-proven project map"
           tabIndex={-1}
-          // Escape steps back a level on the Map too. The galaxy has always
-          // had this on its canvas; the Map only gained somewhere to step back
-          // *from* when reading source became possible here.
-          onKeyDown={(event) => {
-            if (
-              event.key !== "Escape" ||
-              layer !== "map" ||
-              level === LEVELS.GALAXY ||
-              finderOpen ||
-              sidebarOpen ||
-              showChecks ||
-              entrypointOpen
-            ) {
-              return;
-            }
-            event.preventDefault();
-            session.dispatch({ type: "RETREAT" });
-          }}
+          // Escape used to be handled here, but a container keydown only hears
+          // the key while focus is inside this subtree -- the window-level
+          // listener above covers every focus position exactly once.
         >
         {sidebarOpen ? (
           <IndexSidebar
@@ -801,6 +824,19 @@ const STAGE_COPY = Object.fromEntries(
   PARSE_STAGES.map(({ id, copy }) => [id, copy]),
 );
 const STAGE_ORDER = PARSE_STAGES.map(({ id }) => id);
+
+// The window-level Escape must never hijack typing: a learner clearing a
+// half-typed path in the picker or finder is editing text, not navigating.
+function isEditableTarget(element) {
+  if (!element) return false;
+  const tag = element.tagName;
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    element.isContentEditable === true
+  );
+}
 
 function LoadingScreen({ progress, onCancel }) {
   const {
