@@ -2,10 +2,12 @@ import {
   LEVELS,
   buildConceptChart,
   defaultRegion,
+  isTestScopedPath,
   languageFocusGraph,
   languageFocusMap,
   moduleIndex,
   projectLanguageOptions,
+  regionFiles,
   revealedRegionIds,
 } from "./graphData.js";
 
@@ -200,6 +202,14 @@ export function createLearnerProjection() {
   return Object.freeze({ derive });
 }
 
+// Test scaffolding pays this many extra hops in the guidance ranking (D3): a
+// CLI's nearest neighbour is usually its own test suite, so pure hop-distance
+// sent a brand-new learner from Home straight into tests/. Bounded, so a
+// non-test module one hop farther wins the tie while a distant one does not --
+// and a project that is only tests is still guided. Both inputs are parser
+// truth: the BFS hop count and the region's recorded file path.
+const TEST_SCOPE_HOP_PENALTY = 1.5;
+
 function nextStudyHint(graph, { mode, level, regionId, layer }) {
   if (mode !== "easy" || level === LEVELS.STUDY) return null;
   const unlit = graph.regions.filter((region) => !region.understood);
@@ -207,27 +217,37 @@ function nextStudyHint(graph, { mode, level, regionId, layer }) {
   // Asked of the graph, not of how the choice was made: a region flagged home
   // is what makes hops mean anything at all.
   const homeChosen = graph.regions.some((region) => region.home);
+  const files = regionFiles(graph);
   const nearest = unlit
-    .map((region) => ({
-      regionId: region.id,
-      hops:
+    .map((region) => {
+      const hops =
         typeof region.hops_from_home === "number"
           ? region.hops_from_home
-          : Infinity,
-      // Equal-hops ties broke alphabetically, and on a Python project hop 1
-      // from Home is usually a package `__init__` -- so the first thing the
-      // game ever recommended was a four-line file with one structure in it.
-      // Still pure graph arithmetic: the parser counted these structures.
-      structures: typeof region.node_count === "number" ? region.node_count : 0,
-    }))
+          : Infinity;
+      return {
+        regionId: region.id,
+        hops,
+        biasedHops: isTestScopedPath(files.get(region.id) ?? "")
+          ? hops + TEST_SCOPE_HOP_PENALTY
+          : hops,
+        // Equal-hops ties broke alphabetically, and on a Python project hop 1
+        // from Home is usually a package `__init__` -- so the first thing the
+        // game ever recommended was a four-line file with one structure in it.
+        // Still pure graph arithmetic: the parser counted these structures.
+        structures: typeof region.node_count === "number" ? region.node_count : 0,
+      };
+    })
     .sort(
       (left, right) =>
-        left.hops - right.hops ||
+        left.biasedHops - right.biasedHops ||
         right.structures - left.structures ||
         left.regionId.localeCompare(right.regionId),
     )[0];
+  // The ranking key stays internal: the learner-facing hint reports the REAL
+  // hop count, never the biased one used to order candidates.
+  const { biasedHops, ...nearestFacts } = nearest;
   const hint = {
-    ...nearest,
+    ...nearestFacts,
     message: `Study ${nearest.regionId} next`,
     reason: !homeChosen
       ? // Without a Home there is no route to measure, so the unreachable

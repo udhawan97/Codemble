@@ -767,6 +767,7 @@ export function App() {
             candidates={graph.entrypoint_candidates}
             nodes={graph.nodes}
             selectedEntrypoint={graph.selected_entrypoint}
+            mode={mode}
             error={entrypointError}
             onSelect={(nodeId) =>
               session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId })
@@ -1459,7 +1460,7 @@ function SwitchProject({ onConfirm }) {
   );
 }
 
-function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSelect, onContinue }) {
+function EntrypointPicker({ candidates, nodes, selectedEntrypoint, mode, error, onSelect, onContinue }) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const scopes = useMemo(() => {
     const byScope = new Map();
@@ -1512,7 +1513,9 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
       </h1>
       <p>
         {candidates.length
-          ? "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
+          ? mode === "easy"
+            ? "Your project could start from more than one place, and Codemble will not guess. Pick the one you actually run — best guess first."
+            : "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
           : "No file here declares a startup structure the parser recognises, and Codemble will not guess one. Explore the map without Home — every system, check, explanation, and lens note still works."}
       </p>
       {candidates.length ? (
@@ -1547,7 +1550,16 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, error, onSele
                       onClick={() => onSelect(candidate)}
                     >
                       <span>{candidate}</span>
-                      <small>{node?.file}:{node?.lineno} · parser rank {node?.entrypoint_rank}</small>
+                      <small>
+                        {node?.file}:{node?.lineno} ·{" "}
+                        {/* "candidate 1", not "parser rank 0": zero-indexed
+                            parser vocabulary shown to someone who just said
+                            they are new to coding (audit gap 8). The order is
+                            the same parser fact either way. */}
+                        {mode === "easy"
+                          ? `candidate ${(node?.entrypoint_rank ?? 0) + 1}`
+                          : `parser rank ${node?.entrypoint_rank}`}
+                      </small>
                     </button>
                   ))}
                 </div>
@@ -1641,7 +1653,14 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
     <aside className="check-panel" aria-label="Graph-derived understanding checks">
       <header className="check-panel__header">
         <div>
-          <p>Active recall · graph only</p>
+          {/* "Active recall · graph only" is learning-science plus parser
+              vocabulary in one breath (audit gap 8). Easy states the same two
+              facts in its own words; Expert keeps the precise ones. */}
+          <p>
+            {mode === "easy"
+              ? "Quiz · answers come from your code, not AI"
+              : "Active recall · graph only"}
+          </p>
           <h1 ref={headingRef} tabIndex={-1}>{suite?.region_id ?? "Loading checks"}</h1>
         </div>
         <button className="check-close" type="button" onClick={onClose}>Close</button>
@@ -1659,8 +1678,15 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
       {suite?.region_understood ? (
         <div className="check-complete" aria-live="polite">
           <span className="check-complete__star" aria-hidden="true">✦</span>
-          <h2>System lit.</h2>
-          <p>This region's source hash matches the checks you passed. Edit its file and only this system will dim again.</p>
+          {/* The celebration speaks the layer's vocabulary ("system" is the
+              galaxy's word) and, in Easy, drops "source hash" for what the
+              hash means (audit gaps 8 and 9). */}
+          <h2>{overviewNoun === "map" ? "Module lit." : "System lit."}</h2>
+          <p>
+            {mode === "easy"
+              ? `Codemble remembers the exact code you proved. Edit this file and only this ${overviewNoun === "map" ? "module" : "system"} dims again.`
+              : "This region's source hash matches the checks you passed. Edit its file and only this system will dim again."}
+          </p>
           <button ref={completeRef} className="check-primary" type="button" onClick={onClose}>
             Back to the {overviewNoun === "map" ? "module" : "system"}
           </button>

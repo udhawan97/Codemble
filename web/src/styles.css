@@ -1243,8 +1243,14 @@ input:focus-visible {
 }
 
 .mini-constellation line {
-  stroke: var(--cm-hairline);
+  stroke: var(--cm-route);
   stroke-width: 1;
+}
+
+.mini-constellation__name {
+  fill: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: 9px;
 }
 
 .mini-constellation circle {
