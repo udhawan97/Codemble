@@ -1,0 +1,21 @@
+{
+  "scanned_at": "2026-07-22",
+  "framework": "Astro 7 with Starlight 0.41",
+  "design_system": "design.md",
+  "font_stack": [
+    "Shippori Mincho",
+    "Zen Kaku Gothic New",
+    "JetBrains Mono"
+  ],
+  "palette": "Formal Edo tokens in src/styles/tokens.css",
+  "motion": "dependency-free CSS and IntersectionObserver",
+  "spacing": "4-point named scale",
+  "preserve": [
+    "kishotenketsu landing structure",
+    "ruri interaction semantics",
+    "kohaku understanding semantics",
+    "solid paper surfaces",
+    "reduced-motion contract",
+    "/Codemble base path"
+  ]
+}

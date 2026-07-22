@@ -1,0 +1,164 @@
+---
+/**
+ * Atlas Journey — the shipped Codemble learning passage in four real frames.
+ *
+ * Desktop keeps one atlas plate in view while the reader moves through the
+ * semantic zoom. Compact and reduced-motion layouts pair each frame directly
+ * with its copy instead; the choreography is never required for meaning.
+ */
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const shot = (file: string) => `${base}/shots/${file}`;
+
+const scenes = [
+  {
+    id: "galaxy",
+    mode: "Galaxy",
+    title: "Begin with the whole sky.",
+    body: "Every supported module becomes a star system. Imports become routes, Home stays marked, and unreadable files remain visible instead of disappearing from the story.",
+    image: "galaxy.png",
+    alt: "Codemble’s galaxy view showing parser-proven star systems, named modules, language focus controls, and a visible partial-parse notice.",
+  },
+  {
+    id: "map",
+    mode: "Map",
+    title: "Flatten it when shape matters more than wonder.",
+    body: "The Architecture layer reads the same graph as the galaxy. It turns proven imports into a directional map without inventing placement or hiding modules that have no route from Home.",
+    image: "map-architecture.png",
+    alt: "Codemble’s Architecture map showing directional module routes from Home and an honest note about modules with no proven import route.",
+  },
+  {
+    id: "system",
+    mode: "System",
+    title: "Move from a module to the structures inside it.",
+    body: "Functions and classes become planets in deterministic call-depth orbits. Proven calls and possible calls remain different, so the scene never upgrades a guess into a fact.",
+    image: "system.png",
+    alt: "Codemble’s system view showing functions and classes in deterministic orbits with their parser-derived call relationships.",
+  },
+  {
+    id: "study",
+    mode: "Study",
+    title: "Land on evidence, not a generated tour.",
+    body: "Study opens the real structure, its source span, callers, parser evidence, and grounded explanation. This is where looking becomes reading — before the quiz asks you to prove it.",
+    image: "study-panel.png",
+    alt: "Codemble’s study panel for create_app, showing its real file location, span, callers, parser-proven resolution, and structural summary.",
+  },
+];
+---
+
+<div class="atlas-journey" data-atlas-journey data-scene="galaxy">
+  <div class="journey-stage" aria-hidden="true">
+    <div class="journey-plate">
+      {
+        scenes.map((scene, index) => (
+          <figure
+            class={`journey-frame journey-frame-${scene.id}`}
+            data-journey-frame={scene.id}
+            data-active={index === 0 ? "" : undefined}
+          >
+            <img
+              src={shot(scene.image)}
+              alt=""
+              width="1440"
+              height="716"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+        ))
+      }
+    </div>
+    <p class="journey-caption">
+      <span lang="ja">実景</span>
+      <span>real product · one parser-proven graph</span>
+    </p>
+  </div>
+
+  <ol class="journey-steps">
+    {
+      scenes.map((scene, index) => (
+        <li
+          class="journey-step"
+          data-journey-step={scene.id}
+          data-current={index === 0 ? "" : undefined}
+          aria-current={index === 0 ? "step" : undefined}
+        >
+          <figure class="journey-mobile-media">
+            <img
+              src={shot(scene.image)}
+              alt={scene.alt}
+              width="1440"
+              height="716"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+          <p class="journey-mode">{scene.mode}</p>
+          <h3>{scene.title}</h3>
+          <p>{scene.body}</p>
+        </li>
+      ))
+    }
+  </ol>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-atlas-journey]").forEach((root) => {
+    const steps = [...root.querySelectorAll<HTMLElement>("[data-journey-step]")];
+    const frames = [...root.querySelectorAll<HTMLElement>("[data-journey-frame]")];
+    const cinematic = matchMedia(
+      "(min-width: 60rem) and (prefers-reduced-motion: no-preference)",
+    );
+    let observer: IntersectionObserver | undefined;
+
+    const activate = (id: string) => {
+      if (!id || root.dataset.scene === id) return;
+      root.dataset.scene = id;
+      frames.forEach((frame) =>
+        frame.toggleAttribute("data-active", frame.dataset.journeyFrame === id),
+      );
+      steps.forEach((step) => {
+        const current = step.dataset.journeyStep === id;
+        step.toggleAttribute("data-current", current);
+        if (current) step.setAttribute("aria-current", "step");
+        else step.removeAttribute("aria-current");
+      });
+    };
+
+    const selectNearest = () => {
+      const focusLine = innerHeight * 0.48;
+      let nearest: HTMLElement | undefined;
+      let distance = Number.POSITIVE_INFINITY;
+
+      for (const step of steps) {
+        const rect = step.getBoundingClientRect();
+        if (rect.bottom <= 0 || rect.top >= innerHeight) continue;
+        const nextDistance = Math.abs(rect.top + rect.height / 2 - focusLine);
+        if (nextDistance >= distance) continue;
+        nearest = step;
+        distance = nextDistance;
+      }
+
+      if (nearest?.dataset.journeyStep) activate(nearest.dataset.journeyStep);
+    };
+
+    const connect = () => {
+      observer?.disconnect();
+      observer = undefined;
+
+      if (!cinematic.matches || !("IntersectionObserver" in window)) {
+        activate(steps[0]?.dataset.journeyStep || "galaxy");
+        return;
+      }
+
+      observer = new IntersectionObserver(selectNearest, {
+        rootMargin: "-12% 0px -12% 0px",
+        threshold: [0, 0.25, 0.5, 0.75, 1],
+      });
+      steps.forEach((step) => observer?.observe(step));
+      selectNearest();
+    };
+
+    connect();
+    cinematic.addEventListener("change", connect);
+  });
+</script>

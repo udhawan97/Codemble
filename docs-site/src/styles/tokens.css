@@ -1,11 +1,13 @@
 /* Hallmark · genre: atmospheric · macrostructure: Kishotenketsu (four-act narrative)
  * theme: Formal Edo (custom) · nav: N9 edge-aligned · footer: Ft5 statement
- * signature: the Enso Galaxy — seeded 3D canvas, zero dependencies
- * enrichment: none (the galaxy IS the enrichment; no stock art, no fake chrome)
+ * signature: tatebanko hero · product stage: authentic semantic zoom
+ * enrichment: generated SVG sheets + real shipped screenshots, zero dependencies
  * paper: #070b1c kachi-night · accent: #e89b2e kohaku warm + #82abec ruri cool
  * display: Shippori Mincho · body: Zen Kaku Gothic New · data: JetBrains Mono
- * contrast: pass — every ink/accent >= 4.5:1 on BOTH grounds (ratios annotated)
- * pre-emit critique: P5 H5 E5 S5 R4 V5
+ * contrast: pass (40–41) · nav: N9 · footer: Ft5 · slop: pass (42–45)
+ * honest: pass (46) · chrome: pass (47) · tokens: pass (48)
+ * responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57)
+ * pre-emit critique: P5 H5 E5 S5 R5 V5
  * ============================================================================
  * Codemble design tokens — single source of truth.
  * docs-site/design.md mirrors and explains these values; change them together.

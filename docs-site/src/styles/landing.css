@@ -1,5 +1,7 @@
 /* Hallmark · macrostructure: Kishotenketsu plates · theme: Edo star atlas
  * nav: N9 edge-aligned · footer: Ft5 statement · signature: tatebanko hero
+ * product stage: authentic semantic zoom · real screenshots · no fake chrome
+ * pre-emit critique: P5 H5 E5 S5 R5 V5 · slop: pass (58/58)
  * Landing-only styles. Scoped to src/pages/index.astro; the docs never load it.
  * Every value references a token from tokens.css — no raw colours here.
  * ========================================================================== */
@@ -113,7 +115,6 @@ img {
   border: var(--cm-rule) solid var(--cm-orbit);
   border-radius: var(--cm-radius);
   text-decoration: none;
-  transition: top var(--cm-dur-quick) var(--cm-ease);
 }
 
 .skip:focus {
@@ -154,7 +155,7 @@ img {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: clamp(0.6rem, 1.6vw, 1.5rem);
+  gap: clamp(var(--cm-space-xs), 1.6vw, var(--cm-space-md));
   font-size: var(--cm-text-sm);
 }
 
@@ -192,6 +193,25 @@ img {
 
 .nav-theme:active {
   transform: translateY(1px);
+}
+
+.nav .cmsearch .cmsearch-open {
+  transition:
+    color var(--cm-dur-quick) var(--cm-ease),
+    border-color var(--cm-dur-quick) var(--cm-ease);
+}
+
+.nav .cmsearch .cmsearch-open:active,
+.nav .cmsearch .cmsearch-close:active {
+  transform: translateY(1px);
+}
+
+.nav-theme:disabled,
+.cmd-copy:disabled,
+.nav .cmsearch .cmsearch-open:disabled,
+.nav .cmsearch .cmsearch-close:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Search and GitHub survive narrowest; section links fold away first. */
@@ -272,7 +292,7 @@ img {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.7rem 1.4rem;
+  padding: var(--cm-space-sm) var(--cm-space-lg);
   font-family: var(--cm-font-body);
   font-size: var(--cm-text-sm);
   font-weight: 700;
@@ -325,7 +345,8 @@ img {
   max-width: 100%;
   min-width: 0; /* same reason: let the <code> inside scroll, not push */
   margin-top: var(--cm-space-lg);
-  padding: 0.6rem 0.6rem 0.6rem 0.9rem;
+  padding: var(--cm-space-xs) var(--cm-space-xs) var(--cm-space-xs)
+    var(--cm-space-sm);
   background: var(--cm-ground-2);
   border: var(--cm-rule) solid var(--cm-hairline);
   border-left: 2px solid var(--cm-star);
@@ -349,7 +370,7 @@ img {
 
 .cmd-copy {
   flex: none;
-  padding: 0.35rem 0.7rem;
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
   font-family: var(--cm-font-body);
   font-size: var(--cm-text-xs);
   font-weight: 700;
@@ -386,7 +407,7 @@ img {
 .act-mark {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: var(--cm-space-xs);
   font-size: var(--cm-text-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -436,6 +457,10 @@ img {
 }
 
 @media (min-width: 56.25rem) {
+  .hero {
+    padding-block: var(--cm-space-xl) var(--cm-space-2xl);
+  }
+
   .hero-inner {
     max-width: min(34rem, 44vw);
   }
@@ -550,60 +575,204 @@ img {
   text-wrap: pretty;
 }
 
-/* --- 承 The three plates ------------------------------------------------- */
+/* --- 承 Atlas Journey ---------------------------------------------------- */
 
-.levels {
+.atlas-journey {
+  min-width: 0;
+}
+
+.journey-stage {
+  display: none;
+}
+
+.journey-steps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
-  gap: var(--cm-space-lg);
+  gap: var(--cm-space-xl);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.level {
+.journey-step {
   min-width: 0;
+  padding-block-start: var(--cm-space-lg);
+  border-block-start: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.journey-mobile-media {
+  min-width: 0;
+  margin: 0 0 var(--cm-space-lg);
+  overflow: clip;
   background: var(--cm-ground-2);
   border: var(--cm-rule) solid var(--cm-hairline);
-  /* The seam: ruri while dark, kohaku once you touch it. The product's whole
-     loop, compressed into one hover. */
-  border-left: 2px solid var(--cm-orbit-fill);
   border-radius: var(--cm-radius);
-  overflow: hidden;
-  transition: border-color var(--cm-dur-reveal) var(--cm-ease);
 }
 
-.level:hover {
-  border-left-color: var(--cm-star);
-}
-
-.level-art {
+.journey-mobile-media img {
   display: block;
   width: 100%;
   height: auto;
-  border-bottom: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.level-body {
-  padding: var(--cm-space-lg);
-}
-
-.level-jp {
-  font-family: var(--cm-font-display);
-  font-size: var(--cm-text-sm);
-  letter-spacing: 0.3em;
+.journey-mode {
+  margin-block-end: var(--cm-space-xs);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--cm-ink-3);
-  margin-bottom: var(--cm-space-2xs);
 }
 
-.level h3 {
+.journey-step h3 {
+  max-width: 18ch;
+  margin-block-end: var(--cm-space-xs);
   font-size: var(--cm-text-xl);
-  margin-bottom: var(--cm-space-xs);
+  text-wrap: balance;
 }
 
-.level-body p {
+.journey-step > p:last-child {
+  max-width: 38rem;
   color: var(--cm-ink-2);
-  font-size: var(--cm-text-sm);
+  font-size: var(--cm-text-base);
+  text-wrap: pretty;
+}
+
+/* The dimensional stage exists only where there is enough room and the user
+   has not asked for reduced motion. Compact and reduced-motion layouts keep
+   each real screenshot directly beside its own explanation. */
+@media (min-width: 60rem) and (prefers-reduced-motion: no-preference) {
+  .atlas-journey {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.72fr);
+    gap: clamp(var(--cm-space-lg), 5vw, var(--cm-space-2xl));
+    align-items: start;
+  }
+
+  .journey-stage {
+    position: sticky;
+    top: 5.5rem;
+    display: block;
+    height: min(72svh, 39rem);
+    min-height: 28rem;
+    perspective: 82rem;
+  }
+
+  .journey-plate {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline: -3% 0;
+    aspect-ratio: 1440 / 716;
+    transform: translateY(-50%);
+    transform-style: preserve-3d;
+  }
+
+  /* A second solid sheet peeking beneath the product capture makes the plate
+     feel physical without glass, blur, fake browser chrome, or a glow. */
+  .journey-plate::before {
+    content: "";
+    position: absolute;
+    inset: var(--cm-space-md) calc(var(--cm-space-md) * -1)
+      calc(var(--cm-space-md) * -1) var(--cm-space-md);
+    background: var(--cm-ground-3);
+    border: var(--cm-rule) solid var(--cm-hairline);
+    border-radius: var(--cm-radius);
+    transform: translateZ(-1.5rem);
+  }
+
+  .journey-frame {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    overflow: clip;
+    opacity: 0;
+    background: var(--cm-ground-2);
+    border: var(--cm-rule) solid var(--cm-hairline);
+    border-radius: var(--cm-radius);
+    transform: translate3d(
+        var(--cm-space-md),
+        0,
+        calc(var(--cm-space-md) * -1)
+      )
+      scale(0.97) rotateY(2.5deg);
+    transform-origin: 70% 50%;
+    transition:
+      opacity var(--cm-dur-reveal) var(--cm-ease),
+      transform var(--cm-dur-slow) var(--cm-ease);
+  }
+
+  .journey-frame[data-active] {
+    z-index: var(--cm-z-content);
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotateY(0);
+  }
+
+  .journey-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .journey-caption {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: var(--cm-space-xs);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--cm-space-md);
+    font-family: var(--cm-font-mono);
+    font-size: var(--cm-text-xs);
+    letter-spacing: 0.08em;
+    color: var(--cm-ink-3);
+  }
+
+  .journey-caption [lang="ja"] {
+    font-family: var(--cm-font-display);
+    letter-spacing: 0.18em;
+  }
+
+  .journey-steps {
+    gap: 0;
+    padding-block: 12svh 18svh;
+  }
+
+  .journey-step {
+    position: relative;
+    display: grid;
+    align-content: center;
+    min-height: 58svh;
+    padding-block: var(--cm-space-xl);
+    transform: translateX(var(--cm-space-md));
+    transition: transform var(--cm-dur-reveal) var(--cm-ease);
+  }
+
+  .journey-step h3 {
+    color: var(--cm-ink-2);
+  }
+
+  .journey-step::before {
+    content: "";
+    width: 2.75rem;
+    height: 2px;
+    margin-block-end: var(--cm-space-md);
+    background: var(--cm-hairline);
+  }
+
+  .journey-step[data-current] {
+    transform: none;
+  }
+
+  .journey-step[data-current] h3 {
+    color: var(--cm-ink);
+  }
+
+  .journey-step[data-current]::before {
+    background: var(--cm-orbit);
+  }
+
+  .journey-mobile-media {
+    display: none;
+  }
 }
 
 /* --- Languages ----------------------------------------------------------- */
@@ -631,7 +800,7 @@ img {
 }
 
 .langs li {
-  padding: 0.3rem 0.75rem;
+  padding: var(--cm-space-2xs) var(--cm-space-sm);
   font-size: var(--cm-text-sm);
   color: var(--cm-ink);
   border: var(--cm-rule) solid var(--cm-hairline);
@@ -870,6 +1039,48 @@ img {
   color: var(--cm-orbit);
 }
 
+/* Coarse pointers need a forgiving physical target even when the visual mark
+   stays deliberately compact. This applies to the landing controls without
+   inflating the desktop navigation. */
+@media (pointer: coarse) {
+  .nav-mark,
+  .nav-links a,
+  .rail a,
+  .foot-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .nav-theme {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .btn,
+  .cmd-copy {
+    min-height: 2.75rem;
+  }
+
+  .nav .cmsearch .cmsearch-open,
+  .nav .cmsearch .cmsearch-close {
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .nav .cmsearch .cmsearch-field {
+    min-height: 2.75rem;
+    padding-block: 0;
+  }
+
+  .nav .cmsearch .cmsearch-field input {
+    min-height: 2.75rem;
+  }
+}
+
 /* --- Reveal -------------------------------------------------------------- */
 
 [data-reveal] {
@@ -902,7 +1113,9 @@ img {
 
   .btn:active,
   .cmd-copy:active,
-  .nav-theme:active {
+  .nav-theme:active,
+  .nav .cmsearch .cmsearch-open:active,
+  .nav .cmsearch .cmsearch-close:active {
     transform: none;
   }
 }

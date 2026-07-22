@@ -168,7 +168,19 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-22 ·
-Session note: v0.7.0 implements all fourteen findings of a fresh evidence-based
+Session note: the public landing's second plate now demonstrates Codemble's
+semantic zoom with four real shipped frames — Galaxy, Architecture Map, System,
+and Study — in a desktop scroll-directed atlas stage. Compact and
+reduced-motion layouts instead pair every frame directly with its explanation;
+the existing tatebanko remains the one decorative signature, documentation
+pages remain restrained, and no parser, graph, checks, progress, provider, app,
+or release behavior changed. Browser verification covers 320, 375, 414, 768,
+1280, and 1440 px, dark/light themes, reduced motion, coarse-pointer targets,
+keyboard focus, production Pagefind, image loading, overflow, and console state.
+Astro check/build, all 241 pytest tests, ruff, and all frontend contract checks
+pass; Hallmark is 58/58 and both Standards and Spec review axes are clean after
+their findings were resolved. The milestone does not advance: issue #13 still
+requires human tester evidence. Previously: v0.7.0 implements all fourteen findings of a fresh evidence-based
 user-flow audit of the served v0.6.4 build (run as a first-run Easy learner on
 this repository at 1280/375/320, with before/after screenshots) plus the
 approved D1 design direction: parser-proven import communities now wear eight
@@ -608,6 +620,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-22 | Routes get their own ink (`--cm-route`, 4.0:1) on both layers, and it sits deliberately BELOW `--cm-route-possible` (6.4:1) | Edges borrowed `--cm-hairline`, the ink of box borders and panel rules, measuring 1.57:1 on the canvas ground — the relationships the product exists to teach were its least visible marks, which is the literal complaint that opened the audit. Ordering the two inks this way keeps the 2026-07-19 rule that an unproven claim must be the more visible one |
 | 2026-07-22 | Architecture-map modules with no import route from Home fold into a counted shelf behind an explicit control (auto-folded above 8), and Fit fits WIDTH when a whole-shape fit would land below 35% | On this repository 80 of 109 boxes are test fixtures and scripts, making the drawing 1:3.2 tall so the connected core fit at an unreadable 7%. Folding is view state, never truth: the note carries the exact count, **Show them** draws every one, and both surfaces still reach every module. Distinct from progressive reveal, which stays galaxy-only |
 | 2026-07-22 | Easy guidance charges test-scoped paths a bounded +1.5-hop penalty; the displayed hop count stays the real one | A CLI's nearest neighbour is usually its own test suite, so pure hop-distance sent a brand-new learner from Home straight into `tests/`. The penalty is bounded so a non-test module one hop farther wins while a distant one does not, and an all-tests project is still guided. Both inputs stay parser truth (the BFS count and the recorded file path); only the ranking key is biased, never the reported fact |
+| 2026-07-22 | The public landing may use a desktop Atlas Journey that crossfades and settles real Galaxy → Map → System → Study product frames; compact and reduced-motion views are static, and the tatebanko remains the sole decorative signature | Approved by UD for the Apple-level public-site refinement. The choreography demonstrates the shipped semantic zoom instead of adding decorative motion: one `IntersectionObserver` selects normal-flow copy steps, overlapping media is presentation-only, and every screenshot/capability remains product-truthful. Documentation pages and the app stay outside the effect |
 
 ## Non-Goals — do NOT build (point here when asked)
 

@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Changed
+- **The public atlas now demonstrates Codemble instead of illustrating it.**
+  Plate two replaces three equal static diagram cards with a scroll-directed
+  Galaxy → Map → System → Study passage built from real shipped screenshots.
+  Desktop keeps one dimensional atlas plate in view while the frames crossfade
+  and settle at full scale; compact and reduced-motion layouts pair every
+  screenshot directly with its explanation. No stock media, fake chrome,
+  invented metric, runtime dependency, or product behavior was added.
+
 ## [0.7.0] - 2026-07-22
 
 ### Added

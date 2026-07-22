@@ -70,6 +70,10 @@ as washi.
 - Reveal = opacity + rise ≤ 16px, once, on enter. No scroll-snap.
 - Parallax is allowed **only** for the tatebanko hero, where it is the medium
   rather than an effect.
+- The landing page's Atlas Journey may crossfade and scale real product frames
+  on desktop because that motion demonstrates the shipped Galaxy → Map →
+  System → Study semantic zoom. It uses `IntersectionObserver`, never a scroll
+  listener; compact and reduced-motion layouts render paired static frames.
 - `prefers-reduced-motion`: opacity-only, ≤ 150ms; parallax and the breathing
   gold both stop.
 - The one sanctioned flourish: **lighting a star** may glow-pulse when a region
@@ -94,6 +98,11 @@ field, chart, gold — drifting at different rates against pointer and scroll.
 Depth comes from parallax between flat prints, not from perspective maths, so
 the artwork stays a print you could hold. One signature per site; a future page
 wanting a different one *replaces* this, it does not join it.
+
+The Atlas Journey below it is a product demonstration, not a second signature:
+its media is the real shipped interface, its perspective settles to a flat
+undistorted frame, and removing the choreography leaves the complete reading
+sequence intact.
 
 ## Motifs
 

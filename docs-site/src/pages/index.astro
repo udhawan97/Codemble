@@ -15,6 +15,7 @@
  * shipped docs — no invented metrics, no invented capabilities.
  */
 import Tatebanko from "../components/Tatebanko.astro";
+import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
 import "../styles/tokens.css";
 import "../styles/landing.css";
@@ -29,27 +30,6 @@ const acts = [
   { kanji: "承", romaji: "shō", id: "instrument", label: "The instrument" },
   { kanji: "転", romaji: "ten", id: "turn", label: "The turn" },
   { kanji: "結", romaji: "ketsu", id: "contract", label: "The contract" },
-];
-
-const levels = [
-  {
-    n: "Galaxy",
-    jp: "銀河",
-    art: "plate-galaxy.svg",
-    body: "Modules are star systems, imports are routes, your entrypoint is Home. Size is lines of code; brightness is how often something is called.",
-  },
-  {
-    n: "System",
-    jp: "星系",
-    art: "plate-system.svg",
-    body: "Zoom a system and its functions and classes orbit as planets, joined by call edges. Anything the parser could not prove is labelled possible call.",
-  },
-  {
-    n: "Study",
-    jp: "精読",
-    art: "plate-study.svg",
-    body: "Open a planet for real source, a grounded explanation, and the language idiom it demonstrates — every claim linked to a real file:line.",
-  },
 ];
 
 const contract = [
@@ -213,27 +193,14 @@ const steps = [
           <p class="act-mark">
             <span lang="ja">承</span> shō<span class="sep">·</span>plate two
           </p>
-          <h2>Two layers. Three levels of zoom. No free flight.</h2>
+          <h2>One graph. Four ways to understand it.</h2>
           <p class="act-lede">
-            The camera runs on rails, because wandering a 3D scene is not
-            learning. Each level shows one thing well, and everything on it is
-            something the parser proved.
+            The camera runs on rails because wandering a 3D scene is not
+            learning. Move from the whole sky to one real structure; every
+            frame below comes from the shipped app and the same parsed graph.
           </p>
         </div>
-        <ol class="levels">
-          {
-            levels.map((l, i) => (
-              <li class="level" data-reveal style={`--d:${i * 70}ms`}>
-                <img class="level-art" src={plate(l.art)} alt="" width="420" height="300" loading="lazy" />
-                <div class="level-body">
-                  <p class="level-jp" lang="ja" aria-hidden="true">{l.jp}</p>
-                  <h3>{l.n}</h3>
-                  <p>{l.body}</p>
-                </div>
-              </li>
-            ))
-          }
-        </ol>
+        <AtlasJourney />
         <div class="langs" data-reveal>
           <p class="langs-label">One atlas, whichever language you shipped</p>
           <ul>{langs.map((l) => <li>{l}</li>)}</ul>
