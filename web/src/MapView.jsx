@@ -131,6 +131,44 @@ function MapCanvas({
     return () => cancelAnimationFrame(frame);
   }, [rememberViewport]);
 
+  // The mount-time honesty check has a live twin: a window RESIZE never
+  // remounts this component, so shrinking a desktop window to phone width
+  // kept the desktop scroll and showed empty layer bands. When a size change
+  // pushes the focus point fully off screen, re-centre on it; a learner who
+  // keeps their focus visible keeps their scroll position untouched.
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return undefined;
+    let last = null;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      const previous = last;
+      last = { width, height };
+      if (!previous || !focusPoint || !initialized.current) return;
+      if (Math.abs(width - previous.width) < 1 && Math.abs(height - previous.height) < 1) return;
+      const honest = viewportShowsPoint({
+        viewportWidth: width,
+        viewportHeight: height,
+        scale,
+        scrollLeft: scroller.scrollLeft,
+        scrollTop: scroller.scrollTop,
+        point: focusPoint,
+      });
+      if (honest) return;
+      const position = centerMapPoint({
+        viewportWidth: width,
+        viewportHeight: height,
+        scale,
+        point: focusPoint,
+      });
+      scroller.scrollLeft = position.scrollLeft;
+      scroller.scrollTop = position.scrollTop;
+      rememberViewport();
+    });
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, [focusPoint, rememberViewport, scale]);
+
   function onPointerDown(event) {
     // Left button on empty diagram space only: boxes and rows are buttons, and
     // stealing their pointer would make the map look interactive but inert.
