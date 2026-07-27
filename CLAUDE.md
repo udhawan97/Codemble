@@ -177,7 +177,10 @@ overlapping the next layer. Check IDs now use their own stable contract version
 instead of the render schema, preserving the pinned suites. Backend/renderer
 contracts, the full local suite, the rebuilt packaged SPA, and live desktop/
 320 px checks cover two-layer and cyclic systems. The milestone does not
-advance: issue #13 still requires human tester evidence. Previously: the public
+advance: issue #13 still requires human tester evidence. The post-merge CI run
+also exposed an unbounded Ruff dev dependency: 0.16 changed the effective rule
+set and reported 35 pre-existing findings, so the gate is capped below 0.16
+until that migration is reviewed separately. Previously: the public
 landing's second plate demonstrates Codemble's semantic zoom with four real
 shipped frames — Galaxy, Architecture Map, System, and Study — in a desktop
 scroll-directed atlas stage. Compact and
@@ -634,6 +637,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-22 | The public landing may use a desktop Atlas Journey that crossfades and settles real Galaxy → Map → System → Study product frames; compact and reduced-motion views are static, and the tatebanko remains the sole decorative signature | Approved by UD for the Apple-level public-site refinement. The choreography demonstrates the shipped semantic zoom instead of adding decorative motion: one `IntersectionObserver` selects normal-flow copy steps, overlapping media is presentation-only, and every screenshot/capability remains product-truthful. Documentation pages and the app stay outside the effect |
 | 2026-07-27 | Graph schema 7 serializes each node's `system_orbit` (`ring`, exact `radius`, proven `call_depth`, and `origin` / `call-root` / `certain-call` / `unreached` kind); System view labels solid proven layers and a dashed no-proven-path fallback, while overflow circles occupy disjoint radial bands | Approved by UD as the high-confidence implementation. React must not reverse-engineer meaning from XYZ, and deterministic outer placement for a cycle must not masquerade as a parser-proven call depth. The previous fixed-radius formula also placed a layer-1 overflow circle and layer 2 at the same radius |
 | 2026-07-27 | Generated check IDs use an independent check-contract version seed rather than `Graph.schema_version` | Graph schema 7 adds render metadata but changes no question, answer, option, or evidence. Coupling learner-flow identity to an additive renderer contract churned every ID and failed the pinned golden suite; the check seed now changes only with an intentional check-contract change |
+| 2026-07-27 | The `dev` extra caps Ruff below 0.16 until a deliberate repo-wide lint migration | CI resolved the previously open-ended `ruff>=0.6` dependency to 0.16 and immediately activated 35 existing findings across unrelated modules, while the established 0.15 gate remained clean. A linter release must not change the merge gate by calendar date |
 
 ## Non-Goals — do NOT build (point here when asked)
 

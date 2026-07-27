@@ -38,7 +38,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6", "httpx>=0.27"]
+dev = [
+  "pytest>=8",
+  # 0.16 changes this repository's effective lint set and surfaced 35
+  # unrelated existing findings in CI. Keep the gate reproducible until that
+  # migration is reviewed as its own change instead of arriving by date.
+  "ruff>=0.6,<0.16",
+  "httpx>=0.27",
+]
 
 [project.scripts]
 codemble = "codemble.cli:main"

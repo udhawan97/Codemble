@@ -32,6 +32,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   now has its own version seed, preserving every pinned question, answer,
   evidence citation, and in-session submission contract while graph schema 7
   adds orbit metadata.
+- **CI linting is reproducible again.** The development dependency now caps
+  Ruff below 0.16, which otherwise changed the effective lint set during this
+  push and failed on 35 unrelated existing findings despite the scoped code
+  being clean under the repository's established gate.
 
 ## [0.7.0] - 2026-07-22
 
