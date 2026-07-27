@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { nebulaTintKey } from "./graphData.js";
+import { nebulaTintKey, unsupportedSummary } from "./graphData.js";
 import {
   centerMapPoint,
   clampMapZoom,
@@ -299,6 +299,9 @@ export function MapView({
   communityIndexByRegion,
   selectedRegionId,
   hasEntrypointCandidates,
+  // A project-level fact from the graph, not the map payload: the two
+  // documents must not each carry their own copy of the same truth.
+  unsupportedSources,
   error,
   onSelectTab,
   onSelectRegion,
@@ -360,6 +363,17 @@ export function MapView({
           viewportStore={viewportStore}
         />
       )}
+      {/* Easy mode lands here, not on the galaxy, so the layer this audience
+          actually sees has to say what it could not read. Both tabs draw the
+          same project, so the note belongs to the section, not to one tab. */}
+      {unsupportedSummary(unsupportedSources, mode) ? (
+        <p className="map-note">
+          {unsupportedSummary(unsupportedSources, mode)}
+          {mode === "easy"
+            ? " — Codemble does not read that language yet, so none of it is drawn here."
+            : " — outside every registered adapter; no structure is inferred for them."}
+        </p>
+      ) : null}
     </section>
   );
 }

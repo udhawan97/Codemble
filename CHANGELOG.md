@@ -13,6 +13,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   a dashed **No proven path** guide instead of being presented as a real call
   depth. Hover, keyboard readouts, and compact-screen copy carry the same
   distinction.
+- **A language Codemble cannot read no longer disappears in silence.** A project
+  with Go or Rust beside its Python and TypeScript used to render a galaxy with
+  no sign that a whole component was missing — the one omission a smaller galaxy
+  cannot show, because it looks complete. The Galaxy and Map layers now state
+  the count and the language, and nothing about those files is guessed: they
+  contribute no node, edge or region. An extension shared by two languages is
+  reported by extension alone rather than picking one. The rule is narrower than
+  "is it code": it covers languages Codemble's model applies to, so shell and
+  SQL — which sit beside a project whatever it is written in — stay out.
+  Registering an adapter automatically silences its own extension.
 - **CI now proves the shipped app matches its source.** `codemble/web_dist` is a
   committed build artifact bundled into the wheel, and nothing checked that it
   was ever refreshed — a change to `web/` or to the shared design tokens could

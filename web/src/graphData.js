@@ -212,6 +212,28 @@ export function revealedRegionIds(
 // The real filename the parser recorded for a region's members, never a name
 // derived from the region id: Python regions are dotted module paths while
 // JS/TS regions are file paths, and only `Node.file` is true for both.
+// Chartable-language files no adapter parsed. The count is a project-level
+// fact from the backend, so this only phrases it: Easy names the language a
+// learner would recognise, Expert keeps the extension. An extension the
+// backend could not pin to one language carries no language in either
+// register -- `.h` is C or C++, and guessing is the failure this reports.
+export function unsupportedSummary(sources, mode) {
+  if (!sources || !sources.length) return null;
+  const total = sources.reduce((sum, source) => sum + source.count, 0);
+  if (mode === "easy") {
+    const parts = sources.map(
+      (source) => `${source.count} ${source.language ?? source.extension}`,
+    );
+    return `${joinClauses(parts)} ${total === 1 ? "file" : "files"} not included`;
+  }
+  return `${sources.map((source) => `${source.count} ${source.extension}`).join(" · ")} not charted`;
+}
+
+function joinClauses(parts) {
+  if (parts.length <= 1) return parts.join("");
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 export function regionFiles(graph) {
   const files = new Map();
   for (const node of graph.nodes) {

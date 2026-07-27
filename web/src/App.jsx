@@ -20,6 +20,7 @@ import {
   groupByCommunity,
   languageLabel,
   sharedTopSegment,
+  unsupportedSummary,
 } from "./graphData.js";
 import {
   createHttpLearnerSessionAdapter,
@@ -617,6 +618,7 @@ export function App() {
             // has not chosen, so highlighting it would fake a selection.
             selectedRegionId={level === LEVELS.GALAXY ? undefined : region?.id}
             hasEntrypointCandidates={graph.entrypoint_candidates.length > 0}
+            unsupportedSources={focusedGraph.unsupported_sources}
             error={mapError}
             onSelectTab={(tab) => session.dispatch({ type: "SET_MAP_TAB", tab })}
             onSelectRegion={(regionId) =>
@@ -766,6 +768,13 @@ export function App() {
                 {sharedTopSegment(focusedGraph.partial_files)
                   ? ` · ${focusedGraph.partial_files.length === 1 ? "in" : "all under"} ${sharedTopSegment(focusedGraph.partial_files)}/`
                   : ""}
+              </span>
+            ) : null}
+            {/* A language nobody parsed is the one omission the galaxy cannot
+                show by being smaller -- it just looks complete. State it. */}
+            {unsupportedSummary(focusedGraph.unsupported_sources, mode) ? (
+              <span className="unsupported-summary">
+                {unsupportedSummary(focusedGraph.unsupported_sources, mode)}
               </span>
             ) : null}
           </p>

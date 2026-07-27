@@ -6,7 +6,13 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from codemble.adapters.base import AdapterParseError, Graph, LanguageAdapter, Node
+from codemble.adapters.base import (
+    AdapterParseError,
+    Graph,
+    LanguageAdapter,
+    Node,
+    UnsupportedSource,
+)
 from codemble.adapters.discovery import (
     OwnedSourceFiles,
     SourceDiscoveryError,
@@ -51,6 +57,10 @@ class ProjectIntake:
     root: Path
     files: tuple[Path, ...]
     _ownership: tuple[OwnedSourceFiles, ...]
+    # Chartable-language files no registered adapter claimed. Discovery is the
+    # only place that sees every adapter's ownership at once, so the tally is
+    # carried from there rather than recomputed per adapter.
+    unsupported_sources: tuple[UnsupportedSource, ...] = ()
 
     def _files_for(self, language: str) -> tuple[Path, ...]:
         return next(
@@ -128,6 +138,7 @@ class ProjectParser:
             root=discovery.root,
             files=files,
             _ownership=discovery.ownership,
+            unsupported_sources=discovery.unsupported,
         )
         if not explicit and len(files) > self.scale_cap:
             raise ProjectScaleError(intake, self.scale_cap)
@@ -183,12 +194,18 @@ class ProjectParser:
                     raise ProjectParseError(str(error)) from error
             if progress is not None:
                 progress.stage("resolving")
-            return _compose_graphs(tuple(graphs), intake.root, entrypoint)
+            return _compose_graphs(
+                tuple(graphs),
+                intake.root,
+                entrypoint,
+                intake.unsupported_sources,
+            )
 
 def _compose_graphs(
     graphs: tuple[Graph, ...],
     project_root: Path,
     entrypoint: str | None,
+    unsupported_sources: tuple[UnsupportedSource, ...] = (),
 ) -> Graph:
     note_detail("Composing your project")
     nodes: list[Node] = []
@@ -225,6 +242,7 @@ def _compose_graphs(
         file_hashes=file_hashes,
         concept_annotations=tuple(annotations),
         partial_files=tuple(partial_files),
+        unsupported_sources=unsupported_sources,
     )
     try:
         return finalize_graph(draft, entrypoint=entrypoint)

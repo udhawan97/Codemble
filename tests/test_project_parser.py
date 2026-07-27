@@ -222,3 +222,35 @@ def test_progress_reporting_leaves_the_language_adapter_seam_unchanged() -> None
         "node",
         "source",
     ]
+
+
+def test_a_parsed_project_reports_the_languages_it_could_not_chart(tmp_path: Path) -> None:
+    """The galaxy must not look complete when a whole language is missing."""
+
+    (tmp_path / "app.py").write_text("def main() -> None:\n    pass\n", encoding="utf-8")
+    (tmp_path / "svc").mkdir()
+    (tmp_path / "svc" / "main.go").write_text("package main\n", encoding="utf-8")
+    (tmp_path / "svc" / "api.go").write_text("package main\n", encoding="utf-8")
+    (tmp_path / "README.md").write_text("# docs\n", encoding="utf-8")
+
+    graph = ProjectParser([PythonAstAdapter()]).parse(tmp_path)
+
+    assert [
+        (row.extension, row.language, row.count) for row in graph.unsupported_sources
+    ] == [(".go", "Go", 2)]
+    assert graph.to_dict()["unsupported_sources"] == [
+        {"extension": ".go", "language": "Go", "count": 2}
+    ]
+
+
+def test_an_adapter_that_owns_the_extension_silences_the_report(tmp_path: Path) -> None:
+    """Registering a language must remove it from the not-charted list."""
+
+    (tmp_path / "app.py").write_text("def main() -> None:\n    pass\n", encoding="utf-8")
+    (tmp_path / "widget.ts").write_text("export const a = 1;\n", encoding="utf-8")
+
+    python_only = ProjectParser([PythonAstAdapter()]).parse(tmp_path)
+    with_typescript = ProjectParser([PythonAstAdapter(), _FixtureAdapter()]).parse(tmp_path)
+
+    assert [row.extension for row in python_only.unsupported_sources] == [".ts"]
+    assert with_typescript.unsupported_sources == ()

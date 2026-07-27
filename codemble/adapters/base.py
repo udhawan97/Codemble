@@ -128,6 +128,21 @@ class RegionEdge:
 
 
 @dataclass(frozen=True, slots=True)
+class UnsupportedSource:
+    """Chartable-language files in the project that no adapter parsed.
+
+    Structure is never invented from these -- they contribute no node, edge or
+    region. The count exists so a learner can tell that a whole language was
+    left out of their galaxy rather than silently absent. ``language`` is
+    ``None`` where the extension does not name one language on its own.
+    """
+
+    extension: str
+    language: str | None
+    count: int
+
+
+@dataclass(frozen=True, slots=True)
 class Graph:
     """A deterministic, language-tagged project graph."""
 
@@ -141,7 +156,8 @@ class Graph:
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
-    schema_version: int = field(default=7, init=False)
+    unsupported_sources: tuple[UnsupportedSource, ...] = ()
+    schema_version: int = field(default=8, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""
@@ -185,6 +201,10 @@ class Graph:
                 for edge in sorted(self.region_edges, key=lambda item: (item.src, item.dst))
             ],
             "partial_files": sorted(self.partial_files),
+            "unsupported_sources": [
+                asdict(source)
+                for source in sorted(self.unsupported_sources, key=lambda item: item.extension)
+            ],
         }
 
     def to_json(self) -> str:

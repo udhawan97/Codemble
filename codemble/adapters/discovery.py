@@ -7,7 +7,64 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from codemble.adapters.base import UnsupportedSource
+
 _IGNORED_DIRECTORIES = {"venv", ".venv", "node_modules", "__pycache__"}
+
+# Extensions of languages Codemble's model applies to -- modules, functions,
+# classes, imports, calls. Deliberately narrower than "is it code": shell has no
+# module graph and SQL no call graph, and both sit beside a project whatever it
+# is written in, so counting them raised a false alarm on two of three real
+# repositories measured. Supported extensions are listed too; a file is only
+# reported when no adapter in the current run claims it, so shipping the Go
+# adapter silences `.go` with no second list to maintain.
+_CHARTABLE_LANGUAGES: dict[str, str | None] = {
+    ".c": "C",
+    ".cc": "C++",
+    ".cjs": "JavaScript",
+    ".clj": "Clojure",
+    ".cljs": "Clojure",
+    ".cpp": "C++",
+    ".cs": "C#",
+    ".cts": "TypeScript",
+    ".cxx": "C++",
+    ".dart": "Dart",
+    ".erl": "Erlang",
+    ".ex": "Elixir",
+    ".exs": "Elixir",
+    ".go": "Go",
+    ".groovy": "Groovy",
+    ".hpp": "C++",
+    ".hs": "Haskell",
+    ".java": "Java",
+    ".jl": "Julia",
+    ".js": "JavaScript",
+    ".jsx": "JavaScript",
+    ".kt": "Kotlin",
+    ".kts": "Kotlin",
+    ".lua": "Lua",
+    ".mjs": "JavaScript",
+    ".mm": "Objective-C++",
+    ".mts": "TypeScript",
+    ".php": "PHP",
+    ".py": "Python",
+    ".rb": "Ruby",
+    ".rs": "Rust",
+    ".scala": "Scala",
+    ".swift": "Swift",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript",
+    ".zig": "Zig",
+    # Ambiguous: `.h` is C or C++, `.m` is Objective-C or MATLAB, `.pl` is Perl
+    # or Prolog, `.ml` is OCaml or Standard ML, `.fs` is F# or a shader, `.r` is
+    # R or Rebol. Report the extension and claim no language.
+    ".fs": None,
+    ".h": None,
+    ".m": None,
+    ".ml": None,
+    ".pl": None,
+    ".r": None,
+}
 
 
 class SourceDiscoveryError(ValueError):
@@ -45,6 +102,7 @@ class ProjectSourceDiscovery:
 
     root: Path
     ownership: tuple[OwnedSourceFiles, ...]
+    unsupported: tuple[UnsupportedSource, ...] = ()
 
     @property
     def files(self) -> tuple[Path, ...]:
@@ -80,16 +138,22 @@ def discover_project_sources(
     if not ownership:
         raise ValueError("project source discovery requires at least one owner")
     discovered: dict[str, list[Path]] = {rule.owner: [] for rule in ownership}
+    unsupported: dict[str, int] = {}
     if normalized.is_file():
+        claimed = False
         for rule in ownership:
             if normalized.suffix.lower() in rule.extensions:
                 discovered[rule.owner].append(normalized)
+                claimed = True
+        if not claimed:
+            _note_unsupported(normalized, unsupported)
         return ProjectSourceDiscovery(
             normalized.parent,
             tuple(
                 OwnedSourceFiles(rule.owner, tuple(discovered[rule.owner]))
                 for rule in ownership
             ),
+            _unsupported_rows(unsupported),
         )
     if not normalized.is_dir():
         raise SourceDiscoveryError(f"expected a source file or directory: {normalized}")
@@ -111,18 +175,38 @@ def discover_project_sources(
             relative = candidate.relative_to(normalized)
             if _matches_gitignore(relative, False, ignore_rules):
                 continue
+            claimed = False
             for rule in ownership:
                 if candidate.suffix.lower() not in rule.extensions:
                     continue
                 if any(part in rule.ignored_directories for part in relative.parts):
                     continue
                 discovered[rule.owner].append(candidate)
+                claimed = True
+            if not claimed:
+                _note_unsupported(candidate, unsupported)
     return ProjectSourceDiscovery(
         normalized,
         tuple(
             OwnedSourceFiles(rule.owner, tuple(sorted(discovered[rule.owner])))
             for rule in ownership
         ),
+        _unsupported_rows(unsupported),
+    )
+
+
+def _note_unsupported(candidate: Path, tally: dict[str, int]) -> None:
+    """Count a chartable-language file that no adapter in this run claimed."""
+
+    extension = candidate.suffix.lower()
+    if extension in _CHARTABLE_LANGUAGES:
+        tally[extension] = tally.get(extension, 0) + 1
+
+
+def _unsupported_rows(tally: dict[str, int]) -> tuple[UnsupportedSource, ...]:
+    return tuple(
+        UnsupportedSource(extension, _CHARTABLE_LANGUAGES[extension], tally[extension])
+        for extension in sorted(tally)
     )
 
 
@@ -185,6 +269,7 @@ __all__ = [
     "SourceDiscovery",
     "SourceDiscoveryError",
     "SourceOwnership",
+    "UnsupportedSource",
     "discover_project_sources",
     "discover_source_files",
 ]

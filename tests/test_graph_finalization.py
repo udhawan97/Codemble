@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
+from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node, UnsupportedSource
 from codemble.graph import GraphFinalizationError, finalize_graph
 from codemble.graph.layout import with_entrypoint
 
@@ -239,12 +239,12 @@ def test_choosing_a_different_home_recomputes_every_distance() -> None:
     assert hops == {"far": 0, "mid": 1, "app": 2, "side": 3, "island": None}
 
 
-def test_hops_from_home_is_deterministic_and_serialized_in_schema_seven() -> None:
+def test_hops_from_home_is_deterministic_and_serialized_in_the_render_schema() -> None:
     draft = _hops_fixture()
     payload = finalize_graph(draft).to_dict()
 
     assert finalize_graph(draft).to_json() == finalize_graph(draft).to_json()
-    assert payload["schema_version"] == 7
+    assert payload["schema_version"] == 8
     assert {region["id"]: region["hops_from_home"] for region in payload["regions"]} == {
         "app": 0,
         "mid": 1,
@@ -335,3 +335,61 @@ def _community_fixture(*, include_isolated: bool = False) -> Graph:
         project_root="/project",
         file_hashes={f"{region_id}.py": region_id for region_id in region_ids},
     )
+
+
+def test_unsupported_sources_are_carried_and_serialized_in_canonical_order() -> None:
+    """A language nobody parsed must survive into the payload the UI reads."""
+
+    graph = Graph(
+        nodes=(_node("only", region="only"),),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"only.py": "hash"},
+        unsupported_sources=(
+            UnsupportedSource(".rs", "Rust", 1),
+            UnsupportedSource(".go", "Go", 12),
+            UnsupportedSource(".h", None, 3),
+        ),
+    )
+
+    payload = graph.to_dict()
+
+    assert payload["schema_version"] == 8
+    assert payload["unsupported_sources"] == [
+        {"extension": ".go", "language": "Go", "count": 12},
+        {"extension": ".h", "language": None, "count": 3},
+        {"extension": ".rs", "language": "Rust", "count": 1},
+    ]
+
+
+def test_a_graph_with_nothing_unsupported_reports_an_empty_list() -> None:
+    """Absence is stated, not omitted: the field is always present."""
+
+    graph = Graph(
+        nodes=(_node("only", region="only"),),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"only.py": "hash"},
+    )
+
+    assert graph.to_dict()["unsupported_sources"] == []
+
+
+def test_choosing_a_new_home_preserves_the_unsupported_report() -> None:
+    """Re-homing must not silently erase what the project could not chart."""
+
+    draft = Graph(
+        nodes=(_node("a", region="a", rank=0), _node("b", region="b", rank=1)),
+        edges=(Edge(src="a", dst="b", kind="import", certain=True, lineno=1),),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"a.py": "one", "b.py": "two"},
+        unsupported_sources=(UnsupportedSource(".go", "Go", 4),),
+    )
+    finalized = finalize_graph(draft)
+
+    rehomed = with_entrypoint(finalized, "b")
+
+    assert rehomed.unsupported_sources == (UnsupportedSource(".go", "Go", 4),)

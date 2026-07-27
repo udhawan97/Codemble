@@ -168,7 +168,24 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-27 ·
-Session note: Two gate repairs, no product change. CI now fails when a rebuild
+Session note: Graph schema 8 states what Codemble could not read. A project with
+Go or Rust beside its Python and TypeScript used to render a galaxy with no sign
+that a whole component was missing — the one omission a smaller galaxy cannot
+show, because it looks complete. `Graph.unsupported_sources` now counts
+chartable-language files no adapter claimed, and the Galaxy and Map layers state
+it; nothing about those files is guessed, so they contribute no node, edge or
+region. The scope rule was settled by measurement, not taste: counting every
+code-ish extension reported 2 `.sh` on this repository and 7 `.sh` on FolioOrb,
+where nothing is missing, while only Golavo's 7 `.rs` was a true signal. The
+table covers languages Codemble's model applies to, includes supported
+extensions, and only reports a file no adapter in the run claimed — so the
+Phase 2 Go adapter will silence `.go` with no second list to maintain. Verified
+end to end on a real 4140-node project (7 Rust reported, zero noise from 210
+JSON / 101 Markdown / 94 CSV / 26 PNG) and in the running app in both registers
+on both layers. 253 pytest, Ruff 0.16, 12 frontend contract checks, rebuilt
+bundle. A pre-existing clip of the Map's region copy was found while verifying,
+measured identical with the new note hidden, and left for its own change.
+Previously: two gate repairs, no product change. CI now fails when a rebuild
 of `web/` changes the committed `codemble/web_dist`, closing the one path by
 which a source or design-token edit could pass every gate and still ship a
 stale app to users; the `web-check` job already rebuilt the bundle, so the gate
@@ -655,6 +672,8 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-27 | Generated check IDs use an independent check-contract version seed rather than `Graph.schema_version` | Graph schema 7 adds render metadata but changes no question, answer, option, or evidence. Coupling learner-flow identity to an additive renderer contract churned every ID and failed the pinned golden suite; the check seed now changes only with an intentional check-contract change |
 | 2026-07-27 | The `dev` extra caps Ruff below 0.16 until a deliberate repo-wide lint migration | CI resolved the previously open-ended `ruff>=0.6` dependency to 0.16 and immediately activated 35 existing findings across unrelated modules, while the established 0.15 gate remained clean. A linter release must not change the merge gate by calendar date |
 | 2026-07-27 | CI fails when a rebuild of `web/` changes the committed `codemble/web_dist` | The bundle is a build artifact that is committed *and* shipped inside the wheel, so the Gotchas rule "a token change only reaches users after `npm run build` is re-run and the result committed" was enforced by human memory alone. The `web-check` job already rebuilt it and discarded the result; asserting on that result costs one step. Verified both ways before landing — a deliberately stale bundle fails, the current tree passes — and the build is reproducible (a fresh build reproduces the committed bundle byte-for-byte, same content hashes) |
+| 2026-07-27 | Graph schema 8 states what Codemble could **not** read: `Graph.unsupported_sources` counts chartable-language files no adapter claimed, keyed by extension, named only where the extension is unambiguous | Approved by UD. Inventing nothing is only half the Correctness Contract — a galaxy drawn from part of a project looks exactly like one drawn from all of it, so a Go backend beside a TS frontend rendered as a complete TS galaxy. This is the `partial_files` precedent applied to the other kind of omission: a count, never a node, edge or region. Scope was decided against measurement rather than taste — counting every code-ish extension reported 2 `.sh` on Codemble and 7 `.sh` on FolioOrb, where nothing is missing, and only Golavo's 7 `.rs` was a true signal, so the table covers languages Codemble's model applies to (modules, functions, classes, imports, calls) and shell/SQL stay out. The table includes supported extensions and a file is only counted when no adapter in the run claimed it, so the Phase 2 Go adapter will silence `.go` with no second list. `.h` and `.m` report without a language, because naming one would be the guess the contract forbids |
+| 2026-07-27 | The unsupported-source note renders on the **Map** as well as the Galaxy, and survives a language focus | Easy mode defaults to the Map, so a galaxy-only orientation bar would have hidden this from exactly the audience least able to notice the gap — the same failure the Map's "Read the source" fix addressed. The count is a project-level fact passed down from the graph rather than added to the map payload, so the two documents cannot disagree; a language focus filters nodes, and must not filter a fact about source that was never parsed at all |
 | 2026-07-27 | **Completes the row above**: Ruff moves to `>=0.16,<0.17` with all 35 findings triaged; four rules are suppressed per-site with a stated reason rather than globally | The cap stays bounded because no `select` is configured, so the gate is Ruff's *default* rule set and an open range still hands the merge gate to the release calendar. Suppressions are per-site so the rule keeps working everywhere it fits: `TRY004` ×2 would have been an actual regression — `ollama_status` promises never to raise, and its `except` narrows on the very `ValueError` the rule wanted replaced; `BLE001` guards a worker thread where a missing catch-all strands the picker on "parsing" for ever; `FLY002` would repeat the NUL separator five times inside a cache key. `B023` ×4 were false alarms (the sort consumes the closure in-iteration) but were fixed by binding anyway, so correctness stops depending on where the function happens to be called. Byte-identical parser, graph, map, and check output proven on an unmodified fixture |
 
 ## Non-Goals — do NOT build (point here when asked)

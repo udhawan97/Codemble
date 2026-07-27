@@ -17,6 +17,7 @@ import {
   revealedRegionIds,
   sharedTopSegment,
   systemData,
+  unsupportedSummary,
 } from "../src/graphData.js";
 
 const graph = {
@@ -514,5 +515,50 @@ assert.equal(
 );
 assert.equal(sharedTopSegment(["tests/a.py", "web/b.js"]), null);
 assert.equal(sharedTopSegment([]), null);
+
+// Unsupported languages: a project-level fact, phrased for the audience.
+// Easy names the language a learner would recognise; Expert keeps the
+// extension, which is what an ambiguous suffix can honestly claim.
+assert.equal(
+  unsupportedSummary([{ extension: ".go", language: "Go", count: 12 }], "easy"),
+  "12 Go files not included",
+);
+assert.equal(
+  unsupportedSummary([{ extension: ".go", language: "Go", count: 1 }], "easy"),
+  "1 Go file not included",
+);
+assert.equal(
+  unsupportedSummary(
+    [
+      { extension: ".go", language: "Go", count: 12 },
+      { extension: ".rs", language: "Rust", count: 3 },
+    ],
+    "easy",
+  ),
+  "12 Go and 3 Rust files not included",
+);
+assert.equal(
+  unsupportedSummary([{ extension: ".go", language: "Go", count: 12 }], "expert"),
+  "12 .go not charted",
+);
+// An ambiguous extension never claims a language in either register.
+assert.equal(
+  unsupportedSummary([{ extension: ".h", language: null, count: 4 }], "easy"),
+  "4 .h files not included",
+);
+assert.equal(unsupportedSummary([], "easy"), null);
+assert.equal(unsupportedSummary(undefined, "easy"), null);
+
+// A language focus is a projection over nodes; it must not hide a
+// project-level fact about what was never parsed at all.
+const unsupportedGraph = {
+  ...graph,
+  unsupported_sources: [{ extension: ".go", language: "Go", count: 2 }],
+};
+assert.deepEqual(
+  languageFocusGraph(unsupportedGraph, "python").unsupported_sources,
+  [{ extension: ".go", language: "Go", count: 2 }],
+  "focusing a language keeps the not-charted report",
+);
 
 console.log("graph-data contracts passed");

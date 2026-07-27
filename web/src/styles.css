@@ -1094,7 +1094,10 @@ input:focus-visible {
   border-block-start-color: var(--cm-route-possible);
 }
 
-.partial-summary {
+/* Both state something the galaxy cannot show by being smaller: source it
+   could not read, and source it does not speak. Same rule, same weight. */
+.partial-summary,
+.unsupported-summary {
   padding-inline-start: var(--cm-space-sm);
   border-inline-start: 2px solid var(--cm-route-possible);
   color: var(--cm-ink) !important;
