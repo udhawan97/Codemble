@@ -168,7 +168,30 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-27 ·
-Session note: Graph schema 8 states what Codemble could not read. A project with
+Session note: The Map's region description no longer truncates, and the deferred
+clip from the previous session is closed. The reported symptom — the final word
+cut in half at 1280x720 — was the visible end of a layout that silently hid
+content: the copy's `max-block-size: 45%` was a share of the *whole* column,
+which also carries the tabs, two notes and four gaps, so the cap really claimed
+55% of the distributable space and the only flexible row, the drawing itself,
+absorbed every shortfall. Measured on this repository the map canvas was 43px at
+1280x720 and **0px at 320px**, where the paragraph showed 22px of its 128px —
+the layer's own explanation and its diagram were both effectively gone, and
+`overflow-y: auto` on the paragraph is what made it silent, since macOS draws no
+scrollbar until scrolled. The cause of the extra height was inheritance: the
+inline variant kept the *floating* overlay's 28rem measure, written to avoid
+covering the 3D scene, so 152 characters wrapped to four lines inside 348px of a
+1236px row. The caption now opts out of the Easy reading measure, the column
+scrolls instead of clipping a child, and the drawing gets a stated floor rather
+than a percentage proxy. Verified against the served bundle, not just the dev
+server: at 1280x720 the paragraph is whole with no column scroll and the canvas
+went 43px → 82px; at 375 and 320 the copy is whole and fully visible without
+scrolling and the canvas holds 80px; a 3× longer caption still never clips.
+Checked in both registers, on both Map tabs, and on the Galaxy's floating
+variant, which is byte-unchanged. No parser, graph, checks, progress or HTTP
+behaviour was touched. 253 pytest, Ruff 0.16, 12 frontend contract checks, and a
+reproducible rebuilt bundle. Previously: graph schema 8 states what Codemble
+could not read. A project with
 Go or Rust beside its Python and TypeScript used to render a galaxy with no sign
 that a whole component was missing — the one omission a smaller galaxy cannot
 show, because it looks complete. `Graph.unsupported_sources` now counts
@@ -184,8 +207,8 @@ end to end on a real 4140-node project (7 Rust reported, zero noise from 210
 JSON / 101 Markdown / 94 CSV / 26 PNG) and in the running app in both registers
 on both layers. 253 pytest, Ruff 0.16, 12 frontend contract checks, rebuilt
 bundle. A pre-existing clip of the Map's region copy was found while verifying,
-measured identical with the new note hidden, and left for its own change.
-Previously: two gate repairs, no product change. CI now fails when a rebuild
+measured identical with the new note hidden, and left for its own change — since
+fixed, see the top of this section. Previously: two gate repairs, no product change. CI now fails when a rebuild
 of `web/` changes the committed `codemble/web_dist`, closing the one path by
 which a source or design-token edit could pass every gate and still ship a
 stale app to users; the `web-check` job already rebuilt the bundle, so the gate
@@ -674,6 +697,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-27 | CI fails when a rebuild of `web/` changes the committed `codemble/web_dist` | The bundle is a build artifact that is committed *and* shipped inside the wheel, so the Gotchas rule "a token change only reaches users after `npm run build` is re-run and the result committed" was enforced by human memory alone. The `web-check` job already rebuilt it and discarded the result; asserting on that result costs one step. Verified both ways before landing — a deliberately stale bundle fails, the current tree passes — and the build is reproducible (a fresh build reproduces the committed bundle byte-for-byte, same content hashes) |
 | 2026-07-27 | Graph schema 8 states what Codemble could **not** read: `Graph.unsupported_sources` counts chartable-language files no adapter claimed, keyed by extension, named only where the extension is unambiguous | Approved by UD. Inventing nothing is only half the Correctness Contract — a galaxy drawn from part of a project looks exactly like one drawn from all of it, so a Go backend beside a TS frontend rendered as a complete TS galaxy. This is the `partial_files` precedent applied to the other kind of omission: a count, never a node, edge or region. Scope was decided against measurement rather than taste — counting every code-ish extension reported 2 `.sh` on Codemble and 7 `.sh` on FolioOrb, where nothing is missing, and only Golavo's 7 `.rs` was a true signal, so the table covers languages Codemble's model applies to (modules, functions, classes, imports, calls) and shell/SQL stay out. The table includes supported extensions and a file is only counted when no adapter in the run claimed it, so the Phase 2 Go adapter will silence `.go` with no second list. `.h` and `.m` report without a language, because naming one would be the guess the contract forbids |
 | 2026-07-27 | The unsupported-source note renders on the **Map** as well as the Galaxy, and survives a language focus | Easy mode defaults to the Map, so a galaxy-only orientation bar would have hidden this from exactly the audience least able to notice the gap — the same failure the Map's "Read the source" fix addressed. The count is a project-level fact passed down from the graph rather than added to the map payload, so the two documents cannot disagree; a language focus filters nodes, and must not filter a fact about source that was never parsed at all |
+| 2026-07-27 | The Map column scrolls when over-subscribed; the drawing keeps a stated `min-block-size` floor; and the region caption opts out of the Easy 46ch reading measure. This **replaces** the copy's `max-block-size: 45%` and its inner `overflow-y: auto` | A percentage of the whole column was the wrong guard: the column also carries the tabs, two notes and four gaps, so "45%" claimed 55% of what was actually distributable, and the drawing — the only flexible row — absorbed the rest, measuring 43px at 1280x720 and 0px at 320px. The cap therefore failed at the one job its comment claimed. Clipping *one child* is also the wrong failure mode for a layer whose Easy default is a learner's first screen: the inner scroll left the region's own description reachable but invisible, because macOS draws no scrollbar until scrolled, so it read as a rendering bug rather than as more text. The extra height was inherited, not intrinsic — the inline variant kept the floating overlay's 28rem measure, which exists to avoid covering the 3D scene and buys nothing for a row above a drawing, wrapping 152 characters to four lines inside 348px of a 1236px row. A caption is not a surface read at length, so it may run wider than prose. Verified on the served bundle at 1280/375/320 in both registers and on both tabs; a 3× longer caption scrolls the column rather than hiding a word |
 | 2026-07-27 | **Completes the row above**: Ruff moves to `>=0.16,<0.17` with all 35 findings triaged; four rules are suppressed per-site with a stated reason rather than globally | The cap stays bounded because no `select` is configured, so the gate is Ruff's *default* rule set and an open range still hands the merge gate to the release calendar. Suppressions are per-site so the rule keeps working everywhere it fits: `TRY004` ×2 would have been an actual regression — `ollama_status` promises never to raise, and its `except` narrows on the very `ValueError` the rule wanted replaced; `BLE001` guards a worker thread where a missing catch-all strands the picker on "parsing" for ever; `FLY002` would repeat the NUL separator five times inside a cache key. `B023` ×4 were false alarms (the sort consumes the closure in-iteration) but were fixed by binding anyway, so correctness stops depending on where the function happens to be called. Byte-identical parser, graph, map, and check output proven on an unmodified fixture |
 
 ## Non-Goals — do NOT build (point here when asked)

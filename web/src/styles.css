@@ -814,8 +814,9 @@ input:focus-visible {
 /* The Map layer's variant: a row in the map column, not an overlay on it. The
    3D canvas has nothing behind this corner, but the SVG below draws its first
    box and its root tree row exactly here, so floating meant display-size serif
-   on top of the learner's own identifiers. It keeps the same narrow measure as
-   the floating version, which is what holds it clear of the legend card.
+   on top of the learner's own identifiers. Being a row rather than an overlay,
+   it has nothing to keep clear of horizontally, so it does not inherit the
+   floating version's narrow measure -- see the caption measure further down.
    Declared after the shared .orientation-copy rules below on purpose: these
    overrides match at equal specificity, so source order is what settles them. */
 
@@ -883,25 +884,11 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
-  /* Never starve the drawing. On a short viewport this copy is tall enough to
-     take the whole column and leave the map zero height -- trading an overlap
-     for a map that isn't there. The cap only binds when space is genuinely
-     scarce; at ordinary window heights the band is shorter than this and the
-     rule does nothing. */
-  max-block-size: 45%;
+  /* A row spanning the column, so the floating variant's 28rem measure has
+     nothing left to avoid here -- it only cost height. It is dropped rather
+     than tuned because the paragraph below owns this variant's measure. */
+  max-width: none;
   pointer-events: auto;
-}
-
-/* When the height cap binds, the PROSE scrolls and the action row stays whole:
-   the old overflow on the panel itself cut "Read the source" and "Prove
-   understanding" to slivers at 1280x800, which read as broken buttons. */
-.orientation-copy--inline > p {
-  min-block-size: 0;
-  overflow-y: auto;
-}
-
-.orientation-copy--inline .orientation-copy__actions {
-  flex: 0 0 auto;
 }
 
 /* Sized to sit above a drawing rather than float over open space: the display
@@ -2311,7 +2298,14 @@ input:focus-visible {
   gap: var(--cm-space-sm);
   padding: var(--cm-space-md);
   background: var(--cm-ground);
-  overflow: hidden;
+  /* The column scrolls when it is over-subscribed instead of clipping one
+     child. `hidden` here meant the copy above had to cap and inner-scroll
+     itself to survive, which hid the end of the region's own description
+     behind a macOS overlay scrollbar -- reachable, but invisible until
+     scrolled, so it read as a rendering bug. Nothing in this column may be
+     silently unreachable; at 320px its notes alone outgrow the viewport. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .map-tabs {
@@ -2341,7 +2335,13 @@ input:focus-visible {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  min-height: 0;
+  /* Never starve the drawing -- the job the copy's old percentage cap was
+     written for and could not do, because a share of the whole column still
+     leaves this the only flexible row, so it absorbed every shortfall and
+     collapsed to 43px at 1280x720 and to 0 at 320px. A floor states it
+     directly. It is deliberately small: enough that the map always exists,
+     low enough that an ordinary desktop column still fits without scrolling. */
+  min-block-size: 5rem;
 }
 
 
@@ -2401,6 +2401,9 @@ input:focus-visible {
 .map-scroll {
   flex: 1 1 auto;
   overflow: auto;
+  /* Panning to the edge of the diagram must not then scroll the column out
+     from under it, now that the column above is itself a scroller. */
+  overscroll-behavior: contain;
   /* Grab, not text: dragging empty diagram space pans, so the cursor has to
      promise that rather than a selection the drag never makes. */
   cursor: grab;
@@ -2788,6 +2791,16 @@ input:focus-visible {
 .app-shell[data-mode="easy"] .check-complete p,
 .app-shell[data-mode="easy"] .check-loading {
   max-width: 46ch;
+}
+
+/* ...except the Map's region caption, which is two sentences above a drawing
+   rather than a surface read at length. Confined to the reading measure it
+   wrapped to four lines and outgrew the row, so the last word was the thing
+   that got cut. A caption may run wider than prose. Matching the specificity
+   of the rule above is what lets this opt out, and source order settles the
+   tie -- the same convention the floating/inline overrides use. */
+.app-shell[data-mode] .orientation-copy--inline > p {
+  max-width: 72ch;
 }
 
 /* Plainer labels: drop the small-caps technical styling on the two chrome

@@ -44,6 +44,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   and meaning.
 
 ### Fixed
+- **The Map no longer cuts off a module's description, or the map itself.**
+  Selecting a module in the default Easy view truncated the explanation
+  mid-word, and the same layout had quietly reduced the diagram to a 43px strip
+  at 1280x720 and to nothing at all at 320px. The panel's height was capped as a
+  share of the whole column — including the tabs, notes and gaps around it — so
+  the drawing absorbed every shortfall, and the leftover text scrolled inside an
+  invisible scrollbar rather than being shown. The column now scrolls as a whole
+  when content genuinely exceeds the window, the diagram keeps a guaranteed
+  minimum height, and the description uses the width the row already has instead
+  of the narrow measure meant for text floating over the 3D galaxy. Nothing
+  about the map's parser-computed geometry changed.
 - **A render-schema addition no longer churns active check IDs.** Check identity
   now has its own version seed, preserving every pinned question, answer,
   evidence citation, and in-session submission contract while graph schema 7
