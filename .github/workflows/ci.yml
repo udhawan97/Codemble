@@ -43,6 +43,17 @@ jobs:
           cd web
           npm install
           npm run check
+      # `npm run check` builds into codemble/web_dist, which is committed and
+      # shipped inside the wheel. The build is reproducible, so anything the
+      # rebuild changed means the committed bundle was never refreshed and
+      # users would install a stale app.
+      - name: committed SPA bundle is current
+        run: |
+          if [ -n "$(git status --porcelain -- codemble/web_dist)" ]; then
+            echo "::error::codemble/web_dist is stale. Run 'cd web && npm run build' and commit the result."
+            git status --short -- codemble/web_dist
+            exit 1
+          fi
   package-check:
     runs-on: ubuntu-latest
     steps:
