@@ -13,10 +13,28 @@ from typing import Literal, Protocol
 
 NodeKind = Literal["module", "class", "function"]
 EdgeKind = Literal["import", "call"]
+SystemOrbitKind = Literal["origin", "call-root", "certain-call", "unreached"]
 
 
 class AdapterParseError(ValueError):
     """A supported language could not be mapped without guessing."""
+
+
+@dataclass(frozen=True, slots=True)
+class SystemOrbit:
+    """Render-ready placement and meaning for one node's system orbit.
+
+    ``ring`` and ``radius`` describe where the graph layer placed the node.
+    ``call_depth`` describes only the layer established from certain calls;
+    it is ``None`` when a cyclic or otherwise unreachable structure is kept
+    visible on a fallback outer ring. ``kind`` preserves that distinction for
+    renderers so fallback placement can never be presented as a proven path.
+    """
+
+    ring: int
+    radius: float
+    call_depth: int | None
+    kind: SystemOrbitKind
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +62,7 @@ class Node:
     system_x: float = 0.0
     system_y: float = 0.0
     system_z: float = 0.0
+    system_orbit: SystemOrbit | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +141,7 @@ class Graph:
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
-    schema_version: int = field(default=6, init=False)
+    schema_version: int = field(default=7, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""

@@ -22,7 +22,7 @@ from the parsed structure of your code:
 | Nebula tint | Language |
 | Lit amber / dim | Understood / not yet |
 | Drifting particles | A call the parser proved; possible calls stay still |
-| Orbit ring | Call depth — the inner ring runs first |
+| Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
 
 Nothing that is merely busy can outshine something you understand: the unlit
 brightness ramp stops below the amber a lit star uses. Brightness counts the
@@ -127,12 +127,14 @@ The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 ## A region = one star system
 
-![One star system, codemble.server.app, its 31 functions and classes as planets in the system's own colour family, laid out in call-depth orbits with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
+![One star system, codemble.server.app, its 31 functions and classes as planets in the system's own colour family, laid out in parser-proven call layers with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
 
 A **region** is one module — the unit of checks, illumination, and progress.
 Change a file and only its region goes dim again; the rest of your sky stays lit.
-Its members orbit by call depth, and a **Prove understanding** button opens that
-region's checks.
+Its members orbit in labelled call layers derived from certain calls. Solid
+guides mark proven layers; a cyclic or otherwise unreached structure stays
+visible behind a dashed **No proven path** guide rather than receiving a
+fabricated depth. A **Prove understanding** button opens that region's checks.
 
 ## Focus a mixed sky without changing it
 

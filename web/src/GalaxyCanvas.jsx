@@ -7,6 +7,11 @@ import { createDressing, createStarfield, seedFromHashes } from "./galaxyMateria
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 import { createNameAtlas } from "./nameAtlas.js";
 import { guardOrbitPointerState } from "./orbitPointerGuard.js";
+import {
+  createSystemOrbitGuides,
+  disposeSystemOrbitGuides,
+  systemOrbitPlan,
+} from "./systemOrbits.js";
 
 const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
@@ -78,6 +83,10 @@ export function GalaxyCanvas({
       selectedId: selectedNode?.id,
     });
   }, [graph, level, palette, region?.id, revealedRegionIds, selectedNode?.id]);
+  const orbitPlan = useMemo(
+    () => (level === LEVELS.GALAXY ? [] : systemOrbitPlan(data.nodes)),
+    [data.nodes, level],
+  );
 
   useEffect(() => {
     advanceRef.current = onAdvance;
@@ -276,6 +285,21 @@ export function GalaxyCanvas({
     focusedIdRef.current = data.nodes[focusedIndex]?.id ?? null;
     rendererRef.current?.refresh();
   }, [data.nodes, focusedIndex]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    const dressing = dressingRef.current;
+    if (!renderer || !dressing || level === LEVELS.GALAXY || !orbitPlan.length) {
+      return undefined;
+    }
+    const scene = renderer.scene();
+    const guides = createSystemOrbitGuides(orbitPlan, palette, dressing);
+    scene.add(guides);
+    return () => {
+      scene.remove(guides);
+      disposeSystemOrbitGuides(guides);
+    };
+  }, [level, orbitPlan, palette]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -486,7 +510,7 @@ export function GalaxyCanvas({
       className="galaxy-frame"
       role="application"
       tabIndex="0"
-      aria-label={`Codemble ${level.toLowerCase()} view. Drag to orbit, scroll to zoom. Use arrow keys to choose a node and Enter to move closer.`}
+      aria-label={`Codemble ${level.toLowerCase()} view. Drag to orbit, scroll to zoom. Use arrow keys to choose a node and Enter to move closer.${level === LEVELS.GALAXY ? "" : " Solid guides are parser-proven call layers; a dashed guide has no proven call path."}`}
       onKeyDown={handleKeyDown}
     >
       <div ref={hostRef} className="galaxy-canvas" aria-hidden="true" />

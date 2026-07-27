@@ -27,6 +27,7 @@ import {
 } from "./learnerSession.js";
 import { PARSE_STAGES } from "./projectMapping.js";
 import { createMapViewportStore } from "./mapViewport.js";
+import { systemOrbitPlan } from "./systemOrbits.js";
 
 export function App() {
   const mobileMenuRef = useRef(null);
@@ -274,6 +275,10 @@ export function App() {
   const studyEntryNodeId = focusedGraph.nodes.some((node) => node.id === region.id)
     ? region.id
     : null;
+  const systemOrbits =
+    level === LEVELS.SYSTEM && layer === "galaxy"
+      ? systemOrbitPlan(focusedGraph.nodes.filter((node) => node.region === region.id))
+      : [];
 
   const systemCopy =
     level === LEVELS.SYSTEM ? (
@@ -300,6 +305,22 @@ export function App() {
                 `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect, not what is inside them.`
               : `${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} · ${region.loc} ${region.loc === 1 ? "line" : "lines"} in this system.`}
         </p>
+        {systemOrbits.length ? (
+          <p className="system-orbit-note">
+            <span>Call layers</span>
+            {systemOrbits.map((orbit) => (
+              <i key={orbit.ring} data-unproven={orbit.unproven || undefined}>
+                {orbit.label}
+              </i>
+            ))}
+            <small>
+              Solid guides use certain calls only
+              {systemOrbits.some((orbit) => orbit.unproven)
+                ? "; dashed means no proven path."
+                : "."}
+            </small>
+          </p>
+        ) : null}
         <div className="orientation-copy__actions">
           {/* The Map is where Easy mode lands, and it had no way to read a
               module's source: the only action was a quiz about code the

@@ -239,12 +239,12 @@ def test_choosing_a_different_home_recomputes_every_distance() -> None:
     assert hops == {"far": 0, "mid": 1, "app": 2, "side": 3, "island": None}
 
 
-def test_hops_from_home_is_deterministic_and_serialized_in_schema_six() -> None:
+def test_hops_from_home_is_deterministic_and_serialized_in_schema_seven() -> None:
     draft = _hops_fixture()
     payload = finalize_graph(draft).to_dict()
 
     assert finalize_graph(draft).to_json() == finalize_graph(draft).to_json()
-    assert payload["schema_version"] == 6
+    assert payload["schema_version"] == 7
     assert {region["id"]: region["hops_from_home"] for region in payload["regions"]} == {
         "app": 0,
         "mid": 1,
@@ -252,6 +252,66 @@ def test_hops_from_home_is_deterministic_and_serialized_in_schema_six() -> None:
         "side": 1,
         "island": None,
     }
+
+
+def test_unreached_call_cycle_is_labeled_instead_of_given_a_fake_depth() -> None:
+    draft = Graph(
+        nodes=(
+            _node("cycle", region="cycle", rank=0),
+            _node("cycle.alpha", region="cycle"),
+            _node("cycle.beta", region="cycle"),
+        ),
+        edges=(
+            Edge("cycle.alpha", "cycle.beta", "call", True, 2),
+            Edge("cycle.beta", "cycle.alpha", "call", True, 3),
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"cycle.py": "cycle"},
+    )
+
+    graph = finalize_graph(draft)
+    nodes = {node.id: node for node in graph.nodes}
+
+    assert nodes["cycle"].system_orbit is not None
+    assert nodes["cycle"].system_orbit.kind == "origin"
+    for node_id in ("cycle.alpha", "cycle.beta"):
+        orbit = nodes[node_id].system_orbit
+        assert orbit is not None
+        assert orbit.kind == "unreached"
+        assert orbit.call_depth is None
+        assert orbit.ring == 1
+        assert orbit.radius == 34.0
+
+
+def test_overflow_subrings_never_overlap_the_next_call_layer() -> None:
+    roots = tuple(_node(f"wide.root_{index:02d}", region="wide") for index in range(13))
+    draft = Graph(
+        nodes=(
+            _node("wide", region="wide", rank=0),
+            *roots,
+            _node("wide.child", region="wide"),
+        ),
+        edges=(Edge("wide.root_00", "wide.child", "call", True, 2),),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"wide.py": "wide"},
+    )
+
+    graph = finalize_graph(draft)
+    nodes = {node.id: node for node in graph.nodes}
+    layer_one_radii = {
+        nodes[node.id].system_orbit.radius
+        for node in roots
+        if nodes[node.id].system_orbit is not None
+    }
+    child_orbit = nodes["wide.child"].system_orbit
+
+    assert layer_one_radii == {34.0, 46.0}
+    assert child_orbit is not None
+    assert child_orbit.call_depth == 2
+    assert child_orbit.radius == 70.0
+    assert child_orbit.radius not in layer_one_radii
 
 
 def _community_fixture(*, include_isolated: bool = False) -> Graph:

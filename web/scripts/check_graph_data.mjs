@@ -12,6 +12,7 @@ import {
   languageFocusMap,
   linkLabel,
   moduleIndex,
+  nodeLabel,
   projectLanguageOptions,
   revealedRegionIds,
   sharedTopSegment,
@@ -237,6 +238,35 @@ assert.equal(
   galaxyData({ ...ramp, nodes: [] }, swatches).nodes[0].color,
   "DIM",
   "a region with no partial member falls back to its own centrality ramp",
+);
+
+assert.equal(
+  nodeLabel({
+    name: "run",
+    kind: "function",
+    loc: 4,
+    system_orbit: {
+      ring: 2,
+      radius: 58,
+      call_depth: 2,
+      kind: "certain-call",
+    },
+  }),
+  "run · function · 4 LOC · call layer 2",
+);
+assert.equal(
+  nodeLabel({
+    name: "cycle",
+    kind: "function",
+    loc: 3,
+    system_orbit: {
+      ring: 3,
+      radius: 82,
+      call_depth: null,
+      kind: "unreached",
+    },
+  }),
+  "cycle · function · 3 LOC · no proven call path",
 );
 
 // --- progressive reveal -----------------------------------------------------

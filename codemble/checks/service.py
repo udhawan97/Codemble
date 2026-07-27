@@ -14,6 +14,10 @@ CheckKind = Literal["first-call", "direct-importer", "removal-impact", "entrypoi
 
 # Wrong options a check offers beyond its answers, when the graph holds that many.
 _MINIMUM_DISTRACTORS = 2
+# Check IDs are persisted learner-flow identity, not render-schema identity.
+# Keep this seed stable across additive graph fields and bump it only when the
+# check contract itself intentionally changes.
+_CHECK_SCHEMA_VERSION = 6
 
 
 class UnknownCheckError(KeyError):
@@ -431,7 +435,7 @@ def _check(
     evidence: tuple[str, ...],
 ) -> Check:
     check_id = hashlib.sha256(
-        f"{index.graph.schema_version}|{region_id}|{kind}|{subject}".encode()
+        f"{_CHECK_SCHEMA_VERSION}|{region_id}|{kind}|{subject}".encode()
     ).hexdigest()[:16]
     return Check(
         id=check_id,

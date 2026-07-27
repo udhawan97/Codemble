@@ -126,8 +126,9 @@ def test_serialization_is_byte_deterministic(graph) -> None:  # type: ignore[no-
 
     assert graph.to_json().encode() == second.to_json().encode()
     payload = json.loads(graph.to_json())
-    assert payload["schema_version"] == 6
+    assert payload["schema_version"] == 7
     assert payload["nodes"] == sorted(payload["nodes"], key=lambda node: node["id"])
+    assert all(node["system_orbit"] is not None for node in payload["nodes"])
     assert list(payload["file_hashes"]) == sorted(payload["file_hashes"])
     assert payload["concept_annotations"] == sorted(
         payload["concept_annotations"],
@@ -240,12 +241,21 @@ def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignor
     # Orbits are call depth from the system's entry node, not member index.
     # The module node holds the origin; ring 1 is 34.0 out, each ring +24.0.
     assert orbit_radius("app") == 0.0
+    assert nodes["app"].system_orbit is not None
+    assert nodes["app"].system_orbit.kind == "origin"
+    assert nodes["app"].system_orbit.call_depth == 0
     assert orbit_radius("pkg.service") == 0.0
     assert orbit_radius("app.main") == 34.0
+    assert nodes["app.main"].system_orbit is not None
+    assert nodes["app.main"].system_orbit.kind == "call-root"
+    assert nodes["app.main"].system_orbit.call_depth == 1
     # Service.run calls Service.finish, so finish orbits one ring further out.
     assert orbit_radius("pkg.service.Service") == 34.0
     assert orbit_radius("pkg.service.Service.run") == 34.0
     assert orbit_radius("pkg.service.Service.finish") == 58.0
+    assert nodes["pkg.service.Service.finish"].system_orbit is not None
+    assert nodes["pkg.service.Service.finish"].system_orbit.kind == "certain-call"
+    assert nodes["pkg.service.Service.finish"].system_orbit.call_depth == 2
     # greet -> normalize, and duplicate is called by nobody in the region.
     assert orbit_radius("pkg.util.greet") == 34.0
     assert orbit_radius("pkg.util.duplicate") == 34.0
@@ -305,6 +315,9 @@ def test_a_possible_call_never_decides_orbit_depth(tmp_path: Path) -> None:
     # call depth that exists only in a guess.
     assert orbit_radius("workmod.caller") == 34.0
     assert orbit_radius("workmod.Box.helper") == 34.0
+    assert nodes["workmod.Box.helper"].system_orbit is not None
+    assert nodes["workmod.Box.helper"].system_orbit.kind == "call-root"
+    assert nodes["workmod.Box.helper"].system_orbit.call_depth == 1
 
     # The uncertain edge itself must stay in the graph, just powerless.
     assert any(
@@ -346,5 +359,5 @@ def test_parse_cli_writes_graph_json(tmp_path: Path, capsys) -> None:  # type: i
 
     assert main(["parse", str(FIXTURE), "--out", str(destination)]) == 0
     payload = json.loads(destination.read_text(encoding="utf-8"))
-    assert payload["schema_version"] == 6
+    assert payload["schema_version"] == 7
     assert "Wrote" in capsys.readouterr().out

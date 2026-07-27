@@ -512,7 +512,14 @@ export function nodeLabel(node) {
   const role = node.kind === "region" ? "star system" : node.kind;
   const uncertainty = node.partial ? " · unchartable · syntax error" : "";
   const home = node.home ? " · Home" : "";
-  return `${node.name} · ${role} · ${node.loc} LOC${home}${uncertainty}`;
+  const orbit =
+    node.system_orbit?.kind === "unreached"
+      ? " · no proven call path"
+      : Number.isInteger(node.system_orbit?.call_depth) &&
+          node.system_orbit.call_depth > 0
+        ? ` · call layer ${node.system_orbit.call_depth}`
+        : "";
+  return `${node.name} · ${role} · ${node.loc} LOC${home}${uncertainty}${orbit}`;
 }
 
 export function linkLabel(link) {

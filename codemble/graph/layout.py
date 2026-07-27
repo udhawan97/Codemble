@@ -5,9 +5,17 @@ from __future__ import annotations
 import hashlib
 import math
 from collections import defaultdict, deque
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
-from codemble.adapters.base import Edge, Graph, Node, Region, RegionEdge
+from codemble.adapters.base import (
+    Edge,
+    Graph,
+    Node,
+    Region,
+    RegionEdge,
+    SystemOrbit,
+    SystemOrbitKind,
+)
 
 _GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))
 _SYSTEM_RING_CAPACITY = 12
@@ -109,15 +117,37 @@ def layout_graph(graph: Graph) -> Graph:
             )
         )
 
-        depths = _call_depths(members, graph.edges)
-        orbits: dict[int, list[Node]] = defaultdict(list)
+        layers = _call_layers(members, graph.edges)
+        orbits: dict[int, list[tuple[Node, _CallLayer]]] = defaultdict(list)
         for node in members:
-            orbits[depths[node.id]].append(node)
-        for node in orbits[0]:
-            positioned_nodes.append(replace(node, system_x=0.0, system_y=0.0, system_z=0.0))
-        for depth in sorted(orbit for orbit in orbits if orbit > 0):
-            ring_nodes = orbits[depth]
-            for slot_index, node in enumerate(ring_nodes):
+            layer = layers[node.id]
+            orbits[layer.ring].append((node, layer))
+        for node, layer in orbits[0]:
+            positioned_nodes.append(
+                replace(
+                    node,
+                    system_x=0.0,
+                    system_y=0.0,
+                    system_z=0.0,
+                    system_orbit=SystemOrbit(
+                        ring=layer.ring,
+                        radius=0.0,
+                        call_depth=layer.call_depth,
+                        kind=layer.kind,
+                    ),
+                )
+            )
+
+        # A call layer may need several physical circles when it contains more
+        # than twelve structures. Allocate each layer as its own radial band:
+        # overflow circles stay 12 units apart, and the next semantic layer
+        # starts 24 units beyond the last one. The previous fixed formula let a
+        # layer-1 overflow circle and the layer-2 circle both land at radius 58,
+        # so a visible guide could not truthfully label either one.
+        next_radius = 34.0
+        for ring in sorted(orbit for orbit in orbits if orbit > 0):
+            ring_nodes = orbits[ring]
+            for slot_index, (node, layer) in enumerate(ring_nodes):
                 sub_ring = slot_index // _SYSTEM_RING_CAPACITY
                 slot = slot_index % _SYSTEM_RING_CAPACITY
                 ring_members = min(
@@ -127,15 +157,23 @@ def layout_graph(graph: Graph) -> Graph:
                 angle = (
                     2.0 * math.pi * slot / ring_members
                 ) + _fraction(node.id, "orbit") * 0.08
-                radius = 34.0 + (depth - 1) * 24.0 + sub_ring * 12.0
+                radius = next_radius + sub_ring * 12.0
                 positioned_nodes.append(
                     replace(
                         node,
                         system_x=_rounded(math.cos(angle) * radius),
                         system_y=_rounded(((_fraction(node.id, "depth") * 2.0) - 1.0) * 8.0),
                         system_z=_rounded(math.sin(angle) * radius),
+                        system_orbit=SystemOrbit(
+                            ring=layer.ring,
+                            radius=radius,
+                            call_depth=layer.call_depth,
+                            kind=layer.kind,
+                        ),
                     )
                 )
+            sub_ring_count = math.ceil(len(ring_nodes) / _SYSTEM_RING_CAPACITY)
+            next_radius += sub_ring_count * 12.0 + 12.0
 
     return replace(
         graph,
@@ -229,17 +267,24 @@ def _hops_from_home(
     return hops
 
 
-def _call_depths(members: list[Node], edges: tuple[Edge, ...]) -> dict[str, int]:
-    """Return each member's orbit ring: call depth from the system's entry node.
+@dataclass(frozen=True, slots=True)
+class _CallLayer:
+    ring: int
+    call_depth: int | None
+    kind: SystemOrbitKind
+
+
+def _call_layers(members: list[Node], edges: tuple[Edge, ...]) -> dict[str, _CallLayer]:
+    """Return each member's honest semantic layer and fallback placement.
 
     The entry node is the module node at the origin (ring 0).  Ring 1 is what the
     entry calls directly *plus* every member no sibling calls, because a module
     that makes no module-level call would otherwise strand its whole region in
-    the outermost ring.  Members unreachable from those roots take the outermost
-    ring, ordered by node id, so unresolved evidence stays visible rather than
-    being guessed into the structure.  Only ``certain`` calls count: a "possible
-    call" is the parser admitting it isn't sure, so it must not silently decide
-    where a node orbits.
+    the outermost ring. Members unreachable from those roots still take a
+    deterministic outer ring, but their ``call_depth`` is ``None`` and their
+    kind is ``unreached``: placement keeps them visible without fabricating a
+    call path. Only ``certain`` calls count; a possible call is the parser
+    admitting it is unsure and must not decide either depth or placement.
     """
 
     member_ids = {node.id for node in members}
@@ -254,26 +299,42 @@ def _call_depths(members: list[Node], edges: tuple[Edge, ...]) -> dict[str, int]
                 indegree[edge.dst] += 1
             outgoing[edge.src].add(edge.dst)
 
-    depths = {entry: 0}
+    layers = {entry: _CallLayer(ring=0, call_depth=0, kind="origin")}
     queue: deque[str] = deque()
-    roots = outgoing[entry] | {
+    certain_entry_calls = outgoing[entry]
+    roots = certain_entry_calls | {
         node.id for node in members if node.id != entry and indegree[node.id] == 0
     }
     for node_id in sorted(roots):
-        depths[node_id] = 1
+        layers[node_id] = _CallLayer(
+            ring=1,
+            call_depth=1,
+            kind="certain-call" if node_id in certain_entry_calls else "call-root",
+        )
         queue.append(node_id)
     while queue:
         current = queue.popleft()
         for target in sorted(outgoing[current]):
-            if target not in depths:
-                depths[target] = depths[current] + 1
+            if target not in layers:
+                current_depth = layers[current].call_depth
+                if current_depth is None:  # pragma: no cover - unreachable layers are not queued
+                    continue
+                layers[target] = _CallLayer(
+                    ring=current_depth + 1,
+                    call_depth=current_depth + 1,
+                    kind="certain-call",
+                )
                 queue.append(target)
 
-    stranded = sorted(node.id for node in members if node.id not in depths)
-    outermost = max(depths.values()) + 1 if depths else 1
+    stranded = sorted(node.id for node in members if node.id not in layers)
+    outermost = max(layer.ring for layer in layers.values()) + 1
     for node_id in stranded:
-        depths[node_id] = outermost
-    return depths
+        layers[node_id] = _CallLayer(
+            ring=outermost,
+            call_depth=None,
+            kind="unreached",
+        )
+    return layers
 
 
 def with_entrypoint(graph: Graph, node_id: str) -> Graph:

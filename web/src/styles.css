@@ -841,6 +841,42 @@ input:focus-visible {
   color: var(--cm-ink-2);
 }
 
+.orientation-copy .system-orbit-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--cm-space-2xs) var(--cm-space-sm);
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.system-orbit-note > span {
+  color: var(--cm-ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.system-orbit-note i {
+  padding-inline-start: var(--cm-space-sm);
+  border-inline-start: 1.5rem solid var(--cm-route);
+  color: var(--cm-ink-2);
+  font-style: normal;
+  line-height: 1;
+}
+
+.system-orbit-note i[data-unproven] {
+  border-inline-start-color: var(--cm-hairline-soft);
+  text-decoration: underline dashed;
+  text-underline-offset: 0.22em;
+}
+
+.system-orbit-note small {
+  flex-basis: 100%;
+  color: var(--cm-ink-3);
+  font-size: inherit;
+}
+
 .orientation-copy--inline {
   position: static;
   z-index: auto;

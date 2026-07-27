@@ -116,11 +116,12 @@ of your own code becomes a sky you understand.
 ## What it looks like
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, its functions and classes as planets in the system's own colour family, in call-depth orbits with the call edges between them" width="900">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, its functions and classes as planets in the system's own colour family, in parser-proven call layers with the call edges between them" width="900">
 </p>
 
 <p align="center"><sub>
-  System level. Members orbit by call depth, so the inner ring runs first.
+  System level. Solid guides mark call layers established by certain calls; a
+  dashed outer guide means Codemble found no proven call path.
 </sub></p>
 
 <p align="center">
@@ -206,7 +207,7 @@ You can also switch project or change Home without leaving the app.
 | Brightness and glow | How many **distinct** structures call it |
 | Colour family | Import community — modules that import each other share one of eight traditional Japanese hues |
 | Nebula tint | Language, at galaxy level |
-| Orbit ring | Call depth — the inner ring runs first |
+| Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
 | Drifting particles | A call the parser proved; a possible call stays still |
 | Dim → lit | Not yet proven → understood |
 

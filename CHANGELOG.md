@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- **System orbits now explain themselves without inventing a path.** The graph
+  schema exposes each structure's exact orbit ring, radius, and parser-proven
+  call layer. System view draws and labels solid guides for layers established
+  by certain calls; a cyclic or otherwise unreached structure stays visible on
+  a dashed **No proven path** guide instead of being presented as a real call
+  depth. Hover, keyboard readouts, and compact-screen copy carry the same
+  distinction.
+
 ### Changed
 - **The public atlas now demonstrates Codemble instead of illustrating it.**
   Plate two replaces three equal static diagram cards with a scroll-directed
@@ -13,6 +22,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   and settle at full scale; compact and reduced-motion layouts pair every
   screenshot directly with its explanation. No stock media, fake chrome,
   invented metric, runtime dependency, or product behavior was added.
+- **Wide call layers occupy distinct orbit bands.** A layer with more than
+  twelve structures can use multiple physical circles without colliding with
+  the next semantic layer; the backend remains the sole owner of both layout
+  and meaning.
+
+### Fixed
+- **A render-schema addition no longer churns active check IDs.** Check identity
+  now has its own version seed, preserving every pinned question, answer,
+  evidence citation, and in-session submission contract while graph schema 7
+  adds orbit metadata.
 
 ## [0.7.0] - 2026-07-22
 

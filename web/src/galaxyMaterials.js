@@ -9,6 +9,7 @@ import { configureNamePlate } from "./nameAtlas.js";
 
 const HALO_TEXTURE_SIZE = 128;
 const NEBULA_TEXTURE_SIZE = 256;
+const GUIDE_LABEL_HEIGHT = 0.026;
 
 function radialTexture(size, stops) {
   const canvas = document.createElement("canvas");
@@ -157,6 +158,21 @@ export function createDressing(palette) {
       const aspect = material.userData.aspect ?? 4;
       configureNamePlate(sprite, { radius, aspect });
       sprite.renderOrder = 4;
+      return sprite;
+    },
+    /**
+     * A persistent short plate for a backend-owned orbit layer.
+     *
+     * Unlike node name plates, this never enters Name Atlas decluttering:
+     * there is one label per semantic layer and hiding one would erase the
+     * meaning of the guide it names.
+     */
+    guideLabel(text) {
+      const material = labelMaterial(text);
+      const sprite = new THREE.Sprite(material);
+      const aspect = material.userData.aspect ?? 4;
+      sprite.scale.set(GUIDE_LABEL_HEIGHT * aspect, GUIDE_LABEL_HEIGHT, 1);
+      sprite.renderOrder = 2;
       return sprite;
     },
     dispose() {
