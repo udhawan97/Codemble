@@ -17,7 +17,7 @@ on a project of real size.
 
 from __future__ import annotations
 
-import importlib.metadata as metadata
+from importlib import metadata
 
 
 def _version_tuple(distribution: str) -> tuple[int, ...]:

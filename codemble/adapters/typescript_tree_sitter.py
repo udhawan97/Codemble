@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import hashlib
 from collections import defaultdict
+from collections.abc import Iterable
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import AbstractSet, Iterable
 
 import tree_sitter_javascript
 import tree_sitter_typescript
-from tree_sitter import Language, Node as SyntaxNode, Parser, Tree
+from tree_sitter import Language, Parser, Tree
+from tree_sitter import Node as SyntaxNode
 
 from codemble.adapters.base import (
     AdapterParseError,

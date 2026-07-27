@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Sequence
 
 from codemble import __version__
 from codemble.adapters.project import (
@@ -15,6 +15,7 @@ from codemble.adapters.project import (
     ProjectScaleError,
 )
 from codemble.server.runtime import serve_picker, serve_project
+
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

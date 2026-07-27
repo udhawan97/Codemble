@@ -8,7 +8,7 @@ from pathlib import Path
 from codemble.adapters.base import Edge, Graph, Node
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.graph import build_map, finalize_graph
-from codemble.graph.mapview import MAP_SCHEMA_VERSION, _MAX_COLUMNS
+from codemble.graph.mapview import _MAX_COLUMNS, MAP_SCHEMA_VERSION
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 

@@ -218,7 +218,15 @@ def _barycenter_order(
             neighbors = predecessors if downward else successors
             current = {region_id: index for index, region_id in enumerate(ordered[layer])}
 
-            def position(region_id: str) -> tuple[float, str]:
+            # Bound per sweep rather than captured: the sort below consumes
+            # this immediately, but binding keeps that a property of the
+            # function instead of a property of where it happens to be called.
+            def position(
+                region_id: str,
+                reference: dict[str, int] = reference,
+                neighbors: dict[str, list[str]] = neighbors,
+                current: dict[str, int] = current,
+            ) -> tuple[float, str]:
                 adjacent = [
                     reference[neighbor]
                     for neighbor in sorted(neighbors.get(region_id, []))
@@ -336,8 +344,8 @@ def _route_points(
     *,
     cycle: bool,
 ) -> list[tuple[float, float]]:
-    src_row = int(round(float(src_box["y"]) / _ROW_HEIGHT))
-    dst_row = int(round(float(dst_box["y"]) / _ROW_HEIGHT))
+    src_row = round(float(src_box["y"]) / _ROW_HEIGHT)
+    dst_row = round(float(dst_box["y"]) / _ROW_HEIGHT)
     if cycle or dst_row <= src_row or dst_row > src_row + 1:
         left_distance = start[0]
         right_distance = width - start[0]

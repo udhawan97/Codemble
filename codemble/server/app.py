@@ -345,4 +345,4 @@ def _default_web_dist() -> Path:
     return Path(__file__).resolve().parents[1] / "web_dist"
 
 
-__all__ = ["create_app", "PickerConfig"]
+__all__ = ["PickerConfig", "create_app"]

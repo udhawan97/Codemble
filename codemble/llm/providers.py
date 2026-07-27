@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Protocol
+from typing import Protocol
 from urllib import error, parse, request
 
 from codemble import __version__
@@ -113,7 +114,7 @@ _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 class _NoRedirectHandler(request.HTTPRedirectHandler):
     """Refuse every redirect instead of following it."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102 - urllib override signature
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 
@@ -172,7 +173,8 @@ def _post_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonOb
         method="POST",
     )
     try:
-        with request.urlopen(outbound, timeout=60) as response:  # noqa: S310 - fixed HTTPS URLs
+        # Fixed HTTPS provider URLs; the address is never learner-supplied.
+        with request.urlopen(outbound, timeout=60) as response:
             decoded = json.loads(response.read().decode("utf-8"))
     except error.HTTPError as provider_error:
         raise ProviderError(
@@ -201,7 +203,7 @@ def _post_local_json(url: str, headers: dict[str, str], payload: JsonObject) -> 
         method="POST",
     )
     try:
-        with _LOOPBACK_OPENER.open(outbound, timeout=120) as response:  # noqa: S310 - loopback only, redirects refused
+        with _LOOPBACK_OPENER.open(outbound, timeout=120) as response:
             decoded = json.loads(response.read().decode("utf-8"))
     except error.HTTPError as provider_error:
         raise ProviderError(
@@ -217,11 +219,11 @@ def _post_local_json(url: str, headers: dict[str, str], payload: JsonObject) -> 
 
 
 __all__ = [
-    "AnthropicProvider",
     "FALLBACK_MODEL",
+    "RECOMMENDED_MODEL",
+    "AnthropicProvider",
     "NarrationProvider",
     "OllamaProvider",
     "OpenAIProvider",
     "ProviderError",
-    "RECOMMENDED_MODEL",
 ]

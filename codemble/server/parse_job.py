@@ -84,7 +84,7 @@ class ParseJob:
                 work(self)
             except ParseCancelled:
                 self._finish("idle", None)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 - see below; the catch-all is the point
                 # A background thread with no catch-all leaves the picker
                 # stuck on "parsing" for ever.  Every failure becomes state.
                 self._finish("error", str(error) or error.__class__.__name__)

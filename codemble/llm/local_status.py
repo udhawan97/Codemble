@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import http.client
 import json
-from typing import Callable
+from collections.abc import Callable
 from urllib import request
 
 from codemble import __version__
-from codemble.llm.providers import FALLBACK_MODEL, RECOMMENDED_MODEL, _LOOPBACK_OPENER
+from codemble.llm.providers import _LOOPBACK_OPENER, FALLBACK_MODEL, RECOMMENDED_MODEL
 
 GetJson = Callable[[str], dict]
 
@@ -33,7 +33,10 @@ def ollama_status(
     try:
         payload = fetch(f"{host}/api/tags")
         if not isinstance(payload, dict):
-            raise ValueError("Ollama returned an unexpected response shape.")
+            # ValueError, not TypeError: this is a malformed *response body*,
+            # not a bad argument, and it is the type the except below narrows
+            # on to keep this function total.
+            raise ValueError("Ollama returned an unexpected response shape.")  # noqa: TRY004
         models = payload.get("models", [])
         if isinstance(models, list):
             installed = [
@@ -56,10 +59,12 @@ def _get_json(url: str) -> dict:
     outbound = request.Request(
         url, headers={"user-agent": f"Codemble/{__version__}"}, method="GET"
     )
-    with _LOOPBACK_OPENER.open(outbound, timeout=2) as response:  # noqa: S310 - loopback only, redirects refused
+    # Loopback only, redirects refused: the opener cannot be walked off-host.
+    with _LOOPBACK_OPENER.open(outbound, timeout=2) as response:
         decoded = json.loads(response.read().decode("utf-8"))
     if not isinstance(decoded, dict):
-        raise ValueError("Ollama returned an unexpected shape.")
+        # ValueError for the same reason as above: ollama_status narrows on it.
+        raise ValueError("Ollama returned an unexpected shape.")  # noqa: TRY004
     return decoded
 
 

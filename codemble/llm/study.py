@@ -7,19 +7,19 @@ import json
 import os
 import tokenize
 import tomllib
+from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
-from typing import Mapping
 
 from codemble.adapters.base import Edge, Graph, Node
 from codemble.lens import lens_notes
 from codemble.llm.providers import (
+    RECOMMENDED_MODEL,
     AnthropicProvider,
     NarrationProvider,
     OllamaProvider,
     OpenAIProvider,
     ProviderError,
-    RECOMMENDED_MODEL,
 )
 from codemble.llm.structural import structural_summary
 from codemble.paths import data_dir
@@ -366,7 +366,9 @@ def _neighbor_id(edge: Edge, node_id: str) -> tuple[str, str] | None:
 def _cache_key(
     provider: NarrationProvider, node: Node, file_hash: str, mode: str
 ) -> str:
-    material = "\0".join(
+    # join names the NUL separator once; an f-string would repeat it five times
+    # in a value that keys the on-disk narration cache.
+    material = "\0".join(  # noqa: FLY002
         (PROMPT_VERSION, provider.name, provider.model, node.id, file_hash, mode)
     ).encode()
     return hashlib.sha256(material).hexdigest()

@@ -395,7 +395,7 @@ def test_check_generation_walks_every_edge_once(tmp_path: Path) -> None:
     graph = PythonAstAdapter().parse(FIXTURE)
     passes = 0
 
-    class _CountingEdges(tuple):  # noqa: SLOT001 - a plain tuple is the point
+    class _CountingEdges(tuple):
         """A real tuple that records how many times a consumer walked it."""
 
         def __iter__(self):  # type: ignore[no-untyped-def]

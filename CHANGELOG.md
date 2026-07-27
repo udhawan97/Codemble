@@ -13,6 +13,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   a dashed **No proven path** guide instead of being presented as a real call
   depth. Hover, keyboard readouts, and compact-screen copy carry the same
   distinction.
+- **CI now proves the shipped app matches its source.** `codemble/web_dist` is a
+  committed build artifact bundled into the wheel, and nothing checked that it
+  was ever refreshed — a change to `web/` or to the shared design tokens could
+  pass every gate and still install a stale app. The web job already rebuilt the
+  bundle; it now fails if that rebuild changed anything, naming the command to
+  run.
 
 ### Changed
 - **The public atlas now demonstrates Codemble instead of illustrating it.**
@@ -32,10 +38,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   now has its own version seed, preserving every pinned question, answer,
   evidence citation, and in-session submission contract while graph schema 7
   adds orbit metadata.
-- **CI linting is reproducible again.** The development dependency now caps
-  Ruff below 0.16, which otherwise changed the effective lint set during this
-  push and failed on 35 unrelated existing findings despite the scoped code
-  being clean under the repository's established gate.
+- **CI linting is reproducible again, now on Ruff 0.16.** The gate first capped
+  Ruff below 0.16, which had changed the effective lint set mid-push and failed
+  on 35 unrelated existing findings. Those findings are now triaged and the cap
+  moved to `>=0.16,<0.17`: import blocks and `__all__` ordering tidied, a
+  redundant `int(round(...))` dropped, `sorted(...)[0]` narrowed to `min(...)`,
+  and the barycenter sort key now binds its loop variables explicitly. Four
+  rules that misfire on this codebase are suppressed at the site with a stated
+  reason rather than globally. Parser, graph, map, and generated-check output is
+  byte-for-byte unchanged; the pinned golden suite is untouched.
 
 ## [0.7.0] - 2026-07-22
 

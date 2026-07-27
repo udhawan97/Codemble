@@ -98,8 +98,10 @@ def _expert_voice(
     concepts: list[str],
 ) -> str:
     fields = [
-        f"{node.name} · {node.kind} · {node.file}:{node.lineno}-{node.end_lineno}"
-        f" ({_line_count(node.loc)})",
+        (
+            f"{node.name} · {node.kind} · {node.file}:{node.lineno}-{node.end_lineno}"
+            f" ({_line_count(node.loc)})"
+        ),
         f"Inbound {len(inbound)} · Outbound {len(outbound)}"
         + (f" · {len(possible)} possible" if possible else ""),
     ]

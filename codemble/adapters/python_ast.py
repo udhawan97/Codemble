@@ -699,19 +699,21 @@ def _resolve_call(
             )
         ]
 
-    if isinstance(syntax.func, ast.Attribute) and isinstance(syntax.func.value, ast.Name):
-        if syntax.func.value.id in {"self", "cls"} and definition.enclosing_class_id:
-            class_matches = [
-                node
-                for node in children_by_parent[definition.enclosing_class_id]
-                if node.name == name
+    if (
+        isinstance(syntax.func, ast.Attribute)
+        and isinstance(syntax.func.value, ast.Name)
+        and syntax.func.value.id in {"self", "cls"}
+        and definition.enclosing_class_id
+    ):
+        class_matches = [
+            node
+            for node in children_by_parent[definition.enclosing_class_id]
+            if node.name == name
+        ]
+        if len(class_matches) == 1:
+            return [
+                _call_edge(definition.node_id, class_matches[0].id, syntax.lineno, True, False)
             ]
-            if len(class_matches) == 1:
-                return [
-                    _call_edge(
-                        definition.node_id, class_matches[0].id, syntax.lineno, True, False
-                    )
-                ]
 
     if isinstance(syntax.func, ast.Name):
         lexical_parents = (*reversed(definition.function_ancestors), module)

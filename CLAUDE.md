@@ -168,7 +168,23 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-27 ·
-Session note: System view now renders backend-owned, labelled orbit guides from
+Session note: Two gate repairs, no product change. CI now fails when a rebuild
+of `web/` changes the committed `codemble/web_dist`, closing the one path by
+which a source or design-token edit could pass every gate and still ship a
+stale app to users; the `web-check` job already rebuilt the bundle, so the gate
+is one step asserting the rebuild changed nothing. Proven in both directions
+before landing, and the build is reproducible byte-for-byte. Ruff then moved
+from the temporary `<0.16` cap to `>=0.16,<0.17` with all 35 deferred findings
+triaged. Bounded on purpose: no `select` is configured, so the gate is Ruff's
+default rule set and an open range hands it back to the release calendar. Two
+findings were traps rather than chores — `TRY004` wanted an exception type that
+`ollama_status`'s own `except` narrows on, which would have broken a function
+documented never to raise, and `FURB192` touched the check generator whose
+suites are pinned by a golden fixture. Parser, graph, map, and generated-check
+output is byte-for-byte unchanged on an unmodified fixture; 243 pytest, Ruff
+0.16 and 0.15, all 12 frontend contract checks, and the rebuilt bundle pass.
+The milestone does not advance: issue #13 still requires human tester evidence.
+Previously: System view now renders backend-owned, labelled orbit guides from
 graph schema 7. Solid guides mean parser-proven call layers; cycles and other
 structures with no certain-call route stay visible on a dashed **No proven
 path** guide with `call_depth: null`, so deterministic fallback placement never
@@ -638,6 +654,8 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-27 | Graph schema 7 serializes each node's `system_orbit` (`ring`, exact `radius`, proven `call_depth`, and `origin` / `call-root` / `certain-call` / `unreached` kind); System view labels solid proven layers and a dashed no-proven-path fallback, while overflow circles occupy disjoint radial bands | Approved by UD as the high-confidence implementation. React must not reverse-engineer meaning from XYZ, and deterministic outer placement for a cycle must not masquerade as a parser-proven call depth. The previous fixed-radius formula also placed a layer-1 overflow circle and layer 2 at the same radius |
 | 2026-07-27 | Generated check IDs use an independent check-contract version seed rather than `Graph.schema_version` | Graph schema 7 adds render metadata but changes no question, answer, option, or evidence. Coupling learner-flow identity to an additive renderer contract churned every ID and failed the pinned golden suite; the check seed now changes only with an intentional check-contract change |
 | 2026-07-27 | The `dev` extra caps Ruff below 0.16 until a deliberate repo-wide lint migration | CI resolved the previously open-ended `ruff>=0.6` dependency to 0.16 and immediately activated 35 existing findings across unrelated modules, while the established 0.15 gate remained clean. A linter release must not change the merge gate by calendar date |
+| 2026-07-27 | CI fails when a rebuild of `web/` changes the committed `codemble/web_dist` | The bundle is a build artifact that is committed *and* shipped inside the wheel, so the Gotchas rule "a token change only reaches users after `npm run build` is re-run and the result committed" was enforced by human memory alone. The `web-check` job already rebuilt it and discarded the result; asserting on that result costs one step. Verified both ways before landing — a deliberately stale bundle fails, the current tree passes — and the build is reproducible (a fresh build reproduces the committed bundle byte-for-byte, same content hashes) |
+| 2026-07-27 | **Completes the row above**: Ruff moves to `>=0.16,<0.17` with all 35 findings triaged; four rules are suppressed per-site with a stated reason rather than globally | The cap stays bounded because no `select` is configured, so the gate is Ruff's *default* rule set and an open range still hands the merge gate to the release calendar. Suppressions are per-site so the rule keeps working everywhere it fits: `TRY004` ×2 would have been an actual regression — `ollama_status` promises never to raise, and its `except` narrows on the very `ValueError` the rule wanted replaced; `BLE001` guards a worker thread where a missing catch-all strands the picker on "parsing" for ever; `FLY002` would repeat the NUL separator five times inside a cache key. `B023` ×4 were false alarms (the sort consumes the closure in-iteration) but were fixed by binding anyway, so correctness stops depending on where the function happens to be called. Byte-identical parser, graph, map, and check output proven on an unmodified fixture |
 
 ## Non-Goals — do NOT build (point here when asked)
 

@@ -183,16 +183,16 @@ class _CheckIndex:
     """
 
     __slots__ = (
-        "graph",
-        "nodes",
-        "region_ids",
         "all_ids",
-        "ids_by_kind",
-        "calls_out_by_region",
         "calls_in_by_region",
+        "calls_out_by_region",
+        "graph",
+        "ids_by_kind",
         "imports_into",
         "imports_out",
+        "nodes",
         "ranked_entrypoints",
+        "region_ids",
     )
 
     def __init__(self, graph: Graph) -> None:
@@ -268,7 +268,7 @@ def _first_call_check(index: _CheckIndex, region_id: str) -> Check | None:
     calls_by_source = index.calls_out_by_region.get(region_id)
     if not calls_by_source:
         return None
-    source_id = sorted(calls_by_source)[0]
+    source_id = min(calls_by_source)
     edge = min(calls_by_source[source_id], key=lambda item: (item.lineno, item.dst))
     answers = (edge.dst,)
     return _check(
@@ -337,13 +337,13 @@ def _impact_check(index: _CheckIndex, region_id: str) -> Check | None:
     # Distinct callers, never call sites: a private helper called five times
     # from one function must not outrank a utility called from three modules.
     # Matches Node.centrality; see codemble/graph/finalize.py.
-    target_id = sorted(
+    target_id = min(
         callers_by_target,
         key=lambda candidate: (
             -len({edge.src for edge in callers_by_target[candidate]}),
             candidate,
         ),
-    )[0]
+    )
     callers = sorted(callers_by_target[target_id], key=lambda edge: (edge.src, edge.lineno))
     answers = tuple(sorted({edge.src for edge in callers}))
     return _check(
