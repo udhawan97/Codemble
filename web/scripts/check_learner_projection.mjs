@@ -168,6 +168,12 @@ assert.equal(
 // When the parser did produce a module node for the region, the Map reads it
 // in place: Easy mode lands here, and it used to be quizzed on code it had no
 // way to open without leaving the layer.
+//
+// Reaching this state means the learner is at SYSTEM level in this very
+// region, where the region panel renders its own "Read the source" from the
+// identical condition. The chip therefore keeps the advice and drops the
+// duplicate control -- the same "no enabled no-op" rule the galaxy branch
+// below has always followed.
 {
   const readable = {
     ...graph,
@@ -181,9 +187,26 @@ assert.equal(
     graph: readable,
     region: readable.regions.find((region) => region.id === "app.py"),
   });
-  assert.deepEqual(readOnMap.hint.action, { type: "OPEN_STUDY", nodeId: "app.py" });
-  assert.equal(readOnMap.hint.actionLabel, "Read the source");
+  assert.equal(
+    readOnMap.hint.action,
+    null,
+    "the chip never repeats a control the region panel is already showing",
+  );
+  assert.equal(readOnMap.hint.actionLabel, null);
   assert.equal(readOnMap.hint.reason, "Read it before proving it.");
+  assert.equal(readOnMap.hint.message, "Study app.py next");
+
+  // ...and the control returns as soon as the recommendation points somewhere
+  // the panel is not already offering.
+  const elsewhere = createLearnerProjection().derive({
+    ...state,
+    languageFocus: "all",
+    level: LEVELS.GALAXY,
+    layer: "map",
+    graph: readable,
+  });
+  assert.deepEqual(elsewhere.hint.action, { type: "OPEN_REGION", regionId: "app.py" });
+  assert.equal(elsewhere.hint.actionLabel, "Open app.py");
 }
 
 const sameRegionInGalaxy = projection.derive({

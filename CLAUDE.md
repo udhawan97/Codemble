@@ -168,8 +168,72 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-28 ·
-Session note: The header rail gives the stage its space back, closing the
-follow-up the previous session deferred. The six rail actions needed ~883px but
+Session note: **v0.8.0** — the shell stopped spending more height on chrome than
+on the stage it frames. Easy mode at 1280x720 gave 338px of 720 (47%) to header,
+guidance and footer and left the Map's drawing 82px, roughly one 56px row of
+boxes; at 375 only 41px of an 80px canvas was ever on screen, so the layer Easy
+mode *lands on* opened with no diagram visible. The header was the cause and it
+was a width problem billed as a height one: six permanent buttons need 913px on
+this repository, the desktop grid handed that group 522px and handed the brand
+an equal 522px for 147px of content, so the actions wrapped to two 44px lines and
+the controls were exiled to a second row. Measurement settled the design rather
+than taste — freeing the width alone buys 0px, and packing everything into one
+row crushes the breadcrumb to 0px width, which is the `short_label` failure
+class, so something had to yield. Change Home and Switch project moved behind the
+disclosure compact widths already have, reusing its open state, Escape handling
+and focus return instead of growing a second one; Modules, Find, the level exit
+and Star chart stay permanent. Three smaller faults were found by measuring: a
+`<legend>` renders above its fieldset whatever the fieldset's display is, so one
+word cost 22px until floated; `.check-launch` carried the floating variant's
+margin while `.orientation-copy__actions` also set a gap, so two 44px buttons
+measured 136px at 375; and the guidance chip offered **Read the source** while
+the region panel rendered the identical button above it from the identical
+condition. Two latent bugs surfaced and were fixed at their shared guard: the
+panel's descendant rule forced auto placement that an old `minmax(0,1fr)` column
+had been absorbing, and the compact `[data-open]` rule out-specified the desktop
+`display: contents`, so opening More re-nested the permanent groups and grew the
+header to 301px. Escape with a rail disclosure open had always double-fired —
+closing it *and* retreating a level — reachable only at compact widths before.
+Result: header 221 → 148, chrome 47% → 37%, canvas 82 → 158 at 1280x720; at 375
+and 320 the drawing is whole and fully visible at 96px where half a box used to
+be. The two map notes were deliberately **not** collapsed: they sit *below* the
+canvas, so measurement shows they starve nothing, and hiding a correctness fact
+behind a disclosure to save scroll length is the wrong trade. **Left open:** the
+eight `docs-site/public/shots/*.png` product screenshots now show the old
+two-and-three-row header — `easy-mode.png` and `system.png` give roughly half
+their frame to chrome, which is the bug this release fixes. They were captured
+on this repository when it held 1081 nodes / 6724 edges / 109 regions; it now
+holds 1120 / 6991 / 111, so a faithful recapture also rewrites the README and
+landing-page alt text that quote those counts, and `loading.png` needs a
+~900-file project. That is its own change, not a rider on a layout fix. 253
+pytest, Ruff 0.16, 12 frontend contract checks, astro check/build, reproducible
+rebuilt bundle.
+
+**Collision, reconciled:** a parallel session shipped `99b6875` to main against
+the same symptom while this branch was in flight, and UD had approved *that*
+session's row-swap variant too — all six actions spanning row 2, controls in the
+row-1 corner, no control demoted, rail 221→161 and canvas 82→142. This branch's
+disclosure variant was taken because it is the later approval, reaches 148/158,
+and carries four fixes the row-swap does not (the duplicated guidance control,
+the doubled actions-row margin, the Escape double-fire, the canvas floor). The
+row-swap's own contribution was kept and is the better half of the shared
+discovery: **both** sessions independently found that
+`.rail-overflow__panel .rail-*` (0,2,0) outranked the desktop placement rules
+(0,1,0), making the whole `@media (min-width: 40rem)` block dead code; scoping
+that reset with `@media not all and (min-width: 40rem)` — the exact complement,
+so no width falls through — is a genuine repair, where out-specifying it merely
+outranks it, so the merge keeps the scoping and drops this branch's workaround.
+Its measurement of narrow desktop is what caught the one real fault in the
+merged result: at the old 40rem breakpoint this branch's arrangement measured
+199px of rail at 768 and **319px at 640**, against the compact shell's 124px at
+those very same widths — a wide layout losing to the one it replaces. So the
+rail's wide rules moved to their own `@media (min-width: 64rem)` block, lifted
+out of the 40rem block that also carries unrelated panel rules, with the
+compact reset's complement moved to match. 640–1023px now keeps the compact
+shell: 768 went 451 → 124, and the 1023/1024 boundary was checked in both
+directions with the breadcrumb whole on each side.
+
+Previously (main, 99b6875), the parallel row-swap fix: The six rail actions needed ~883px but
 were boxed into a `1fr` third of the grid (~495px), so they wrapped to two 44px
 rows — while the layer switcher and audience toggle sat alone on the row below
 using 370px of 1236px. The rail spent 221px of a 720px window, and ~866px of its
@@ -188,8 +252,10 @@ narrow desktop was far worse than reported — 640px went 511→271px, 768px
 boundary checked in both directions and the compact Menu panel unchanged. No
 parser, graph, checks, progress or HTTP behaviour touched; no control removed.
 253 pytest, Ruff 0.16, 12 frontend contract checks, reproducible bundle.
-Previously: the Map's region description no longer truncates, and the deferred
-clip from the session before is closed. The reported symptom — the final word
+
+Previously: The Map's region
+description no longer truncates, and the deferred
+clip from the previous session is closed. The reported symptom — the final word
 cut in half at 1280x720 — was the visible end of a layout that silently hid
 content: the copy's `max-block-size: 45%` was a share of the *whole* column,
 which also carries the tabs, two notes and four gaps, so the cap really claimed
@@ -720,6 +786,10 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-28 | The desktop rail gives the actions a full-width second row and the layer/audience controls the row-1 corner; the compact panel's placement reset is scoped to `@media not all and (min-width: 40rem)` | Approved by UD over two more ambitious variants. The six actions need ~883px and had ~495px, so they wrapped to two rows while the controls used 370px of the 1236px row below — 221px of a 720px window spent on chrome around a stage that then squeezed the map canvas to 82px. Swapping which row holds what removes no control, adds no component, and needs no overflow menu: measured rail 221→161px and canvas 82→142px at 1280x720 Easy, and it is a bigger win at narrow desktop widths, which were quietly far worse (640px 511→271px, 768px 451→271px). The scoping fix is the real repair: `.rail-overflow__panel .rail-actions` kept matching above 40rem where the panel is `display: contents`, and at (0,2,0) it outranked the (0,1,0) rules in the min-width block, so those were dead and the desktop rail was laid out by auto-placement. `not all and (min-width: 40rem)` is the exact complement of the existing breakpoint, so no width falls through; the 639/640 boundary was checked in both directions and the compact Menu is unchanged. A single row is arithmetically impossible here — brand + breadcrumb + actions alone is 1290px against 1236px — so anything further would have to hide controls behind a desktop overflow |
 | 2026-07-27 | The Map column scrolls when over-subscribed; the drawing keeps a stated `min-block-size` floor; and the region caption opts out of the Easy 46ch reading measure. This **replaces** the copy's `max-block-size: 45%` and its inner `overflow-y: auto` | A percentage of the whole column was the wrong guard: the column also carries the tabs, two notes and four gaps, so "45%" claimed 55% of what was actually distributable, and the drawing — the only flexible row — absorbed the rest, measuring 43px at 1280x720 and 0px at 320px. The cap therefore failed at the one job its comment claimed. Clipping *one child* is also the wrong failure mode for a layer whose Easy default is a learner's first screen: the inner scroll left the region's own description reachable but invisible, because macOS draws no scrollbar until scrolled, so it read as a rendering bug rather than as more text. The extra height was inherited, not intrinsic — the inline variant kept the floating overlay's 28rem measure, which exists to avoid covering the 3D scene and buys nothing for a row above a drawing, wrapping 152 characters to four lines inside 348px of a 1236px row. A caption is not a surface read at length, so it may run wider than prose. Verified on the served bundle at 1280/375/320 in both registers and on both tabs; a 3× longer caption scrolls the column rather than hiding a word |
 | 2026-07-27 | **Completes the row above**: Ruff moves to `>=0.16,<0.17` with all 35 findings triaged; four rules are suppressed per-site with a stated reason rather than globally | The cap stays bounded because no `select` is configured, so the gate is Ruff's *default* rule set and an open range still hands the merge gate to the release calendar. Suppressions are per-site so the rule keeps working everywhere it fits: `TRY004` ×2 would have been an actual regression — `ollama_status` promises never to raise, and its `except` narrows on the very `ValueError` the rule wanted replaced; `BLE001` guards a worker thread where a missing catch-all strands the picker on "parsing" for ever; `FLY002` would repeat the NUL separator five times inside a cache key. `B023` ×4 were false alarms (the sort consumes the closure in-iteration) but were fixed by binding anyway, so correctness stops depending on where the function happens to be called. Byte-identical parser, graph, map, and check output proven on an unmodified fixture |
+| 2026-07-28 | Desktop keeps four permanent header actions; **Change Home** and **Switch project** move behind the existing compact disclosure, relabelled **More** at `min-width: 40rem` | Approved by UD. This narrows the 2026-07-21 "global surfaces" entry to the surfaces that entry actually names — Modules, Find and the star chart — and leaves the two occasional controls one click away. Measurement, not preference, forced it: six buttons need 913px on this repository and no column a 1280px header can offer them exceeds 522px, so they wrapped to two 44px lines and pushed the controls to a second row, spending 221px of a 720px viewport. Freeing the wasted width buys 0px on its own, and every genuine one-row layout ellipsises or erases the breadcrumb — a 1280px test crushed it to 0px, the `short_label` failure class applied to "where am I". Reusing the one disclosure keeps a single open state, Escape handler and focus return rather than a second copy of all three |
+| 2026-07-28 | The Map's two `.map-note` rows stay full always-on prose; only the header, the actions row and the guidance strip yield | Deliberate scope refusal, recorded because the approved scope named the notes. They render *below* the canvas, so measurement shows they push nothing: at 375 the drawing's visibility is set entirely by the tabs and the region copy above it. Their only cost is scroll length in a column that already scrolls by design (55147ac), and the trade for that is putting a Correctness-Contract fact — what Codemble could not read, and how many modules no route reaches — behind an interaction. A count that must be stated is worth more than 116px of scrolling |
+| 2026-07-28 | The rail's wide layout starts at `min-width: 64rem`, not 40rem, in its own media block | Measured, the wide arrangement was worse than the compact shell everywhere below 1024px: 199px of rail at 768 and 319px at 640, against 124px compact at both. Below that width the brand, breadcrumb, four permanent actions and the More trigger cannot share a row, and the actions -- pinned to the leftover column -- wrap to three and four lines. A layout that loses to the one it replaces should not run there. The rail rules were lifted out of the 40rem block, which also carries unrelated study-panel and status-line rules, so the two breakpoints stay independent; the compact reset's `not all and` complement moved with it, so no width falls through both |
+| 2026-07-28 | An open rail disclosure owns Escape: the window-level handler yields to `.rail-overflow[data-open]` as it already yields to `dialog[open]` | The handler bails for the finder, sidebar, checks, entrypoint picker and native dialogs but never for the rail, so Escape closed the Menu *and* retreated a level in one keypress. It was always wrong and only compact widths could reach it; making the disclosure exist at desktop, where Escape is the documented way back, made it ordinary. Read from the DOM rather than session state because the disclosure's open state is view-local — the same reason the dialog check beside it is a DOM query |
 
 ## Non-Goals — do NOT build (point here when asked)
 

@@ -185,8 +185,8 @@ A header toggle changes how Codemble talks to you and how much it puts on
 screen: plain language, larger type, the Map by default, and a hint chip naming
 the nearest unlit region to Home — counted in import hops over the graph, not
 chosen by a model, and broken by parser-proven structure count when several sit
-the same distance away. The hint opens that system, offers to read its source,
-then becomes an instruction rather than an enabled no-op. It waits until the
+the same distance away. The hint opens that system, then becomes an instruction
+rather than repeating a button the layer is already showing you. It waits until the
 first-run choices are done before it appears at all, and it never changes graph
 truth, coordinates, progress, or how a check is scored.
 

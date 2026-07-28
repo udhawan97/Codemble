@@ -52,9 +52,12 @@ Easy mode also shows a hint chip naming the nearest unlit region to Home,
 counted in import-route hops over the graph — no model picks it for you. Where
 several regions sit the same number of hops away, it prefers the one with more
 parser-proven structures, so the first suggestion is rarely a one-line package
-init. Its action follows the current level: open the suggested system, read its
-source, then prove it. Once the correct next step is already on screen, the chip
-becomes an instruction instead of leaving a button that cannot move you forward.
+init. Its action follows the current level: while you are somewhere else it
+opens the suggested system, and once you are inside it the chip becomes an
+instruction — read it before proving it — rather than a button. That applies
+both when the action could not move you forward and when the region's own panel
+is already showing it: on the Map, **Read the source** sits directly above the
+chip, so repeating it there would be two controls for one step.
 Guidance stays out of the way until the first-run choices — audience, Home, and
 the coach marks — are finished.
 

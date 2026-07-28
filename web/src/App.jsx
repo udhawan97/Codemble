@@ -103,6 +103,13 @@ export function App() {
         current.entrypointOpen ||
         // Native dialogs (audience gate, coach marks, confirms) own Escape.
         document.querySelector("dialog[open]") ||
+        // So does an open rail disclosure, which closes on Escape and returns
+        // focus to its trigger. Its open state is view-local rather than
+        // session state, so it is read the same way the dialog above is. This
+        // always double-fired -- closing the Menu *and* retreating a level --
+        // but only compact widths had a disclosure to open; it now exists at
+        // desktop too, where Escape is the documented way back.
+        document.querySelector(".rail-overflow[data-open]") ||
         isEditableTarget(document.activeElement)
       ) {
         return;
@@ -424,6 +431,16 @@ export function App() {
             }
           }}
         >
+          {/* One disclosure serves both breakpoints, so there is one open
+              state, one Escape handler and one focus return. Only its contents
+              differ: compact holds every secondary control, desktop holds the
+              occasional ones the permanent row has no width for. The label
+              follows, as two spans the media query switches -- a hidden span
+              leaves the accessibility tree, so the accessible name changes
+              with the layout and no resize listener is needed.
+              `aria-controls` names the panel at both widths: it is what the
+              trigger reveals compact, and it contains what the trigger reveals
+              at desktop. */}
           <button
             ref={mobileMenuRef}
             className="mobile-menu-trigger"
@@ -432,7 +449,8 @@ export function App() {
             aria-controls="rail-overflow-panel"
             onClick={() => setMobileMenuOpen((open) => !open)}
           >
-            Menu
+            <span className="rail-trigger__compact">Menu</span>
+            <span className="rail-trigger__wide">More</span>
           </button>
           <div
             className="rail-overflow__panel"
@@ -512,6 +530,16 @@ export function App() {
                   </button>
                 </>
               )}
+            </div>
+            {/* The occasional half of the actions. Six permanent buttons need
+                913px on this project and the widest column the desktop rail
+                can offer them is 522px, so they wrapped to two 44px lines and
+                the header spent 221px of a 720px viewport. Change Home is
+                first-run calibration and Switch project is once per project,
+                so these are the two that yield; Modules, Find, the level exit
+                and Star chart stay permanent, as global surfaces. Compact is
+                unaffected -- there this group is simply more of the Menu. */}
+            <div className="rail-more">
               {graph.entrypoint_candidates.length ? (
                 <button
                   className="rail-action"

@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-28
+
 ### Added
 - **System orbits now explain themselves without inventing a path.** The graph
   schema exposes each structure's exact orbit ring, radius, and parser-proven
@@ -54,6 +56,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   narrower desktop widths, where the header could previously grow past 500px.
 
 ### Fixed
+- **The window now spends its height on your code, not on Codemble's own
+  controls.** In the default Easy view at 1280x720, 47% of the window went to
+  chrome and the Map's drawing got 82px — about one row of boxes; on a phone
+  only half a box was ever on screen, so the layer Easy mode opens on showed no
+  diagram at all. The header was the cause and it was really a width problem:
+  six permanent buttons need more room than the header could give them, so they
+  wrapped to a second row and pushed the layer switcher onto a third, while the
+  space beside the project name sat empty. **Modules**, **Find**, the level exit
+  and **Star chart** stay on screen; **Change Home** and **Switch project** move
+  behind a **More** disclosure — the same one phones already use as **Menu**.
+  The Audience label now sits beside its buttons instead of above them. The
+  wide header also starts later, at 1024px rather than 640px, because below that
+  it has to wrap and costs more height than the compact one it replaces: a
+  768px-wide window went from a 451px header to 124px. The drawing gets 158px at
+  1280x720 instead of 82, 138px at 768, and on a phone it is whole and visible
+  where before it was cut in half. Nothing was removed: both controls are one
+  click away, and the breadcrumb that says where you are is never truncated to
+  make room.
+- **Guidance no longer repeats a button that is already on screen.** On the Map,
+  once you were inside the region it recommended, the guidance strip offered
+  **Read the source** while the region's own panel showed the identical button
+  directly above it. The strip now keeps the advice and drops the duplicate.
+- **Escape with the header menu open closes the menu only.** It used to close
+  the menu *and* step back a level in the same keypress.
 - **The Map no longer cuts off a module's description, or the map itself.**
   Selecting a module in the default Easy view truncated the explanation
   mid-word, and the same layout had quietly reduced the diagram to a 43px strip

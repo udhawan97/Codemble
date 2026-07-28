@@ -272,12 +272,20 @@ function nextStudyHint(graph, { mode, level, regionId, layer }) {
     // here is reading it -- not leaving the layer the learner was put on. The
     // module node carries the region's id, and it is only offered when the
     // parser actually produced that node.
+    //
+    // The chip says so but does not repeat the control: reaching this branch
+    // means the learner is at SYSTEM level in this very region, and the
+    // region panel renders its own "Read the source" from the identical
+    // condition (App.jsx studyEntryNodeId). Two buttons for one action is the
+    // "no enabled no-op" rule applied to duplication -- and at 375px the
+    // duplicate cost 50px of a 142px strip while the drawing was half
+    // visible.
     if (graph.nodes.some((node) => node.id === nearest.regionId)) {
       return {
         ...hint,
         reason: "Read it before proving it.",
-        action: { type: "OPEN_STUDY", nodeId: nearest.regionId },
-        actionLabel: "Read the source",
+        action: null,
+        actionLabel: null,
       };
     }
     return {
