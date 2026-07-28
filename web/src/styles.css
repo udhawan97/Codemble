@@ -130,6 +130,9 @@ input:focus-visible {
   padding-inline: var(--cm-space-md);
   border: 1px solid var(--cm-orbit);
   border-radius: var(--cm-radius);
+  /* Without this the UA's buttonface (#efefef) wins and ruri text sits on it
+     at 2.0:1 -- the trigger is otherwise a .rail-action in every respect. */
+  background: var(--cm-ground);
   color: var(--cm-orbit);
   cursor: pointer;
   font-weight: 600;
