@@ -90,14 +90,23 @@ selected one, at every level including study, where it re-targets the panel.
 **Escape** steps back a level — on the Map as well as in the Galaxy — and closes
 the star chart, returning focus to the control that opened it.
 
-At narrow widths the header's secondary actions live behind **Menu**, guidance
-occupies its own row below the stage, and Study becomes a full-stage scrolling
-sheet. The map/canvas and the local-only status remain in the viewport instead
-of being squeezed behind controls. Opening Modules, Find, the Star chart or a
-region's checks moves keyboard focus into the new surface; closing it returns
-focus to the invoking action or to the visible Menu button. Within the checks
-panel, answering keeps focus on the result rather than dropping it back to the
-page.
+The header keeps **Modules**, **Find**, the level exit and **Star chart** on
+screen at every width. The occasional controls — **Change Home** and
+**Switch project** — sit behind one disclosure: at narrow widths it is labelled
+**Menu** and holds every secondary action, and on a wide screen it is labelled
+**More** and holds those two. Six permanent buttons need more width than a
+desktop header can give them without wrapping to a second row, and the stage
+pays for that in height, so the two you reach least often step aside. Opening
+the disclosure never moves the stage.
+
+At narrow widths guidance also occupies its own row below the stage, and Study
+becomes a full-stage scrolling sheet. The map/canvas and the local-only status
+remain in the viewport instead of being squeezed behind controls. Opening
+Modules, Find, the Star chart or a region's checks moves keyboard focus into the
+new surface; closing it returns focus to the invoking action or to the visible
+Menu or More button. **Escape** closes an open disclosure without also stepping
+back a level. Within the checks panel, answering keeps focus on the result
+rather than dropping it back to the page.
 
 ## Two layers, one truth
 
@@ -177,11 +186,14 @@ says the same things in plain language.
 
 ## Switching project and changing Home
 
-**Switch project** in the header releases the current project and returns you to
-the picker; progress is stored per project, so the galaxy comes back lit. This
-works whether you started from the picker or passed a path. In the compact Menu,
-the first click reveals the saved-progress confirmation without closing the
-Menu; Cancel returns focus to **Switch project**.
+Both controls live behind the header's disclosure — **More** on a wide screen,
+**Menu** at narrow widths.
+
+**Switch project** releases the current project and returns you to the picker;
+progress is stored per project, so the galaxy comes back lit. This works whether
+you started from the picker or passed a path. The first click reveals the
+saved-progress confirmation without closing the disclosure; Cancel returns focus
+to **Switch project**.
 
 **Change Home** reopens the entrypoint picker whenever the parser ranked at
 least one candidate. The Home you choose is remembered for the next run of the
