@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level: 109 star systems parsed from real source, 23 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an amber lit Home, with language focus buttons, a Key disclosure, and a notice that two files could not be read — all under tests/" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level on a first run: 111 star systems parsed from real source, 23 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next" width="960">
 </p>
 
 <p align="center"><sub>
@@ -116,7 +116,7 @@ of your own code becomes a sky you understand.
 ## What it looks like
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, its functions and classes as planets in the system's own colour family, in parser-proven call layers with the call edges between them" width="900">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/system.png" alt="A single star system, codemble.server.app, its 31 parser-proven structures as planets in the system's own colour family, on labelled Layer 1 and Layer 2 call guides with the call edges between them" width="900">
 </p>
 
 <p align="center"><sub>

@@ -5,7 +5,7 @@ description: What the parser knows, what a model adds, and what happens when you
 
 ## Five sections, in order of certainty
 
-![The study panel for create_app: kind, span, fifty-three callers, parser-proven resolution, and the start of a structural summary marked "No model needed".](/Codemble/shots/study-panel.png)
+![The study panel for create_app: kind, span, fifty-three callers, parser-proven resolution, and a structural summary marked "No model needed" listing its real span, inbound and outbound counts, and detected concepts.](/Codemble/shots/study-panel.png)
 
 Open a planet and the panel builds itself from the most certain evidence
 outward:

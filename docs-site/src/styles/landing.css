@@ -661,7 +661,7 @@ img {
     position: absolute;
     inset-block-start: 50%;
     inset-inline: -3% 0;
-    aspect-ratio: 1440 / 716;
+    aspect-ratio: 1440 / 720;
     transform: translateY(-50%);
     transform-style: preserve-3d;
   }

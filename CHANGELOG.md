@@ -5,6 +5,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed
+- **Codemble no longer reports its own bundled app as a file it could not
+  read.** The count of unsupported source files asked whether any adapter had
+  *claimed* a file, which is not the same question as whether any adapter
+  *understood* it: a file an adapter deliberately skips as generated build
+  output had still been read and recognised. Running Codemble on Codemble
+  therefore announced "1 JavaScript file not included" about the packaged SPA
+  it ships. A language is now reported as missing only when no adapter
+  recognises its extension at all, which is what the note always meant.
+- **The header's More button is no longer an unstyled light slab.** It set
+  every property except its background, so the browser's default won and its
+  text sat on it at 2.0:1 — below the contrast floor the rest of the interface
+  holds to. It now shares the ground its neighbours use.
+
+### Changed
+- **The product screenshots in the documentation show the current app.** All
+  seven in-app captures predated the v0.8.0 shell, so the published docs still
+  advertised the two- and three-row header that release removed. They had also
+  drifted apart from one another across several builds — two of them showed
+  expert wording under the beginner setting, one still had the pre-v0.7.0
+  colours, and one recommended a test file as the next thing to study. All
+  seven are now one build and one session. The staged loading screen is
+  deliberately unchanged: it is a full-window state with no header, so no shell
+  change can affect it.
+
 ## [0.8.0] - 2026-07-28
 
 ### Added

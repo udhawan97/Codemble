@@ -168,7 +168,54 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-28 ·
-Session note: **v0.8.0** — the shell stopped spending more height on chrome than
+Session note: the eight product screenshots were recaptured on the v0.8.0 shell,
+paying the debt the release left open. Measuring them first changed the job
+three times. Only **five of the eight are displayed anywhere** — `easy-mode`,
+`galaxy-lit` and `map-workflow` appear in no README, docs page or landing — and
+`NOTES.md` frames the directory as a library to be preferred over invented
+media, so they stay and were recaptured too. The header was also only the
+newest drift: `easy-mode` and `galaxy-lit` rendered **Expert** vocabulary under
+a selected **Easy** radio, `easy-mode` still had grey stars from before the
+v0.7.0 community colours, `galaxy-lit` recommended a test module as the next
+study target (pre-dating the test-path penalty), and `map-architecture` carried
+a third header again — the set was captured across several builds and had never
+been internally consistent. Two real bugs surfaced and were fixed before any
+capture, because both would have been published. **`unsupported_sources`
+counted the bundled SPA**: `_ignore_project_directory` prunes a directory only
+when *every* adapter ignores it and Python ignores none, so `codemble/web_dist`
+was walked, the `.js` matched the TS rule, the path then hit that rule's
+`ignored_directories`, and the file fell through to the tally — the galaxy told
+a learner "1 JavaScript file not included" about a file excluded on purpose, in
+the one channel schema 8 added to be truthful about coverage, and a case the
+v0.8.0 changelog already promised was handled. Recognition, not ownership, now
+decides the tally. **`.mobile-menu-trigger` had no `background`**, so the UA's
+`buttonface` (#efefef) won and ruri text sat on it at 2.0:1 against a mandated
+4.5:1 floor; pre-existing at compact widths, but v0.8.0 promoted the control to
+every desktop width as **More**, so it appeared in all seven frames as a light
+slab in a dark header. Deliberate calls: `loading.png` is **unchanged** — a
+pre-app, full-window state with no header, 1280x900 from a different rig, whose
+"13 of 900 files" describes a synthetic project and so takes no part in the
+renumbering; `easy-mode.png` moved to the **Map**, which is what Easy actually
+opens, because captured as a galaxy it was a near-duplicate of `galaxy.png`;
+and `galaxy.png` is now a true first-run **unlit** state, so its alt text no
+longer claims an amber lit Home — that is `galaxy-lit.png`'s job, which earns
+its place as the after to the hero's before. Counts moved 1081/6724/109 →
+1121/6995/111, but far less prose depended on them than expected: `53 callers`,
+`fifty-three callers`, `31` structures and "two files could not be read — all
+under tests/" were all still exactly right and were left alone. Capture at
+1440x720 rather than the old 716 also required `AtlasJourney.astro`'s two
+`height` attributes and `landing.css`'s `aspect-ratio: 1440 / 716` to move in
+step, or the plate would letterbox. **Left open:** the galaxy's initial camera
+uses a fixed distance rather than fitting the bounding box, and a
+`PerspectiveCamera`'s `fov` is *vertical* — so v0.8.0's taller canvas dropped
+the aspect from ~3.8 to ~3.16 and *narrowed* the horizontal view. At 1440x720
+the sky now opens clipped, and both galaxy shots were framed by zooming out by
+hand. Filed as its own change; a camera-framing rule touches the
+"same code → same sky" criterion and the bounded-orbit clamps. 254 pytest,
+Ruff 0.16 clean, 12 frontend contract checks, astro check/build, reproducible
+rebuilt bundle.
+
+Previously: **v0.8.0** — the shell stopped spending more height on chrome than
 on the stage it frames. Easy mode at 1280x720 gave 338px of 720 (47%) to header,
 guidance and footer and left the Map's drawing 82px, roughly one 56px row of
 boxes; at 375 only 41px of an 80px canvas was ever on screen, so the layer Easy
@@ -198,14 +245,8 @@ Result: header 221 → 148, chrome 47% → 37%, canvas 82 → 158 at 1280x720; a
 and 320 the drawing is whole and fully visible at 96px where half a box used to
 be. The two map notes were deliberately **not** collapsed: they sit *below* the
 canvas, so measurement shows they starve nothing, and hiding a correctness fact
-behind a disclosure to save scroll length is the wrong trade. **Left open:** the
-eight `docs-site/public/shots/*.png` product screenshots now show the old
-two-and-three-row header — `easy-mode.png` and `system.png` give roughly half
-their frame to chrome, which is the bug this release fixes. They were captured
-on this repository when it held 1081 nodes / 6724 edges / 109 regions; it now
-holds 1120 / 6991 / 111, so a faithful recapture also rewrites the README and
-landing-page alt text that quote those counts, and `loading.png` needs a
-~900-file project. That is its own change, not a rider on a layout fix. 253
+behind a disclosure to save scroll length is the wrong trade. The screenshot
+debt this left open has since been paid — see the entry above. 253
 pytest, Ruff 0.16, 12 frontend contract checks, astro check/build, reproducible
 rebuilt bundle.
 
@@ -790,6 +831,10 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-28 | The Map's two `.map-note` rows stay full always-on prose; only the header, the actions row and the guidance strip yield | Deliberate scope refusal, recorded because the approved scope named the notes. They render *below* the canvas, so measurement shows they push nothing: at 375 the drawing's visibility is set entirely by the tabs and the region copy above it. Their only cost is scroll length in a column that already scrolls by design (55147ac), and the trade for that is putting a Correctness-Contract fact — what Codemble could not read, and how many modules no route reaches — behind an interaction. A count that must be stated is worth more than 116px of scrolling |
 | 2026-07-28 | The rail's wide layout starts at `min-width: 64rem`, not 40rem, in its own media block | Measured, the wide arrangement was worse than the compact shell everywhere below 1024px: 199px of rail at 768 and 319px at 640, against 124px compact at both. Below that width the brand, breadcrumb, four permanent actions and the More trigger cannot share a row, and the actions -- pinned to the leftover column -- wrap to three and four lines. A layout that loses to the one it replaces should not run there. The rail rules were lifted out of the 40rem block, which also carries unrelated study-panel and status-line rules, so the two breakpoints stay independent; the compact reset's `not all and` complement moved with it, so no width falls through both |
 | 2026-07-28 | An open rail disclosure owns Escape: the window-level handler yields to `.rail-overflow[data-open]` as it already yields to `dialog[open]` | The handler bails for the finder, sidebar, checks, entrypoint picker and native dialogs but never for the rail, so Escape closed the Menu *and* retreated a level in one keypress. It was always wrong and only compact widths could reach it; making the disclosure exist at desktop, where Escape is the documented way back, made it ordinary. Read from the DOM rather than session state because the disclosure's open state is view-local — the same reason the dialog check beside it is a DOM query |
+| 2026-07-28 | `unsupported_sources` counts a file only when **no adapter recognised its extension**, not when no adapter claimed the path | An adapter that skips a file as generated output has still read the extension, so the file was excluded on purpose rather than missed. `_ignore_project_directory` prunes a directory only when *every* adapter ignores it, and Python's ignore set is empty, so `codemble/web_dist` was always walked and its bundled `.js` fell through to the tally. The galaxy and map then told a learner "1 JavaScript file not included" about the app's own committed SPA — a false claim in the exact channel graph schema 8 added to be truthful about coverage, and one the v0.8.0 changelog already advertised as handled ("registering an adapter automatically silences its own extension"). Recognition is the honest test; ownership is not |
+| 2026-07-28 | `.mobile-menu-trigger` sets its own `background`, matching `.rail-action` | The rule set border, radius, colour, cursor and weight but no background, so the UA's `buttonface` (#efefef) won and ruri text sat on it at **2.0:1** — under the 4.5:1 floor `design.md` mandates. It was wrong at compact widths from the start, but v0.8.0 promoted the control to every desktop width as **More**, which is how it reached all seven product screenshots as a light slab in a dark navy header |
+| 2026-07-28 | The product shots are captured from a git worktree named `Codemble`, at 1440x720, with `loading.png` excluded | The brand line renders the project directory's own name, so serving a worktree published `silly-swanson-53d316` to the docs. Capturing at 720 rather than the old 716 is one round number, but it couples: `AtlasJourney.astro`'s two `height` attributes and `landing.css`'s `aspect-ratio` both encode the frame and must move together or the atlas plate letterboxes. `loading.png` is a pre-app, full-window state with no header, from a different rig and a synthetic 900-file project, so no shell change can affect it and its counts are not this repository's |
+| 2026-07-28 | `galaxy.png` shows a genuine first-run **unlit** galaxy; the lit Home lives only in `galaxy-lit.png` | The previous hero was captured mid-session with Home already lit, so its alt text promised "an amber lit Home" that a new reader would not see on their own first run. Splitting the two makes the pair a before and after and gives `galaxy-lit.png` — displayed nowhere until now — a reason to exist. Illumination is the product's central claim, so it should be shown being *earned*, not preset |
 
 ## Non-Goals — do NOT build (point here when asked)
 

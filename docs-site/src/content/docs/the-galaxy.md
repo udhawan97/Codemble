@@ -5,7 +5,7 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 ## Your code, mapped honestly
 
-![Codemble at galaxy level: 109 star systems parsed from real source, 23 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an amber lit Home, with the language focus buttons, a Key disclosure, and a notice that two files could not be read — all under tests/.](/Codemble/shots/galaxy.png)
+![Codemble at galaxy level on a first run: 111 star systems parsed from real source, 23 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.](/Codemble/shots/galaxy.png)
 
 The galaxy is not an artist's impression. Every visual property encodes a fact
 from the parsed structure of your code:
@@ -136,7 +136,7 @@ The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 ## A region = one star system
 
-![One star system, codemble.server.app, its 31 functions and classes as planets in the system's own colour family, laid out in parser-proven call layers with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
+![One star system, codemble.server.app, its 31 parser-proven structures as planets in the system's own colour family, laid out on labelled Layer 1 and Layer 2 call guides with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
 
 A **region** is one module — the unit of checks, illumination, and progress.
 Change a file and only its region goes dim again; the rest of your sky stays lit.
