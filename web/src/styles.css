@@ -220,6 +220,19 @@ input:focus-visible {
   min-width: 0;
 }
 
+/* Compact: just more of the Menu, laid out like the row above it. Desktop
+   turns this into the disclosure's whole contents -- see the 40rem block. */
+.rail-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: var(--cm-space-sm);
+  grid-column: 1 / -1;
+  grid-row: 3;
+  min-width: 0;
+}
+
 .rail-controls {
   display: flex;
   flex-wrap: wrap;
@@ -228,6 +241,11 @@ input:focus-visible {
   grid-column: 1 / -1;
   grid-row: 4;
   min-width: 0;
+}
+
+/* The trigger names what it opens, and what it opens differs by breakpoint. */
+.rail-trigger__wide {
+  display: none;
 }
 
 .switch-project {
@@ -350,8 +368,18 @@ input:focus-visible {
   border: 0;
 }
 
+/* Floated, because a <legend> renders above its fieldset no matter what the
+   fieldset's display is -- so one word cost the header 22px on a row that is
+   already the tallest thing in it (68px against the layer switcher's 28px).
+   Floating puts it beside the radios while it stays a real, visible <legend>
+   in a real <fieldset>: the accessible name is untouched, so this is layout
+   and not an accessibility trade. `gap` cannot reach a floated box, hence the
+   explicit margin. */
 .mode-toggle__label {
+  float: inline-start;
   flex: 0 0 auto;
+  margin-inline-end: var(--cm-space-sm);
+  padding: 0;
   color: var(--cm-ink-3);
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
@@ -902,17 +930,22 @@ input:focus-visible {
   font-size: var(--cm-text-sm);
 }
 
-.orientation-copy--inline .check-launch {
-  margin-block-start: var(--cm-space-sm);
-}
-
 /* Read, then prove. On the Map these are the two halves of one step, so they
-   share a row rather than stacking a quiz on top of a reading action. */
+   share a row rather than stacking a quiz on top of a reading action.
+   The row owns the space above it, and its buttons own none: every
+   .check-launch there is renders inside this row, so their own top margin was
+   only ever doubling the row's gap. Two 44px buttons measured 66px on one
+   line, and 136px at 375px where they wrap and both lines pay it. */
 .orientation-copy__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--cm-space-sm);
   align-items: center;
+  margin-block-start: var(--cm-space-sm);
+}
+
+.orientation-copy__actions .check-launch {
+  margin-block-start: 0;
 }
 
 .check-launch--read {
@@ -2012,19 +2045,30 @@ input:focus-visible {
 }
 
 @media (min-width: 40rem) {
+  /* Sized to content, not into thirds. Equal 1fr columns handed the brand
+     522px for 147px of content while the actions -- 913px of buttons on this
+     project -- got the same 522px and wrapped to two 44px lines. The header
+     wasted the width, then paid for it in height twice. The breadcrumb keeps a
+     floor because the alternative is worse than truncation: packing everything
+     into one row collapsed it to 0px, and a learner with no "where am I" is
+     exactly the wrong the short_label rule exists to prevent. */
   .instrument-rail {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(9rem, auto) minmax(0, 1fr) auto;
   }
 
   .rail-overflow {
     display: contents;
   }
 
-  .mobile-menu-trigger {
-    display: none;
-  }
-
-  .rail-overflow__panel {
+  /* The panel stays a passthrough so the permanent groups below can be grid
+     items of the rail; the disclosure is .rail-more alone. Both states have to
+     say so: the compact `[data-open]` rule turns the panel into a grid and
+     out-specifies a bare `.rail-overflow__panel`, so without the second
+     selector opening More re-nested the permanent groups inside it and grew
+     the header 148px -> 301px, shoving the stage down by exactly what this
+     change set out to give it back. */
+  .rail-overflow__panel,
+  .rail-overflow[data-open] .rail-overflow__panel {
     position: static;
     display: contents;
   }
@@ -2032,7 +2076,6 @@ input:focus-visible {
   .location {
     grid-column: 2;
     grid-row: 1;
-    text-align: center;
   }
 
   .rail-action,
@@ -2040,12 +2083,62 @@ input:focus-visible {
     justify-self: end;
   }
 
-  .rail-actions {
+  /* Specificity has to match the compact `.rail-overflow__panel .rail-*` rule
+     that resets these to auto placement for the dropdown. It used to be
+     invisible: an auto-placed .rail-controls landed in column 1, which was
+     `minmax(0, 1fr)` and so could not be widened by it. Sizing column 1 to
+     its content exposed it -- the controls sized the brand column to 465px
+     and squeezed the actions back into two lines. */
+  .rail-overflow__panel .rail-actions {
     grid-column: 3;
     grid-row: 1;
+    justify-content: flex-end;
   }
 
-  .rail-controls {
+  /* The same disclosure the compact Menu uses, holding only the occasional
+     controls. It is absolute so opening it costs the stage nothing -- the
+     whole point of the change is that chrome stops taking the drawing's
+     space. */
+  .rail-more {
+    position: absolute;
+    z-index: var(--cm-z-panel);
+    inset-block-start: 100%;
+    inset-inline-end: max(var(--cm-space-md), env(safe-area-inset-right));
+    display: none;
+    grid-column: auto;
+    grid-row: auto;
+    width: max-content;
+    max-width: min(22rem, 100%);
+    padding: var(--cm-space-md);
+    border: 1px solid var(--cm-hairline);
+    border-radius: var(--cm-radius);
+    background: var(--cm-ground-2);
+    box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.38);
+  }
+
+  .rail-overflow[data-open] .rail-more {
+    display: flex;
+  }
+
+  .mobile-menu-trigger {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: center;
+    justify-self: end;
+    min-width: 0;
+    padding-inline: var(--cm-space-sm);
+  }
+
+  .rail-trigger__compact {
+    display: none;
+  }
+
+  .rail-trigger__wide {
+    display: inline;
+  }
+
+  .rail-overflow__panel .rail-controls {
+    grid-column: 1 / -1;
     grid-row: 2;
     justify-self: center;
   }
@@ -2339,9 +2432,15 @@ input:focus-visible {
      written for and could not do, because a share of the whole column still
      leaves this the only flexible row, so it absorbed every shortfall and
      collapsed to 43px at 1280x720 and to 0 at 320px. A floor states it
-     directly. It is deliberately small: enough that the map always exists,
-     low enough that an ordinary desktop column still fits without scrolling. */
-  min-block-size: 5rem;
+     directly.
+     6rem, not 5, now that the header and the guidance strip have given back
+     their share. It is measured rather than chosen: at 320px the distance from
+     this row's top to the bottom of the stage is 101px, so 96px is the largest
+     floor whose drawing is still entirely on screen -- 7rem draws 112px and
+     shows 101 of it, trading the whole point of this change for 11px. It stays
+     far below the 156px this row grows to at 1280x720, so no desktop column
+     gains a scrollbar. */
+  min-block-size: 6rem;
 }
 
 
