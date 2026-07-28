@@ -51,6 +51,36 @@ def test_an_owned_extension_is_never_reported_as_unsupported(tmp_path: Path) -> 
     assert owned_by_typescript.unsupported == ()
 
 
+def test_an_adapters_own_generated_output_is_not_reported_as_unsupported(
+    tmp_path: Path,
+) -> None:
+    """Self-exclusion must survive the adapter's own ignored directories.
+
+    Codemble ships its built SPA inside the package, so ``web_dist`` holds a
+    ``.js`` bundle the JS/TS adapter deliberately skips as generated. Skipping
+    it is correct; reporting it as a file Codemble could not read is not.
+    """
+
+    bundling = SourceOwnership(
+        "typescript", frozenset({".ts", ".js"}), frozenset({"web_dist"})
+    )
+    root = _project(
+        tmp_path,
+        {
+            "app.py": "x = 1\n",
+            "web/main.ts": "export {}\n",
+            "package/web_dist/assets/index-abc123.js": "console.log(1)\n",
+        },
+    )
+
+    discovered = discover_project_sources(root, (PYTHON, bundling))
+
+    assert discovered.unsupported == ()
+    assert [
+        path.name for row in discovered.ownership if row.owner == "typescript" for path in row.files
+    ] == ["main.ts"]
+
+
 def test_files_that_are_not_chartable_code_are_not_reported(tmp_path: Path) -> None:
     """Shell and docs sit beside every project and signal nothing about it."""
 

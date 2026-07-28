@@ -175,15 +175,19 @@ def discover_project_sources(
             relative = candidate.relative_to(normalized)
             if _matches_gitignore(relative, False, ignore_rules):
                 continue
-            claimed = False
+            # Recognition, not ownership, decides the unsupported tally: an
+            # adapter that skips this path as generated output has still read
+            # the extension, so the file is excluded on purpose rather than
+            # missed. Only a language no adapter knows at all is an omission.
+            recognized = False
             for rule in ownership:
                 if candidate.suffix.lower() not in rule.extensions:
                     continue
+                recognized = True
                 if any(part in rule.ignored_directories for part in relative.parts):
                     continue
                 discovered[rule.owner].append(candidate)
-                claimed = True
-            if not claimed:
+            if not recognized:
                 _note_unsupported(candidate, unsupported)
     return ProjectSourceDiscovery(
         normalized,
@@ -196,7 +200,7 @@ def discover_project_sources(
 
 
 def _note_unsupported(candidate: Path, tally: dict[str, int]) -> None:
-    """Count a chartable-language file that no adapter in this run claimed."""
+    """Count a chartable-language file whose extension no adapter recognised."""
 
     extension = candidate.suffix.lower()
     if extension in _CHARTABLE_LANGUAGES:
