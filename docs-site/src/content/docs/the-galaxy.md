@@ -90,14 +90,14 @@ selected one, at every level including study, where it re-targets the panel.
 **Escape** steps back a level — on the Map as well as in the Galaxy — and closes
 the star chart, returning focus to the control that opened it.
 
-The header keeps **Modules**, **Find**, the level exit and **Star chart** on
-screen at every width. The occasional controls — **Change Home** and
-**Switch project** — sit behind one disclosure: at narrow widths it is labelled
-**Menu** and holds every secondary action, and on a wide screen it is labelled
-**More** and holds those two. Six permanent buttons need more width than a
-desktop header can give them without wrapping to a second row, and the stage
-pays for that in height, so the two you reach least often step aside. Opening
-the disclosure never moves the stage.
+On a wide screen the header keeps **Modules**, **Find**, the level exit and
+**Star chart** on screen, and the two occasional controls — **Change Home** and
+**Switch project** — sit behind a **More** disclosure. Six permanent buttons
+need more width than a header can give them without wrapping to a second row,
+and the stage pays for that in height, so the two you reach least often step
+aside. Below that, every secondary control lives behind a single **Menu**
+button instead, because a wide header that has to wrap costs more height than
+the compact one it replaces. Opening either disclosure never moves the stage.
 
 At narrow widths guidance also occupies its own row below the stage, and Study
 becomes a full-stage scrolling sheet. The map/canvas and the local-only status

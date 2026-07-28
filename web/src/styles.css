@@ -158,11 +158,20 @@ input:focus-visible {
   z-index: var(--cm-z-panel);
 }
 
-.rail-overflow__panel .rail-actions,
-.rail-overflow__panel .rail-controls {
-  grid-column: auto;
-  grid-row: auto;
-  justify-content: start;
+/* Only while the panel is a real panel. Above the wide breakpoint it is
+   `display: contents` and these two are rail grid items again, but the selector
+   kept matching -- at (0,2,0) it outranked the (0,1,0) placement rules in the
+   min-width block below, so those were dead and the desktop rail was laid out
+   by grid auto-placement that happened to look deliberate. Scoping this to the
+   compact shell is what lets the wide rules mean what they say. The condition
+   is the exact complement of that block's, so no width falls through both. */
+@media not all and (min-width: 64rem) {
+  .rail-overflow__panel .rail-actions,
+  .rail-overflow__panel .rail-controls {
+    grid-column: auto;
+    grid-row: auto;
+    justify-content: start;
+  }
 }
 
 .rail-action {
@@ -2052,6 +2061,43 @@ input:focus-visible {
      floor because the alternative is worse than truncation: packing everything
      into one row collapsed it to 0px, and a learner with no "where am I" is
      exactly the wrong the short_label rule exists to prevent. */
+  .status-line span {
+    display: inline;
+    white-space: nowrap;
+  }
+
+  .lens-note {
+    grid-template-columns: minmax(8rem, 0.35fr) minmax(0, 1fr);
+    gap: var(--cm-space-lg);
+  }
+
+  .study-preview {
+    inset-inline-start: auto;
+    inset-block: 0;
+    width: min(48rem, 60%);
+    max-height: none;
+    border-block-start: 0;
+    border-inline-start: 1px solid var(--cm-hairline);
+  }
+
+  .check-panel {
+    inset-inline-start: auto;
+    inset-block: 0;
+    width: min(42rem, 56%);
+    max-height: none;
+    border-block-start: 0;
+    border-inline-start: 1px solid var(--cm-hairline);
+  }
+}
+/* The wide rail starts at 64rem, not 40rem, because that is where it actually
+   fits. Below it, brand + breadcrumb + the four permanent actions + the More
+   trigger cannot share a row, and the actions -- pinned to the leftover column
+   -- wrapped to three and four lines: measured on this repository the rail was
+   199px at 768 and 319px at 640, against the compact shell's 124px at the very
+   same widths. A layout that loses to the one it replaces has no business
+   running there, so 640-1023px keeps the compact shell: one Menu button, every
+   secondary control inside it, and the height handed to the stage. */
+@media (min-width: 64rem) {
   .instrument-rail {
     grid-template-columns: auto minmax(9rem, auto) minmax(0, 1fr) auto;
   }
@@ -2083,13 +2129,13 @@ input:focus-visible {
     justify-self: end;
   }
 
-  /* Specificity has to match the compact `.rail-overflow__panel .rail-*` rule
-     that resets these to auto placement for the dropdown. It used to be
-     invisible: an auto-placed .rail-controls landed in column 1, which was
-     `minmax(0, 1fr)` and so could not be widened by it. Sizing column 1 to
-     its content exposed it -- the controls sized the brand column to 465px
+  /* Plain selectors, because the compact reset above is now scoped to the
+     breakpoint it belongs to. Until it was, that (0,2,0) rule outranked these
+     and they were dead: the desktop rail was grid auto-placement that merely
+     looked deliberate, which is why an auto-placed .rail-controls landed in
+     column 1 and, once column 1 was sized to its content, blew it out to 465px
      and squeezed the actions back into two lines. */
-  .rail-overflow__panel .rail-actions {
+  .rail-actions {
     grid-column: 3;
     grid-row: 1;
     justify-content: flex-end;
@@ -2137,40 +2183,13 @@ input:focus-visible {
     display: inline;
   }
 
-  .rail-overflow__panel .rail-controls {
+  .rail-controls {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-self: center;
   }
-
-  .status-line span {
-    display: inline;
-    white-space: nowrap;
-  }
-
-  .lens-note {
-    grid-template-columns: minmax(8rem, 0.35fr) minmax(0, 1fr);
-    gap: var(--cm-space-lg);
-  }
-
-  .study-preview {
-    inset-inline-start: auto;
-    inset-block: 0;
-    width: min(48rem, 60%);
-    max-height: none;
-    border-block-start: 0;
-    border-inline-start: 1px solid var(--cm-hairline);
-  }
-
-  .check-panel {
-    inset-inline-start: auto;
-    inset-block: 0;
-    width: min(42rem, 56%);
-    max-height: none;
-    border-block-start: 0;
-    border-inline-start: 1px solid var(--cm-hairline);
-  }
 }
+
 
 @media (max-width: 39.999rem) {
   .study-preview,

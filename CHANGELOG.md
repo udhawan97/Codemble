@@ -45,6 +45,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   the next semantic layer; the backend remains the sole owner of both layout
   and meaning.
 
+### Changed
+- **The header gives the map and galaxy their space back.** The six header
+  buttons were squeezed into a third of the window's width and wrapped onto two
+  rows, while the layer and audience controls sat alone on a row below using a
+  fraction of theirs — so the header took 221px of a 720px-tall window and the
+  diagram below it was left with 82px. The buttons now span one full-width row
+  and the controls move up beside the project name. Nothing was removed or
+  hidden: the map canvas gains 73% more height at 1280x720, and much more at
+  narrower desktop widths, where the header could previously grow past 500px.
+
 ### Fixed
 - **The window now spends its height on your code, not on Codemble's own
   controls.** In the default Easy view at 1280x720, 47% of the window went to
@@ -55,12 +65,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   wrapped to a second row and pushed the layer switcher onto a third, while the
   space beside the project name sat empty. **Modules**, **Find**, the level exit
   and **Star chart** stay on screen; **Change Home** and **Switch project** move
-  behind the same **Menu** disclosure phones already use, labelled **More** on a
-  wide screen. The Audience label now sits beside its buttons instead of above
-  them. The drawing gets 158px at 1280x720 instead of 82, and on a phone it is
-  whole and visible where before it was cut in half. Nothing was removed: both
-  controls are one click away, and the breadcrumb that says where you are is
-  never truncated to make room.
+  behind a **More** disclosure — the same one phones already use as **Menu**.
+  The Audience label now sits beside its buttons instead of above them. The
+  wide header also starts later, at 1024px rather than 640px, because below that
+  it has to wrap and costs more height than the compact one it replaces: a
+  768px-wide window went from a 451px header to 124px. The drawing gets 158px at
+  1280x720 instead of 82, 138px at 768, and on a phone it is whole and visible
+  where before it was cut in half. Nothing was removed: both controls are one
+  click away, and the breadcrumb that says where you are is never truncated to
+  make room.
 - **Guidance no longer repeats a button that is already on screen.** On the Map,
   once you were inside the region it recommended, the guidance strip offered
   **Read the source** while the region's own panel showed the identical button
