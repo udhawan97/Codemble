@@ -43,6 +43,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   the next semantic layer; the backend remains the sole owner of both layout
   and meaning.
 
+### Changed
+- **The header gives the map and galaxy their space back.** The six header
+  buttons were squeezed into a third of the window's width and wrapped onto two
+  rows, while the layer and audience controls sat alone on a row below using a
+  fraction of theirs — so the header took 221px of a 720px-tall window and the
+  diagram below it was left with 82px. The buttons now span one full-width row
+  and the controls move up beside the project name. Nothing was removed or
+  hidden: the map canvas gains 73% more height at 1280x720, and much more at
+  narrower desktop widths, where the header could previously grow past 500px.
+
 ### Fixed
 - **The Map no longer cuts off a module's description, or the map itself.**
   Selecting a module in the default Easy view truncated the explanation

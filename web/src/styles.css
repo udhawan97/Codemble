@@ -158,11 +158,19 @@ input:focus-visible {
   z-index: var(--cm-z-panel);
 }
 
-.rail-overflow__panel .rail-actions,
-.rail-overflow__panel .rail-controls {
-  grid-column: auto;
-  grid-row: auto;
-  justify-content: start;
+/* Only while the panel is a real panel. Above 40rem it is `display: contents`
+   and these two are rail grid items again, but the selector kept matching --
+   at (0,2,0) it outranked the (0,1,0) placement rules in the min-width block
+   below, so those were dead and the desktop rail was laid out by grid
+   auto-placement that happened to look deliberate. Scoping this to the
+   compact shell is what lets the desktop rules mean what they say. */
+@media not all and (min-width: 40rem) {
+  .rail-overflow__panel .rail-actions,
+  .rail-overflow__panel .rail-controls {
+    grid-column: auto;
+    grid-row: auto;
+    justify-content: start;
+  }
 }
 
 .rail-action {
@@ -2040,14 +2048,24 @@ input:focus-visible {
     justify-self: end;
   }
 
+  /* The six actions need ~883px and were boxed into a 1fr third of the grid
+     (~495px), so they wrapped to two 44px rows -- while the controls sat alone
+     on the row below using 370px of 1236px. The rail spent 221px of a 720px
+     window presenting content that fits in far less. Giving each group the row
+     that suits it -- full width for the actions, a corner for the controls --
+     costs nothing and hands 60px back to the stage the learner came to read. */
   .rail-actions {
-    grid-column: 3;
-    grid-row: 1;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    /* Left, so the strip shares an edge with the brand above it and the map
+       chrome below; end-justified it would hang under the controls instead. */
+    justify-content: start;
   }
 
   .rail-controls {
-    grid-row: 2;
-    justify-self: center;
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
   }
 
   .status-line span {
