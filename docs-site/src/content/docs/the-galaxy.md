@@ -5,7 +5,7 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 ## Your code, mapped honestly
 
-![Codemble at galaxy level on a first run: 125 star systems parsed from real source, 24 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.](/Codemble/shots/galaxy.png)
+![Codemble at galaxy level on a first run: 123 star systems parsed from real source, 24 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.](/Codemble/shots/galaxy.png)
 
 The galaxy is not an artist's impression. Every visual property encodes a fact
 from the parsed structure of your code:
@@ -34,7 +34,7 @@ parser proves import communities — groups of modules that import each other �
 and the project's **eight largest** communities each wear one of eight
 traditional Japanese colours (seiji, fuji, koke, asagi, toki, umenezumi,
 wakatake, kikyō). Real projects have more communities than that — this one has
-thirty-nine — so the rest carry no hue at all and keep the plain brightness
+thirty-eight — so the rest carry no hue at all and keep the plain brightness
 ramp. That is deliberate: a colour shared by two unrelated groups would answer
 "which part of the project is this?" wrongly, and no hue honestly says "not one
 of this project's main groups". Assignment is by size, ties broken by id, so

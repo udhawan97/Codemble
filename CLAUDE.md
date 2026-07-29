@@ -168,7 +168,24 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-29 ·
-Session note: an evidence-led user-flow audit of the served v0.8.0 build, run as
+Session note: the seven in-app screenshots were recaptured on the Living Atlas
+build. Two sessions did this independently and the merge is worth recording,
+because the tie-break was **not** "take the newer capture". The parallel set
+reported `125 systems · 1192 nodes · Python 73`, this one `123 · 1188 · 71`,
+with edges identical at 7295 — exactly +2 Python regions and +4 nodes, and no
+new edges. A parse of the committed tree gives 123/1188/71, so the parallel
+capture was served from a tree holding two Python files that never landed;
+its screenshots documented a project that does not exist at any commit. The
+images here are the ones that match what a reader gets from `codemble .`, and
+the other session's **wording** was the better half and is kept — it names the
+procedural worlds and rim atmospheres the release actually added, which this
+session's alt text did not. Corrected in the merge: 125 → 123, 95 → 93
+unrouted modules, and "thirty-nine" communities → thirty-eight, which was
+stale in prose before either capture. The `galaxy-lit` alt also stopped
+claiming every dim star wears a community colour: under the size-ranked
+families 30 of 123 regions correctly wear none. `loading.png` remains
+untouched for the reason recorded below. Previously: an
+evidence-led user-flow audit of the served v0.8.0 build, run as
 a first-run Easy learner on this repository at 320/375/768/1440 with a keyboard
 pass, found twelve gaps; eleven are implemented and re-verified against the
 rebuilt bundle in two Chromium builds, and the twelfth was already fixed better
