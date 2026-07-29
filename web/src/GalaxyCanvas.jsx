@@ -2,7 +2,8 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
+import { attachBloom, prefersReducedMotion } from "./galaxyEffects.js";
+import { runDawnSequence } from "./dawnSequence.js";
 import {
   CAMERA_DURATION,
   cameraBoundsFor,
@@ -76,6 +77,7 @@ export function GalaxyCanvas({
   const retreatRef = useRef(onRetreat);
   const hoverRef = useRef(onHoverNode);
   const pendingDawnRef = useRef(pendingDawnRegionId);
+  const dawnGraphRef = useRef(graph);
   const onDawnConsumedRef = useRef(onDawnConsumed);
   const dawnStartedRef = useRef(null);
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
@@ -113,6 +115,10 @@ export function GalaxyCanvas({
     retreatRef.current = onRetreat;
     hoverRef.current = onHoverNode;
     pendingDawnRef.current = pendingDawnRegionId;
+    // By ref, not by closure: the dawn effect keeps a deliberately narrow
+    // dependency list (see its comment), because any dependency that changes
+    // while a dawn is playing tears the effect down and cancels it mid-flare.
+    dawnGraphRef.current = graph;
     onDawnConsumedRef.current = onDawnConsumed;
   }, [onAdvance, onRetreat, onHoverNode, pendingDawnRegionId, onDawnConsumed]);
 
@@ -255,7 +261,10 @@ export function GalaxyCanvas({
       controls.addEventListener("start", markUserFramed);
       const removePointerGuard = guardOrbitPointerState(host, controls);
 
-      bloomRef.current = attachBloom(renderer);
+      // Sized from the host, not from whatever the composer happens to hold: a
+      // re-mount into an identically-sized element gets no resize at all, and
+      // an unsized pass chain presents an empty canvas. See attachBloom.
+      bloomRef.current = attachBloom(renderer, host.getBoundingClientRect());
       rendererRef.current = renderer;
 
       const resize = new ResizeObserver(([entry]) => {
@@ -441,7 +450,22 @@ export function GalaxyCanvas({
       const scene = renderer.scene();
       const found = Boolean(scene.getObjectByName(`codemble-system-${regionId}`));
       if (found || frame >= MAX_DAWN_RETRY_FRAMES) {
-        stopDawn = runNebulaDawn({ scene, regionId, palette });
+        stopDawn = runDawnSequence({
+          scene,
+          regionId,
+          palette,
+          dressing: dressingRef.current,
+          // Region routes, not the level's drawn links: the dawn plays at
+          // galaxy level where these are the same, but reading graph truth
+          // directly keeps the moment honest if the drawn set is ever thinned.
+          routes: dawnGraphRef.current?.region_edges ?? [],
+          hopsById: new Map(
+            (dawnGraphRef.current?.regions ?? []).map((item) => [
+              item.id,
+              item.hops_from_home,
+            ]),
+          ),
+        });
         return;
       }
       frameHandle = requestAnimationFrame(() => attempt(frame + 1));
@@ -513,6 +537,7 @@ export function GalaxyCanvas({
         distance,
         distanceBounds: bounds,
         hoverNodeId,
+        chrome: chromeBoxes(hostRef.current),
       });
     }
 
@@ -623,6 +648,39 @@ export function GalaxyCanvas({
       ) : null}
     </div>
   );
+}
+
+// The DOM drawn ON TOP of the sky, in the canvas's own CSS pixels: the
+// orientation line at the top-left and the keyboard readout at the bottom-left.
+// Both are `pointer-events: none` overlays, so nothing about them reaches the
+// scene and a name plate is otherwise printed straight through them -- on this
+// repository across "24 charted · 2 could not be read · all under tests/",
+// which is the line that states what Codemble could not parse.
+//
+// Read from the DOM each pass rather than cached: the line's width changes with
+// the language focus, with `Show all`, and with the register's wording, and a
+// stale rectangle would reserve sky that is no longer covered.
+function chromeBoxes(host) {
+  // The stage, not the host's parent. These overlays are not siblings of the
+  // canvas: `.orientation-bar` is a child of the stage while `.keyboard-focus`
+  // sits inside `.galaxy-frame`, and the canvas itself is three divs deep
+  // inside that. Scoping to the host's parent found neither, which is a no-op
+  // that looks exactly like a working fix until you count the plates.
+  const stage = host?.closest(".map-stage");
+  if (!stage) return [];
+  const origin = host.getBoundingClientRect();
+  const boxes = [];
+  for (const element of stage.querySelectorAll(".orientation-bar, .keyboard-focus")) {
+    const box = element.getBoundingClientRect();
+    if (!box.width || !box.height) continue;
+    boxes.push({
+      left: box.left - origin.left,
+      right: box.right - origin.left,
+      top: box.top - origin.top,
+      bottom: box.bottom - origin.top,
+    });
+  }
+  return boxes;
 }
 
 function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } = {}) {
