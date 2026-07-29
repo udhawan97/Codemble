@@ -202,7 +202,7 @@ You can also switch project or change Home without leaving the app.
 | A star system | One source module |
 | A planet | A function or class |
 | The Home system | The selected parser-ranked entrypoint |
-| A route or edge | An import or call; approximate calls are labeled **possible** |
+| A route or edge | An import or call. A relationship the parser could not prove is drawn **dashed** and labeled **possible**, on every layer |
 | Size | Lines of code |
 | Brightness and glow | How many **distinct** structures call it |
 | Colour family | Import community — the eight largest groups of mutually-importing modules each get one of eight traditional Japanese hues; smaller groups stay neutral rather than share a colour |

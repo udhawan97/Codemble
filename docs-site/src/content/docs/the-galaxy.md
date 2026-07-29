@@ -15,7 +15,7 @@ from the parsed structure of your code:
 | Star system | One source module |
 | Planet | A function or class |
 | Route between systems | An import |
-| Edge between planets | A call (uncertain calls are labeled "possible call") |
+| Edge between planets | A call — solid when proven, dashed and labeled "possible call" when not |
 | Size | Lines of code |
 | Brightness and glow | How many distinct places call it (centrality) |
 | Colour family | Import community — modules that import each other share a hue |
@@ -167,7 +167,10 @@ Below the galaxy level, every edge carries an arrowhead pointing from caller to
 callee. Hover an edge for its tooltip: the two structures, whether it is an
 import or a call, whether the parser is certain, and the line it was seen on. A
 relationship the parser could not prove reads "possible call" or "possible
-import" and is drawn in the uncertainty colour — never as fact.
+import", and is drawn **dashed** in the uncertainty colour — never as fact. The
+dash matters as much as the colour: it survives colour-blindness, a dim screen
+and a greyscale screenshot, and both layers now break an unproven line the same
+way rather than the galaxy relying on hue alone.
 
 Hover or select a structure and it and its edges take the interaction blue while
 its neighbours hold their own colour and everything else recedes. In the study
