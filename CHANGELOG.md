@@ -127,6 +127,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   every control moves behind the menu, so opening a panel there means opening
   the menu first, and that is where the one Escape bug that reached a release
   lived.
+- **The window size where the layout last went wrong is now checked too.** The
+  space budget covered phones and large desktops but not the sizes in between —
+  which is where the header once grew to spend nearly half a 720px window. Eight
+  window widths are now checked, including both sides of the point where the
+  layout switches between its wide and narrow forms, so that switch cannot move
+  unnoticed.
 - **The shell's space budget is checked automatically.** How much of the window
   goes to the header, guidance and footer — and how little is left for the
   drawing — used to be measured by hand and written down in a commit message.

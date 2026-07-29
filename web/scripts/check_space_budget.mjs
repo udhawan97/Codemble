@@ -33,11 +33,29 @@ if (!url) {
 const VIEWPORTS = [
   { width: 1440, height: 720, maxChromeShare: 0.42, minCanvas: 150 },
   { width: 1280, height: 720, maxChromeShare: 0.42, minCanvas: 150 },
-  // Below 1024 the compact shell takes over; it spends less on chrome but has
-  // far less to spend, so the canvas floor is what matters there.
+  // 1024 and 1023 are a pair, and they are the most load-bearing rows here.
+  // The rail's wide layout starts at 64rem, and the 2026-07-28 entry moved it
+  // there because the wide arrangement measured *worse* than the compact shell
+  // everywhere below 1024 -- 199px of rail at 768 against 124px compact. The
+  // pair asserts the breakpoint is still where that decision put it: 1023 must
+  // measure as the compact shell and 1024 as the wide one. If it ever slipped
+  // back to 40rem, 768 below would inherit that 199px rail and fail.
+  { width: 1024, height: 720, maxChromeShare: 0.42, minCanvas: 150 },
+  { width: 1023, height: 720, maxChromeShare: 0.42, minCanvas: 150 },
+  // Narrow desktop: a window that looks like a desktop and gets the compact
+  // shell. Hand-checked once when the breakpoint moved, never gated until now.
+  { width: 768, height: 720, maxChromeShare: 0.42, minCanvas: 150 },
+  { width: 640, height: 720, maxChromeShare: 0.50, minCanvas: 120 },
+  // Phones. The compact shell spends less on chrome but has far less to spend,
+  // so the canvas floor is what matters here rather than the share.
   { width: 375, height: 720, maxChromeShare: 0.55, minCanvas: 90 },
   { width: 320, height: 720, maxChromeShare: 0.58, minCanvas: 90 },
 ];
+
+// The header height each shell produces, which is the cheapest signal that the
+// right shell is in play at all. Measured on this repository; asserted only
+// where the two shells differ enough that a swap could not be a rounding error.
+const SHELL_HEADER = { wide: 148, compact: 124 };
 
 const browser = await chromium.launch({
   channel: "chrome",
@@ -89,6 +107,22 @@ try {
             measured.horizontalOverflow <= 1,
             `${label}: the page scrolls horizontally by ${measured.horizontalOverflow}px`,
           );
+          // The breakpoint pair: which shell rendered, not just how much it
+          // spent. A budget alone cannot catch the breakpoint moving, because
+          // the compact shell is *cheaper* -- that is why it was extended down
+          // to 1023 in the first place. Only the header height says which one
+          // is on screen, and only in Easy, where both shells carry guidance.
+          if (register === "easy" && (viewport.width === 1024 || viewport.width === 1023)) {
+            const expected =
+              viewport.width === 1024 ? SHELL_HEADER.wide : SHELL_HEADER.compact;
+            assert.equal(
+              measured.header,
+              expected,
+              `${label}: expected the ${viewport.width === 1024 ? "wide" : "compact"} shell ` +
+                `(header ${expected}px) but measured ${measured.header}px -- the rail's 64rem ` +
+                `breakpoint has moved`,
+            );
+          }
         } catch (error) {
           failures += 1;
           console.error(`  FAIL ${error.message}`);
