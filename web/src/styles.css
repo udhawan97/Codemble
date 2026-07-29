@@ -1532,10 +1532,23 @@ input:focus-visible {
   border: 0;
 }
 
+/* A check question quotes a real identifier, so it is not prose and does not
+   take the prose measure. At 28ch the box was 417px inside a 627px fieldset,
+   and `overflow-wrap: anywhere` then split the identifier the question is ABOUT
+   in the middle of a word -- `ProjectParser` rendered as `Project` / `Parser`,
+   `choose_project_scope` as `choose_project_scop` / `e` -- while 210px sat
+   unused beside it and the monospace answer options below wrapped correctly.
+   A learner cannot tell that from a symbol they have not met before, which is
+   the exact class of wrong the Correctness Contract exists to prevent.
+
+   `break-word`, not `anywhere`: both break a too-long token as a last resort,
+   but only `anywhere` also shrinks the element's intrinsic minimum width, which
+   is what let the narrow cap force a break that the available space never
+   required. */
 .active-check legend {
-  max-width: 28ch;
+  max-width: 100%;
   padding: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   font-family: var(--cm-font-display);
   font-size: var(--cm-text-xl);
   font-weight: 700;
@@ -2461,7 +2474,9 @@ input:focus-visible {
      floor whose drawing is still entirely on screen -- 7rem draws 112px and
      shows 101 of it, trading the whole point of this change for 11px. It stays
      far below the 156px this row grows to at 1280x720, so no desktop column
-     gains a scrollbar. */
+     gains a scrollbar.
+     The compact block below raises it, because there the zoom toolbar rejoins
+     the flow and this row stops being the drawing alone. */
   min-block-size: 6rem;
 }
 
@@ -2517,6 +2532,16 @@ input:focus-visible {
     align-self: flex-end;
     margin-block-end: var(--cm-space-xs);
   }
+
+  /* ...and once it is in the flow it eats the drawing's floor. The 6rem above
+     is written for the drawing, but this row is the drawing plus the toolbar
+     plus its margin, so at 320x640 the box measured exactly 96px and the
+     drawing inside it 56px -- one box of a ten-layer diagram, under a floor
+     added to prevent exactly that. Stating the toolbar's own height gives the
+     drawing back the 6rem the floor always claimed for it. */
+  .map-canvas {
+    min-block-size: calc(6rem + 2.5rem);
+  }
 }
 
 .map-scroll {
@@ -2528,6 +2553,25 @@ input:focus-visible {
   /* Grab, not text: dragging empty diagram space pans, so the cursor has to
      promise that rather than a selection the drag never makes. */
   cursor: grab;
+
+  /* Scroll shadows: an edge is shaded exactly while the drawing continues past
+     it, on all four sides. macOS draws no scrollbar until you scroll, so the
+     Map opened showing 3 of 32 modules at 1440x720 (21.5% of the drawing) and
+     one of 32 at 320px, with nothing on screen to say the other twenty-nine
+     existed -- the same silent-clipping failure the region caption had, one
+     level up. This is the cheapest honest fix there is: the `local` covers hide
+     the `scroll` shadows at each extreme, so the cue appears and disappears on
+     its own, it costs the drawing no height at all, and it needs no JS to know
+     when the content overflows. */
+  background:
+    linear-gradient(var(--cm-ground) 30%, transparent) 0 0 / 100% 2.5rem local no-repeat,
+    linear-gradient(transparent, var(--cm-ground) 70%) 0 100% / 100% 2.5rem local no-repeat,
+    linear-gradient(to right, var(--cm-ground) 30%, transparent) 0 0 / 2.5rem 100% local no-repeat,
+    linear-gradient(to left, var(--cm-ground) 30%, transparent) 100% 0 / 2.5rem 100% local no-repeat,
+    radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 55%), transparent) 0 0 / 100% 0.85rem scroll no-repeat,
+    radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 55%), transparent) 0 100% / 100% 0.85rem scroll no-repeat,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 45%), transparent) 0 0 / 0.85rem 100% scroll no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 45%), transparent) 100% 0 / 0.85rem 100% scroll no-repeat;
 }
 
 .map-scroll[data-panning] {
@@ -2721,6 +2765,25 @@ input:focus-visible {
   background: var(--cm-ground-2);
   color: var(--cm-ink);
   font-size: var(--cm-text-sm);
+}
+
+/* The chip wraps to one row per child at compact widths, and nothing capped
+   what that cost: measured at 320x640 it took 183px -- 28.6% of the viewport --
+   while the Architecture drawing it sits beneath had 56px, one box, 3.7% of the
+   diagram. A hint is worth a strip, not a third of the screen, so the row the
+   shell reserves for it gets a ceiling and the reason line yields first. */
+@media (max-width: 40rem) {
+  .hint-chip {
+    max-block-size: 40vh;
+    overflow-y: auto;
+  }
+
+  .hint-chip small {
+    flex: 1 1 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .hint-chip small {

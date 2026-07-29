@@ -4,8 +4,7 @@ import { nebulaTintKey, unsupportedSummary } from "./graphData.js";
 import {
   centerMapPoint,
   clampMapZoom,
-  fitMapWidthZoom,
-  fitMapZoom,
+  mapOverviewZoom,
   viewportShowsPoint,
 } from "./mapViewport.js";
 
@@ -61,19 +60,13 @@ function MapCanvas({
   // measured the scroller before flex layout had settled and landed on a scale
   // that was neither fitted nor honest.
   //
-  // Below MIN_READABLE_FIT, a true fit stops being an overview at all: this
-  // project's architecture fit at 7%, a thumbnail with no names, no boxes, no
-  // routes. There Fit fits the WIDTH instead -- layers stay readable and the
-  // height scrolls, which is what an overview of a layered import diagram is
-  // for. Wide drawings that genuinely fit keep the whole-shape behaviour.
-  const MIN_READABLE_FIT = 0.35;
+  // mapOverviewZoom owns which of the three overview cases applies; see its
+  // comment. Fit stays deterministic -- it does not read the current scale --
+  // so pressing it twice lands in the same place.
   const fit = useCallback(() => {
     const box = scrollRef.current?.getBoundingClientRect();
     if (!box || !contentWidth || !contentHeight) return;
-    const whole = fitMapZoom(box.width, box.height, contentWidth, contentHeight);
-    setScale(
-      whole >= MIN_READABLE_FIT ? whole : fitMapWidthZoom(box.width, contentWidth),
-    );
+    setScale(mapOverviewZoom(box.width, box.height, contentWidth, contentHeight));
   }, [contentWidth, contentHeight]);
 
   // A compact viewport opens at readable 100%, centred on Home (or the selected

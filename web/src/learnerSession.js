@@ -413,6 +413,14 @@ export function createLearnerSession({
     }
     if (action.type === "SET_LAYER") return setLayer(action.layer);
     if (action.type === "OPEN_STUDY") return selectStudyNode(action.nodeId);
+    if (action.type === "OPEN_CHECKS") {
+      // Offered from study level, where the learner has just finished reading.
+      // The checks panel belongs to the system level, so leaving study is part
+      // of the action rather than a step the learner has to work out: the hint
+      // promises one move and this makes it one move.
+      if (snapshot.level === LEVELS.STUDY) retreat();
+      return openChecks();
+    }
     return undefined;
   }
 

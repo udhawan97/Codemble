@@ -6,6 +6,63 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **"Fit" now shows more of the diagram instead of less.** On any screen wider
+  than the drawing — every desktop — the control resolved to exactly the zoom
+  the map already opens at, so pressing it did nothing; pressed after zooming
+  out it zoomed back *in*, cutting the visible diagram from 33% to 21%. It now
+  drops to the most zoomed-out readable overview: 21% → 61% of the drawing at
+  1440x720.
+- **A quiz question no longer breaks its identifier in half.** The question is
+  the one line in the app that quotes a symbol name, and it was being wrapped by
+  a rule written for prose: `ProjectParser` rendered as `Project` / `Parser`
+  with 210px of the panel sitting unused beside it. A learner cannot tell that
+  from a name they have not met before.
+- **Escape closes what is open, and only what is open.** It did nothing at all
+  in the checks panel and the module index, and in Find it erased the query
+  while leaving the palette open. Where it did work — the star chart — it also
+  retreated a level, so opening the chart from inside a module and pressing
+  Escape lost the learner's place. All four now close, keep the level, and
+  return focus to the control that opened them.
+- **The beginner's first screen shows more than three of thirty-two modules.**
+  The Architecture drawing is taller than any window, and the platform draws no
+  scrollbar until you scroll, so it looked complete. Its edges now shade while
+  the diagram continues past them. At 320px the drawing had also been sharing
+  its guaranteed minimum height with the zoom buttons, leaving 56px of a
+  ten-layer diagram; it now gets the full 96px, and the guidance strip below is
+  capped instead of growing to a third of the screen.
+- **Guidance no longer goes quiet at the moment it is most useful.** Reading a
+  module's source is the step before proving you understood it, and that was
+  the one step with no guidance at all: the panel ended on a lens note with
+  nothing to do next. It now offers the prove step, and steps out of the way
+  once the quiz is open.
+- **"Try again" keeps its button on screen.** A wrong answer inserted its
+  feedback above the submit control and pushed it out of the panel.
+- **Find and Modules rows stop printing the same path twice.** On a project
+  scoped to a subdirectory — what Codemble itself suggests for large projects —
+  a module's short name is already its whole path, so every row said it twice.
+  The second line now carries the module's distance from Home instead.
+- **The galaxy is no longer mostly empty space.** How far apart two modules sit
+  inside one constellation and how far apart the constellations sit are the
+  same packing question at two scales, but they were written as two unrelated
+  numbers and had drifted 4.5x apart. On this project that left the sky 98.7%
+  empty — constellation centres a median 728 units apart while the widest
+  constellation measured only 137 across — so the camera had to stand back far
+  enough to frame all that void and every system arrived as a speck. The
+  spacings are now tied together, which shrinks this project's galaxy by 46%
+  without ever putting two systems closer than they already were. Nothing
+  re-dims: 104 of 117 regions moved and not one signature changed, because a
+  region's saved progress is keyed to its file contents and never to where it
+  sits in the sky.
+- **A relationship Codemble could not prove is now visibly broken in the galaxy,
+  not just a different colour.** The 2D diagram has always drawn an unproven
+  import or call as a dashed line, but in 3D the only thing separating "we
+  proved this call" from "this might be a call" was the shade of the line — so
+  the distinction disappeared for anyone with colour-blindness, on a dim
+  screen, or in any greyscale screenshot. "Possible call" is the one claim a
+  learner must never read as fact, so it now carries a shape as well as a
+  colour: unproven routes are dashed on every layer. They still follow the same
+  curve, still light up when you hover the structure they touch, and still
+  never carry the drifting particles that mean a proven call.
 - **Focusing one language no longer under-reports what it never calls.** The
   Map's "never called" note counts structures nothing in your project reaches.
   Filtering it to one language matched the *shape of the id* rather than the
@@ -68,6 +125,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   holds to. It now shares the ground its neighbours use.
 
 ### Changed
+- **The breadcrumb says where you are without borrowing the renderer's word.**
+  It named the zoom level "Galaxy" while the switcher beside it named the view
+  layer "Galaxy" too, so a beginner — who lands on the Diagram — read that they
+  were in the Galaxy from one control and that they were not from the other. It
+  now reads "All modules".
 - **The product screenshots in the documentation show the current app.** All
   seven in-app captures predated the v0.8.0 shell, so the published docs still
   advertised the two- and three-row header that release removed. They had also

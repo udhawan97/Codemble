@@ -89,11 +89,41 @@ export function App() {
   // study panel -- leaves focus on <body>, and a container keydown never hears
   // that Escape: the documented recovery silently did nothing. Fresh state is
   // read from the session at event time, so the listener binds once.
+  // What "dismiss this surface" means, one entry per dismissible owner in
+  // `ESCAPE_OWNERS`. Each returns focus to the control that opened it.
+  const DISMISS = {
+    checks: () => session.dispatch({ type: "CLOSE_CHECKS" }),
+    sidebar: () => closeModules(),
+    chart: () => {
+      session.dispatch({ type: "HIDE_CHART" });
+      restoreRailFocus(chartTriggerRef);
+    },
+  };
+
   useEffect(() => {
     function onEscape(event) {
       if (event.key !== "Escape") return;
-      if (escapeAction(escapeFacts(session.getSnapshot()))?.kind !== "retreat") return;
+      // An open panel is dismissed before the level retreats, and exactly one
+      // thing acts. These used to be bail-outs, on the theory that each panel
+      // would own the key from its own subtree -- but the checks panel and the
+      // module index never claimed it, so Escape there did nothing at all while
+      // the coach marks teach "Escape to come back". Handling them here rather
+      // than in each subtree is the same reason this listener is on the window
+      // at all: the common Easy path leaves focus on <body> or on a panel that
+      // has just unmounted, and a container keydown never hears that.
+      //
+      // `escapeArbiter` owns which one acts. It was an eleven-term disjunction
+      // here plus a second, shorter copy on the chart stage, and the chart
+      // needed `stopPropagation` to stop this handler re-reading a session it
+      // had already changed and retreating a level on top of the dismissal.
+      // One handler asking one ordered list cannot race itself.
+      const action = escapeAction(escapeFacts(session.getSnapshot()));
+      if (!action) return;
       event.preventDefault();
+      if (action.kind === "dismiss") {
+        DISMISS[action.surface]();
+        return;
+      }
       session.dispatch({ type: "RETREAT" });
     }
     window.addEventListener("keydown", onEscape);
@@ -361,13 +391,22 @@ export function App() {
             <span aria-current="page">Star chart</span>
           ) : (
             <>
+              {/* "All modules", not "Galaxy". The breadcrumb names the
+                  semantic-zoom LEVEL and the switcher beside it names the
+                  render LAYER, and both used to say Galaxy -- so an Easy
+                  learner, who lands on the Map, read `aria-current="page"`
+                  Galaxy in the breadcrumb while the switcher 30px below
+                  reported Galaxy `aria-pressed="false"`. Two visible controls,
+                  one accessible name, contradictory state, on the first screen
+                  the default audience ever sees. The level is about scope, so
+                  it can say so without borrowing the renderer's word. */}
               <button
                 type="button"
                 disabled={level === LEVELS.GALAXY}
                 aria-current={level === LEVELS.GALAXY ? "page" : undefined}
                 onClick={() => session.dispatch({ type: "SET_LEVEL_GALAXY" })}
               >
-                Galaxy
+                All modules
               </button>
               {level === LEVELS.GALAXY ? (
                 <small>
@@ -570,24 +609,16 @@ export function App() {
       </header>
 
       {showChart ? (
-        <section
-          className="chart-stage"
-          aria-label="Language concept progress"
-          // A full-screen takeover with no Escape reads as a trap even when
-          // the header carries an exit. StarChart focuses its own heading, so
-          // the key lands inside this subtree.
-          // The same arbiter the window handler asks. This carried its own,
-          // shorter copy of the bail list -- it knew about the finder and the
-          // sidebar and nothing else -- which is exactly the duplication that
-          // let the rail disclosure double-fire.
-          onKeyDown={(event) => {
-            if (event.key !== "Escape") return;
-            if (escapeAction(escapeFacts(session.getSnapshot()))?.surface !== "chart") return;
-            event.preventDefault();
-            session.dispatch({ type: "HIDE_CHART" });
-            restoreRailFocus(chartTriggerRef);
-          }}
-        >
+        // A full-screen takeover with no Escape reads as a trap even when the
+        // header carries an exit, but the key is not handled here. This stage
+        // carried its own handler and its own, shorter copy of the bail list,
+        // and because the window handler re-read the session *after* this one
+        // had already cleared `showChart`, Escape closed the chart AND
+        // retreated a level -- so it also needed `stopPropagation` to hold the
+        // two apart. The window handler asks `escapeArbiter`, which lists the
+        // chart as dismissible; one handler asking one ordered list cannot
+        // race itself, so there is nothing left here to hold apart.
+        <section className="chart-stage" aria-label="Language concept progress">
           {sidebarOpen ? (
             <IndexSidebar
               index={moduleIndex}
@@ -871,7 +902,13 @@ export function App() {
           it from Home" while the breadcrumb still said Home unselected -- a
           second, contradictory call to action during the one decision the
           flow actually requires. */}
-      {!showChart && modeChosen === true && !entrypointOpen && coachmarksSeen ? (
+      {/* ...and it yields to the quiz, which is the same rule one step later.
+          The chip is advice about what to do next; once the learner is doing it
+          the advice is stale, and at 320px it was spending 183px of a 640px
+          viewport to say "Read it before proving it" to somebody already
+          proving it -- while the panel it was crowding showed 33% of its own
+          content and opened with the question below the fold. */}
+      {!showChart && !showChecks && modeChosen === true && !entrypointOpen && coachmarksSeen ? (
         <HintChip
           hint={hint}
           onFollow={followHint}
@@ -1313,6 +1350,18 @@ function ModuleFinder({ index, onGo, onClose }) {
     } else if (event.key === "Enter" && active) {
       event.preventDefault();
       onGo(active.id);
+    } else if (event.key === "Escape") {
+      // The dialog's own onCancel never fires from here: this is an
+      // <input type="search">, and Chromium spends Escape clearing the field
+      // instead of letting the key reach the dialog. So a learner who typed a
+      // query and changed their mind pressed Escape, watched their typing
+      // vanish, and stayed exactly where they were.
+      event.preventDefault();
+      // ...and stopPropagation so closing does not also retreat a level: the
+      // window-level handler bails while `finderOpen` is set, but it reads the
+      // session at event time and this close has already cleared it.
+      event.stopPropagation();
+      onClose();
     }
   }
 
@@ -1348,7 +1397,23 @@ function ModuleFinder({ index, onGo, onClose }) {
               onClick={() => onGo(row.id)}
             >
               <strong>{row.label}</strong>
-              <small>{row.file}</small>
+              {/* The secondary line disambiguates, so it earns its space only
+                  when it differs. `label` is the path tail -- its last two
+                  segments -- so on a scope whose files are already one or two
+                  deep it IS the path, and every row printed the same string
+                  twice. That is all 32 rows when the project is scoped to
+                  `codemble/`, which is exactly what the over-cap prompt tells
+                  learners to pick. Falls back to the hop distance the index
+                  already carries, which a learner can act on. */}
+              {row.file !== row.label ? (
+                <small>{row.file}</small>
+              ) : row.hops === 0 ? null : (
+                <small>
+                  {typeof row.hops === "number"
+                    ? `${row.hops} ${row.hops === 1 ? "route" : "routes"} from Home`
+                    : "no route from Home"}
+                </small>
+              )}
               {row.home ? <em>Home</em> : row.understood ? <em>lit</em> : null}
             </button>
           </li>
@@ -1667,6 +1732,7 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
   const feedbackRef = useRef(null);
   const affirmationRef = useRef(null);
   const completeRef = useRef(null);
+  const submitRef = useRef(null);
 
   useEffect(() => {
     setSelected(new Set());
@@ -1688,6 +1754,18 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
     else if (feedback) feedbackRef.current?.focus();
     else if (affirmation) affirmationRef.current?.focus();
   }, [suite?.region_understood, feedback, affirmation]);
+
+  // A miss says "try again" and then pushes the button that does it off the
+  // bottom of the panel: the feedback is inserted ABOVE the submit, growing the
+  // panel by its own height while the scroll position stays put. macOS draws no
+  // scrollbar until you scroll, so the instruction and its control end up on
+  // different screens with nothing to say so. Focus is already on the feedback
+  // (it is the announcement), so this scrolls the control back rather than
+  // taking focus from it.
+  useLayoutEffect(() => {
+    if (!feedback) return;
+    submitRef.current?.scrollIntoView({ block: "nearest" });
+  }, [feedback]);
 
   function choose(optionId, multiple) {
     setAffirmation("");
@@ -1724,7 +1802,10 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
   }
 
   return (
-    <aside className="check-panel" aria-label="Graph-derived understanding checks">
+    <aside
+      className="check-panel"
+      aria-label="Graph-derived understanding checks"
+    >
       <header className="check-panel__header">
         <div>
           {/* "Active recall · graph only" is learning-science plus parser
@@ -1816,7 +1897,7 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
               <strong>{feedback.message}</strong>
             </div>
           ) : null}
-          <button className="check-primary" type="submit" disabled={!selected.size || submitting}>
+          <button ref={submitRef} className="check-primary" type="submit" disabled={!selected.size || submitting}>
             {submitting ? "Checking parser evidence…" : "Check answer"}
           </button>
         </form>
