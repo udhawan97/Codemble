@@ -2,6 +2,7 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { cameraPositionAt, framingDistance } from "./cameraFraming.js";
 import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
@@ -26,6 +27,52 @@ const CAMERA_BOUNDS = {
   SYSTEM: { min: 55, max: 320 },
   STUDY: { min: 22, max: 170 },
 };
+// The tilt each level is viewed from. Only the direction is art direction; the
+// distance along it is measured from the nodes, because a layout that grows
+// past a hardcoded distance puts its own far side behind the camera. Their
+// lengths remain the fallback for a level with nothing to measure.
+const CAMERA_VIEW = {
+  GALAXY: { x: 0, y: 105, z: 310 },
+  SYSTEM: { x: 0, y: 52, z: 150 },
+};
+// How much further than the fitted distance the learner may pull back. Enough
+// to get some space around the subject, not enough to lose it.
+const ZOOM_OUT_HEADROOM = 1.35;
+const ORIGIN = { x: 0, y: 0, z: 0 };
+
+/** Layout coordinates are fixed by the graph layer, so fx/fy/fz are the truth. */
+const layoutPoints = (nodes) =>
+  nodes.map((node) => ({
+    x: node.fx ?? node.x ?? 0,
+    y: node.fy ?? node.y ?? 0,
+    z: node.fz ?? node.z ?? 0,
+  }));
+
+/**
+ * Where the camera sits for a level, and the clamps that then hold it there.
+ * Measured from the nodes rather than hardcoded: a project whose layout grows
+ * past a fixed distance pushes its own near edge behind the camera, and a node
+ * behind the camera is not cropped, it is gone.
+ */
+function frameLevel(level, nodes, camera) {
+  const view = CAMERA_VIEW[level] ?? CAMERA_VIEW.GALAXY;
+  const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
+  const fitted = framingDistance({
+    points: layoutPoints(nodes),
+    direction: view,
+    fov: camera?.fov,
+    aspect: camera?.aspect,
+  });
+  const distance = fitted ?? Math.hypot(view.x, view.y, view.z);
+  return {
+    position: cameraPositionAt(view, distance) ?? view,
+    // Keeps the promise the bounds comment above makes: the distance a level
+    // opens at always sits inside the range it is held to, at any project size.
+    min: Math.min(bounds.min, distance),
+    max: Math.max(bounds.max, distance * ZOOM_OUT_HEADROOM),
+  };
+}
+
 // Never straight down and never edge-on: at 0 the galaxy plane collapses to a
 // line, and past ~86 degrees the learner is under the plane looking up at a sky
 // that reads as a different project.
@@ -68,6 +115,8 @@ export function GalaxyCanvas({
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
   const dressingRef = useRef(null);
   const bloomRef = useRef(null);
+  const reframeRef = useRef(null);
+  const userFramedRef = useRef(false);
   const focusedIdRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
@@ -217,6 +266,12 @@ export function GalaxyCanvas({
       controls.minPolarAngle = MIN_POLAR_ANGLE;
       controls.maxPolarAngle = MAX_POLAR_ANGLE;
       controlsRef.current = controls;
+      // Once the learner has moved the camera themselves, a later resize must
+      // not snap their view back to the default fit.
+      const markUserFramed = () => {
+        userFramedRef.current = true;
+      };
+      controls.addEventListener("start", markUserFramed);
       const removePointerGuard = guardOrbitPointerState(host, controls);
 
       bloomRef.current = attachBloom(renderer);
@@ -224,10 +279,12 @@ export function GalaxyCanvas({
 
       const resize = new ResizeObserver(([entry]) => {
         renderer.width(entry.contentRect.width).height(entry.contentRect.height);
+        if (!userFramedRef.current) reframeRef.current?.();
       });
       resize.observe(host);
       return () => {
         resize.disconnect();
+        controls.removeEventListener("start", markUserFramed);
         cancelAnimationFrame(hideNavigationHint);
         removePointerGuard();
         renderer.pauseAnimation();
@@ -268,17 +325,24 @@ export function GalaxyCanvas({
     // is about to be held to. cameraPosition's lookAt writes controls.target
     // directly now that controls are enabled (three-render-objects setLookAt),
     // which is what re-anchors the orbit on every level change for free.
-    const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
-    if (controlsRef.current) {
-      controlsRef.current.minDistance = bounds.min;
-      controlsRef.current.maxDistance = bounds.max;
-    }
-    if (level === LEVELS.GALAXY) {
-      renderer.cameraPosition({ x: 0, y: 105, z: 310 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
-    } else {
-      renderer.cameraPosition({ x: 0, y: 52, z: 150 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
-    }
+    const applyFraming = (duration) => {
+      const framed = frameLevel(level, data.nodes, renderer.camera());
+      if (controlsRef.current) {
+        controlsRef.current.minDistance = framed.min;
+        controlsRef.current.maxDistance = framed.max;
+      }
+      renderer.cameraPosition(framed.position, ORIGIN, duration);
+    };
+    applyFraming(CAMERA_DURATION);
+    // A resize changes the aspect, and with it what fits; re-frame from the
+    // observer unless the learner has taken the camera themselves, in which
+    // case their view is the one worth keeping.
+    userFramedRef.current = false;
+    reframeRef.current = () => applyFraming(0);
     setFocusedIndex(0);
+    return () => {
+      reframeRef.current = null;
+    };
   }, [data, level, mode]);
 
   useEffect(() => {
