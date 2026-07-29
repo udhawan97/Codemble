@@ -283,13 +283,23 @@ export function GalaxyCanvas({
     // `camera.aspect`. The library batches width and height and applies them on
     // its next tick, so its copy still carries the previous viewport at the
     // moment a resize is handled. One source, so there is nothing to go stale.
+    //
+    // The host is preferred but not required: on the commit that mounts a
+    // fresh canvas it may not have been laid out yet, and an unmeasured
+    // element yields no aspect. The renderer's own size is the fallback --
+    // stale by at most one tick, which is still an honest number, where `null`
+    // would drop the level back to its art-directed default and reopen the
+    // fixed-distance clipping this module exists to end.
     const applyFraming = (duration, aspect) => {
       const framed = frameLevel({
         level,
         nodes: data.nodes,
         orbitPlan,
         fov: renderer.camera()?.fov,
-        aspect: aspect ?? viewportAspect(hostRef.current?.getBoundingClientRect()),
+        aspect:
+          aspect ??
+          viewportAspect(hostRef.current?.getBoundingClientRect()) ??
+          viewportAspect({ width: renderer.width(), height: renderer.height() }),
       });
       if (controlsRef.current) {
         controlsRef.current.minDistance = framed.min;
