@@ -11,7 +11,17 @@ import {
   viewportAspect,
 } from "./galaxyView.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
-import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
+import {
+  LEVELS,
+  galaxyData,
+  highlightColor,
+  highlightLinkColor,
+  isUncharted,
+  linkLabel,
+  nebulaTintKey,
+  nodeLabel,
+  systemData,
+} from "./graphData.js";
 import { createNameAtlas } from "./nameAtlas.js";
 import { guardOrbitPointerState } from "./orbitPointerGuard.js";
 import {
@@ -95,28 +105,15 @@ export function GalaxyCanvas({
     onDawnConsumedRef.current = onDawnConsumed;
   }, [onAdvance, onRetreat, onHoverNode, pendingDawnRegionId, onDawnConsumed]);
 
+  // Both defer to graphData: "what colour is this node right now" gets one
+  // answer, in the module that already owns the standing one, rather than a
+  // closure here that only this file could reach.
   function nodeColor(node) {
-    const { activeId, neighborIds } = highlightRef.current;
-    if (!activeId) return node.color;
-    if (node.id === activeId) return palette.orbit;
-    return neighborIds.has(node.id) ? node.color : palette.faded;
+    return highlightColor(node, highlightRef.current, palette);
   }
 
   function linkColor(link) {
-    // Study level: a link not touching the selection recedes regardless of
-    // hover, so the selection's own call connections stay the subject. It
-    // recedes to `faded`, the token that exists for exactly that -- painting a
-    // *certain* edge in the uncertainty colour claimed something the parser
-    // never said, and now that uncertainty is legible it would also have made
-    // the receding links the brightest thing at study level.
-    if (link.focusDim) return palette.faded;
-    const { activeId, neighborIds } = highlightRef.current;
-    const base = link.certain ? palette.route : palette.routePossible;
-    if (!activeId) return base;
-    const source = linkEndId(link.source);
-    const target = linkEndId(link.target);
-    if (source === activeId || target === activeId) return palette.orbit;
-    return neighborIds.has(source) && neighborIds.has(target) ? base : palette.faded;
+    return highlightLinkColor(link, highlightRef.current, palette, linkEndId);
   }
 
   function linkWidth(link) {
@@ -573,7 +570,7 @@ function makeMarker(node, palette, dressing, focusedId) {
   // An uncharted region is drawn, not deleted: it keeps its true position and
   // stays clickable, so the sky never misreports how large the project is. It
   // simply carries no glow, no fog and no name until the learner reaches it.
-  const uncharted = node.charted === false;
+  const uncharted = isUncharted(node);
   // Dimmed nodes keep their true colour and lose their glow. Dimming by
   // removing light rather than shifting hue keeps a lit star recognisably lit.
   if (!node.focusDim && !uncharted) group.add(dressing.halo(node, radius));

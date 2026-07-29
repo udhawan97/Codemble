@@ -21,7 +21,7 @@
  */
 
 import { cameraPositionAt, framingDistance } from "./cameraFraming.js";
-import { LEVELS } from "./graphData.js";
+import { LEVELS, isCharted } from "./graphData.js";
 
 /** How long the camera takes to move between levels, in milliseconds. */
 export const CAMERA_DURATION = 420;
@@ -143,7 +143,7 @@ export function frameLevel({ level, nodes, orbitPlan, fov, aspect }) {
   // technically nothing off screen, nothing legible either. Progressive reveal
   // already decides what is worth reading, so the camera follows it. Show all
   // charts every region, so that case fits the lot with no special case.
-  const charted = subjects.filter((node) => node.charted);
+  const charted = subjects.filter(isCharted);
   const whole = fit(subjects);
   const measured = (charted.length ? fit(charted) : null) ?? whole;
   const distance = measured ?? Math.hypot(view.x, view.y, view.z);

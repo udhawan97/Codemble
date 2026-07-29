@@ -443,6 +443,61 @@ export function communityShade(palette, family, centrality, brightAt) {
   return mixRgb(base, palette.ground, COMMUNITY_TIER_MIX[tier]);
 }
 
+/**
+ * A region the learner has charted.
+ *
+ * Only galaxy nodes carry reveal state -- `galaxyData` always writes a boolean,
+ * and a system's members carry none, because reveal is a galaxy-only idea (the
+ * 2026-07-21 Decision Log entry). So "charted" and "not uncharted" are
+ * genuinely different questions, and each has its own name here rather than the
+ * two ad-hoc spellings (`node.charted` and `node.charted === false`) they were
+ * asked with before.
+ */
+export const isCharted = (node) => node.charted === true;
+
+/**
+ * A node the galaxy has explicitly left uncharted.
+ *
+ * False for a system member, which was never a candidate for charting -- the
+ * question does not apply rather than answering "no".
+ */
+export const isUncharted = (node) => node.charted === false;
+
+/**
+ * What colour a node wears *right now*, given what the pointer is on.
+ *
+ * `node.color` is the standing answer -- the precedence ladder in `galaxyData`
+ * and `systemData`. This is the transient one laid over it, and it lived as a
+ * closure inside GalaxyCanvas where nothing could reach it, which is how the
+ * halo came to be painted from `node.color` while the sphere in front of it
+ * was painted from here.
+ */
+export function highlightColor(node, highlight, palette) {
+  const { activeId, neighborIds } = highlight ?? {};
+  if (!activeId) return node.color;
+  if (node.id === activeId) return palette.orbit;
+  return neighborIds?.has(node.id) ? node.color : palette.faded;
+}
+
+/**
+ * What colour a route wears right now.
+ *
+ * `focusDim` wins over hover: at study level a link not touching the selection
+ * recedes regardless, so the selection's own call connections stay the subject.
+ * It recedes to `faded`, never to the uncertainty ink -- painting a *certain*
+ * edge in the possible-call colour would claim something the parser never said.
+ */
+export function highlightLinkColor(link, highlight, palette, endId) {
+  if (link.focusDim) return palette.faded;
+  const { activeId, neighborIds } = highlight ?? {};
+  const base = link.certain ? palette.route : palette.routePossible;
+  if (!activeId) return base;
+  const source = endId(link.source);
+  const target = endId(link.target);
+  if (source === activeId || target === activeId) return palette.orbit;
+  return neighborIds?.has(source) && neighborIds?.has(target) ? base : palette.faded;
+}
+
 export function galaxyData(graph, palette, revealed = null) {
   const isRevealed = (regionId) => revealed === null || revealed.has(regionId);
   const files = regionFiles(graph);

@@ -7,7 +7,11 @@ import {
   communityShade,
   galaxyData,
   groupByCommunity,
+  highlightColor,
+  highlightLinkColor,
+  isCharted,
   isTestScopedPath,
+  isUncharted,
   languageFocusGraph,
   languageFocusMap,
   linkLabel,
@@ -598,3 +602,53 @@ assert.deepEqual(
 );
 
 console.log("graph-data contracts passed");
+
+// ── Transient colour: one answer, not one per caller ───────────────────────
+
+// `node.color` is the standing answer; this is what the pointer lays over it.
+// It was a closure inside GalaxyCanvas.jsx, which is how the halo came to be
+// painted from `node.color` while the sphere in front of it was painted here.
+{
+  const pal = { orbit: "rgb(9, 9, 9)", faded: "rgb(1, 1, 1)", route: "rgb(2, 2, 2)", routePossible: "rgb(3, 3, 3)" };
+  const star = { id: "a", color: "rgb(7, 7, 7)" };
+  const neighbour = { id: "b", color: "rgb(8, 8, 8)" };
+  const stranger = { id: "c", color: "rgb(6, 6, 6)" };
+  const highlight = { activeId: "a", neighborIds: new Set(["b"]) };
+
+  assert.equal(highlightColor(star, null, pal), star.color, "with nothing hovered a node keeps its standing colour");
+  assert.equal(highlightColor(star, { activeId: null }, pal), star.color);
+  assert.equal(highlightColor(star, highlight, pal), pal.orbit, "the hovered node takes the interaction ink");
+  assert.equal(highlightColor(neighbour, highlight, pal), neighbour.color, "a neighbour keeps its own");
+  assert.equal(highlightColor(stranger, highlight, pal), pal.faded, "everything else recedes");
+
+  const endId = (end) => (typeof end === "string" ? end : end.id);
+  const certain = { source: "a", target: "b", certain: true };
+  const possible = { source: "b", target: "c", certain: false };
+
+  assert.equal(highlightLinkColor(certain, null, pal, endId), pal.route);
+  assert.equal(highlightLinkColor(possible, null, pal, endId), pal.routePossible,
+    "an unproven route keeps its own ink, which is deliberately the more visible one");
+  assert.equal(highlightLinkColor(certain, highlight, pal, endId), pal.orbit);
+  assert.equal(highlightLinkColor(possible, highlight, pal, endId), pal.faded,
+    "a route touching neither the hover nor two of its neighbours recedes");
+  assert.equal(
+    highlightLinkColor({ ...possible, focusDim: true }, null, pal, endId),
+    pal.faded,
+    "focusDim recedes to faded, never to the uncertainty ink -- that would claim what the parser did not say",
+  );
+}
+
+// ── charted vs uncharted are different questions, and now say so ───────────
+
+assert.equal(isCharted({ charted: true }), true);
+assert.equal(isCharted({ charted: false }), false);
+assert.equal(isCharted({}), false, "a system member is not a charted region");
+assert.equal(isUncharted({ charted: false }), true);
+assert.equal(isUncharted({ charted: true }), false);
+assert.equal(
+  isUncharted({}),
+  false,
+  "a system member was never a candidate for charting -- the question does not apply",
+);
+
+console.log("transient colour and reveal predicates passed");
