@@ -164,6 +164,107 @@ def test_region_community_is_serialized_in_the_graph_schema() -> None:
     assert all(isinstance(region["community"], int) for region in payload["regions"])
 
 
+def _families_fixture() -> Graph:
+    """A project with more communities than there are colour families.
+
+    Two real clusters plus ten unrelated modules, which is the shape every
+    real project has: a handful of genuine constellations and a long tail of
+    files nothing imports.
+    """
+
+    nodes: list[Node] = [_node("a0", region="a0", rank=0)]
+    edges: list[Edge] = []
+    for index in range(1, 5):
+        nodes.append(_node(f"a{index}", region=f"a{index}"))
+        edges.append(Edge(f"a{index - 1}", f"a{index}", "import", True, 1))
+    for index in range(3):
+        nodes.append(_node(f"b{index}", region=f"b{index}"))
+        if index:
+            edges.append(Edge(f"b{index - 1}", f"b{index}", "import", True, 1))
+    for index in range(10):
+        nodes.append(_node(f"i{index:02d}", region=f"i{index:02d}"))
+    return Graph(
+        nodes=tuple(nodes),
+        edges=tuple(edges),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={f"{node.region}.py": node.region for node in nodes},
+    )
+
+
+def test_colour_families_are_never_shared_by_two_communities() -> None:
+    """The defect this field exists for.
+
+    ``community % 8`` gave community 12 and community 36 the same family, so
+    two unrelated parts of a project rendered in one colour and the hue stopped
+    meaning anything a learner could rely on.  A family may name at most one
+    community.
+    """
+
+    graph = finalize_graph(_families_fixture())
+
+    owners: dict[int, set[int]] = {}
+    for region in graph.regions:
+        if region.community_family is None:
+            continue
+        owners.setdefault(region.community_family, set()).add(region.community)
+    assert owners, "some community must carry a family"
+    for family, communities in owners.items():
+        assert len(communities) == 1, f"family {family} is shared by {communities}"
+
+
+def test_colour_families_go_to_the_largest_communities() -> None:
+    graph = finalize_graph(_families_fixture())
+
+    sizes: dict[int, int] = {}
+    for region in graph.regions:
+        sizes[region.community] = sizes.get(region.community, 0) + 1
+    assert len(sizes) > 8, "the fixture must have more communities than families"
+
+    families = {
+        region.community: region.community_family
+        for region in graph.regions
+        if region.community_family is not None
+    }
+    assert len(families) == 8, "every available family is used"
+    assert set(families.values()) == set(range(8)), "families are the dense range 0..7"
+
+    # The two real clusters are the biggest communities, so they must be among
+    # the eight that earn a hue.
+    largest = sorted(sizes, key=lambda community: (-sizes[community], community))[:8]
+    assert set(families) == set(largest)
+
+    # A community that missed the cut carries no family rather than borrowing
+    # one: "not one of this project's main groups" is a fact, and drawing it as
+    # absence is honest where borrowing a hue was not.
+    missed = [c for c in sizes if c not in families]
+    assert missed, "the fixture must leave some community without a family"
+
+
+def test_colour_families_are_deterministic_and_survive_a_home_change() -> None:
+    first = finalize_graph(_families_fixture())
+    second = finalize_graph(_families_fixture())
+    assert {r.id: r.community_family for r in first.regions} == {
+        r.id: r.community_family for r in second.regions
+    }, "same code -> same sky"
+
+    # Home is a learner choice; it must never repaint the project.
+    moved = with_entrypoint(first, "a0")
+    assert {r.id: r.community_family for r in moved.regions} == {
+        r.id: r.community_family for r in first.regions
+    }, "choosing Home must not recolour a single region"
+
+
+def test_region_community_family_is_serialized_in_the_graph_schema() -> None:
+    payload = finalize_graph(_families_fixture()).to_dict()
+
+    assert all("community_family" in region for region in payload["regions"])
+    assert all(
+        region["community_family"] is None or isinstance(region["community_family"], int)
+        for region in payload["regions"]
+    )
+
+
 def test_finalization_rejects_a_home_without_parser_evidence() -> None:
     draft = Graph(
         nodes=(_node("app", region="app", rank=0),),
@@ -244,7 +345,7 @@ def test_hops_from_home_is_deterministic_and_serialized_in_the_render_schema() -
     payload = finalize_graph(draft).to_dict()
 
     assert finalize_graph(draft).to_json() == finalize_graph(draft).to_json()
-    assert payload["schema_version"] == 8
+    assert payload["schema_version"] == 9
     assert {region["id"]: region["hops_from_home"] for region in payload["regions"]} == {
         "app": 0,
         "mid": 1,
@@ -355,7 +456,7 @@ def test_unsupported_sources_are_carried_and_serialized_in_canonical_order() -> 
 
     payload = graph.to_dict()
 
-    assert payload["schema_version"] == 8
+    assert payload["schema_version"] == 9
     assert payload["unsupported_sources"] == [
         {"extension": ".go", "language": "Go", "count": 12},
         {"extension": ".h", "language": None, "count": 3},

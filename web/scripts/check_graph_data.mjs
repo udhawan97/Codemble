@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildConceptChart,
   communityName,
-  communityPaletteIndex,
+  communityFamilyIndex,
   communityShade,
   galaxyData,
   groupByCommunity,
@@ -40,9 +40,9 @@ const graph = {
     { node_id: "ts", language: "typescript", concept: "async-await" },
   ],
   regions: [
-    { id: "py", language: "python", x: 1 },
-    { id: "ts", language: "typescript", x: 2 },
-    { id: "js", language: "javascript", x: 3 },
+    { id: "py", language: "python", x: 1, community: 4, community_family: 2 },
+    { id: "ts", language: "typescript", x: 2, community: 9, community_family: 0 },
+    { id: "js", language: "javascript", x: 3, community: 17, community_family: null },
   ],
   region_edges: [
     { src: "ts", dst: "js" },
@@ -63,6 +63,24 @@ assert.deepEqual(typescript.regions.map((region) => region.id), ["ts"]);
 assert.deepEqual(typescript.region_edges, []);
 assert.deepEqual(typescript.partial_files, []);
 assert.equal(graph.nodes.length, 3, "focus never mutates graph truth");
+
+// A language focus must never repaint the sky. The colour family is assigned by
+// the graph layer over the WHOLE project, so a focus can only ever hide regions
+// -- a survivor keeps the exact family it had among all 115. This is the whole
+// reason the assignment is not computed in the frontend: derived from the
+// focused projection, "the eight largest communities" would mean something
+// different for every filter, and a view preference would silently change what
+// a colour means.
+assert.equal(
+  typescript.regions[0].community_family,
+  graph.regions[1].community_family,
+  "focusing a language must not change a surviving region's colour family",
+);
+assert.equal(
+  languageFocusGraph(graph, "python").regions[0].community_family,
+  2,
+  "each language focus preserves its own survivors' families",
+);
 
 // The Map's language projection (F4): the same drop-not-move rule as the galaxy
 // focus, applied to the flat map payload. Boxes/rows/edges of other languages
@@ -447,12 +465,17 @@ const communityPalette = {
   ],
 };
 
-// Deterministic slot arithmetic, wrap included; a missing fact maps to null.
-assert.equal(communityPaletteIndex(0), 0);
-assert.equal(communityPaletteIndex(9), 1);
-assert.equal(communityPaletteIndex(-1), 7, "negative ids stay in range");
-assert.equal(communityPaletteIndex(null), null);
-assert.equal(communityPaletteIndex(2.5), null, "non-integer ids claim nothing");
+// The family is assigned by the graph layer; the renderer only validates it.
+// It must NOT wrap: wrapping is what put five of this repository's
+// thirty-seven communities on one hue, so a family out of range claims
+// nothing rather than borrowing another community's colour.
+assert.equal(communityFamilyIndex(0), 0);
+assert.equal(communityFamilyIndex(7), 7);
+assert.equal(communityFamilyIndex(8), null, "an out-of-range family claims nothing");
+assert.equal(communityFamilyIndex(9), null, "families never wrap onto each other");
+assert.equal(communityFamilyIndex(-1), null, "a negative family claims nothing");
+assert.equal(communityFamilyIndex(null), null, "a region with no family claims nothing");
+assert.equal(communityFamilyIndex(2.5), null, "non-integer families claim nothing");
 
 // Same community, same colour, every time.
 assert.equal(
@@ -474,7 +497,7 @@ assert.ok(
     channel(midShade, 1) > channel(midShade, 2),
   "the hue survives the tier mix",
 );
-// No community id -> the old neutral ramp, never a borrowed hue.
+// No family -> the neutral ramp, never a borrowed hue.
 assert.equal(communityShade(communityPalette, undefined, 9, 5), communityPalette.nodeBright);
 assert.equal(communityShade(communityPalette, undefined, 1, 5), communityPalette.node);
 assert.equal(communityShade(communityPalette, undefined, 0, 5), communityPalette.nodeDim);
@@ -485,6 +508,7 @@ const hueGraph = {
   regions: graph.regions.map((region, index) => ({
     ...region,
     community: index,
+    community_family: index < 8 ? index : null,
     understood: region.id === "ts",
     centrality: 9,
     loc: 10,
