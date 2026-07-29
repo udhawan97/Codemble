@@ -205,10 +205,13 @@ reproducible rebuilt bundle.
 
 Previously: the eight product screenshots were recaptured on the v0.8.0 shell,
 paying the debt the release left open. Measuring them first changed the job
-three times. Only **five of the eight are displayed anywhere** — `easy-mode`,
-`galaxy-lit` and `map-workflow` appear in no README, docs page or landing — and
-`NOTES.md` frames the directory as a library to be preferred over invented
-media, so they stay and were recaptured too. The header was also only the
+three times. Only **five of the eight were displayed anywhere** — `easy-mode`,
+`galaxy-lit` and `map-workflow` appeared in no README, docs page or landing —
+and `NOTES.md` frames the directory as a library to be preferred over invented
+media, so they stayed and were recaptured too. `galaxy-lit` has since been
+placed under **Lighting rules** on the checks-and-lighting page, where one
+amber system among dim ones is the claim the page is making; `easy-mode` and
+`map-workflow` remain library stock. The header was also only the
 newest drift: `easy-mode` and `galaxy-lit` rendered **Expert** vocabulary under
 a selected **Easy** radio, `easy-mode` still had grey stars from before the
 v0.7.0 community colours, `galaxy-lit` recommended a test module as the next
