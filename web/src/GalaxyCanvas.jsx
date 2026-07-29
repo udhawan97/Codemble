@@ -2,8 +2,14 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { cameraPositionAt, framingDistance } from "./cameraFraming.js";
 import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
+import {
+  CAMERA_DURATION,
+  cameraBoundsFor,
+  frameLevel,
+  frameStudy,
+  viewportAspect,
+} from "./galaxyView.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 import { createNameAtlas } from "./nameAtlas.js";
@@ -14,96 +20,8 @@ import {
   systemOrbitPlan,
 } from "./systemOrbits.js";
 
-const CAMERA_DURATION = 420;
 const NODE_REL_SIZE = 1.6;
-// Bounded orbit, per the 2026-07-21 Decision Log entry. Free flight stays a
-// Non-Goal: panning is off, so the camera can only ever swing around the
-// current subject and never translate away from it. These clamps are what make
-// "you cannot get lost" still true once the mouse can move the view -- each
-// level's default distance sits inside its own range, so arriving somewhere
-// never fights the clamp.
-const CAMERA_BOUNDS = {
-  GALAXY: { min: 120, max: 640 },
-  SYSTEM: { min: 55, max: 320 },
-  STUDY: { min: 22, max: 170 },
-};
-// The tilt each level is viewed from. Only the direction is art direction; the
-// distance along it is measured from the nodes, because a layout that grows
-// past a hardcoded distance puts its own far side behind the camera. Their
-// lengths remain the fallback for a level with nothing to measure.
-const CAMERA_VIEW = {
-  GALAXY: { x: 0, y: 105, z: 310 },
-  SYSTEM: { x: 0, y: 52, z: 150 },
-};
-// How much further than the whole project's fitted distance the learner may
-// pull back. Enough for some space around it, not enough to lose it.
-const ZOOM_OUT_HEADROOM = 1.15;
 const ORIGIN = { x: 0, y: 0, z: 0 };
-
-/** Layout coordinates are fixed by the graph layer, so fx/fy/fz are the truth. */
-const layoutPoints = (nodes) =>
-  nodes.map((node) => ({
-    x: node.fx ?? node.x ?? 0,
-    y: node.fy ?? node.y ?? 0,
-    z: node.fz ?? node.z ?? 0,
-  }));
-
-/**
- * Where the camera sits for a level, and the clamps that then hold it there.
- * Measured from the nodes rather than hardcoded: a project whose layout grows
- * past a fixed distance pushes its own near edge behind the camera, and a node
- * behind the camera is not cropped, it is gone.
- */
-/**
- * The four cardinal points of each orbit guide. A guide is a circle through
- * the planets on its layer, so its widest point on screen usually falls
- * *between* them — fitting the planets alone crops the ring they sit on.
- */
-const orbitRingPoints = (plan) => {
-  const points = [];
-  for (const layer of plan ?? []) {
-    for (const radius of layer.radii ?? []) {
-      points.push(
-        { x: radius, y: 0, z: 0 },
-        { x: -radius, y: 0, z: 0 },
-        { x: 0, y: 0, z: radius },
-        { x: 0, y: 0, z: -radius },
-      );
-    }
-  }
-  return points;
-};
-
-function frameLevel(level, nodes, { fov, aspect }, orbitPlan) {
-  const view = CAMERA_VIEW[level] ?? CAMERA_VIEW.GALAXY;
-  const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
-  const rings = level === LEVELS.GALAXY ? [] : orbitRingPoints(orbitPlan);
-  const fit = (subset) =>
-    framingDistance({
-      points: [...layoutPoints(subset), ...rings],
-      direction: view,
-      fov,
-      aspect,
-    });
-
-  // Open on the sky the learner is meant to read. Fitting all 113 systems
-  // instead framed the whole disc and left the charted core a thumbnail --
-  // technically nothing off screen, nothing legible either. Show all makes
-  // every region charted, so that case still fits the lot.
-  const charted = nodes.filter((node) => node.charted);
-  const whole = fit(nodes);
-  const distance = (charted.length ? fit(charted) : null) ?? whole ?? Math.hypot(view.x, view.y, view.z);
-  return {
-    position: cameraPositionAt(view, distance) ?? view,
-    // Keeps the promise the bounds comment above makes: the distance a level
-    // opens at always sits inside the range it is held to, at any project size.
-    min: Math.min(bounds.min, distance),
-    // Far enough back to reach the uncharted rim. Progressive reveal draws
-    // those regions faint, never removes them, so the camera must be able to
-    // get to them even though it does not open there.
-    max: Math.max(bounds.max, (whole ?? distance) * ZOOM_OUT_HEADROOM),
-  };
-}
 
 // Never straight down and never edge-on: at 0 the galaxy plane collapses to a
 // line, and past ~86 degrees the learner is under the plane looking up at a sky
@@ -312,7 +230,8 @@ export function GalaxyCanvas({
       const resize = new ResizeObserver(([entry]) => {
         const { width, height } = entry.contentRect;
         renderer.width(width).height(height);
-        if (!userFramedRef.current && height > 0) reframeRef.current?.(width / height);
+        const aspect = viewportAspect(entry.contentRect);
+        if (!userFramedRef.current && aspect !== null) reframeRef.current?.(aspect);
       });
       resize.observe(host);
       return () => {
@@ -358,19 +277,20 @@ export function GalaxyCanvas({
     // is about to be held to. cameraPosition's lookAt writes controls.target
     // directly now that controls are enabled (three-render-objects setLookAt),
     // which is what re-anchors the orbit on every level change for free.
-    // The aspect is passed in rather than read from camera.aspect: the library
-    // batches width/height and applies them on its next tick, so the camera
-    // still carries the previous viewport at the moment a resize is handled.
+    //
+    // The aspect always comes from the host element -- the thing actually being
+    // drawn into -- and never from `renderer.width()/height()` or
+    // `camera.aspect`. The library batches width and height and applies them on
+    // its next tick, so its copy still carries the previous viewport at the
+    // moment a resize is handled. One source, so there is nothing to go stale.
     const applyFraming = (duration, aspect) => {
-      const framed = frameLevel(
+      const framed = frameLevel({
         level,
-        data.nodes,
-        {
-          fov: renderer.camera()?.fov,
-          aspect: aspect || renderer.width() / (renderer.height() || 1),
-        },
+        nodes: data.nodes,
         orbitPlan,
-      );
+        fov: renderer.camera()?.fov,
+        aspect: aspect ?? viewportAspect(hostRef.current?.getBoundingClientRect()),
+      });
       if (controlsRef.current) {
         controlsRef.current.minDistance = framed.min;
         controlsRef.current.maxDistance = framed.max;
@@ -505,7 +425,14 @@ export function GalaxyCanvas({
     function relabel() {
       const camera = renderer.camera();
       const controls = controlsRef.current;
-      const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
+      // The *fitted* range the camera is actually held to, not the art-directed
+      // floor it started from. A project whose layout outgrows the default has
+      // its clamps widened by the fit, and budgeting labels against the narrow
+      // range read "as far out as it goes" while the camera was still near.
+      const fallback = cameraBoundsFor(level);
+      const bounds = controls
+        ? { min: controls.minDistance ?? fallback.min, max: controls.maxDistance ?? fallback.max }
+        : fallback;
       const distance = controls
         ? camera.position.distanceTo(controls.target)
         : camera.position.length();
@@ -566,12 +493,10 @@ export function GalaxyCanvas({
   }, [data.nodes.length]);
 
   useEffect(() => {
-    if (!selectedNode || !rendererRef.current || level !== LEVELS.STUDY) return;
-    rendererRef.current.cameraPosition(
-      { x: selectedNode.system_x + 20, y: selectedNode.system_y + 15, z: selectedNode.system_z + 42 },
-      { x: selectedNode.system_x, y: selectedNode.system_y, z: selectedNode.system_z },
-      CAMERA_DURATION,
-    );
+    if (!rendererRef.current || level !== LEVELS.STUDY) return;
+    const framed = frameStudy(selectedNode);
+    if (!framed) return;
+    rendererRef.current.cameraPosition(framed.position, framed.target, CAMERA_DURATION);
   }, [level, selectedNode]);
 
   const focusedNode = data.nodes[focusedIndex] ?? null;
