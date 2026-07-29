@@ -2,7 +2,8 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
+import { attachBloom, prefersReducedMotion } from "./galaxyEffects.js";
+import { runDawnSequence } from "./dawnSequence.js";
 import {
   CAMERA_DURATION,
   cameraBoundsFor,
@@ -76,6 +77,7 @@ export function GalaxyCanvas({
   const retreatRef = useRef(onRetreat);
   const hoverRef = useRef(onHoverNode);
   const pendingDawnRef = useRef(pendingDawnRegionId);
+  const dawnGraphRef = useRef(graph);
   const onDawnConsumedRef = useRef(onDawnConsumed);
   const dawnStartedRef = useRef(null);
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
@@ -113,6 +115,10 @@ export function GalaxyCanvas({
     retreatRef.current = onRetreat;
     hoverRef.current = onHoverNode;
     pendingDawnRef.current = pendingDawnRegionId;
+    // By ref, not by closure: the dawn effect keeps a deliberately narrow
+    // dependency list (see its comment), because any dependency that changes
+    // while a dawn is playing tears the effect down and cancels it mid-flare.
+    dawnGraphRef.current = graph;
     onDawnConsumedRef.current = onDawnConsumed;
   }, [onAdvance, onRetreat, onHoverNode, pendingDawnRegionId, onDawnConsumed]);
 
@@ -441,7 +447,22 @@ export function GalaxyCanvas({
       const scene = renderer.scene();
       const found = Boolean(scene.getObjectByName(`codemble-system-${regionId}`));
       if (found || frame >= MAX_DAWN_RETRY_FRAMES) {
-        stopDawn = runNebulaDawn({ scene, regionId, palette });
+        stopDawn = runDawnSequence({
+          scene,
+          regionId,
+          palette,
+          dressing: dressingRef.current,
+          // Region routes, not the level's drawn links: the dawn plays at
+          // galaxy level where these are the same, but reading graph truth
+          // directly keeps the moment honest if the drawn set is ever thinned.
+          routes: dawnGraphRef.current?.region_edges ?? [],
+          hopsById: new Map(
+            (dawnGraphRef.current?.regions ?? []).map((item) => [
+              item.id,
+              item.hops_from_home,
+            ]),
+          ),
+        });
         return;
       }
       frameHandle = requestAnimationFrame(() => attempt(frame + 1));

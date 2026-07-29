@@ -66,61 +66,6 @@ export function attachBloom(renderer) {
   };
 }
 
-const DAWN_DURATION = 1200;
-
 export function prefersReducedMotion() {
   return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-}
-
-// The one bold moment in the app: amber washes across the lit system's fog and
-// its star flares. Reduced motion gets the finished lit state instantly -- not a
-// faster animation, no animation at all.
-export function runNebulaDawn({ scene, regionId, palette }) {
-  // Nothing to restore in either case: the lit colour the dawn celebrates is
-  // already committed to the graph, so the finished state is what is on screen.
-  if (prefersReducedMotion()) return () => {};
-  const target = scene.getObjectByName(`codemble-system-${regionId}`);
-  if (!target) return () => {};
-  const sprites = [];
-  target.traverse((child) => {
-    // The full scale VECTOR, never scale.x alone: a name plate is non-uniform
-    // (x = aspect * y), and a scalar snapshot restored through setScalar
-    // squashed the lit system's plate square and left it that way until the
-    // next level change rebuilt the marker.
-    if (child.isSprite) sprites.push([child, child.material.opacity, child.scale.clone()]);
-  });
-  const amber = new THREE.Color(palette.star);
-  const originals = sprites.map(([sprite]) => sprite.material.color.clone());
-
-  let frame = 0;
-  const startedAt = performance.now();
-  const step = () => {
-    const progress = Math.min(1, (performance.now() - startedAt) / DAWN_DURATION);
-    // Ease out: the flare arrives fast and settles, like a light coming up.
-    const eased = 1 - (1 - progress) ** 3;
-    const wash = Math.sin(progress * Math.PI);
-    sprites.forEach(([sprite, baseOpacity, baseScale], index) => {
-      sprite.material.color.copy(originals[index]).lerp(amber, wash * 0.85);
-      sprite.material.opacity = baseOpacity + wash * 0.5;
-      sprite.scale.copy(baseScale).multiplyScalar(1 + wash * 0.45);
-    });
-    if (progress < 1) {
-      frame = requestAnimationFrame(step);
-      return;
-    }
-    sprites.forEach(([sprite, baseOpacity, baseScale], index) => {
-      sprite.material.color.copy(originals[index]);
-      sprite.material.opacity = baseOpacity;
-      sprite.scale.copy(baseScale);
-    });
-  };
-  frame = requestAnimationFrame(step);
-  return () => {
-    cancelAnimationFrame(frame);
-    sprites.forEach(([sprite, baseOpacity, baseScale], index) => {
-      sprite.material.color.copy(originals[index]);
-      sprite.material.opacity = baseOpacity;
-      sprite.scale.copy(baseScale);
-    });
-  };
 }
