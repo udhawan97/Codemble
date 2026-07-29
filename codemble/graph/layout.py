@@ -113,7 +113,13 @@ def layout_graph(graph: Graph) -> Graph:
                 loc=loc,
                 centrality=sum(node.centrality for node in members),
                 node_count=len(members),
-                understood=bool(members) and all(node.understood for node in members),
+                # Not layout's fact to state. ``ProgressStore.hydrated_graph``
+                # owns it and applies one rule -- "this region id is in the
+                # learner's proven set". Layout once carried a second,
+                # unreachable formula ("every node understood") that read as a
+                # specification and is not the rule; two definitions of this
+                # field is how a region lights without evidence.
+                understood=False,
                 home=any(node.id == graph.selected_entrypoint for node in members),
                 x=region_x,
                 y=region_y,
@@ -374,6 +380,17 @@ def with_entrypoint(graph: Graph, node_id: str) -> Graph:
 
     if node_id not in graph.entrypoint_candidates:
         raise ValueError(f"entrypoint is not a parser-ranked candidate: {node_id}")
+    # Every distance below is measured against ``graph.regions``, which only
+    # ``layout_graph`` fills. Handed a graph that skipped it, this used to
+    # return a valid-looking graph with zero regions -- a galaxy with no stars,
+    # reported as success. Fail where the mistake was made instead.
+    if graph.nodes and not graph.regions:
+        raise ValueError(f"cannot re-home a graph that was never laid out: {node_id}")
+    if graph.selected_entrypoint == node_id:
+        # The regions were built for this Home, so rebuilding them answers what
+        # it was handed. ``CheckService.graph`` re-selects the current Home on
+        # every hydration, which paid a whole breadth-first walk for nothing.
+        return graph
     node_by_id = {node.id: node for node in graph.nodes}
     selected = node_by_id[node_id]
     # Every distance is measured from Home, so moving Home invalidates all of

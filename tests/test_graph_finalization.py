@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -494,3 +495,113 @@ def test_choosing_a_new_home_preserves_the_unsupported_report() -> None:
     rehomed = with_entrypoint(finalized, "b")
 
     assert rehomed.unsupported_sources == (UnsupportedSource(".go", "Go", 4),)
+
+
+def test_rehoming_a_graph_that_never_reached_layout_refuses_instead_of_emptying_it() -> None:
+    """A missing precondition must fail loudly, not return a starless galaxy.
+
+    ``with_entrypoint`` measures every distance against ``graph.regions``, which
+    only ``layout_graph`` fills. Handed a graph that skipped it, the old code
+    returned a valid-looking graph with zero regions -- a galaxy with no stars,
+    reported as success.
+    """
+
+    draft = Graph(
+        nodes=(_node("a", region="a", rank=0),),
+        edges=(),
+        entrypoint_candidates=("a",),
+        project_root="/project",
+        file_hashes={"a.py": "one"},
+    )
+
+    with pytest.raises(ValueError, match="never laid out"):
+        with_entrypoint(draft, "a")
+
+
+def test_reselecting_the_home_a_graph_already_has_is_a_no_op() -> None:
+    """Every hydration re-selected the same Home and paid a whole BFS for it.
+
+    ``CheckService.graph`` calls ``with_entrypoint`` with the Home the graph
+    already carries, so the regions it rebuilds are the regions it was given.
+    """
+
+    draft = Graph(
+        nodes=(
+            _node("a", region="a", rank=0),
+            _node("b", region="b", rank=1),
+            _node("c", region="c", rank=2),
+        ),
+        edges=(
+            Edge(src="a", dst="b", kind="import", certain=True, lineno=1),
+            Edge(src="b", dst="c", kind="import", certain=True, lineno=1),
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"a.py": "one", "b.py": "two", "c.py": "three"},
+    )
+    finalized = finalize_graph(draft)
+    assert finalized.selected_entrypoint == "a"
+
+    assert with_entrypoint(finalized, "a") is finalized
+
+
+def test_reselecting_the_same_home_still_answers_what_a_recompute_would() -> None:
+    """The shortcut is only safe while it agrees with the long way round."""
+
+    draft = Graph(
+        nodes=(
+            _node("a", region="a", rank=0),
+            _node("b", region="b", rank=1),
+            _node("c", region="c", rank=2),
+            _node("island", region="island"),
+        ),
+        edges=(
+            Edge(src="a", dst="b", kind="import", certain=True, lineno=1),
+            Edge(src="b", dst="c", kind="import", certain=True, lineno=1),
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={f"{name}.py": name for name in ("a", "b", "c", "island")},
+    )
+    finalized = finalize_graph(draft)
+
+    # Route the same request through a graph the shortcut cannot recognise, so
+    # the full recompute runs, and compare the two answers field by field.
+    forgetful = replace(finalized, selected_entrypoint=None)
+    recomputed = with_entrypoint(forgetful, "a")
+
+    assert {region.id: region.hops_from_home for region in recomputed.regions} == {
+        "a": 0,
+        "b": 1,
+        "c": 2,
+        "island": None,
+    }
+    assert {region.id: region.home for region in recomputed.regions} == {
+        region.id: region.home for region in finalized.regions
+    }
+    assert {region.id: region.hops_from_home for region in recomputed.regions} == {
+        region.id: region.hops_from_home for region in finalized.regions
+    }
+
+
+def test_layout_never_claims_a_region_is_understood() -> None:
+    """Understanding is the progress store's fact, and it has exactly one rule.
+
+    ``layout_graph`` once carried a second, unreachable definition -- "every
+    node understood" -- which is not the rule the store applies ("this region
+    id is in the learner's proven set"). Two formulas for one field is how a
+    region lights without evidence.
+    """
+
+    draft = Graph(
+        nodes=(_node("a", region="a", rank=0), _node("a.run", region="a")),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"a.py": "one"},
+    )
+
+    finalized = finalize_graph(draft)
+
+    assert [region.understood for region in finalized.regions] == [False]
+    assert all(node.understood is False for node in finalized.nodes)
