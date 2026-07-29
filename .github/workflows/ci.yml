@@ -54,12 +54,16 @@ jobs:
             git status --short -- codemble/web_dist
             exit 1
           fi
-  # styles.css is 3,216 lines across 17 media blocks and carries the product's
-  # entire layout contract. Three of the last eight bugfixes were exactly that,
-  # and none could be caught by any JS seam -- 99b6875 was a bug in cascade
-  # resolution, visible only to a browser. Its own job because, unlike
-  # web-check, it needs a running Codemble.
-  space-budget:
+  # The gates that cannot be answered without a browser, against a real running
+  # Codemble. Separate from web-check, which stays Node-only, offline and fast.
+  #
+  #   space budget      styles.css is 3,216 lines across 17 media blocks and
+  #                     carries the entire layout contract. 99b6875 was a bug in
+  #                     cascade resolution -- no JS seam can reach it.
+  #   escape surfaces   check_escape_arbiter proves the decision; only a browser
+  #                     proves the key arrives, the surface closes, and focus
+  #                     lands somewhere a keyboard learner can carry on from.
+  browser-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -82,11 +86,14 @@ jobs:
             curl -sf -o /dev/null http://127.0.0.1:8899/ && break
             sleep 2
           done
+      - name: Install Chromium
+        run: cd web && npx --yes playwright install --with-deps chromium
       - name: Shell space budget
-        run: |
-          cd web
-          npx --yes playwright install --with-deps chromium
-          CODEMBLE_URL=http://127.0.0.1:8899 npm run check:space
+        run: cd web && CODEMBLE_URL=http://127.0.0.1:8899 npm run check:space
+      # Runs even when the budget fails, so one browser run reports both.
+      - name: Escape surfaces
+        if: ${{ !cancelled() }}
+        run: cd web && CODEMBLE_URL=http://127.0.0.1:8899 npm run check:escape
   package-check:
     runs-on: ubuntu-latest
     steps:

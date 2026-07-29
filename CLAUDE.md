@@ -278,8 +278,20 @@ is proven in both directions. Deliberately **not** done: the audit's remaining
 "language leaks" are one-line-per-language tables whose removal would cost
 widening the protected four-method `LanguageAdapter` seam, and two of them
 (`conceptTitle`, `shortLanguageLabel`) need no edit for a new language at all.
-263 pytest, Ruff 0.16 clean, **14** frontend contract checks, the space budget
-at four widths in both registers, reproducible rebuilt bundle.
+Escape was then swept on every surface with real key presses, which found one
+pre-existing gap and closed it: leaving the **quiz** returned focus nowhere,
+where every other panel hands it back, so a keyboard learner who had just worked
+through a region landed on `<body>`. That sweep is now a gate —
+`check_escape_surfaces.mjs`, beside the space budget in a `browser-checks` job.
+Two measurement errors are worth recording because both produced confident wrong
+readings: the in-app browser pane reports `document.hidden === true`, which
+throttles `requestAnimationFrame` and therefore `restoreRailFocus`, so focus
+return read as broken everywhere until it was re-run in a foreground browser;
+and comparing the breadcrumb while a panel is *open* against after it closes
+compares two different correct states, which reported a double-fire that was not
+one. Both are guarded in the check itself. 265 pytest, Ruff 0.16 clean, **14**
+frontend contract checks, the space budget at four widths in both registers, 18
+escape-surface assertions, reproducible rebuilt bundle.
 
 Previously: the galaxy camera began framing what is actually there. It had used a
 fixed distance, and **the first diagnosis of why was wrong**: a
@@ -998,6 +1010,8 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-29 | Map schema 3 → 4: a `workflow.unreachable` row is `{id, language}` rather than a bare id | The renderer filtered them with `id.startsWith("<language>:")`, which is the JS/TS adapter's private id convention; Python mints dotted module paths and carries no prefix. Focusing Python on a mixed project therefore reported **zero** never-called structures where the polyglot fixture has two — a count a learner cannot check, in a note whose only job is to state a count. The contract check agreed with the bug because its fixture spelled Python ids the JS way; it now mints each language's ids the way that adapter actually mints them |
 | 2026-07-29 | `with_entrypoint` refuses a graph that never reached `layout_graph`, and re-selecting the Home a graph already carries is a no-op | It measures every distance against `graph.regions`, which only `layout_graph` fills, and returned a valid-looking graph with zero regions when handed one that skipped it — a galaxy with no stars, reported as success. The no-op is the common case rather than an edge one: `CheckService.graph` re-selects the current Home on every hydration, paying a full breadth-first walk to rebuild the regions it had just been given. Layout's second definition of `Region.understood` went with it — unreachable, but it read as a specification and was not the rule `ProgressStore` applies |
 | 2026-07-29 | CI asserts the shell's space budget in its own job, against a running Codemble. **Amends the standing rule "UI is verified by running it"** | Approved by UD. `styles.css` is 3,216 lines across 17 media blocks carrying the entire layout contract with no seam and no assertion, and three of the last eight bugfixes were exactly that — `99b6875` a bug in *cascade resolution*, which no JS seam can reach. Each was verified by a human reading DevTools and pasting the numbers into a commit message; those numbers were the contract and nothing re-read them. The check reproduces `13b3c06`'s own measurements (header 148, chrome 36.8%) and is proven in both directions. It serves the committed bundle against this repository rather than a fixture, so there is nothing to drift from the app, and `npm run check` stays Node-only, offline and fast |
+| 2026-07-29 | The CI job that needs a browser is `browser-checks`, and it hosts two gates: the space budget and `check_escape_surfaces.mjs` | `check_escape_arbiter` proves the *decision* — which surface owns Escape, for every combination. It cannot prove the key arrives, that the surface closes, or that focus lands somewhere a keyboard learner can carry on from, and **every Escape bug this project has shipped was one of those**: the rail disclosure closing *and* retreating, the checks panel and module index never claiming the key, the star chart retreating on top of its own dismissal. One server and one Chromium install answer both gates, so the second costs almost nothing. The in-app browser pane cannot substitute — it reports `document.hidden === true`, which throttles `requestAnimationFrame`, and `restoreRailFocus` is rAF-based, so focus return reads as broken there whether or not it is. The check's first assertion guards that trap so the gate can never pass by measuring a throttled page |
+| 2026-07-29 | Leaving the quiz returns focus to **Prove understanding**, from Escape and from the panel's own control, through one `closeChecks` helper | Every other dismissible surface returned focus; this one dropped it, so a learner who had just worked through a region by keyboard was left on `<body>` and had to tab in from the top. Pre-existing and shared with `e00b3fe` on both paths, which is why both go through one helper now rather than one being fixed and the other drifting. The trigger stays mounted behind the panel, so there is somewhere obvious to return to — no new component, no new state |
 
 ## Non-Goals — do NOT build (point here when asked)
 

@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **Closing the quiz no longer strands the keyboard.** Every other panel hands
+  focus back to the control that opened it; the quiz dropped it, so a learner
+  who had just worked through a region by keyboard was left with focus nowhere
+  and had to tab in from the top of the page. Both ways out — Escape and the
+  panel's own control — now return focus to **Prove understanding**.
 - **"Fit" now shows more of the diagram instead of less.** On any screen wider
   than the drawing — every desktop — the control resolved to exactly the zoom
   the map already opens at, so pressing it did nothing; pressed after zooming
@@ -84,6 +89,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   one ordered list, and the star chart reads the same one.
 
 ### Changed
+- **Escape is checked on every panel automatically.** Which panel the key
+  closes, that the level does not also move, and where focus lands afterwards
+  are now asserted in a real browser on every change — across the star chart,
+  the module index, Find, the More menu, the quiz, typing in a field, and both
+  layers.
 - **The shell's space budget is checked automatically.** How much of the window
   goes to the header, guidance and footer — and how little is left for the
   drawing — used to be measured by hand and written down in a commit message.

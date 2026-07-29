@@ -37,6 +37,10 @@ export function App() {
   const finderTriggerRef = useRef(null);
   const finderReturnRef = useRef(null);
   const chartTriggerRef = useRef(null);
+  // The control that opens the quiz. It stays on screen behind the panel, so
+  // closing the quiz has somewhere obvious to put focus -- and every other
+  // dismissible surface returns it, while this one dropped it on the floor.
+  const checksTriggerRef = useRef(null);
   const stageRef = useRef(null);
   const systemCopyRef = useRef(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -92,7 +96,7 @@ export function App() {
   // What "dismiss this surface" means, one entry per dismissible owner in
   // `ESCAPE_OWNERS`. Each returns focus to the control that opened it.
   const DISMISS = {
-    checks: () => session.dispatch({ type: "CLOSE_CHECKS" }),
+    checks: () => closeChecks(),
     sidebar: () => closeModules(),
     chart: () => {
       session.dispatch({ type: "HIDE_CHART" });
@@ -212,6 +216,13 @@ export function App() {
   function closeModules() {
     session.dispatch({ type: "TOGGLE_SIDEBAR" });
     restoreRailFocus(modulesTriggerRef);
+  }
+  // Both ways out of the quiz -- Escape and the panel's own control -- so the
+  // two cannot drift. Neither returned focus before, which left a keyboard
+  // learner on <body> after proving a region they had just worked through.
+  function closeChecks() {
+    session.dispatch({ type: "CLOSE_CHECKS" });
+    restoreRailFocus(checksTriggerRef);
   }
 
   function openFinder(event) {
@@ -358,6 +369,7 @@ export function App() {
             </button>
           ) : null}
           <button
+            ref={checksTriggerRef}
             className="check-launch"
             type="button"
             onClick={() => session.dispatch({ type: "OPEN_CHECKS" })}
@@ -831,7 +843,7 @@ export function App() {
             error={checkError}
             mode={mode}
             overviewNoun={overviewNoun}
-            onClose={() => session.dispatch({ type: "CLOSE_CHECKS" })}
+            onClose={closeChecks}
             onSubmit={(checkId, selectedIds) =>
               session.dispatch({ type: "SUBMIT_CHECK", checkId, selectedIds })
             }
