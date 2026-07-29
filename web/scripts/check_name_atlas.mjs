@@ -86,6 +86,42 @@ assert.equal(
   "restoring the canvas restores the names",
 );
 
+// The canvas is not all sky. The orientation line is drawn over its top-left
+// corner and the keyboard readout over its bottom-left, both as
+// `pointer-events: none` DOM the scene knows nothing about -- so a plate was
+// printed straight through them. On this repository that put
+// `tests/test_typescript_tree_sitter.py` across "24 charted · 2 could not be
+// read · all under tests/", the line that states what Codemble could NOT parse.
+// Covering that is worse than showing no name: the count exists so a learner is
+// not misled about coverage.
+const chromeless = atlas.place(view);
+assert.ok(chromeless.shown > 0, "the fixture shows names with no chrome declared");
+
+// A band across the whole canvas leaves no slot anywhere, the same outcome as a
+// canvas too narrow to hold a plate: no name rather than a name over the text.
+const buried = atlas.place({
+  ...view,
+  chrome: [{ left: 0, right: view.width, top: 0, bottom: view.height }],
+});
+assert.equal(buried.shown, 0, "no plate is drawn over chrome");
+
+// ...and it is a rectangle test, not a top-band test: chrome in one corner must
+// not cost the sky the rest of the row.
+const corner = atlas.place({
+  ...view,
+  chrome: [{ left: 0, right: 120, top: 0, bottom: 24 }],
+});
+assert.equal(
+  corner.shown,
+  chromeless.shown,
+  "chrome in a corner does not reserve the whole band",
+);
+
+// Absent or empty chrome is the same as none: a caller that draws nothing over
+// its sky need not know this exists.
+assert.equal(atlas.place({ ...view, chrome: [] }).shown, chromeless.shown);
+assert.equal(atlas.place({ ...view, chrome: undefined }).shown, chromeless.shown);
+
 atlas.hide(scene);
 assert([...sprites.values()].every((sprite) => sprite.visible === false));
 

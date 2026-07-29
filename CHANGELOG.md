@@ -70,6 +70,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   in that shape — so focusing Python said zero where the truth was two. A count
   is the one thing a note like that exists to get right, and it is not something
   you could have checked. Each row now states its own language.
+- **The galaxy no longer opens as an empty canvas.** Switching to the Diagram and
+  back could leave the stage blank — correctly sized, nothing on it, nothing in
+  the console — until you happened to resize the window. The effects chain the
+  scene is drawn through was never given a size: it takes one only when the
+  window changes, and returning to a window that had not changed size meant it
+  never got one, so the whole galaxy arrived through a one-pixel buffer. It is
+  now sized from the element being drawn into, whether or not a resize ever
+  happens.
+- **A module's name is no longer printed across the line above it.** The counts
+  at the top of the galaxy — how many systems, how many charted, and how many
+  files could not be read — sit over the sky rather than beside it, and the
+  labeller did not know they were there. On this repository a name was drawn
+  straight through "2 could not be read · all under tests/", which is the line
+  that exists so you are not misled about what Codemble managed to read. Names
+  now step around it, or step aside; they already did this at the edge of the
+  window.
 - **The galaxy opens centred on your code instead of pinned to a corner.** The
   camera had learned how far back to stand, but it still stared at a fixed point
   — the origin — and a project's modules are not arranged around it. On this

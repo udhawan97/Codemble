@@ -30,6 +30,10 @@ export function createNameAtlas(nodes) {
     distance,
     distanceBounds,
     hoverNodeId = null,
+    // Rectangles of DOM chrome drawn over the canvas, in the same CSS pixels
+    // as `width`/`height`. Empty by default: a caller that draws no chrome
+    // over its sky need not know this exists.
+    chrome = [],
   }) {
     const sprites = namePlates(scene);
     for (const sprite of sprites) sprite.visible = false;
@@ -76,6 +80,7 @@ export function createNameAtlas(nodes) {
         height,
         projected,
         taken,
+        chrome,
       });
       if (!placement) continue;
       for (const cell of placement.cells) taken.add(cell);
@@ -139,7 +144,7 @@ function project(origin, offsetY, camera, width, height, projected) {
   return { screenX, screenY };
 }
 
-function chooseSlot(candidate, { camera, width, height, projected, taken }) {
+function chooseSlot(candidate, { camera, width, height, projected, taken, chrome }) {
   const step = candidate.pixelsPerUnit
     ? (candidate.halfHeight * 2 + LABEL_SLOT_GAP_PX) / candidate.pixelsPerUnit
     : 0;
@@ -162,6 +167,7 @@ function chooseSlot(candidate, { camera, width, height, projected, taken }) {
     // rendering fault, and on a narrow window it is the widest paths, which
     // are the most useful ones, that hang over the edge. Try the next slot.
     if (!withinViewport(at, candidate, width, height)) continue;
+    if (!clearsChrome(at, candidate, chrome)) continue;
     const cells = coveredCells(at, candidate);
     if (cells.some((cell) => taken.has(cell))) continue;
     return { cells, offset };
@@ -175,6 +181,33 @@ function withinViewport(at, { halfWidth, halfHeight }, width, height) {
     at.screenX + halfWidth <= width &&
     at.screenY - halfHeight >= 0 &&
     at.screenY + halfHeight <= height
+  );
+}
+
+/**
+ * Whether a plate would land under the chrome drawn on top of the sky.
+ *
+ * The canvas is not all sky: the orientation line sits over its top-left corner
+ * and the keyboard readout over its bottom-left. Both are DOM, both are
+ * `pointer-events: none`, and neither exists as far as the atlas is concerned --
+ * so a plate would be printed straight through them. Seen on this repository,
+ * `tests/test_typescript_tree_sitter.py` was drawn across "24 charted · 2 could
+ * not be read · all under tests/", which is the line that states what Codemble
+ * could NOT parse. A name covering that is worse than a name not shown: the
+ * count is there precisely so a learner is not misled about coverage.
+ *
+ * Treated the same way as the canvas edge above -- reject the slot, try the
+ * next, and if none fits the plate simply is not drawn, exactly as when it
+ * loses to a neighbour.
+ */
+function clearsChrome(at, { halfWidth, halfHeight }, chrome) {
+  if (!chrome?.length) return true;
+  const left = at.screenX - halfWidth;
+  const right = at.screenX + halfWidth;
+  const top = at.screenY - halfHeight;
+  const bottom = at.screenY + halfHeight;
+  return !chrome.some(
+    (box) => left < box.right && right > box.left && top < box.bottom && bottom > box.top,
   );
 }
 
