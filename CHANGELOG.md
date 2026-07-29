@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **A relationship Codemble could not prove is now visibly broken in the galaxy,
+  not just a different colour.** The 2D diagram has always drawn an unproven
+  import or call as a dashed line, but in 3D the only thing separating "we
+  proved this call" from "this might be a call" was the shade of the line — so
+  the distinction disappeared for anyone with colour-blindness, on a dim
+  screen, or in any greyscale screenshot. "Possible call" is the one claim a
+  learner must never read as fact, so it now carries a shape as well as a
+  colour: unproven routes are dashed on every layer. They still follow the same
+  curve, still light up when you hover the structure they touch, and still
+  never carry the drifting particles that mean a proven call.
 - **Two unrelated parts of your project no longer wear the same colour.** Hue is
   supposed to answer "which part of the project is this?", but the colour was
   picked by wrapping the community's id around the eight-colour palette. Any

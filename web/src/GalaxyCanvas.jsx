@@ -9,6 +9,11 @@ import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } f
 import { createNameAtlas } from "./nameAtlas.js";
 import { guardOrbitPointerState } from "./orbitPointerGuard.js";
 import {
+  createPossibleRoute,
+  refreshPossibleRoutes,
+  updateRouteGeometry,
+} from "./possibleRoutes.js";
+import {
   createSystemOrbitGuides,
   disposeSystemOrbitGuides,
   systemOrbitPlan,
@@ -257,6 +262,20 @@ export function GalaxyCanvas({
         .linkOpacity(0.5)
         .linkWidth(linkWidth)
         .linkCurvature(0.12)
+        // Uncertainty gets a SHAPE channel, not just an ink. A proven route is
+        // the library's own cylinder; an unproven one is a dashed line we own,
+        // because a cylinder mesh cannot be dashed. Colour alone vanishes under
+        // colour-blindness and in any greyscale capture, and "possible call" is
+        // the one claim a learner must never misread as proven.
+        .linkThreeObject((link) =>
+          link.certain ? null : createPossibleRoute(link, linkColor(link)),
+        )
+        .linkPositionUpdate((object, { start, end }, link) =>
+          // Falsy hands the link back to the library's own positioning; truthy
+          // means we placed it ourselves, which is the only way the dash phase
+          // gets measured (the library never calls computeLineDistances).
+          link.certain ? false : updateRouteGeometry(object, link.__curve, start, end),
+        )
         .linkVisibility((link) => !(mode === "easy" && link.focusDim))
         .linkHoverPrecision(4)
         .linkDirectionalArrowRelPos(1)
@@ -493,6 +512,11 @@ export function GalaxyCanvas({
       .linkColor(renderer.linkColor())
       .linkWidth(renderer.linkWidth())
       .linkDirectionalArrowColor(renderer.linkDirectionalArrowColor());
+    // A dashed route owns its material, so `linkColor` no longer reaches it the
+    // way it reaches a library-built link. Without this, hovering a system lit
+    // its proven routes and left its unproven ones dark -- which would have
+    // made uncertainty look like irrelevance.
+    refreshPossibleRoutes(renderer.scene(), linkColor);
   }, [data, hoverNodeId, level, selectedNode?.id]);
 
   const nameAtlas = useMemo(() => createNameAtlas(data.nodes), [data.nodes]);
