@@ -13,10 +13,12 @@ import {
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import {
   LEVELS,
+  NODE_REL_SIZE,
   galaxyData,
   highlightColor,
   highlightLinkColor,
   isUncharted,
+  nodeRadius,
   linkLabel,
   nebulaTintKey,
   nodeLabel,
@@ -36,8 +38,6 @@ import {
   systemOrbitPlan,
 } from "./systemOrbits.js";
 
-const NODE_REL_SIZE = 1.6;
-const ORIGIN = { x: 0, y: 0, z: 0 };
 
 // Never straight down and never edge-on: at 0 the galaxy plane collapses to a
 // line, and past ~86 degrees the learner is under the plane looking up at a sky
@@ -350,7 +350,11 @@ export function GalaxyCanvas({
         controlsRef.current.minDistance = framed.min;
         controlsRef.current.maxDistance = framed.max;
       }
-      renderer.cameraPosition(framed.position, ORIGIN, duration);
+      // The target, not the origin: a parser-derived layout is not centred on
+      // (0,0,0), so aiming there left the sky pinned to one corner of the
+      // canvas. It is also what OrbitControls then swings around, which is the
+      // behaviour bounded orbit wants -- the subject stays the subject.
+      renderer.cameraPosition(framed.position, framed.target, duration);
     };
     applyFraming(CAMERA_DURATION);
     // A resize changes the aspect, and with it what fits; re-frame from the
@@ -624,7 +628,10 @@ export function GalaxyCanvas({
 function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } = {}) {
   const group = new THREE.Group();
   group.name = node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
-  const radius = Math.cbrt(node.val ?? 1) * NODE_REL_SIZE;
+  // From graphData, which also tells the camera how far a star's glow reaches:
+  // one owner for how big a node is drawn, rather than this arithmetic here and
+  // the framing's copy of it there.
+  const radius = nodeRadius(node);
   // System tier: a real procedural world instead of the library's flat sphere.
   // The colour handed over is already the semantic one graphData decided from
   // community, centrality, understood and partial -- the shader only gives it
