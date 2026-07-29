@@ -47,17 +47,41 @@ export function viewportShowsPoint({
 }
 
 /**
- * Fit the drawing's WIDTH and let its height scroll.
- *
- * True fit is honest about the whole shape but useless on a 1:3+ diagram: this
- * project's architecture fits at 7%, a thumbnail with no names. Fitting width
- * keeps layers readable and reachable by scrolling, which is what an overview
- * of a layered import diagram is actually for. Capped at 1 so a small drawing
- * is never inflated past its crisp size.
+ * Below this, a true fit stops being an overview at all: this project's
+ * architecture fits at 7%, a thumbnail with no names, no boxes, no routes.
  */
-export function fitMapWidthZoom(viewportWidth, contentWidth) {
-  if (!viewportWidth || !contentWidth) return 1;
-  return clampMapZoom(Math.min(1, viewportWidth / contentWidth));
+export const MIN_READABLE_FIT = 0.35;
+
+/**
+ * The most zoomed-out view of the drawing that is still worth looking at.
+ *
+ * Three cases, in order:
+ *
+ * 1. The whole shape fits readably -- show the whole shape. Unchanged.
+ * 2. It only fits as a thumbnail and the drawing is WIDER than the viewport --
+ *    fit the width and let the height scroll, which is what an overview of a
+ *    layered import diagram is for.
+ * 3. It only fits as a thumbnail and the drawing is NARROWER than the viewport
+ *    -- there is no width left to fit, so drop to the readable floor.
+ *
+ * Case 3 used to be case 2 with a `Math.min(1, ...)` ceiling on the width fit,
+ * which resolved to exactly 1.0 on any viewport wider than the drawing. On this
+ * repository at 1440x720 that made Fit a silent no-op at 100%, and an actual
+ * zoom IN from anywhere below it: pressing "Fit" at 64% took the learner to
+ * 100% and cut the visible drawing from 33.5% to 21.5%. The one control that
+ * promises the whole shape was the one that hid more of it.
+ */
+export function mapOverviewZoom(
+  viewportWidth,
+  viewportHeight,
+  contentWidth,
+  contentHeight,
+) {
+  if (!viewportWidth || !viewportHeight || !contentWidth || !contentHeight) return 1;
+  const whole = fitMapZoom(viewportWidth, viewportHeight, contentWidth, contentHeight);
+  if (whole >= MIN_READABLE_FIT) return whole;
+  // Never wider than the drawing needs, never below the readable floor.
+  return clampMapZoom(Math.min(MIN_READABLE_FIT, viewportWidth / contentWidth));
 }
 
 /**

@@ -2,6 +2,7 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { frameNodes } from "./cameraFraming.js";
 import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
@@ -25,6 +26,15 @@ const CAMERA_BOUNDS = {
   GALAXY: { min: 120, max: 640 },
   SYSTEM: { min: 55, max: 320 },
   STUDY: { min: 22, max: 170 },
+};
+// Rise over run along +z, lifted verbatim from the fixed camera positions this
+// replaces (galaxy 105/310, system 52/150) so every level keeps the shallow
+// look-down it has always been drawn at. Only the distance and the target are
+// derived now -- see cameraFraming.js for why they had to be.
+const CAMERA_PITCH = {
+  GALAXY: 105 / 310,
+  SYSTEM: 52 / 150,
+  STUDY: 52 / 150,
 };
 // Never straight down and never edge-on: at 0 the galaxy plane collapses to a
 // line, and past ~86 degrees the learner is under the plane looking up at a sky
@@ -226,6 +236,20 @@ export function GalaxyCanvas({
         renderer.width(entry.contentRect.width).height(entry.contentRect.height);
       });
       resize.observe(host);
+      // A fresh renderer re-mounted into a host of the SAME size -- every
+      // Map -> Galaxy round trip -- was observed opening as a black canvas that
+      // any pointer, key or 1px window resize repaired instantly. That points at
+      // a size that was never applied rather than at a camera pointing the wrong
+      // way, so the size is applied once here instead of waiting for the
+      // observer's first callback. Cheap and idempotent; the observer still owns
+      // every later change.
+      //
+      // Honest limit: this reproduced twice in one Chromium build and not at all
+      // in another, so it is a plausible fix for a race, not a confirmed one.
+      const initial = host.getBoundingClientRect();
+      if (initial.width && initial.height) {
+        renderer.width(initial.width).height(initial.height);
+      }
       return () => {
         resize.disconnect();
         cancelAnimationFrame(hideNavigationHint);
@@ -273,7 +297,21 @@ export function GalaxyCanvas({
       controlsRef.current.minDistance = bounds.min;
       controlsRef.current.maxDistance = bounds.max;
     }
-    if (level === LEVELS.GALAXY) {
+    // Frame what the parser actually laid out, at this canvas's real aspect.
+    // Falls back to the old constants when there is nothing measurable yet --
+    // an unmounted canvas or an empty focus -- so the camera never flies
+    // somewhere arbitrary just because a measurement was not ready.
+    const framed = frameNodes({
+      nodes: data.nodes,
+      width: renderer.width(),
+      height: renderer.height(),
+      fov: renderer.camera().fov,
+      pitch: CAMERA_PITCH[level] ?? CAMERA_PITCH.GALAXY,
+      bounds,
+    });
+    if (framed) {
+      renderer.cameraPosition(framed.position, framed.target, CAMERA_DURATION);
+    } else if (level === LEVELS.GALAXY) {
       renderer.cameraPosition({ x: 0, y: 105, z: 310 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
     } else {
       renderer.cameraPosition({ x: 0, y: 52, z: 150 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);

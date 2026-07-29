@@ -236,10 +236,29 @@ assert.deepEqual(
   "guidance can move from a different system to the target system",
 );
 
+// Study level used to return no hint at all, on the claim that the panel owned
+// the learner's next action. It does not: it ends on a lens note, and the only
+// route onward is noticing "Back to the module" in the header. Reading the
+// recommended module now hands the learner the step that follows reading.
+const studyingTarget = projection.derive({ ...state, level: LEVELS.STUDY });
+assert.deepEqual(
+  studyingTarget.hint.action,
+  { type: "OPEN_CHECKS" },
+  "finishing the recommended read offers the prove step",
+);
+assert.equal(studyingTarget.hint.actionLabel, "Prove understanding");
 assert.equal(
-  projection.derive({ ...state, level: LEVELS.STUDY }).hint,
-  null,
-  "the Study panel already owns the learner's next action",
+  studyingTarget.hint.reason,
+  "Questions come from this file, not from a model.",
+  "the reason still says answers are graph-derived, never model-derived",
+);
+
+// Reading something else keeps the ordinary ranking, so the chip never claims
+// a file the learner is not looking at is the one to prove.
+assert.deepEqual(
+  projection.derive({ ...state, level: LEVELS.STUDY, region: graph.regions[1] }).hint.action,
+  { type: "OPEN_REGION", regionId: "app.py" },
+  "reading a different module still points at the recommended one",
 );
 
 const studied = projection.derive({

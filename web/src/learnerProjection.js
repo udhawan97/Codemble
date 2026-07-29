@@ -211,7 +211,7 @@ export function createLearnerProjection() {
 const TEST_SCOPE_HOP_PENALTY = 1.5;
 
 function nextStudyHint(graph, { mode, level, regionId, layer }) {
-  if (mode !== "easy" || level === LEVELS.STUDY) return null;
+  if (mode !== "easy") return null;
   const unlit = graph.regions.filter((region) => !region.understood);
   if (!unlit.length) return null;
   // Asked of the graph, not of how the choice was made: a region flagged home
@@ -260,6 +260,28 @@ function nextStudyHint(graph, { mode, level, regionId, layer }) {
           ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
           : "No import route reaches it from Home.",
   };
+  // Study level used to return null outright, so guidance went quiet at the
+  // exact moment the learner finished reading -- the deepest step of the loop
+  // and its least guided. The panel ends on a lens note with no next step, and
+  // the only route onward is noticing "Back to the module" in the header. If
+  // they are reading the module the graph already recommends, the honest next
+  // step is proving it; anything else falls through to the usual ranking.
+  if (level === LEVELS.STUDY) {
+    if (regionId !== nearest.regionId) {
+      return {
+        ...hint,
+        action: { type: "OPEN_REGION", regionId: nearest.regionId },
+        actionLabel: `Open ${nearest.regionId}`,
+      };
+    }
+    return {
+      ...hint,
+      message: `Prove you understand ${nearest.regionId}`,
+      reason: "Questions come from this file, not from a model.",
+      action: { type: "OPEN_CHECKS" },
+      actionLabel: "Prove understanding",
+    };
+  }
   if (level !== LEVELS.SYSTEM || regionId !== nearest.regionId) {
     return {
       ...hint,

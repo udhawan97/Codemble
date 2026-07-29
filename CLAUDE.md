@@ -167,8 +167,52 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-28 ·
-Session note: the eight product screenshots were recaptured on the v0.8.0 shell,
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-29 ·
+Session note: an evidence-led user-flow audit of the served v0.8.0 build, run as
+a first-run Easy learner on this repository at 320/375/768/1440 with a keyboard
+pass, found twelve gaps; all twelve are implemented and re-verified against the
+rebuilt bundle in two Chromium builds. Two were measurement traps rather than
+taste. **Fit** was not merely a no-op: `fitMapWidthZoom` capped the width fit at
+`1`, so on any viewport wider than the 1024px drawing it returned exactly the
+scale the map already opens at — and pressed from 64% it zoomed *in*, taking the
+visible diagram 33.5% → 21.5%. The control that promises the whole shape was the
+one hiding more of it. It now drops to the readable floor when there is no width
+left to fit: 21.5% → 61.4% at 1440x720. **The galaxy's camera** was two
+constants aimed at the origin, and both assumptions were false — the layout's
+bounding box centre is (-64, 0, +77), and a `PerspectiveCamera`'s `fov` is
+*vertical*, so v0.8.0's taller canvas narrowed the horizontal view. Re-projecting
+`/api/graph` with three's default 50° fov reproduced the observed Home position
+to within 1px, which is what pinned the arithmetic to the screenshot: 2 of 32
+regions off-canvas at 1440x720, 3 at 1280, **13 at 320**, with the top 42% of the
+canvas empty. `cameraFraming.js` now fits the eight bounding-box corners exactly
+(a bounding *sphere* around a flat wide galaxy pushes the camera much further
+back than the shape needs), keeps each level's viewing angle from the constants
+it replaces, and clamps into the existing `CAMERA_BOUNDS` so bounded orbit is
+untouched. Its check asserts the property — every charted region inside the
+canvas — *and* that the old constants failed it, so the fixture cannot go stale
+silently. Three fixes were one wrong rule applied to the wrong thing:
+`.active-check legend` wrapped a question that quotes an identifier at the prose
+measure (28ch) with `overflow-wrap: anywhere`, splitting `ProjectParser` into
+`Project`/`Parser` with 210px of the 627px fieldset unused; `.map-canvas`'s 96px
+floor was written for the drawing but at compact widths the zoom toolbar rejoins
+the flow inside it, so the drawing got 56px; and `moduleIndex` sets
+`label = pathTail(file)`, which on a subdirectory scope *is* the file, so all 32
+Find rows printed their path twice. **Escape was systematically half-wired**: the
+window handler bails for each overlay so the overlay can own the key, but the
+checks panel and the module index never claimed it, and every overlay that did
+then double-fired — it reads the session at event time, and the close has already
+cleared the flag it bails on, so closing the star chart from inside a module also
+retreated a level. Four overlays now close, hold their level, and return focus.
+The compact rail disclosure was left alone: it reads the DOM rather than session
+state, which is why it never had the bug. **Left open, stated honestly:** the
+blank System stage after a Diagram→Galaxy remount reproduced twice in the Claude
+in-app browser and not at all in Playwright, so the size-sync added on mount is a
+plausible fix for a race, not a confirmed one; and the new framing centres the
+bounding box, not the projected extent, so perspective still leaves the sky
+left-of-centre — nothing is clipped, which was the defect. 254 pytest, Ruff 0.16
+clean, 13 frontend contract checks (one new), reproducible rebuilt bundle.
+
+Previously: the eight product screenshots were recaptured on the v0.8.0 shell,
 paying the debt the release left open. Measuring them first changed the job
 three times. Only **five of the eight are displayed anywhere** — `easy-mode`,
 `galaxy-lit` and `map-workflow` appear in no README, docs page or landing — and
@@ -834,6 +878,11 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-28 | `unsupported_sources` counts a file only when **no adapter recognised its extension**, not when no adapter claimed the path | An adapter that skips a file as generated output has still read the extension, so the file was excluded on purpose rather than missed. `_ignore_project_directory` prunes a directory only when *every* adapter ignores it, and Python's ignore set is empty, so `codemble/web_dist` was always walked and its bundled `.js` fell through to the tally. The galaxy and map then told a learner "1 JavaScript file not included" about the app's own committed SPA — a false claim in the exact channel graph schema 8 added to be truthful about coverage, and one the v0.8.0 changelog already advertised as handled ("registering an adapter automatically silences its own extension"). Recognition is the honest test; ownership is not |
 | 2026-07-28 | `.mobile-menu-trigger` sets its own `background`, matching `.rail-action` | The rule set border, radius, colour, cursor and weight but no background, so the UA's `buttonface` (#efefef) won and ruri text sat on it at **2.0:1** — under the 4.5:1 floor `design.md` mandates. It was wrong at compact widths from the start, but v0.8.0 promoted the control to every desktop width as **More**, which is how it reached all seven product screenshots as a light slab in a dark navy header |
 | 2026-07-28 | The product shots are captured from a git worktree named `Codemble`, at 1440x720, with `loading.png` excluded | The brand line renders the project directory's own name, so serving a worktree published `silly-swanson-53d316` to the docs. Capturing at 720 rather than the old 716 is one round number, but it couples: `AtlasJourney.astro`'s two `height` attributes and `landing.css`'s `aspect-ratio` both encode the frame and must move together or the atlas plate letterboxes. `loading.png` is a pre-app, full-window state with no header, from a different rig and a synthetic 900-file project, so no shell change can affect it and its counts are not this repository's |
+| 2026-07-29 | The galaxy's opening camera is **derived** from the layout's bounding box and the canvas aspect (`web/src/cameraFraming.js`), replacing the fixed `cameraPosition` constants. Each level keeps its old viewing angle as a pitch ratio, and the distance is clamped into the existing `CAMERA_BOUNDS` | Both constants encoded assumptions that were never true. The camera targeted `(0,0,0)` while the parser-derived constellation's bounding-box centre is `(-64, 0, +77)`, and a `PerspectiveCamera`'s `fov` is *vertical*, so v0.8.0's taller canvas dropped the aspect from ~3.8 to ~3.16 and *narrowed* the horizontal view. Measured on this repository: 2 of 32 regions projected outside the canvas at 1440x720 Expert, 3 at 1280x720, and **13 at 320** — with the top 233px (42%) of the canvas empty and content running 55px past the bottom edge. Corner-fit rather than a bounding sphere, because a sphere around a flat wide galaxy pushes the camera much further back than the shape needs. Bounded orbit is untouched: this decides where the camera *starts*, and the clamp still owns where it may go |
+| 2026-07-29 | `Fit` resolves to the most zoomed-out **readable** overview (`mapOverviewZoom`), replacing `fitMapWidthZoom`'s `Math.min(1, …)` ceiling | The ceiling read as "never inflate a small drawing past its crisp size", but on any viewport wider than the drawing it returned exactly `1` — the scale the map already opens at. So Fit was a silent no-op at 100% and an actual zoom *in* from anywhere below it: 64% → 100% cut the visible diagram from 33.5% to 21.5%. The control that promises the whole shape was the one hiding more of it. Where the drawing is wider than the viewport the old width-fit behaviour is preserved exactly; where it is narrower there is no width left to fit, so it drops to the readable floor (21.5% → 61.4% at 1440x720). The check states it as a property — from any scale at or above the floor, Fit must not zoom in — rather than as a number |
+| 2026-07-29 | The breadcrumb's top crumb is **"All modules"**, not "Galaxy" | The breadcrumb names the semantic-zoom *level* and the switcher beside it names the render *layer*, and both said "Galaxy". An Easy learner lands on the Map, so their first screen showed `aria-current="page"` Galaxy in the breadcrumb while the switcher 30px below reported Galaxy `aria-pressed="false"`: two visible controls, one accessible name, contradictory state, answering "where am I?" wrongly half the time. The level is about scope, so it can say so without borrowing the renderer's word |
+| 2026-07-29 | Every Escape-dismissible overlay owns Escape **and** calls `stopPropagation`; the checks panel and the module index gained handlers they never had | The window-level handler bails for each overlay so the overlay can own the key — but it reads the session at event time, and by then the overlay's own close has cleared the flag it bails on. So each overlay that *did* handle Escape double-fired: closing the star chart from inside a module also retreated a level, losing the learner's place. The checks panel and the module index never claimed the key at all, so Escape there did nothing while the coach marks teach "Escape to come back". The compact rail disclosure is deliberately untouched: it reads the DOM (`.rail-overflow[data-open]`) rather than session state, and a React state update has not landed by the time the window listener runs, which is why it never had the bug |
+| 2026-07-29 | Easy guidance covers **study level**, offering the prove step; and it is suppressed while the checks panel is open | `nextStudyHint` returned `null` at study level on the claim that "the Study panel already owns the learner's next action". It does not: the panel ends on a lens note, and the only route onward is noticing "Back to the module" in the header — so the deepest step of the loop was its least guided. It stays graph-derived (same nearest-unlit ranking, same penalty) and the action retreats out of study before opening the quiz, so the chip's one promise is one move. Suppressing it during the quiz is the same "no stale advice" rule one step later: at 320px it was spending 183px of a 640px viewport telling a learner to read before proving while they were already proving |
 | 2026-07-28 | `galaxy.png` shows a genuine first-run **unlit** galaxy; the lit Home lives only in `galaxy-lit.png` | The previous hero was captured mid-session with Home already lit, so its alt text promised "an amber lit Home" that a new reader would not see on their own first run. Splitting the two makes the pair a before and after and gives `galaxy-lit.png` — displayed nowhere until now — a reason to exist. Illumination is the product's central claim, so it should be shown being *earned*, not preset |
 
 ## Non-Goals — do NOT build (point here when asked)
