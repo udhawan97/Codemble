@@ -24,6 +24,7 @@ import {
   nodeLabel,
   systemData,
 } from "./graphData.js";
+import { createBody, createBodyGeometry, createBodySpin } from "./celestialBodies.js";
 import { createNameAtlas } from "./nameAtlas.js";
 import { guardOrbitPointerState } from "./orbitPointerGuard.js";
 import {
@@ -83,6 +84,11 @@ export function GalaxyCanvas({
   const reframeRef = useRef(null);
   const userFramedRef = useRef(false);
   const focusedIdRef = useRef(null);
+  // The body tier is a level-of-detail decision, and `nodeThreeObject` is a
+  // stable accessor the library calls on its own tick, so the level it should
+  // read has to travel by ref rather than closure.
+  const levelRef = useRef(level);
+  const bodyGeometryRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
   const palette = useMemo(readPalette, []);
@@ -142,6 +148,10 @@ export function GalaxyCanvas({
 
     try {
       const dressing = createDressing(palette);
+      // One sphere buffer shared by every body in every system, so a system of
+      // sixty members uploads one geometry rather than sixty. Owned here
+      // because it outlives any single node object.
+      bodyGeometryRef.current = createBodyGeometry();
       dressingRef.current = dressing;
       // controlType is construction-time only in this library, so orbit has to
       // be chosen here rather than toggled later.
@@ -166,7 +176,12 @@ export function GalaxyCanvas({
         // from unconnected nodes instead, so the selection's connections stay
         // visible while everything else recedes.
         .nodeOpacity(0.82)
-        .nodeThreeObject((node) => makeMarker(node, palette, dressing, focusedIdRef.current))
+        .nodeThreeObject((node) =>
+          makeMarker(node, palette, dressing, focusedIdRef.current, {
+            level: levelRef.current,
+            bodyGeometry: bodyGeometryRef.current,
+          }),
+        )
         .nodeThreeObjectExtend(true)
         .linkColor(linkColor)
         .linkLabel(linkLabel)
@@ -269,6 +284,12 @@ export function GalaxyCanvas({
         // shared halo/nebula resources to three-forcegraph's deallocator. That
         // is a no-op by design (see galaxyMaterials), so this is the real free.
         dressing.dispose();
+        // After _destructor for the same reason dressing is: it empties the
+        // scene first. Per-node body MATERIALS are deliberately not owned here
+        // -- they are unshared, so the library freeing them with their node is
+        // correct; only this shared geometry needs an explicit release.
+        bodyGeometryRef.current?.dispose();
+        bodyGeometryRef.current = null;
         dressingRef.current = null;
         controlsRef.current = null;
         host.replaceChildren();
@@ -283,8 +304,16 @@ export function GalaxyCanvas({
   useEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
+    // Set BEFORE graphData, so the node objects the library is about to build
+    // read the tier they belong to rather than the previous level's.
+    levelRef.current = level;
     renderer
       .nodeResolution(data.nodes.length >= 900 ? 4 : 8)
+      // Level-of-detail. The galaxy keeps the library's cheap lambert sphere
+      // under a halo sprite, because up to ~1,000 of them are on screen. A
+      // system supplies its own procedural body, so the default sphere must
+      // stop drawing or it would z-fight the surface it sits inside.
+      .nodeThreeObjectExtend(level === LEVELS.GALAXY)
       .linkVisibility((link) => !(mode === "easy" && link.focusDim))
       // Arrows only where an edge means a direction the learner can act on.
       .linkDirectionalArrowLength(level === LEVELS.GALAXY ? 0 : 3.2)
@@ -353,11 +382,16 @@ export function GalaxyCanvas({
     const scene = renderer.scene();
     const guides = createSystemOrbitGuides(orbitPlan, palette, dressing);
     scene.add(guides);
+    // Bodies turn only while a system is on screen. Rotation moves a body's own
+    // surface and never its position -- the layout stays parser-owned -- and
+    // reduced motion gets still worlds rather than slower ones.
+    const stopSpin = createBodySpin(scene, { reducedMotion });
     return () => {
+      stopSpin();
       scene.remove(guides);
       disposeSystemOrbitGuides(guides);
     };
-  }, [level, orbitPlan, palette]);
+  }, [level, orbitPlan, palette, reducedMotion]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -591,17 +625,32 @@ export function GalaxyCanvas({
   );
 }
 
-function makeMarker(node, palette, dressing, focusedId) {
+function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } = {}) {
   const group = new THREE.Group();
   group.name = node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
+  // From graphData, which also tells the camera how far a star's glow reaches:
+  // one owner for how big a node is drawn, rather than this arithmetic here and
+  // the framing's copy of it there.
   const radius = nodeRadius(node);
+  // System tier: a real procedural world instead of the library's flat sphere.
+  // The colour handed over is already the semantic one graphData decided from
+  // community, centrality, understood and partial -- the shader only gives it
+  // a surface, and may never change what it means.
+  const worldTier = level && level !== LEVELS.GALAXY && bodyGeometry;
+  if (worldTier) {
+    group.add(
+      createBody({ node, color: node.color, palette, radius, geometry: bodyGeometry }),
+    );
+  }
   // An uncharted region is drawn, not deleted: it keeps its true position and
   // stays clickable, so the sky never misreports how large the project is. It
   // simply carries no glow, no fog and no name until the learner reaches it.
   const uncharted = isUncharted(node);
   // Dimmed nodes keep their true colour and lose their glow. Dimming by
   // removing light rather than shifting hue keeps a lit star recognisably lit.
-  if (!node.focusDim && !uncharted) group.add(dressing.halo(node, radius));
+  // A world lights itself through its own shader, so the halo sprite that
+  // stands in for a body at galaxy range would only wash it out.
+  if (!node.focusDim && !uncharted && !worldTier) group.add(dressing.halo(node, radius));
   if (node.kind === "region" && !uncharted) {
     const tint = nebulaTintKey(node.language);
     if (tint) group.add(dressing.nebula(palette[tint], radius * 14));

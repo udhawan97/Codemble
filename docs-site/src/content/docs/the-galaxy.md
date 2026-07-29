@@ -5,7 +5,7 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 ## Your code, mapped honestly
 
-![Codemble at galaxy level on a first run: 117 star systems parsed from real source, 23 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.](/Codemble/shots/galaxy.png)
+![Codemble at galaxy level on a first run: 123 star systems parsed from real source, 24 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.](/Codemble/shots/galaxy.png)
 
 The galaxy is not an artist's impression. Every visual property encodes a fact
 from the parsed structure of your code:
@@ -34,7 +34,7 @@ parser proves import communities — groups of modules that import each other �
 and the project's **eight largest** communities each wear one of eight
 traditional Japanese colours (seiji, fuji, koke, asagi, toki, umenezumi,
 wakatake, kikyō). Real projects have more communities than that — this one has
-thirty-nine — so the rest carry no hue at all and keep the plain brightness
+thirty-eight — so the rest carry no hue at all and keep the plain brightness
 ramp. That is deliberate: a colour shared by two unrelated groups would answer
 "which part of the project is this?" wrongly, and no hue honestly says "not one
 of this project's main groups". Assignment is by size, ties broken by id, so
@@ -140,7 +140,7 @@ The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 ## A region = one star system
 
-![One star system, codemble.server.app, its 31 parser-proven structures as planets in the system's own colour family, laid out on labelled Layer 1 and Layer 2 call guides with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
+![One star system, codemble.server.app, its 31 parser-proven structures as lit worlds in the system's own colour family, each with a procedural surface and a rim atmosphere, laid out on labelled Layer 1 and Layer 2 call guides with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.](/Codemble/shots/system.png)
 
 A **region** is one module — the unit of checks, illumination, and progress.
 Change a file and only its region goes dim again; the rest of your sky stays lit.

@@ -196,6 +196,24 @@ on and a guide has no glow. Verified before/after on the served build at
 edge and is not now. 265 pytest, Ruff 0.16 clean, 17 frontend contract checks,
 byte-identical rebuild.
 
+Previously: the seven in-app screenshots were recaptured on the Living Atlas
+build. Two sessions did this independently and the merge is worth recording,
+because the tie-break was **not** "take the newer capture". The parallel set
+reported `125 systems · 1192 nodes · Python 73`, this one `123 · 1188 · 71`,
+with edges identical at 7295 — exactly +2 Python regions and +4 nodes, and no
+new edges. A parse of the committed tree gives 123/1188/71, so the parallel
+capture was served from a tree holding two Python files that never landed;
+its screenshots documented a project that does not exist at any commit. The
+images here are the ones that match what a reader gets from `codemble .`, and
+the other session's **wording** was the better half and is kept — it names the
+procedural worlds and rim atmospheres the release actually added, which this
+session's alt text did not. Corrected in the merge: 125 → 123, 95 → 93
+unrouted modules, and "thirty-nine" communities → thirty-eight, which was
+stale in prose before either capture. The `galaxy-lit` alt also stopped
+claiming every dim star wears a community colour: under the size-ranked
+families 30 of 123 regions correctly wear none. `loading.png` remains
+untouched for the reason recorded below.
+
 Previously: an evidence-led user-flow audit of the served v0.8.0 build, run as
 a first-run Easy learner on this repository at 320/375/768/1440 with a keyboard
 pass, found twelve gaps; eleven are implemented and re-verified against the
@@ -1028,6 +1046,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-29 | Map schema 3 → 4: a `workflow.unreachable` row is `{id, language}` rather than a bare id | The renderer filtered them with `id.startsWith("<language>:")`, which is the JS/TS adapter's private id convention; Python mints dotted module paths and carries no prefix. Focusing Python on a mixed project therefore reported **zero** never-called structures where the polyglot fixture has two — a count a learner cannot check, in a note whose only job is to state a count. The contract check agreed with the bug because its fixture spelled Python ids the JS way; it now mints each language's ids the way that adapter actually mints them |
 | 2026-07-29 | `with_entrypoint` refuses a graph that never reached `layout_graph`, and re-selecting the Home a graph already carries is a no-op | It measures every distance against `graph.regions`, which only `layout_graph` fills, and returned a valid-looking graph with zero regions when handed one that skipped it — a galaxy with no stars, reported as success. The no-op is the common case rather than an edge one: `CheckService.graph` re-selects the current Home on every hydration, paying a full breadth-first walk to rebuild the regions it had just been given. Layout's second definition of `Region.understood` went with it — unreachable, but it read as a specification and was not the rule `ProgressStore` applies |
 | 2026-07-29 | CI asserts the shell's space budget in its own job, against a running Codemble. **Amends the standing rule "UI is verified by running it"** | Approved by UD. `styles.css` is 3,216 lines across 17 media blocks carrying the entire layout contract with no seam and no assertion, and three of the last eight bugfixes were exactly that — `99b6875` a bug in *cascade resolution*, which no JS seam can reach. Each was verified by a human reading DevTools and pasting the numbers into a commit message; those numbers were the contract and nothing re-read them. The check reproduces `13b3c06`'s own measurements (header 148, chrome 36.8%) and is proven in both directions. It serves the committed bundle against this repository rather than a fixture, so there is nothing to drift from the app, and `npm run check` stays Node-only, offline and fast |
+| 2026-07-29 | **The Living Atlas Orrery art direction is approved**, amending the "elaborate game art" Non-Goal: System-level structures are drawn as procedural worlds (`web/src/celestialBodies.js`) with a four-octave fBm crust, one key light fixed in view space, a rim atmosphere in the body's own community hue, class strata, a fracture treatment for files the parser could not read, and slow surface rotation. Galaxy range keeps its halo sprites | Approved by UD. The guardrails are what make it safe rather than decorative: the crust is seeded only by FNV-1a of the node id, so the same code yields the same worlds and no surface can encode a fact; every semantic channel (size, community hue, amber for understood, the class ring, the fracture) is still decided in `graphData.js` from parser truth and handed to the shader as a finished value; amber stays exclusive to `understood` and the atmosphere never borrows it; and rotation moves a body's own surface, never a position, because layout is parser-owned. The tier split is a measured limit, not a preference — a per-fragment noise loop is affordable for a few dozen members at close range and not for ~1,000 systems, so `nodeThreeObjectExtend` follows the level. Removing every body still leaves a correct, navigable learning model |
 
 ## Non-Goals — do NOT build (point here when asked)
 
@@ -1040,11 +1059,13 @@ shows lower repeated-commit work without changing derived values.
 - ❌ Accounts, cloud hosting, multi-user; share link waits for Phase 3
 - ❌ Extra quest types before Phase 3
 - ❌ GitHub-URL ingestion in v1
-- ❌ Elaborate game art before the loop teaches well — **still holds**: the
-  2026-07-22 visual pass shipped only encodings that carry parser facts
-  (community hue, class rings). Procedural planet surfaces, atmospheres and
-  rotation ("almost real planets, like a game") remain OUT until Phase 1
-  tester evidence lands, and would need their own Decision Log entry
+- ❌ ~~Elaborate game art before the loop teaches well~~ — **amended
+  2026-07-29** (see Decision Log): deterministic procedural celestial art is
+  approved **at the System tier only**. Bodies there carry an fBm crust, a rim
+  atmosphere and slow surface rotation. What remains OUT: procedural surfaces
+  at Galaxy range (a level-of-detail limit, not a taste one — up to ~1,000
+  systems draw there), and any decoration that is not seeded purely by node id.
+  Decoration may never encode a fact; every semantic channel stays parser-owned
 
 ## Gotchas
 

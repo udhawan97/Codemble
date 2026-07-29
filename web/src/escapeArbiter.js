@@ -21,18 +21,27 @@
 /**
  * Ordered innermost-first: the first open surface owns the key.
  *
- * `dismissible` says whether the surface expects the *caller* to close it.
- * The rest own Escape internally -- a native `<dialog>` closes itself, and the
- * finder, sidebar, checks and entrypoint picker each carry their own handler --
- * so the only thing the window-level handler has to do for them is stand down.
+ * `dismissible` says whether the *caller* closes it. The rest own Escape
+ * themselves -- a native `<dialog>` closes itself, a field's Escape belongs to
+ * the field, and the finder, rail disclosure and entrypoint picker each carry
+ * their own handler -- so the only thing the window handler does for them is
+ * stand down.
+ *
+ * The checks panel and the module index are dismissible because neither ever
+ * claimed the key from its own subtree: Escape there did nothing at all, while
+ * the coach marks teach "Escape to come back". The chart is dismissible for a
+ * sharper reason -- it *did* claim the key, in a second handler that then had
+ * to call `stopPropagation` so the window handler would not re-read a session
+ * it had already changed and retreat a level on top of the dismissal. One
+ * handler asking one ordered list cannot race itself.
  */
 export const ESCAPE_OWNERS = Object.freeze([
   { id: "editableField", open: (facts) => facts.editableFocus === true, dismissible: false },
   { id: "nativeDialog", open: (facts) => facts.nativeDialogOpen === true, dismissible: false },
   { id: "railDisclosure", open: (facts) => facts.railDisclosureOpen === true, dismissible: false },
+  { id: "checks", open: (facts) => facts.showChecks === true, dismissible: true },
+  { id: "sidebar", open: (facts) => facts.sidebarOpen === true, dismissible: true },
   { id: "finder", open: (facts) => facts.finderOpen === true, dismissible: false },
-  { id: "sidebar", open: (facts) => facts.sidebarOpen === true, dismissible: false },
-  { id: "checks", open: (facts) => facts.showChecks === true, dismissible: false },
   { id: "entrypoint", open: (facts) => facts.entrypointOpen === true, dismissible: false },
   { id: "chart", open: (facts) => facts.showChart === true, dismissible: true },
 ]);
@@ -51,8 +60,8 @@ export function escapeOwner(facts) {
 /**
  * What Escape should do, given everything currently on screen.
  *
- * - `{kind: "dismiss", surface}` -- close that surface and return focus to its
- *   trigger. Only ever a surface whose owner entry is `dismissible`.
+ * - `{kind: "dismiss", surface}` -- close that surface and return focus to the
+ *   control that opened it. Only ever a surface marked `dismissible`.
  * - `{kind: "retreat"}` -- nothing is open, so step back a level.
  * - `null` -- do nothing: either a surface is handling the key itself, or
  *   retreating is not meaningful here.

@@ -25,15 +25,23 @@ assert.equal(escapeAction({}), null);
 // This is the regression the arbiter exists for. Each of these was a term in
 // the disjunction, and `railDisclosureOpen` is the one that was missing: it
 // closed the Menu *and* retreated a level on one keypress.
-const standDown = [
-  "editableFocus",
-  "nativeDialogOpen",
-  "railDisclosureOpen",
-  "finderOpen",
-  "sidebarOpen",
-  "showChecks",
-  "entrypointOpen",
+const standDown = ["editableFocus", "nativeDialogOpen", "railDisclosureOpen", "finderOpen", "entrypointOpen"];
+
+// The checks panel and the module index never claimed the key from their own
+// subtree, so Escape there did nothing at all while the coach marks teach
+// "Escape to come back". The window handler closes them.
+const dismissed = [
+  ["showChecks", "checks"],
+  ["sidebarOpen", "sidebar"],
+  ["showChart", "chart"],
 ];
+for (const [fact, surface] of dismissed) {
+  assert.deepEqual(
+    escapeAction(open({ [fact]: true })),
+    { kind: "dismiss", surface },
+    `${fact} is closed by the window handler, not merely deferred to`,
+  );
+}
 for (const fact of standDown) {
   assert.equal(
     escapeAction(open({ [fact]: true })),
@@ -46,8 +54,8 @@ for (const fact of standDown) {
 // is introduced without one, this catches the omission the disjunction hid.
 assert.equal(
   ESCAPE_OWNERS.length,
-  standDown.length + 1,
-  "every stand-down fact plus the chart is an owner, and nothing else is",
+  standDown.length + dismissed.length,
+  "every fact is an owner and every owner is a fact -- a new one cannot be half-wired",
 );
 assert.equal(
   new Set(ESCAPE_OWNERS.map((owner) => owner.id)).size,
@@ -57,13 +65,10 @@ assert.equal(
 
 // ── The chart is the one surface the caller closes ─────────────────────────
 
-assert.deepEqual(
-  escapeAction(open({ showChart: true })),
-  { kind: "dismiss", surface: "chart" },
-  "the chart is a full-screen takeover with no Escape of its own",
-);
-// ...and it yields to anything opened over it. This was the second copy of the
-// bail list, which only knew about the finder and the sidebar.
+// The chart yields to anything opened over it. It used to carry a second copy
+// of the bail list that knew only about the finder and the sidebar, plus a
+// `stopPropagation` to stop the window handler retreating on top of its own
+// dismissal -- a race that cannot exist with one handler and one list.
 for (const fact of standDown) {
   assert.equal(
     escapeAction(open({ showChart: true, [fact]: true })),
@@ -71,6 +76,11 @@ for (const fact of standDown) {
     `${fact} sits over the chart, so it owns the key -- not the chart`,
   );
 }
+assert.deepEqual(
+  escapeAction(open({ showChart: true, showChecks: true })),
+  { kind: "dismiss", surface: "checks" },
+  "and to a panel opened over it that the window handler closes",
+);
 
 // ── Precedence is the list order, innermost first ──────────────────────────
 
@@ -78,6 +88,11 @@ assert.equal(
   escapeOwner(open({ finderOpen: true, showChart: true })).id,
   "finder",
   "the innermost open surface wins, whatever else is open behind it",
+);
+assert.equal(
+  escapeOwner(open({ showChecks: true, sidebarOpen: true })).id,
+  "checks",
+  "the quiz sits over the module index",
 );
 assert.equal(
   escapeOwner(open({ editableFocus: true, nativeDialogOpen: true, showChart: true })).id,
@@ -90,19 +105,19 @@ assert.deepEqual(
     "editableField",
     "nativeDialog",
     "railDisclosure",
-    "finder",
-    "sidebar",
     "checks",
+    "sidebar",
+    "finder",
     "entrypoint",
     "chart",
   ],
   "the order is the contract, so a reorder has to be deliberate",
 );
 
-// Only the chart asks the caller to close it; everything else handles its own.
 assert.deepEqual(
   ESCAPE_OWNERS.filter((owner) => owner.dismissible).map((owner) => owner.id),
-  ["chart"],
+  ["checks", "sidebar", "chart"],
+  "every dismissible surface needs an entry in App's DISMISS map",
 );
 
 // ── A fact the arbiter does not know about changes nothing ─────────────────
