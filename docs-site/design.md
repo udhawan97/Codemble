@@ -62,6 +62,8 @@ as washi.
 - Code/data: **JetBrains Mono** (400/500).
 - Headings are roman, always. Italic is body-copy emphasis only.
 - Scale via `clamp()` anchors; no fixed pixel headings.
+- Public-site running text is 18px at 100% browser zoom, with 14px as the
+  smallest informational role. The local app keeps its denser instrument scale.
 
 ## Motion
 
@@ -71,9 +73,11 @@ as washi.
 - Parallax is allowed **only** for the tatebanko hero, where it is the medium
   rather than an effect.
 - The landing page's Atlas Journey may crossfade and scale real product frames
-  on desktop because that motion demonstrates the shipped Galaxy → Map →
-  System → Study semantic zoom. It uses `IntersectionObserver`, never a scroll
-  listener; compact and reduced-motion layouts render paired static frames.
+  only on very wide canvases (≥ 120rem), where the capture remains readable.
+  It uses `IntersectionObserver`, never a scroll listener. Ordinary desktop,
+  compact, and reduced-motion layouts render paired full-width frames; narrow
+  screens keep each frame at a readable size inside an explicitly labelled,
+  keyboard-focusable horizontal viewport instead of shrinking its UI.
 - `prefers-reduced-motion`: opacity-only, ≤ 150ms; parallax and the breathing
   gold both stop.
 - The one sanctioned flourish: **lighting a star** may glow-pulse when a region

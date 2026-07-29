@@ -31,6 +31,17 @@ html {
 }
 
 body {
+  /* The public site is read at length, unlike the denser local app. Shadow the
+     shared instrument scale with the website aliases without restyling the
+     bundled app that imports the same token file. */
+  --cm-text-xs: var(--cm-web-text-xs);
+  --cm-text-sm: var(--cm-web-text-sm);
+  --cm-text-base: var(--cm-web-text-base);
+  --cm-text-lg: var(--cm-web-text-lg);
+  --cm-text-xl: var(--cm-web-text-xl);
+  --cm-text-2xl: var(--cm-web-text-2xl);
+  --cm-text-3xl: var(--cm-web-text-3xl);
+
   background: var(--cm-ground);
   color: var(--cm-ink);
   font-family: var(--cm-font-body);
@@ -46,7 +57,7 @@ body {
   --gutter: clamp(1.25rem, 5vw, 4rem);
   /* The 起承転結 rail is fixed; content clears it rather than flowing under. */
   --rail-clear: 4.5rem;
-  --measure: 74rem;
+  --measure: 82rem;
 }
 
 h1,
@@ -357,7 +368,7 @@ img {
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  font-size: 0.78rem;
+  font-size: var(--cm-text-sm);
   line-height: 1.7;
   color: var(--cm-ink-2);
   white-space: pre;
@@ -602,16 +613,26 @@ img {
 .journey-mobile-media {
   min-width: 0;
   margin: 0 0 var(--cm-space-lg);
-  overflow: clip;
+  overflow: hidden;
   background: var(--cm-ground-2);
   border: var(--cm-rule) solid var(--cm-hairline);
   border-radius: var(--cm-radius);
 }
 
-.journey-mobile-media img {
+.journey-media-scroll {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.journey-media-scroll img {
   display: block;
   width: 100%;
+  max-width: none;
   height: auto;
+}
+
+.journey-media-hint {
+  display: none;
 }
 
 .journey-mode {
@@ -640,7 +661,47 @@ img {
 /* The dimensional stage exists only where there is enough room and the user
    has not asked for reduced motion. Compact and reduced-motion layouts keep
    each real screenshot directly beside its own explanation. */
-@media (min-width: 60rem) and (prefers-reduced-motion: no-preference) {
+@media (max-width: 40rem) {
+  .journey-mobile-media {
+    margin-inline: calc(var(--gutter) * -1);
+    border-inline: 0;
+    border-radius: 0;
+  }
+
+  .journey-media-scroll {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-color: var(--cm-orbit) var(--cm-ground-3);
+  }
+
+  .journey-media-scroll:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .journey-media-scroll img {
+    width: 60rem;
+  }
+
+  .journey-media-hint {
+    display: block;
+    padding: var(--cm-space-xs) var(--gutter);
+    font-family: var(--cm-font-mono);
+    font-size: var(--cm-text-xs);
+    color: var(--cm-ink-3);
+    border-block-start: var(--cm-rule) solid var(--cm-hairline);
+  }
+}
+
+/* The crossfade is reserved for genuinely wide canvases. At ordinary laptop
+   widths a full-width static frame is materially more readable than a 704px
+   screenshot beside a narrow copy rail. */
+@media (min-width: 120rem) {
+  :root {
+    --measure: 110rem;
+  }
+}
+
+@media (min-width: 120rem) and (prefers-reduced-motion: no-preference) {
   .atlas-journey {
     display: grid;
     grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.72fr);

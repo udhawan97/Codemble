@@ -6,6 +6,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **The website no longer needs browser zoom to read.** Supporting copy now
+  bottoms out at 14px and running text at 18px. Real product screenshots use
+  the full content width on ordinary desktops instead of shrinking to a 704px
+  side plate; narrow screens keep the app UI readable in a labelled,
+  keyboard-and-touch-scrollable viewport rather than compressing a 1440px
+  screen into a 333px thumbnail. The cinematic crossfade remains available
+  only where the viewport is genuinely wide enough for it.
 - **Focus comes back immediately after closing a panel, not a second later.**
   Returning focus was tied to the galaxy drawing its next frame, so on a busy
   scene it arrived up to four seconds after the key — measured on this project.

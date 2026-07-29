@@ -35,7 +35,12 @@ that cannot be derived with certainty is not offered.
 
 ## Lighting rules
 
-![The galaxy just after a region was proved: codemble/cli.py burns amber as the one understood system while every other star stays dim, and the guidance chip has moved on to "Study codemble.adapters.project next · 1 route from Home".](/Codemble/shots/galaxy-lit.png)
+<figure class="cm-product-shot">
+  <div class="cm-product-shot__viewport" tabindex="0" aria-label="Lit galaxy product screen. Scroll sideways to inspect it at a readable size.">
+    <img src="/Codemble/shots/galaxy-lit.png" alt="The galaxy just after a region was proved: codemble/cli.py burns amber as the one understood system while every other star stays dim, and the guidance chip has moved on to &quot;Study codemble.adapters.project next · 1 route from Home&quot;.">
+  </div>
+  <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
+</figure>
 
 - Pass a region's checks → its stars light **permanently**. Back at galaxy
   level that system plays a 1.2-second **nebula dawn** — amber washing out

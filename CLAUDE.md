@@ -168,7 +168,19 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-29 ·
-Session note: two faults found by *running* the app rather than testing it, both
+Session note: the public website no longer assumes browser zoom. Its reading
+scale is now 18px with a 14px informational floor, while the denser local app
+keeps its own scale. At ordinary desktop widths the four real product captures
+use the full content column (1174px at 1440, up from 704px); at narrow widths
+they keep a 960px readable canvas inside a labelled touch-and-keyboard-scrollable
+viewport instead of compressing to 333px. The same treatment now wraps every
+product shot in the long-form docs. The Atlas Journey crossfade is reserved for
+canvases at least 120rem wide and expands its content measure there so the frame
+still clears 1000px. Verified on the built site at 1440/375/320, in landing and
+docs shells: zero page overflow, keyboard horizontal scroll, no broken loaded
+images or console errors, Astro check/build clean.
+
+Previously: two faults found by *running* the app rather than testing it, both
 of which the suites were structurally unable to catch. **The blank galaxy stage**
 is finally understood: `composer.setSize` is the only thing that sizes the pass
 chain the scene is presented through, the width/height props that trigger it are
@@ -1097,6 +1109,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-29 | The CI job that needs a browser is `browser-checks`, and it hosts two gates: the space budget and `check_escape_surfaces.mjs` | `check_escape_arbiter` proves the *decision* — which surface owns Escape, for every combination. It cannot prove the key arrives, that the surface closes, or that focus lands somewhere a keyboard learner can carry on from, and **every Escape bug this project has shipped was one of those**: the rail disclosure closing *and* retreating, the checks panel and module index never claiming the key, the star chart retreating on top of its own dismissal. One server and one Chromium install answer both gates, so the second costs almost nothing. The in-app browser pane cannot substitute — it reports `document.hidden === true`, which throttles `requestAnimationFrame`, and `restoreRailFocus` is rAF-based, so focus return reads as broken there whether or not it is. The check's first assertion guards that trap so the gate can never pass by measuring a throttled page |
 | 2026-07-29 | `restoreRailFocus` defers to a **task**, not to a frame | Focus is a DOM operation and needs nothing painted — it only has to run after React has committed the close. `requestAnimationFrame` also waits for the galaxy to render, and a frame is not 16ms when the scene is heavy: traced against this repository under software WebGL, frames arrived every **972–3751ms**, so focus landed on the right control **0.4–4.4s** after the key. It always arrived, which is why this never read as broken and why the browser gate was flaky rather than failing — but a keyboard learner pressing Escape and waiting a second for focus is a real cost, and it grows with the project. Found by chasing a 1-in-4 flake through two wrong hypotheses: a stale-focus race (wrong — focus was never stolen) and a commit-ordering race (wrong — a double-rAF re-assert made it *worse*, 3 in 6). Tracing the actual frame timeline settled it in one run |
 | 2026-07-29 | Leaving the quiz returns focus to **Prove understanding**, from Escape and from the panel's own control, through one `closeChecks` helper | Every other dismissible surface returned focus; this one dropped it, so a learner who had just worked through a region by keyboard was left on `<body>` and had to tab in from the top. Pre-existing and shared with `e00b3fe` on both paths, which is why both go through one helper now rather than one being fixed and the other drifting. The trigger stays mounted behind the panel, so there is somewhere obvious to return to — no new component, no new state |
+| 2026-07-29 | The public site uses an 18px prose baseline and 14px informational floor; 1440px product captures stay on a readable full-size canvas with explicit horizontal pan on narrow screens. The cinematic Atlas Journey runs only at ≥120rem and widens its measure there | The previous layout rendered supporting copy at 12–14px, desktop captures at 704px, and mobile captures at 333px. That made the real UI inside the images impossible to inspect without browser zoom. The website scale is intentionally separate from the dense local-app instrument scale, and the tatebanko remains the site's one decorative signature |
 
 ## Non-Goals — do NOT build (point here when asked)
 

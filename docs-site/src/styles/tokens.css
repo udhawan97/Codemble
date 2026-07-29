@@ -37,6 +37,17 @@
      ~280px of measure, and a larger floor pushes it past four lines. */
   --cm-text-display: clamp(2.25rem, 4.4vw + 0.9rem, 4.75rem);
 
+  /* Website reading scale. The local app keeps the denser instrument scale
+     above; the public site has longer prose and must remain readable at 100%
+     browser zoom. Landing and Starlight styles opt into these aliases. */
+  --cm-web-text-xs: 0.875rem;
+  --cm-web-text-sm: 1rem;
+  --cm-web-text-base: 1.125rem;
+  --cm-web-text-lg: clamp(1.1875rem, 0.25vw + 1.125rem, 1.3125rem);
+  --cm-web-text-xl: clamp(1.375rem, 0.5vw + 1.2rem, 1.625rem);
+  --cm-web-text-2xl: clamp(1.625rem, 1vw + 1.375rem, 2.125rem);
+  --cm-web-text-3xl: clamp(2rem, 2vw + 1.375rem, 3.25rem);
+
   /* --- Spacing (4-point scale) -------------------------------------------- */
   --cm-space-2xs: 0.25rem;
   --cm-space-xs: 0.5rem;

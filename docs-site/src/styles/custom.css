@@ -14,6 +14,21 @@
   --sl-font: var(--cm-font-body);
   --sl-font-mono: var(--cm-font-mono);
 
+  /* Starlight defaults to 13–16px across most reading and navigation roles.
+     Codemble's docs are learner-facing prose, so 14px is the metadata floor and
+     18px is the running-text baseline at 100% browser zoom. */
+  --sl-text-2xs: var(--cm-web-text-xs);
+  --sl-text-xs: 0.9375rem;
+  --sl-text-sm: var(--cm-web-text-sm);
+  --sl-text-base: var(--cm-web-text-base);
+  --sl-text-lg: var(--cm-web-text-lg);
+  --sl-text-xl: var(--cm-web-text-xl);
+  --sl-text-2xl: var(--cm-web-text-2xl);
+  --sl-text-3xl: var(--cm-web-text-3xl);
+  --sl-text-body-sm: var(--sl-text-sm);
+  --sl-text-code: var(--sl-text-sm);
+  --sl-text-code-sm: var(--sl-text-xs);
+
   /* Interaction is ruri — Starlight's "accent" drives links and focus. */
   --sl-color-accent: var(--cm-orbit-fill);
   --sl-color-accent-high: var(--cm-orbit);
@@ -80,6 +95,10 @@
 html,
 body {
   overflow-x: clip;
+}
+
+body {
+  font-size: var(--cm-web-text-base);
 }
 
 /* --- The Edo voice, applied where it helps reading ------------------------ */
@@ -193,6 +212,41 @@ pre {
 }
 
 .cm-dim {
+  color: var(--cm-ink-3);
+}
+
+/* Product captures contain real 1440px application UI. Shrinking them to the
+   prose column turns their labels into a texture, so they keep a readable
+   canvas and pan inside an explicit, keyboard-focusable viewport. */
+.cm-product-shot {
+  margin-block: var(--cm-space-lg);
+}
+
+.cm-product-shot__viewport {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  background: var(--cm-ground-2);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  scrollbar-color: var(--cm-orbit) var(--cm-ground-3);
+}
+
+.cm-product-shot__viewport:focus-visible {
+  outline-offset: -3px;
+}
+
+.cm-product-shot__viewport img {
+  display: block;
+  width: clamp(60rem, 80vw, 80rem);
+  max-width: none;
+  height: auto;
+  margin: 0;
+}
+
+.cm-product-shot figcaption {
+  margin-block-start: var(--cm-space-xs);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-web-text-xs);
   color: var(--cm-ink-3);
 }
 

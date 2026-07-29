@@ -16,6 +16,7 @@ const scenes = [
     title: "Begin with the whole sky.",
     body: "Every supported module becomes a star system. Imports become routes, Home stays marked, and unreadable files remain visible instead of disappearing from the story.",
     image: "galaxy.png",
+    focus: "center",
     alt: "Codemble’s galaxy view showing 123 parser-proven star systems, named modules, language focus controls, and a visible partial-parse notice.",
   },
   {
@@ -24,6 +25,7 @@ const scenes = [
     title: "Flatten it when shape matters more than wonder.",
     body: "The Architecture layer reads the same graph as the galaxy. It turns proven imports into a directional map without inventing placement or hiding modules that have no route from Home.",
     image: "map-architecture.png",
+    focus: "center",
     alt: "Codemble’s Architecture map showing directional module routes from Home and an honest note counting the 93 modules with no proven import route.",
   },
   {
@@ -32,6 +34,7 @@ const scenes = [
     title: "Move from a module to the structures inside it.",
     body: "Functions and classes become planets in deterministic call-depth orbits. Proven calls and possible calls remain different, so the scene never upgrades a guess into a fact.",
     image: "system.png",
+    focus: "center",
     alt: "Codemble’s system view showing 31 functions and classes as lit worlds in deterministic orbits on labelled call-layer guides, with their parser-derived call relationships.",
   },
   {
@@ -40,6 +43,7 @@ const scenes = [
     title: "Land on evidence, not a generated tour.",
     body: "Study opens the real structure, its source span, callers, parser evidence, and grounded explanation. This is where looking becomes reading — before the quiz asks you to prove it.",
     image: "study-panel.png",
+    focus: "end",
     alt: "Codemble’s study panel for create_app, showing its real file location, 257-line span, 53 callers, parser-proven resolution, and structural summary.",
   },
 ];
@@ -83,14 +87,24 @@ const scenes = [
           aria-current={index === 0 ? "step" : undefined}
         >
           <figure class="journey-mobile-media">
-            <img
-              src={shot(scene.image)}
-              alt={scene.alt}
-              width="1440"
-              height="720"
-              loading="lazy"
-              decoding="async"
-            />
+            <div
+              class="journey-media-scroll"
+              tabindex="0"
+              data-scroll-focus={scene.focus}
+              aria-label={`${scene.mode} product screen. Scroll sideways to inspect it at a readable size.`}
+            >
+              <img
+                src={shot(scene.image)}
+                alt={scene.alt}
+                width="1440"
+                height="720"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <figcaption class="journey-media-hint">
+              Swipe or use arrow keys to inspect the full-size app screen.
+            </figcaption>
           </figure>
           <p class="journey-mode">{scene.mode}</p>
           <h3>{scene.title}</h3>
@@ -106,9 +120,21 @@ const scenes = [
     const steps = [...root.querySelectorAll<HTMLElement>("[data-journey-step]")];
     const frames = [...root.querySelectorAll<HTMLElement>("[data-journey-frame]")];
     const cinematic = matchMedia(
-      "(min-width: 60rem) and (prefers-reduced-motion: no-preference)",
+      "(min-width: 120rem) and (prefers-reduced-motion: no-preference)",
     );
+    const compactShots = matchMedia("(max-width: 40rem)");
     let observer: IntersectionObserver | undefined;
+
+    const positionCompactShots = () => {
+      if (!compactShots.matches) return;
+      root.querySelectorAll<HTMLElement>("[data-scroll-focus]").forEach((viewport) => {
+        if (viewport.dataset.scrollPositioned === "") return;
+        const remaining = viewport.scrollWidth - viewport.clientWidth;
+        viewport.scrollLeft =
+          viewport.dataset.scrollFocus === "end" ? remaining : remaining / 2;
+        viewport.dataset.scrollPositioned = "";
+      });
+    };
 
     const activate = (id: string) => {
       if (!id || root.dataset.scene === id) return;
@@ -159,6 +185,8 @@ const scenes = [
     };
 
     connect();
+    requestAnimationFrame(positionCompactShots);
     cinematic.addEventListener("change", connect);
+    compactShots.addEventListener("change", positionCompactShots);
   });
 </script>
