@@ -119,11 +119,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   one ordered list, and the star chart reads the same one.
 
 ### Changed
-- **Escape is checked on every panel automatically.** Which panel the key
+- **Escape is checked on every panel, at phone widths too.** Which panel the key
   closes, that the level does not also move, and where focus lands afterwards
   are now asserted in a real browser on every change — across the star chart,
-  the module index, Find, the More menu, the quiz, typing in a field, and both
-  layers.
+  the module index, Find, the menu, the quiz, typing in a field, and both
+  layers, at 1440, 768, 375 and 320px. Narrow windows are a different shell:
+  every control moves behind the menu, so opening a panel there means opening
+  the menu first, and that is where the one Escape bug that reached a release
+  lived.
 - **The shell's space budget is checked automatically.** How much of the window
   goes to the header, guidance and footer — and how little is left for the
   drawing — used to be measured by hand and written down in a commit message.
