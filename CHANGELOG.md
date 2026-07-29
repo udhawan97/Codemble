@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **The galaxy is no longer mostly empty space.** How far apart two modules sit
+  inside one constellation and how far apart the constellations sit are the
+  same packing question at two scales, but they were written as two unrelated
+  numbers and had drifted 4.5x apart. On this project that left the sky 98.7%
+  empty — constellation centres a median 728 units apart while the widest
+  constellation measured only 137 across — so the camera had to stand back far
+  enough to frame all that void and every system arrived as a speck. The
+  spacings are now tied together, which shrinks this project's galaxy by 46%
+  without ever putting two systems closer than they already were. Nothing
+  re-dims: 104 of 117 regions moved and not one signature changed, because a
+  region's saved progress is keyed to its file contents and never to where it
+  sits in the sky.
 - **A relationship Codemble could not prove is now visibly broken in the galaxy,
   not just a different colour.** The 2D diagram has always drawn an unproven
   import or call as a dashed line, but in 3D the only thing separating "we
