@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level on a first run: 111 star systems parsed from real source, 23 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level on a first run: 113 star systems parsed from real source, 23 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next" width="960">
 </p>
 
 <p align="center"><sub>

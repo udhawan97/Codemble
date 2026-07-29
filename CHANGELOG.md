@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **The galaxy opens showing your whole charted sky.** The camera used a fixed
+  distance chosen once, so a project whose map grew past it lost its near edge
+  *behind* the camera — on this repository 15 of 113 modules were not merely
+  cropped but absent, and another 16 sat off screen, with no hint that anything
+  was missing. The camera now works out how far back it needs to be from the
+  modules themselves, and does it again when the window changes shape, unless
+  you have moved the camera yourself. Module names that would hang off the edge
+  of the canvas are no longer drawn there.
 - **Codemble no longer reports its own bundled app as a file it could not
   read.** The count of unsupported source files asked whether any adapter had
   *claimed* a file, which is not the same question as whether any adapter

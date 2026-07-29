@@ -168,7 +168,42 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-28 ·
-Session note: the eight product screenshots were recaptured on the v0.8.0 shell,
+Session note: the galaxy camera now frames what is actually there. It had used a
+fixed distance, and **the first diagnosis of why was wrong**: a
+`PerspectiveCamera`'s `fov` is vertical, so v0.8.0's taller canvas did narrow
+the horizontal field — but measured against the real layout the aspect changed
+the required distance by *nothing at all* (1061 at 3.8, at 3.16 and at 1.9).
+The binding constraint was the near edge. This repository's layout is a disc of
+radius ~628 while the camera sat 327 from the origin, so nodes reached 552
+along the view axis and fell **behind** the camera: 15 of 113 regions gone
+outright, 16 more off screen, 82 of 113 visible. The layout had outgrown the
+distance, which no aspect explains and which predated v0.8.0. `framingDistance`
+now solves for the smallest distance holding every point inside the frustum,
+given the tilt, the vertical fov and the aspect; the tilt stays art direction.
+Three more faults surfaced only by running it. Fitting **all** 113 systems
+framed the whole disc and left the charted core a thumbnail — nothing off
+screen, nothing legible either — so the camera fits the *charted* set while the
+far clamp is still set from the whole project, which keeps the uncharted rim
+reachable without opening there; **Show all** charts everything, so that case
+fits the lot. The re-frame on resize read a stale `camera.aspect`, because
+Kapsule batches `width`/`height` and applies them on its next tick, so the
+aspect is now passed in. And name plates are far wider than their stars and
+keep their pixel width whatever the camera does, so **no** share of the frame
+reserved by the camera can cover them on a narrow window — at 900px the widest
+paths, which are the most useful ones, hung over the edge. That belongs to
+`nameAtlas`, whose `chooseSlot` already had the plate's pixel rectangle and
+already rejects a slot it cannot have; it now also rejects one that would fall
+off the canvas and tries the next, exactly as it does for a collision. A system
+view fits its orbit **guides** as well as its planets, since a guide is a
+circle through the planets and its widest point on screen falls between them.
+Verified at 1440x720, 1280x720, 900x1000 and 375x720, on Show all, across
+resizes, and with a manual zoom preserved through one. Counts moved
+1121/6995/111 → 1137/7054/113 because the fix's own two files are parsed, so
+every shot and every quoted count was redone. 254 pytest, Ruff 0.16 clean,
+**13** frontend contract checks (camera framing is new), astro check/build,
+reproducible rebuilt bundle.
+
+Previously: the eight product screenshots were recaptured on the v0.8.0 shell,
 paying the debt the release left open. Measuring them first changed the job
 three times. Only **five of the eight are displayed anywhere** — `easy-mode`,
 `galaxy-lit` and `map-workflow` appear in no README, docs page or landing — and
@@ -205,15 +240,10 @@ its place as the after to the hero's before. Counts moved 1081/6724/109 →
 under tests/" were all still exactly right and were left alone. Capture at
 1440x720 rather than the old 716 also required `AtlasJourney.astro`'s two
 `height` attributes and `landing.css`'s `aspect-ratio: 1440 / 716` to move in
-step, or the plate would letterbox. **Left open:** the galaxy's initial camera
-uses a fixed distance rather than fitting the bounding box, and a
-`PerspectiveCamera`'s `fov` is *vertical* — so v0.8.0's taller canvas dropped
-the aspect from ~3.8 to ~3.16 and *narrowed* the horizontal view. At 1440x720
-the sky now opens clipped, and both galaxy shots were framed by zooming out by
-hand. Filed as its own change; a camera-framing rule touches the
-"same code → same sky" criterion and the bounded-orbit clamps. 254 pytest,
-Ruff 0.16 clean, 12 frontend contract checks, astro check/build, reproducible
-rebuilt bundle.
+step, or the plate would letterbox. The galaxy opened clipped and both galaxy
+shots were framed by zooming out by hand; that has since been fixed properly —
+see the entry above. 254 pytest, Ruff 0.16 clean, 12 frontend contract checks,
+astro check/build, reproducible rebuilt bundle.
 
 Previously: **v0.8.0** — the shell stopped spending more height on chrome than
 on the stage it frames. Easy mode at 1280x720 gave 338px of 720 (47%) to header,
@@ -834,6 +864,9 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-28 | `unsupported_sources` counts a file only when **no adapter recognised its extension**, not when no adapter claimed the path | An adapter that skips a file as generated output has still read the extension, so the file was excluded on purpose rather than missed. `_ignore_project_directory` prunes a directory only when *every* adapter ignores it, and Python's ignore set is empty, so `codemble/web_dist` was always walked and its bundled `.js` fell through to the tally. The galaxy and map then told a learner "1 JavaScript file not included" about the app's own committed SPA — a false claim in the exact channel graph schema 8 added to be truthful about coverage, and one the v0.8.0 changelog already advertised as handled ("registering an adapter automatically silences its own extension"). Recognition is the honest test; ownership is not |
 | 2026-07-28 | `.mobile-menu-trigger` sets its own `background`, matching `.rail-action` | The rule set border, radius, colour, cursor and weight but no background, so the UA's `buttonface` (#efefef) won and ruri text sat on it at **2.0:1** — under the 4.5:1 floor `design.md` mandates. It was wrong at compact widths from the start, but v0.8.0 promoted the control to every desktop width as **More**, which is how it reached all seven product screenshots as a light slab in a dark navy header |
 | 2026-07-28 | The product shots are captured from a git worktree named `Codemble`, at 1440x720, with `loading.png` excluded | The brand line renders the project directory's own name, so serving a worktree published `silly-swanson-53d316` to the docs. Capturing at 720 rather than the old 716 is one round number, but it couples: `AtlasJourney.astro`'s two `height` attributes and `landing.css`'s `aspect-ratio` both encode the frame and must move together or the atlas plate letterboxes. `loading.png` is a pre-app, full-window state with no header, from a different rig and a synthetic 900-file project, so no shell change can affect it and its counts are not this repository's |
+| 2026-07-28 | The galaxy camera's **distance** is solved from the nodes each time; only its tilt stays hardcoded. `CAMERA_BOUNDS` become floors that the fitted distance may raise, so a level always opens inside the range it is then held to | A fixed distance is a bet that the layout will never outgrow it, and this one had: the disc reaches radius ~628 while the camera sat at 327, so 15 of 113 regions were *behind* the camera and 31 were not on screen at all. Diagnosis is worth recording because the obvious answer was wrong — a `PerspectiveCamera`'s `fov` is vertical, so v0.8.0's taller canvas genuinely did narrow the horizontal field, but measured against the real layout the aspect moved the required distance by nothing (1061 at every aspect tried). The near edge binds, not the sides. Determinism is preserved because the fit is a pure function of node positions, tilt, fov and aspect — "same code → same sky" now also means "same window" |
+| 2026-07-28 | The galaxy opens fitted to the **charted** systems, not to all of them; the far clamp is still set from the whole project | Fitting everything is defensible and unusable: on this repository it framed the full disc and shrank the charted core to a thumbnail, trading a bug where you could not see a third of the sky for one where you could not read any of it. Progressive reveal already decides what the learner is meant to be reading, so the camera follows it. The uncharted rim stays drawn, stays clickable, and stays reachable by zooming out — which is what the whole-project clamp is for. **Show all** charts every region, so it fits everything with no special case |
+| 2026-07-28 | Keeping a name plate on the canvas is `nameAtlas`'s job, not the camera's | A plate holds its pixel width whatever the camera does, so the share of the frame it needs grows as the window narrows — no constant margin the camera reserves can cover it, and at 900px the widest paths, the most useful ones, hung off the edge. `chooseSlot` already computes the plate's pixel rectangle and already rejects a slot that collides; rejecting one that falls off the canvas is the same test against a different obstacle, and a plate with no slot is simply not drawn, exactly as when it loses to a neighbour |
 | 2026-07-28 | `galaxy.png` shows a genuine first-run **unlit** galaxy; the lit Home lives only in `galaxy-lit.png` | The previous hero was captured mid-session with Home already lit, so its alt text promised "an amber lit Home" that a new reader would not see on their own first run. Splitting the two makes the pair a before and after and gives `galaxy-lit.png` — displayed nowhere until now — a reason to exist. Illumination is the product's central claim, so it should be shown being *earned*, not preset |
 
 ## Non-Goals — do NOT build (point here when asked)
