@@ -157,11 +157,25 @@ function chooseSlot(candidate, { camera, width, height, projected, taken }) {
             projected,
           );
     if (!at) continue;
+    // `project` only checks the star's own anchor, but a plate is drawn around
+    // it and is far wider than it -- a name half off the canvas reads as a
+    // rendering fault, and on a narrow window it is the widest paths, which
+    // are the most useful ones, that hang over the edge. Try the next slot.
+    if (!withinViewport(at, candidate, width, height)) continue;
     const cells = coveredCells(at, candidate);
     if (cells.some((cell) => taken.has(cell))) continue;
     return { cells, offset };
   }
   return null;
+}
+
+function withinViewport(at, { halfWidth, halfHeight }, width, height) {
+  return (
+    at.screenX - halfWidth >= 0 &&
+    at.screenX + halfWidth <= width &&
+    at.screenY - halfHeight >= 0 &&
+    at.screenY + halfHeight <= height
+  );
 }
 
 function coveredCells(at, { halfWidth, halfHeight }) {

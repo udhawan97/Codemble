@@ -40,17 +40,22 @@ function unit(vector) {
  *   direction. Length is ignored; only the tilt is used.
  * @param {number}   options.fov     Vertical field of view, in degrees.
  * @param {number}   options.aspect  Canvas width / height.
- * @param {number}  [options.padding] Breathing room for star radii and the
- *   name plates, which are drawn beyond the point they belong to.
+ * @param {number}  [options.margin] Fraction of each half-axis held in reserve
+ *   for what is drawn *around* a node rather than at it — its radius and halo.
+ *   Deliberately not sized for name plates: a plate keeps its pixel width
+ *   whatever the camera does, so no fixed share of the frame can cover it on a
+ *   narrow window. `nameAtlas` keeps plates on screen instead, which is where
+ *   plate geometry already lives.
  * @returns {number|null}
  */
-export function framingDistance({ points, direction, fov, aspect, padding = 1.12 }) {
+export function framingDistance({ points, direction, fov, aspect, margin = 0.1 }) {
   const axis = unit(direction);
   if (!axis || !Array.isArray(points) || points.length === 0) return null;
   if (!Number.isFinite(fov) || fov <= 0 || fov >= 180) return null;
   if (!Number.isFinite(aspect) || aspect <= 0) return null;
 
-  const tanV = Math.tan((fov * Math.PI) / 360);
+  const usable = 1 - Math.min(Math.max(margin, 0), 0.9);
+  const tanV = Math.tan((fov * Math.PI) / 360) * usable;
   const tanH = tanV * aspect;
 
   // Any two unit vectors perpendicular to the view axis will do: the frustum is
@@ -75,7 +80,7 @@ export function framingDistance({ points, direction, fov, aspect, padding = 1.12
     distance = Math.max(distance, along + lateral, along + vertical);
   }
 
-  return distance > 0 ? distance * padding : null;
+  return distance > 0 ? distance : null;
 }
 
 /** Scale a direction to an exact length, for handing to `cameraPosition`. */

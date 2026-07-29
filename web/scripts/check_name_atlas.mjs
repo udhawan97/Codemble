@@ -69,6 +69,23 @@ assert(
 const near = atlas.place({ ...view, distance: 10 });
 assert.equal(near.budget, 44, "the near camera clamp exposes the larger budget");
 
+// A plate is far wider than the star it names, so a star comfortably on screen
+// can still put its name half off the canvas -- which reads as a rendering
+// fault, not as a label. Stars sit at the origin here, so on a canvas narrower
+// than one plate no slot can hold a name and the atlas must show none.
+const plateWidth = 0.14 * view.height;
+const tooNarrow = atlas.place({ ...view, width: Math.floor(plateWidth * 0.8) });
+assert.equal(
+  tooNarrow.shown,
+  0,
+  "a plate that cannot fit inside the canvas is not drawn overhanging it",
+);
+assert.equal(
+  atlas.place(view).shown,
+  first.shown,
+  "restoring the canvas restores the names",
+);
+
 atlas.hide(scene);
 assert([...sprites.values()].every((sprite) => sprite.visible === false));
 

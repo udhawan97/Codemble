@@ -93,6 +93,18 @@ assert.ok(
   "a galaxy larger than the fixed camera distance must push the camera back",
 );
 
+// 3b. The margin must buy real room, not just clear the edge by a hair: name
+//     plates are drawn beside their star and keep their pixel width whatever
+//     the camera does, so the reserve has to survive a narrow frame.
+for (const aspect of [1.19, 1.78, 3.16]) {
+  const distance = framingDistance({ points: disc, direction: VIEW, fov: FOV, aspect });
+  const tight = framingDistance({ points: disc, direction: VIEW, fov: FOV, aspect, margin: 0 });
+  assert.ok(
+    distance > tight * 1.05,
+    `aspect ${aspect} must reserve room around the nodes: ${distance} vs ${tight}`,
+  );
+}
+
 // 4. Same code, same sky: framing is a pure function of its inputs.
 const once = framingDistance({ points: disc, direction: VIEW, fov: FOV, aspect: 3.16 });
 const twice = framingDistance({ points: [...disc], direction: { ...VIEW }, fov: FOV, aspect: 3.16 });

@@ -35,9 +35,9 @@ const CAMERA_VIEW = {
   GALAXY: { x: 0, y: 105, z: 310 },
   SYSTEM: { x: 0, y: 52, z: 150 },
 };
-// How much further than the fitted distance the learner may pull back. Enough
-// to get some space around the subject, not enough to lose it.
-const ZOOM_OUT_HEADROOM = 1.35;
+// How much further than the whole project's fitted distance the learner may
+// pull back. Enough for some space around it, not enough to lose it.
+const ZOOM_OUT_HEADROOM = 1.15;
 const ORIGIN = { x: 0, y: 0, z: 0 };
 
 /** Layout coordinates are fixed by the graph layer, so fx/fy/fz are the truth. */
@@ -54,22 +54,28 @@ const layoutPoints = (nodes) =>
  * past a fixed distance pushes its own near edge behind the camera, and a node
  * behind the camera is not cropped, it is gone.
  */
-function frameLevel(level, nodes, camera) {
+function frameLevel(level, nodes, { fov, aspect }) {
   const view = CAMERA_VIEW[level] ?? CAMERA_VIEW.GALAXY;
   const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
-  const fitted = framingDistance({
-    points: layoutPoints(nodes),
-    direction: view,
-    fov: camera?.fov,
-    aspect: camera?.aspect,
-  });
-  const distance = fitted ?? Math.hypot(view.x, view.y, view.z);
+  const fit = (subset) =>
+    framingDistance({ points: layoutPoints(subset), direction: view, fov, aspect });
+
+  // Open on the sky the learner is meant to read. Fitting all 113 systems
+  // instead framed the whole disc and left the charted core a thumbnail --
+  // technically nothing off screen, nothing legible either. Show all makes
+  // every region charted, so that case still fits the lot.
+  const charted = nodes.filter((node) => node.charted);
+  const whole = fit(nodes);
+  const distance = (charted.length ? fit(charted) : null) ?? whole ?? Math.hypot(view.x, view.y, view.z);
   return {
     position: cameraPositionAt(view, distance) ?? view,
     // Keeps the promise the bounds comment above makes: the distance a level
     // opens at always sits inside the range it is held to, at any project size.
     min: Math.min(bounds.min, distance),
-    max: Math.max(bounds.max, distance * ZOOM_OUT_HEADROOM),
+    // Far enough back to reach the uncharted rim. Progressive reveal draws
+    // those regions faint, never removes them, so the camera must be able to
+    // get to them even though it does not open there.
+    max: Math.max(bounds.max, (whole ?? distance) * ZOOM_OUT_HEADROOM),
   };
 }
 
@@ -278,8 +284,9 @@ export function GalaxyCanvas({
       rendererRef.current = renderer;
 
       const resize = new ResizeObserver(([entry]) => {
-        renderer.width(entry.contentRect.width).height(entry.contentRect.height);
-        if (!userFramedRef.current) reframeRef.current?.();
+        const { width, height } = entry.contentRect;
+        renderer.width(width).height(height);
+        if (!userFramedRef.current && height > 0) reframeRef.current?.(width / height);
       });
       resize.observe(host);
       return () => {
@@ -325,8 +332,14 @@ export function GalaxyCanvas({
     // is about to be held to. cameraPosition's lookAt writes controls.target
     // directly now that controls are enabled (three-render-objects setLookAt),
     // which is what re-anchors the orbit on every level change for free.
-    const applyFraming = (duration) => {
-      const framed = frameLevel(level, data.nodes, renderer.camera());
+    // The aspect is passed in rather than read from camera.aspect: the library
+    // batches width/height and applies them on its next tick, so the camera
+    // still carries the previous viewport at the moment a resize is handled.
+    const applyFraming = (duration, aspect) => {
+      const framed = frameLevel(level, data.nodes, {
+        fov: renderer.camera()?.fov,
+        aspect: aspect || renderer.width() / (renderer.height() || 1),
+      });
       if (controlsRef.current) {
         controlsRef.current.minDistance = framed.min;
         controlsRef.current.maxDistance = framed.max;
@@ -338,7 +351,7 @@ export function GalaxyCanvas({
     // observer unless the learner has taken the camera themselves, in which
     // case their view is the one worth keeping.
     userFramedRef.current = false;
-    reframeRef.current = () => applyFraming(0);
+    reframeRef.current = (aspect) => applyFraming(0, aspect);
     setFocusedIndex(0);
     return () => {
       reframeRef.current = null;
