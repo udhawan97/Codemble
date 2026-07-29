@@ -54,6 +54,39 @@ jobs:
             git status --short -- codemble/web_dist
             exit 1
           fi
+  # styles.css is 3,216 lines across 17 media blocks and carries the product's
+  # entire layout contract. Three of the last eight bugfixes were exactly that,
+  # and none could be caught by any JS seam -- 99b6875 was a bug in cascade
+  # resolution, visible only to a browser. Its own job because, unlike
+  # web-check, it needs a running Codemble.
+  space-budget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Install
+        run: |
+          pip install -e ".[dev]"
+          cd web && npm install
+      # The committed bundle, served against this repository -- the same app a
+      # learner installs, not a fixture that can drift from it.
+      - name: Serve the app
+        run: |
+          CODEMBLE_DATA_DIR=/tmp/codemble-ci python -m codemble.cli . --port 8899 &
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8899/ && break
+            sleep 2
+          done
+      - name: Shell space budget
+        run: |
+          cd web
+          npx --yes playwright install --with-deps chromium
+          CODEMBLE_URL=http://127.0.0.1:8899 npm run check:space
   package-check:
     runs-on: ubuntu-latest
     steps:
