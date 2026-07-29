@@ -167,8 +167,50 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-28 ·
-Session note: the galaxy camera now frames what is actually there. It had used a
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-29 ·
+Session note: an architecture review found one shape behind most of the
+frontend's recent bugs — **the extraction line in `web/src` was drawn at "does
+it import `three` or React?", not at "is this a decision?"** Every pure module
+on the near side of that line is tested; every decision that happened to sit
+inside a component is not, and that is exactly where the last three camera
+faults landed. `framingDistance` is the most tested function in this frontend
+and has never been the bug: `0c6caf4`, `c64a88a` and `5bdb110` were all about
+*what it was handed*, and `c64a88a` shipped with no check-script change because
+there was nowhere to put one. `galaxyView.js` now owns which points to fit, at
+what aspect, inside what clamps, and where study stands off a structure, with a
+regression fixture per fault. Three faults fell out of writing those tests: the
+aspect had two sources and now has one (the host element, never the library's
+batched copy — that was the stale-aspect bug's actual cause); `frameLevel`
+returns its own `distance` because re-deriving it with `Math.hypot` disagrees in
+the last bit; and the name atlas had been budgeting labels against the *static*
+bounds while the camera was clamped to the *fitted* ones. A fourth was caught by
+running it rather than by the suite, which is the point: preferring the host
+rect made it the *only* source, and an element not yet laid out yields no
+aspect, which silently reopened the fixed-distance clipping — the renderer's
+size is the fallback. **One real defect surfaced on the backend**: focusing
+Python on a mixed project reported *zero* never-called structures where the
+polyglot fixture has two, because the renderer filtered `workflow.unreachable`
+by an `id.startsWith("<language>:")` prefix that only the JS/TS adapter mints.
+The contract check agreed with the bug because its fixture spelled Python ids
+the JS way. Map schema 3 → 4 gives each row its own `language`. Also: Escape
+precedence is an ordered list instead of an eleven-term disjunction plus a
+second shorter copy on the chart stage; "what colour is this node right now" is
+one function beside the standing answer rather than a closure the halo could not
+reach; `with_entrypoint` refuses a graph that never reached `layout_graph`
+instead of returning a starless one, and re-selecting the current Home is a
+no-op rather than a full BFS per hydration. **CI now asserts the shell's space
+budget** against a running Codemble — this amends the standing rule "UI is
+verified by running it", approved by UD, because three of the last eight
+bugfixes were `styles.css` and `99b6875` was a cascade-resolution bug no JS seam
+can reach. It reproduces `13b3c06`'s own numbers (header 148, chrome 36.8%) and
+is proven in both directions. Deliberately **not** done: the audit's remaining
+"language leaks" are one-line-per-language tables whose removal would cost
+widening the protected four-method `LanguageAdapter` seam, and two of them
+(`conceptTitle`, `shortLanguageLabel`) need no edit for a new language at all.
+263 pytest, Ruff 0.16 clean, **14** frontend contract checks, the space budget
+at four widths in both registers, reproducible rebuilt bundle.
+
+Previously: the galaxy camera began framing what is actually there. It had used a
 fixed distance, and **the first diagnosis of why was wrong**: a
 `PerspectiveCamera`'s `fov` is vertical, so v0.8.0's taller canvas did narrow
 the horizontal field — but measured against the real layout the aspect changed
@@ -869,6 +911,12 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-28 | Keeping a name plate on the canvas is `nameAtlas`'s job, not the camera's | A plate holds its pixel width whatever the camera does, so the share of the frame it needs grows as the window narrows — no constant margin the camera reserves can cover it, and at 900px the widest paths, the most useful ones, hung off the edge. `chooseSlot` already computes the plate's pixel rectangle and already rejects a slot that collides; rejecting one that falls off the canvas is the same test against a different obstacle, and a plate with no slot is simply not drawn, exactly as when it loses to a neighbour |
 | 2026-07-28 | `galaxy.png` shows a genuine first-run **unlit** galaxy; the lit Home lives only in `galaxy-lit.png` | The previous hero was captured mid-session with Home already lit, so its alt text promised "an amber lit Home" that a new reader would not see on their own first run. Splitting the two makes the pair a before and after and gives `galaxy-lit.png` — displayed nowhere until now — a reason to exist. Illumination is the product's central claim, so it should be shown being *earned*, not preset |
 | 2026-07-29 | **Corrects the 2026-07-22 "Hue means import community" row**: a community's colour family is assigned by the graph layer to the project's **eight largest** communities (size descending, community id breaking ties) and serialized as `Region.community_family` (schema 8 → 9). Communities past the cut carry `None` and keep the neutral centrality ramp. `community id mod 8` is deleted from the renderer; `graphData.communityFamilyIndex` now only *validates* a graph-assigned family and never wraps | That row's guardrail — "the mapping is pure arithmetic on graph truth so the same code always yields the same sky" — was true and still insufficient. Deterministic is not the same as truthful: with thirty-nine communities on this repository the modulo put five distinct communities on family 4, so two parts of the codebase that share no import wore one colour while the legend promised hue meant "which part of the project is this". A learner tracking a group by its colour got a wrong answer with nothing on screen to reveal it, which is the exact failure class the Correctness Contract exists to prevent. Ranking and stopping at eight makes a family name at most one community, and the absence of a hue is an honest "not one of this project's main groups" where a borrowed hue was a false claim. It moved to the graph layer because the assignment depends on the WHOLE project while the frontend holds only the language-focused projection: derived there, "the eight largest" would have meant something different per filter and focusing a language would silently have repainted the sky — violating the 2026-07-19 rule that focus never mutates parser truth |
+| 2026-07-29 | `web/src/galaxyView.js` owns every camera decision — which points to fit, at what aspect, inside what clamps, and where study stands off a structure. `cameraFraming.js` keeps only the arithmetic | The extraction line in `web/src` was drawn at "does it import `three` or React?", not at "is this a decision?". `framingDistance` is the most tested function in the frontend and has never been the bug; all three shipped framing faults (`0c6caf4`, `c64a88a`, `5bdb110`) were about *what it was handed*, and every one of those decisions was module-private inside a 742-line component — `c64a88a` shipped with no check-script change because there was nowhere to put one. `nameAtlas` already proved three.js runs headless in plain Node, so WebGL was never the reason. Three faults fell out of writing the tests: the aspect now has one source (the host element, never the library's batched copy), `frameLevel` returns its own `distance` because re-deriving it with `Math.hypot` disagreed in the last bit, and the name atlas had been budgeting labels against the *static* bounds while the camera was clamped to the *fitted* ones |
+| 2026-07-29 | Escape precedence is an ordered list in `web/src/escapeArbiter.js`; `escapeFacts` is the one place the session and the document are read for it | It was an eleven-term disjunction in `App.jsx` plus a second, shorter copy on the chart stage, so a new global surface had to be added to both — and forgetting has already shipped, which the 2026-07-28 rail-disclosure row records. A list makes a new surface one entry in one file and states outright which surface wins. Three facts stay DOM reads because they genuinely have no session field: a native dialog's open state belongs to the top layer, a disclosure's is view-local, and what has focus is the document's business. Gathering them in one shim keeps the arbiter a pure function of stated facts rather than a second thing that queries the DOM |
+| 2026-07-29 | "What colour is this node right now" is `graphData.highlightColor`, beside the standing answer it overrides | The transient hover/fade colour lived as a closure inside `GalaxyCanvas`, reachable by nothing — which is how the halo came to be painted from `node.color` while the sphere in front of it was painted from the closure. Two owners of one fact, and only one of them hears about hover. Reveal state had the same shape of problem in miniature: `node.charted` in one place and `node.charted === false` in another, equivalent only because `galaxyData` happens to always write a boolean, and genuinely different questions for a system member that carries no reveal state at all |
+| 2026-07-29 | Map schema 3 → 4: a `workflow.unreachable` row is `{id, language}` rather than a bare id | The renderer filtered them with `id.startsWith("<language>:")`, which is the JS/TS adapter's private id convention; Python mints dotted module paths and carries no prefix. Focusing Python on a mixed project therefore reported **zero** never-called structures where the polyglot fixture has two — a count a learner cannot check, in a note whose only job is to state a count. The contract check agreed with the bug because its fixture spelled Python ids the JS way; it now mints each language's ids the way that adapter actually mints them |
+| 2026-07-29 | `with_entrypoint` refuses a graph that never reached `layout_graph`, and re-selecting the Home a graph already carries is a no-op | It measures every distance against `graph.regions`, which only `layout_graph` fills, and returned a valid-looking graph with zero regions when handed one that skipped it — a galaxy with no stars, reported as success. The no-op is the common case rather than an edge one: `CheckService.graph` re-selects the current Home on every hydration, paying a full breadth-first walk to rebuild the regions it had just been given. Layout's second definition of `Region.understood` went with it — unreachable, but it read as a specification and was not the rule `ProgressStore` applies |
+| 2026-07-29 | CI asserts the shell's space budget in its own job, against a running Codemble. **Amends the standing rule "UI is verified by running it"** | Approved by UD. `styles.css` is 3,216 lines across 17 media blocks carrying the entire layout contract with no seam and no assertion, and three of the last eight bugfixes were exactly that — `99b6875` a bug in *cascade resolution*, which no JS seam can reach. Each was verified by a human reading DevTools and pasting the numbers into a commit message; those numbers were the contract and nothing re-read them. The check reproduces `13b3c06`'s own measurements (header 148, chrome 36.8%) and is proven in both directions. It serves the committed bundle against this repository rather than a fixture, so there is nothing to drift from the app, and `npm run check` stays Node-only, offline and fast |
 
 ## Non-Goals — do NOT build (point here when asked)
 

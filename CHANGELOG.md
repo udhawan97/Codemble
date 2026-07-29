@@ -6,6 +6,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **Focusing one language no longer under-reports what it never calls.** The
+  Map's "never called" note counts structures nothing in your project reaches.
+  Filtering it to one language matched the *shape of the id* rather than the
+  language recorded on it, and only the JavaScript/TypeScript reader writes ids
+  in that shape — so focusing Python said zero where the truth was two. A count
+  is the one thing a note like that exists to get right, and it is not something
+  you could have checked. Each row now states its own language.
+- **The galaxy is less likely to open on a view you cannot read.** The camera
+  measures the sky each time rather than sitting at a fixed distance, and the
+  three faults that measurement has already been through are now covered by
+  tests: fitting the whole disc instead of the part you are meant to be reading,
+  cropping the rings a system's planets sit on, and re-framing a resize against
+  the window you just left. Names are also budgeted against the distance the
+  camera can actually reach, not a default it may have outgrown.
+- **Escape no longer risks doing two things at once.** Which panel owns the key
+  was decided by one long condition, and a second, shorter copy of it on the
+  star chart. A new panel had to be added to both, and missing one is how the
+  menu once closed *and* stepped back a level on a single press. There is now
+  one ordered list, and the star chart reads the same one.
+
+### Changed
+- **The shell's space budget is checked automatically.** How much of the window
+  goes to the header, guidance and footer — and how little is left for the
+  drawing — used to be measured by hand and written down in a commit message.
+  It is now asserted on every change at four window widths in both registers,
+  along with text that would be silently cut off and any sideways scrolling.
+
+### Fixed
 - **Two unrelated parts of your project no longer wear the same colour.** Hue is
   supposed to answer "which part of the project is this?", but the colour was
   picked by wrapping the community's id around the eight-colour palette. Any
