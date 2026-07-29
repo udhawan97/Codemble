@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **Two unrelated parts of your project no longer wear the same colour.** Hue is
+  supposed to answer "which part of the project is this?", but the colour was
+  picked by wrapping the community's id around the eight-colour palette. Any
+  project with more than eight communities therefore handed the same hue to
+  groups that share nothing — on this repository thirty-nine communities
+  collapsed onto eight colours, with five different groups all rendering as the
+  same one. Tracking a group by its colour quietly gave the wrong answer, and
+  nothing on screen said so. The eight **largest** communities now take the
+  eight colours and every smaller group keeps the plain brightness ramp, so a
+  colour names exactly one group and "no colour" honestly means "not one of this
+  project's main groups". Filtering by language can no longer repaint the sky
+  either: the assignment is made once over the whole project, in the graph.
 - **The galaxy opens showing your whole charted sky.** The camera used a fixed
   distance chosen once, so a project whose map grew past it lost its near edge
   *behind* the camera — on this repository 15 of 113 modules were not merely

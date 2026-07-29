@@ -31,10 +31,14 @@ a helper hammered in one loop is not more depended-on than a shared utility.
 
 Hue answers a different question: **which part of the project is this?** The
 parser proves import communities — groups of modules that import each other —
-and each community wears one of eight traditional Japanese colours (seiji,
-fuji, koke, asagi, toki, umenezumi, wakatake, kikyō), assigned
-deterministically from the community's own id: same code, same sky, same
-colours. Every hue is lightness-capped at the unlit ceiling, so a lit amber
+and the project's **eight largest** communities each wear one of eight
+traditional Japanese colours (seiji, fuji, koke, asagi, toki, umenezumi,
+wakatake, kikyō). Real projects have more communities than that — this one has
+thirty-nine — so the rest carry no hue at all and keep the plain brightness
+ramp. That is deliberate: a colour shared by two unrelated groups would answer
+"which part of the project is this?" wrongly, and no hue honestly says "not one
+of this project's main groups". Assignment is by size, ties broken by id, so
+the same code always yields the same sky. Every hue is lightness-capped at the unlit ceiling, so a lit amber
 star remains the brightest object by a wide margin, and the amber band itself
 is excluded from the wheel so no community can ever read as "understood".
 Inside a system its planets inherit the family hue, with lightness still

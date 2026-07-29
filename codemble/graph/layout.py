@@ -19,6 +19,10 @@ from codemble.adapters.base import (
 
 _GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))
 _SYSTEM_RING_CAPACITY = 12
+# The number of traditional-Japanese colour families in `web/src/tokens.css`
+# (`--cm-com-0..7`). Only the largest communities earn one; see
+# `_colour_families`.
+_COLOUR_FAMILIES = 8
 
 
 def layout_graph(graph: Graph) -> Graph:
@@ -62,6 +66,8 @@ def layout_graph(graph: Graph) -> Graph:
     community_members: dict[int, list[str]] = defaultdict(list)
     for region_id in region_order:
         community_members[communities[region_id]].append(region_id)
+
+    families = _colour_families(community_members)
 
     region_positions: dict[str, tuple[float, float, float]] = {}
     cumulative_members = 0
@@ -114,6 +120,7 @@ def layout_graph(graph: Graph) -> Graph:
                 z=region_z,
                 community=communities[region_id],
                 hops_from_home=hops.get(region_id),
+                community_family=families.get(communities[region_id]),
             )
         )
 
@@ -227,6 +234,31 @@ def _communities(
             dense_labels[label] = len(dense_labels)
         communities[region_id] = dense_labels[label]
     return communities
+
+
+def _colour_families(community_members: dict[int, list[str]]) -> dict[int, int]:
+    """Give the project's largest communities one colour family each.
+
+    The palette has eight families and a real project has more communities than
+    that -- this repository has thirty-seven.  The renderer previously wrapped
+    with ``community % 8``, which is deterministic but not truthful: five
+    distinct communities landed on family 4, so unrelated parts of the codebase
+    wore one hue while the legend promised hue meant "which part of the project
+    is this".
+
+    Ranking by size and stopping at eight guarantees a family names at most one
+    community.  Communities past the cut get ``None`` and fall back to the
+    neutral centrality ramp, which reads as "not one of this project's main
+    groups" -- an honest absence rather than a borrowed claim.
+
+    Ties break on community id so the assignment never depends on dict order.
+    """
+
+    ranked = sorted(
+        community_members,
+        key=lambda community: (-len(community_members[community]), community),
+    )
+    return {community: family for family, community in enumerate(ranked[:_COLOUR_FAMILIES])}
 
 
 def _hops_from_home(

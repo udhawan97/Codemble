@@ -379,14 +379,30 @@ const NODE_BRIGHT_AT = 2;
 
 /* --- Community colour families (D1, Decision Log 2026-07-22) ---------------
    Hue answers "which part of the project is this?", lightness keeps answering
-   centrality, amber keeps its monopoly on understanding. The mapping is pure
-   arithmetic on the graph's own community id, so the same code always wears
-   the same colours. */
+   centrality, amber keeps its monopoly on understanding. */
 export const COMMUNITY_PALETTE_SIZE = 8;
 
-export function communityPaletteIndex(community) {
-  if (!Number.isInteger(community)) return null;
-  return ((community % COMMUNITY_PALETTE_SIZE) + COMMUNITY_PALETTE_SIZE) % COMMUNITY_PALETTE_SIZE;
+/**
+ * Validate the colour family the GRAPH assigned to a region.
+ *
+ * This used to be `community % 8`, computed here. That wrapped: a project with
+ * more than eight communities put unrelated groups on one hue -- this
+ * repository had thirty-seven communities and five of them shared family 4 --
+ * so the sky answered "which part of the project is this?" wrongly, which is
+ * exactly the kind of wrong a learner cannot detect.
+ *
+ * The assignment now belongs to `layout.py`, because it depends on the whole
+ * project: only the largest eight communities earn a family. The frontend
+ * holds only the language-focused projection, so computing it here would
+ * repaint the sky whenever a learner filtered by language -- and a view
+ * preference must never change what a colour means.
+ *
+ * A family outside the palette, or none at all, claims nothing and falls back
+ * to the neutral ramp.
+ */
+export function communityFamilyIndex(family) {
+  if (!Number.isInteger(family)) return null;
+  return family >= 0 && family < COMMUNITY_PALETTE_SIZE ? family : null;
 }
 
 // The centrality ramp expressed as a mix toward the sky ground: bright keeps
@@ -412,12 +428,13 @@ function mixRgb(colorValue, groundValue, fraction) {
 /**
  * The colour an unlit, charted, cleanly-parsed marker wears.
  *
- * Falls back to the old neutral ramp when the graph carries no community id
- * (an older payload, or a node outside any region), so a missing fact renders
- * as the absence of a claim rather than a wrong one.
+ * Falls back to the neutral ramp when the graph assigned no colour family --
+ * an older payload, a node outside any region, or a community that is not one
+ * of the project's eight largest. All three are the absence of a claim rather
+ * than a wrong one, which is the only honest way to render a missing fact.
  */
-export function communityShade(palette, community, centrality, brightAt) {
-  const index = communityPaletteIndex(community);
+export function communityShade(palette, family, centrality, brightAt) {
+  const index = communityFamilyIndex(family);
   const base = index === null ? null : palette.communities?.[index];
   if (!base) return brightness(centrality, palette, brightAt);
   const tier =
@@ -457,7 +474,12 @@ export function galaxyData(graph, palette, revealed = null) {
             ? palette.star
             : graph.nodes.some((node) => node.region === region.id && node.partial)
               ? palette.routePossible
-              : communityShade(palette, region.community, region.centrality, REGION_BRIGHT_AT),
+              : communityShade(
+                  palette,
+                  region.community_family,
+                  region.centrality,
+                  REGION_BRIGHT_AT,
+                ),
         focusDim: false,
       };
     }),
@@ -480,9 +502,9 @@ export function galaxyData(graph, palette, revealed = null) {
 export function systemData(graph, regionId, palette, { selectedId = null } = {}) {
   const members = graph.nodes.filter((node) => node.region === regionId);
   const memberIds = new Set(members.map((node) => node.id));
-  // Planets wear their system's family hue: the community is a fact about the
+  // Planets wear their system's family hue: the family is a fact about the
   // region, and every member inherits it (lightness still answers callers).
-  const community = graph.regions.find((region) => region.id === regionId)?.community;
+  const family = graph.regions.find((region) => region.id === regionId)?.community_family;
   const callEdges = graph.edges.filter(
     (edge) =>
       edge.kind === "call" &&
@@ -511,7 +533,7 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
         ? palette.star
         : node.partial
           ? palette.routePossible
-          : communityShade(palette, community, node.centrality, NODE_BRIGHT_AT),
+          : communityShade(palette, family, node.centrality, NODE_BRIGHT_AT),
       selected: node.id === selectedId,
       focusDim: Boolean(selectedId) && !connected.has(node.id),
     })),

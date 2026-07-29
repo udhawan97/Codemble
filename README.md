@@ -205,7 +205,7 @@ You can also switch project or change Home without leaving the app.
 | A route or edge | An import or call; approximate calls are labeled **possible** |
 | Size | Lines of code |
 | Brightness and glow | How many **distinct** structures call it |
-| Colour family | Import community — modules that import each other share one of eight traditional Japanese hues |
+| Colour family | Import community — the eight largest groups of mutually-importing modules each get one of eight traditional Japanese hues; smaller groups stay neutral rather than share a colour |
 | Nebula tint | Language, at galaxy level |
 | Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
 | Drifting particles | A call the parser proved; a possible call stays still |

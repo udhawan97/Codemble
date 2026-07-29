@@ -14,7 +14,7 @@ import { ModeControl } from "./ModeControl.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
   LEVELS,
-  communityPaletteIndex,
+  communityFamilyIndex,
   conceptTitle,
   defaultRegion,
   groupByCommunity,
@@ -167,14 +167,16 @@ export function App() {
     studyError,
   } = state;
 
-  // Region id -> palette slot for the Map's box tints. Derived once per
-  // focused graph; the arithmetic lives in graphData so the galaxy's colours
-  // and the Map's can never disagree about a community's family.
+  // Region id -> palette slot for the Map's box tints. The family itself is
+  // assigned by the graph layer over the WHOLE project, so reading it off the
+  // focused graph is safe: filtering by language hides regions but can never
+  // change which family the survivors belong to. Deriving the family here
+  // instead would have repainted the sky on every focus change.
   const communityIndexByRegion = useMemo(() => {
     if (!focusedGraph) return null;
     const byRegion = new Map();
     for (const item of focusedGraph.regions) {
-      const index = communityPaletteIndex(item.community);
+      const index = communityFamilyIndex(item.community_family);
       if (index !== null) byRegion.set(item.id, index);
     }
     return byRegion;
