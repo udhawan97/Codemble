@@ -8,7 +8,11 @@ import pytest
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node, UnsupportedSource
 from codemble.graph import GraphFinalizationError, finalize_graph
-from codemble.graph.layout import with_entrypoint
+from codemble.graph.layout import (
+    _CONSTELLATION_SPACING,
+    _REGION_SPACING,
+    with_entrypoint,
+)
 
 
 def _node(
@@ -253,6 +257,46 @@ def test_colour_families_are_deterministic_and_survive_a_home_change() -> None:
     assert {r.id: r.community_family for r in moved.regions} == {
         r.id: r.community_family for r in first.regions
     }, "choosing Home must not recolour a single region"
+
+
+def test_constellation_spacing_stays_tied_to_region_spacing() -> None:
+    """Constellation and member spacing are one packing problem, not two.
+
+    Written as unrelated literals they drifted to 4.5x, which left the galaxy
+    98.7% empty -- constellation centres a median 728 units apart while the
+    widest constellation measured 137 across -- so the camera had to stand back
+    far enough to frame all that void and every system became a speck.
+
+    The guard is the *relationship*, not a magic number: a ratio may be tuned,
+    but it may not quietly become independent again.
+    """
+
+    ratio = _CONSTELLATION_SPACING / _REGION_SPACING
+    assert 1.0 < ratio <= 3.0, (
+        "constellations must sit further apart than the regions inside one, but "
+        f"a ratio of {ratio} is the drift that emptied the sky"
+    )
+
+
+def test_constellations_stay_compact_enough_to_frame() -> None:
+    """A regression guard on the emptiness itself.
+
+    The camera fits whatever extent the layout produces, so a layout that
+    sprawls silently costs legibility rather than raising an error: everything
+    is still on screen, just too small to read. Pinning the extent of a known
+    fixture is what makes that visible.
+    """
+
+    graph = finalize_graph(_families_fixture())
+    regions = graph.regions
+    centre = [sum(getattr(r, axis) for r in regions) / len(regions) for axis in "xyz"]
+    extent = max(math.dist((r.x, r.y, r.z), centre) for r in regions)
+
+    # 155 at today's ratio; 265 at the 4.5x that caused the defect.
+    assert extent < 200, (
+        f"this fixture's galaxy spans {extent:.0f} units; above 200 the packing "
+        "constants have drifted apart again"
+    )
 
 
 def test_region_community_family_is_serialized_in_the_graph_schema() -> None:
