@@ -54,11 +54,37 @@ const layoutPoints = (nodes) =>
  * past a fixed distance pushes its own near edge behind the camera, and a node
  * behind the camera is not cropped, it is gone.
  */
-function frameLevel(level, nodes, { fov, aspect }) {
+/**
+ * The four cardinal points of each orbit guide. A guide is a circle through
+ * the planets on its layer, so its widest point on screen usually falls
+ * *between* them — fitting the planets alone crops the ring they sit on.
+ */
+const orbitRingPoints = (plan) => {
+  const points = [];
+  for (const layer of plan ?? []) {
+    for (const radius of layer.radii ?? []) {
+      points.push(
+        { x: radius, y: 0, z: 0 },
+        { x: -radius, y: 0, z: 0 },
+        { x: 0, y: 0, z: radius },
+        { x: 0, y: 0, z: -radius },
+      );
+    }
+  }
+  return points;
+};
+
+function frameLevel(level, nodes, { fov, aspect }, orbitPlan) {
   const view = CAMERA_VIEW[level] ?? CAMERA_VIEW.GALAXY;
   const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
+  const rings = level === LEVELS.GALAXY ? [] : orbitRingPoints(orbitPlan);
   const fit = (subset) =>
-    framingDistance({ points: layoutPoints(subset), direction: view, fov, aspect });
+    framingDistance({
+      points: [...layoutPoints(subset), ...rings],
+      direction: view,
+      fov,
+      aspect,
+    });
 
   // Open on the sky the learner is meant to read. Fitting all 113 systems
   // instead framed the whole disc and left the charted core a thumbnail --
@@ -336,10 +362,15 @@ export function GalaxyCanvas({
     // batches width/height and applies them on its next tick, so the camera
     // still carries the previous viewport at the moment a resize is handled.
     const applyFraming = (duration, aspect) => {
-      const framed = frameLevel(level, data.nodes, {
-        fov: renderer.camera()?.fov,
-        aspect: aspect || renderer.width() / (renderer.height() || 1),
-      });
+      const framed = frameLevel(
+        level,
+        data.nodes,
+        {
+          fov: renderer.camera()?.fov,
+          aspect: aspect || renderer.width() / (renderer.height() || 1),
+        },
+        orbitPlan,
+      );
       if (controlsRef.current) {
         controlsRef.current.minDistance = framed.min;
         controlsRef.current.maxDistance = framed.max;
@@ -356,7 +387,7 @@ export function GalaxyCanvas({
     return () => {
       reframeRef.current = null;
     };
-  }, [data, level, mode]);
+  }, [data, level, mode, orbitPlan]);
 
   useEffect(() => {
     focusedIdRef.current = data.nodes[focusedIndex]?.id ?? null;
