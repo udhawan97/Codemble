@@ -5,7 +5,7 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 ## Your code, mapped honestly
 
-![Codemble at galaxy level on a first run: 111 star systems parsed from real source, 23 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.](/Codemble/shots/galaxy.png)
+![Codemble at galaxy level on a first run: 113 star systems parsed from real source, 23 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.](/Codemble/shots/galaxy.png)
 
 The galaxy is not an artist's impression. Every visual property encodes a fact
 from the parsed structure of your code:
@@ -15,7 +15,7 @@ from the parsed structure of your code:
 | Star system | One source module |
 | Planet | A function or class |
 | Route between systems | An import |
-| Edge between planets | A call (uncertain calls are labeled "possible call") |
+| Edge between planets | A call — solid when proven, dashed and labeled "possible call" when not |
 | Size | Lines of code |
 | Brightness and glow | How many distinct places call it (centrality) |
 | Colour family | Import community — modules that import each other share a hue |
@@ -31,10 +31,14 @@ a helper hammered in one loop is not more depended-on than a shared utility.
 
 Hue answers a different question: **which part of the project is this?** The
 parser proves import communities — groups of modules that import each other —
-and each community wears one of eight traditional Japanese colours (seiji,
-fuji, koke, asagi, toki, umenezumi, wakatake, kikyō), assigned
-deterministically from the community's own id: same code, same sky, same
-colours. Every hue is lightness-capped at the unlit ceiling, so a lit amber
+and the project's **eight largest** communities each wear one of eight
+traditional Japanese colours (seiji, fuji, koke, asagi, toki, umenezumi,
+wakatake, kikyō). Real projects have more communities than that — this one has
+thirty-nine — so the rest carry no hue at all and keep the plain brightness
+ramp. That is deliberate: a colour shared by two unrelated groups would answer
+"which part of the project is this?" wrongly, and no hue honestly says "not one
+of this project's main groups". Assignment is by size, ties broken by id, so
+the same code always yields the same sky. Every hue is lightness-capped at the unlit ceiling, so a lit amber
 star remains the brightest object by a wide margin, and the amber band itself
 is excluded from the wheel so no community can ever read as "understood".
 Inside a system its planets inherit the family hue, with lightness still
@@ -163,7 +167,10 @@ Below the galaxy level, every edge carries an arrowhead pointing from caller to
 callee. Hover an edge for its tooltip: the two structures, whether it is an
 import or a call, whether the parser is certain, and the line it was seen on. A
 relationship the parser could not prove reads "possible call" or "possible
-import" and is drawn in the uncertainty colour — never as fact.
+import", and is drawn **dashed** in the uncertainty colour — never as fact. The
+dash matters as much as the colour: it survives colour-blindness, a dim screen
+and a greyscale screenshot, and both layers now break an unproven line the same
+way rather than the galaxy relying on hue alone.
 
 Hover or select a structure and it and its edges take the interaction blue while
 its neighbours hold their own colour and everything else recedes. In the study

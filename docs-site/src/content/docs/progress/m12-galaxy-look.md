@@ -56,5 +56,7 @@ explain what you see, how to move, and what lights a star; dismissing them is
 a local UI preference, never mixed into saved progress. The breadcrumb is now
 a real, clickable control instead of static text, and the legend gained a
 swatch per language plus a possible-relationship entry that matches whichever
-layer is on screen — a dash on the Map, a colour on the galaxy, because
-`3d-force-graph` has no line-dash support to draw a 3D dash with.
+layer is on screen — a dash on the Map, and at the time a colour on the galaxy,
+because the 3D link had no line-dash to draw with. *(Superseded: the galaxy now
+dashes too. An unproven route supplies its own line instead of the library's
+cylinder, so uncertainty no longer depends on colour alone in any layer.)*

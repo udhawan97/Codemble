@@ -115,6 +115,22 @@ class Region:
     # renderer reveals the sky by this distance and a guessed one would quietly
     # promise a path the parser never found.
     hops_from_home: int | None = None
+    # Which of the eight colour families this region's community wears, or
+    # ``None`` when its community is not one of the project's eight largest.
+    #
+    # The renderer used to derive this itself as ``community % 8``, which on a
+    # project with more than eight communities handed the same hue to unrelated
+    # groups -- this repository put five distinct communities on one family, so
+    # two parts of the codebase that share nothing rendered identically. Hue is
+    # supposed to answer "which part of the project is this?", and a shared hue
+    # answers it wrongly in a way a learner cannot detect.
+    #
+    # It lives in the graph rather than the renderer because the assignment
+    # depends on the WHOLE project: the frontend only ever holds the
+    # language-focused projection, so computing it there would repaint the sky
+    # whenever a learner filtered by language -- and a view preference must
+    # never change what a colour means.
+    community_family: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,7 +173,7 @@ class Graph:
     region_edges: tuple[RegionEdge, ...] = ()
     partial_files: tuple[str, ...] = ()
     unsupported_sources: tuple[UnsupportedSource, ...] = ()
-    schema_version: int = field(default=8, init=False)
+    schema_version: int = field(default=9, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""

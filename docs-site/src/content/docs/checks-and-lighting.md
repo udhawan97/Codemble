@@ -35,6 +35,8 @@ that cannot be derived with certainty is not offered.
 
 ## Lighting rules
 
+![The galaxy just after a region was proved: codemble/cli.py burns amber as the one understood system while every other star stays dim in its import-community colour, and the guidance chip has moved on to "Study codemble.adapters.project next · 1 route from Home".](/Codemble/shots/galaxy-lit.png)
+
 - Pass a region's checks → its stars light **permanently**. Back at galaxy
   level that system plays a 1.2-second **nebula dawn** — amber washing out
   through its halo and fog and receding. The lit state is saved before the

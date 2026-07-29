@@ -19,6 +19,37 @@ from codemble.adapters.base import (
 
 _GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))
 _SYSTEM_RING_CAPACITY = 12
+# How far apart two regions sit inside one constellation, and how far apart the
+# constellations themselves sit. The second is DERIVED from the first: they are
+# the same packing problem at two scales, and stating them as unrelated numbers
+# is what let them drift 4.5x apart. At that ratio the galaxy was 98.7% empty --
+# constellation centres a median 728 units apart while the widest constellation
+# measured 137 across -- so the camera had to stand far enough back to frame all
+# that void and every system became a speck.
+#
+# 2.25 is the smallest multiple measured to leave the closest pair of regions no
+# tighter than the old 4.5 did, on this project (768-unit radius -> 415, closest
+# pair unchanged at 18.4) and on the polyglot fixture (191 -> 125, unchanged at
+# 37.5). Below it, both projects start putting regions from *different*
+# constellations closer together than a constellation puts its own members.
+#
+# Stated honestly: that is a measurement, not a proof. Whether the closest pair
+# falls between constellations or inside one depends on the shape of the
+# community histogram -- a project with a dozen small communities can cross that
+# line at any multiple, including this one -- so the ratio is a well-measured
+# default rather than a guarantee, and the test that guards it pins the
+# relationship and the compactness, not a universal invariant.
+_REGION_SPACING = 12.0
+_CONSTELLATION_SPACING = _REGION_SPACING * 2.25
+# Radius of the first constellation, and of a region's own ring within one.
+# Insets, not spacings: they keep a single-member constellation off the origin
+# and a lone region off its constellation's centre.
+_CONSTELLATION_INSET = 42.0
+_REGION_INSET = 16.0
+# The number of traditional-Japanese colour families in `web/src/tokens.css`
+# (`--cm-com-0..7`). Only the largest communities earn one; see
+# `_colour_families`.
+_COLOUR_FAMILIES = 8
 
 
 def layout_graph(graph: Graph) -> Graph:
@@ -63,12 +94,16 @@ def layout_graph(graph: Graph) -> Graph:
     for region_id in region_order:
         community_members[communities[region_id]].append(region_id)
 
+    families = _colour_families(community_members)
+
     region_positions: dict[str, tuple[float, float, float]] = {}
     cumulative_members = 0
     for community in sorted(community_members):
         members = community_members[community]
         community_angle = community * _GOLDEN_ANGLE
-        community_radius = 42.0 + 54.0 * math.sqrt(cumulative_members)
+        community_radius = _CONSTELLATION_INSET + _CONSTELLATION_SPACING * math.sqrt(
+            cumulative_members
+        )
         community_x = math.cos(community_angle) * community_radius
         community_z = math.sin(community_angle) * community_radius
         for member_index, region_id in enumerate(members):
@@ -76,7 +111,7 @@ def layout_graph(graph: Graph) -> Graph:
                 member_index * _GOLDEN_ANGLE
                 + _fraction(region_id, "phase") * 0.18
             )
-            local_radius = 16.0 + 12.0 * math.sqrt(member_index)
+            local_radius = _REGION_INSET + _REGION_SPACING * math.sqrt(member_index)
             region_positions[region_id] = (
                 _rounded(community_x + math.cos(local_angle) * local_radius),
                 _rounded(((_fraction(region_id, "height") * 2.0) - 1.0) * 28.0),
@@ -114,6 +149,7 @@ def layout_graph(graph: Graph) -> Graph:
                 z=region_z,
                 community=communities[region_id],
                 hops_from_home=hops.get(region_id),
+                community_family=families.get(communities[region_id]),
             )
         )
 
@@ -227,6 +263,31 @@ def _communities(
             dense_labels[label] = len(dense_labels)
         communities[region_id] = dense_labels[label]
     return communities
+
+
+def _colour_families(community_members: dict[int, list[str]]) -> dict[int, int]:
+    """Give the project's largest communities one colour family each.
+
+    The palette has eight families and a real project has more communities than
+    that -- this repository has thirty-seven.  The renderer previously wrapped
+    with ``community % 8``, which is deterministic but not truthful: five
+    distinct communities landed on family 4, so unrelated parts of the codebase
+    wore one hue while the legend promised hue meant "which part of the project
+    is this".
+
+    Ranking by size and stopping at eight guarantees a family names at most one
+    community.  Communities past the cut get ``None`` and fall back to the
+    neutral centrality ramp, which reads as "not one of this project's main
+    groups" -- an honest absence rather than a borrowed claim.
+
+    Ties break on community id so the assignment never depends on dict order.
+    """
+
+    ranked = sorted(
+        community_members,
+        key=lambda community: (-len(community_members[community]), community),
+    )
+    return {community: family for family, community in enumerate(ranked[:_COLOUR_FAMILIES])}
 
 
 def _hops_from_home(

@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level on a first run: 111 star systems parsed from real source, 23 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level on a first run: 113 star systems parsed from real source, 23 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next" width="960">
 </p>
 
 <p align="center"><sub>
@@ -202,10 +202,10 @@ You can also switch project or change Home without leaving the app.
 | A star system | One source module |
 | A planet | A function or class |
 | The Home system | The selected parser-ranked entrypoint |
-| A route or edge | An import or call; approximate calls are labeled **possible** |
+| A route or edge | An import or call. A relationship the parser could not prove is drawn **dashed** and labeled **possible**, on every layer |
 | Size | Lines of code |
 | Brightness and glow | How many **distinct** structures call it |
-| Colour family | Import community — modules that import each other share one of eight traditional Japanese hues |
+| Colour family | Import community — the eight largest groups of mutually-importing modules each get one of eight traditional Japanese hues; smaller groups stay neutral rather than share a colour |
 | Nebula tint | Language, at galaxy level |
 | Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
 | Drifting particles | A call the parser proved; a possible call stays still |

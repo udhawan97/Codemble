@@ -12,13 +12,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   out it zoomed back *in*, cutting the visible diagram from 33% to 21%. It now
   drops to the most zoomed-out readable overview: 21% → 61% of the drawing at
   1440x720.
-- **The galaxy opens framed around the code it drew.** The camera was two fixed
-  numbers pointed at the origin, but a project's constellation is not centred
-  there and a camera's field of view is vertical, so the sky opened off-centre
-  with the top 42% of the canvas empty and modules cut off by the bottom and
-  left edges — two of this repository's thirty-two at 1440x720, thirteen at
-  320px. The opening camera is now derived from what the parser actually laid
-  out and from the canvas's real shape. Rotation and zoom limits are unchanged.
 - **A quiz question no longer breaks its identifier in half.** The question is
   the one line in the app that quotes a symbol name, and it was being wrapped by
   a rule written for prose: `ProjectParser` rendered as `Project` / `Parser`
@@ -48,6 +41,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   scoped to a subdirectory — what Codemble itself suggests for large projects —
   a module's short name is already its whole path, so every row said it twice.
   The second line now carries the module's distance from Home instead.
+- **The galaxy is no longer mostly empty space.** How far apart two modules sit
+  inside one constellation and how far apart the constellations sit are the
+  same packing question at two scales, but they were written as two unrelated
+  numbers and had drifted 4.5x apart. On this project that left the sky 98.7%
+  empty — constellation centres a median 728 units apart while the widest
+  constellation measured only 137 across — so the camera had to stand back far
+  enough to frame all that void and every system arrived as a speck. The
+  spacings are now tied together, which shrinks this project's galaxy by 46%
+  without ever putting two systems closer than they already were. Nothing
+  re-dims: 104 of 117 regions moved and not one signature changed, because a
+  region's saved progress is keyed to its file contents and never to where it
+  sits in the sky.
+- **A relationship Codemble could not prove is now visibly broken in the galaxy,
+  not just a different colour.** The 2D diagram has always drawn an unproven
+  import or call as a dashed line, but in 3D the only thing separating "we
+  proved this call" from "this might be a call" was the shade of the line — so
+  the distinction disappeared for anyone with colour-blindness, on a dim
+  screen, or in any greyscale screenshot. "Possible call" is the one claim a
+  learner must never read as fact, so it now carries a shape as well as a
+  colour: unproven routes are dashed on every layer. They still follow the same
+  curve, still light up when you hover the structure they touch, and still
+  never carry the drifting particles that mean a proven call.
+- **Two unrelated parts of your project no longer wear the same colour.** Hue is
+  supposed to answer "which part of the project is this?", but the colour was
+  picked by wrapping the community's id around the eight-colour palette. Any
+  project with more than eight communities therefore handed the same hue to
+  groups that share nothing — on this repository thirty-nine communities
+  collapsed onto eight colours, with five different groups all rendering as the
+  same one. Tracking a group by its colour quietly gave the wrong answer, and
+  nothing on screen said so. The eight **largest** communities now take the
+  eight colours and every smaller group keeps the plain brightness ramp, so a
+  colour names exactly one group and "no colour" honestly means "not one of this
+  project's main groups". Filtering by language can no longer repaint the sky
+  either: the assignment is made once over the whole project, in the graph.
+- **The galaxy opens showing your whole charted sky.** The camera used a fixed
+  distance chosen once, so a project whose map grew past it lost its near edge
+  *behind* the camera — on this repository 15 of 113 modules were not merely
+  cropped but absent, and another 16 sat off screen, with no hint that anything
+  was missing. The camera now works out how far back it needs to be from the
+  modules themselves, and does it again when the window changes shape, unless
+  you have moved the camera yourself. Module names that would hang off the edge
+  of the canvas are no longer drawn there.
 - **Codemble no longer reports its own bundled app as a file it could not
   read.** The count of unsupported source files asked whether any adapter had
   *claimed* a file, which is not the same question as whether any adapter

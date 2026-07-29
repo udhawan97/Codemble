@@ -2,12 +2,17 @@ import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { frameNodes } from "./cameraFraming.js";
+import { cameraPositionAt, framingDistance } from "./cameraFraming.js";
 import { attachBloom, prefersReducedMotion, runNebulaDawn } from "./galaxyEffects.js";
 import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
 import { LEVELS, galaxyData, linkLabel, nebulaTintKey, nodeLabel, systemData } from "./graphData.js";
 import { createNameAtlas } from "./nameAtlas.js";
 import { guardOrbitPointerState } from "./orbitPointerGuard.js";
+import {
+  createPossibleRoute,
+  refreshPossibleRoutes,
+  updateRouteGeometry,
+} from "./possibleRoutes.js";
 import {
   createSystemOrbitGuides,
   disposeSystemOrbitGuides,
@@ -27,15 +32,84 @@ const CAMERA_BOUNDS = {
   SYSTEM: { min: 55, max: 320 },
   STUDY: { min: 22, max: 170 },
 };
-// Rise over run along +z, lifted verbatim from the fixed camera positions this
-// replaces (galaxy 105/310, system 52/150) so every level keeps the shallow
-// look-down it has always been drawn at. Only the distance and the target are
-// derived now -- see cameraFraming.js for why they had to be.
-const CAMERA_PITCH = {
-  GALAXY: 105 / 310,
-  SYSTEM: 52 / 150,
-  STUDY: 52 / 150,
+// The tilt each level is viewed from. Only the direction is art direction; the
+// distance along it is measured from the nodes, because a layout that grows
+// past a hardcoded distance puts its own far side behind the camera. Their
+// lengths remain the fallback for a level with nothing to measure.
+const CAMERA_VIEW = {
+  GALAXY: { x: 0, y: 105, z: 310 },
+  SYSTEM: { x: 0, y: 52, z: 150 },
 };
+// How much further than the whole project's fitted distance the learner may
+// pull back. Enough for some space around it, not enough to lose it.
+const ZOOM_OUT_HEADROOM = 1.15;
+const ORIGIN = { x: 0, y: 0, z: 0 };
+
+/** Layout coordinates are fixed by the graph layer, so fx/fy/fz are the truth. */
+const layoutPoints = (nodes) =>
+  nodes.map((node) => ({
+    x: node.fx ?? node.x ?? 0,
+    y: node.fy ?? node.y ?? 0,
+    z: node.fz ?? node.z ?? 0,
+  }));
+
+/**
+ * Where the camera sits for a level, and the clamps that then hold it there.
+ * Measured from the nodes rather than hardcoded: a project whose layout grows
+ * past a fixed distance pushes its own near edge behind the camera, and a node
+ * behind the camera is not cropped, it is gone.
+ */
+/**
+ * The four cardinal points of each orbit guide. A guide is a circle through
+ * the planets on its layer, so its widest point on screen usually falls
+ * *between* them — fitting the planets alone crops the ring they sit on.
+ */
+const orbitRingPoints = (plan) => {
+  const points = [];
+  for (const layer of plan ?? []) {
+    for (const radius of layer.radii ?? []) {
+      points.push(
+        { x: radius, y: 0, z: 0 },
+        { x: -radius, y: 0, z: 0 },
+        { x: 0, y: 0, z: radius },
+        { x: 0, y: 0, z: -radius },
+      );
+    }
+  }
+  return points;
+};
+
+function frameLevel(level, nodes, { fov, aspect }, orbitPlan) {
+  const view = CAMERA_VIEW[level] ?? CAMERA_VIEW.GALAXY;
+  const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
+  const rings = level === LEVELS.GALAXY ? [] : orbitRingPoints(orbitPlan);
+  const fit = (subset) =>
+    framingDistance({
+      points: [...layoutPoints(subset), ...rings],
+      direction: view,
+      fov,
+      aspect,
+    });
+
+  // Open on the sky the learner is meant to read. Fitting all 113 systems
+  // instead framed the whole disc and left the charted core a thumbnail --
+  // technically nothing off screen, nothing legible either. Show all makes
+  // every region charted, so that case still fits the lot.
+  const charted = nodes.filter((node) => node.charted);
+  const whole = fit(nodes);
+  const distance = (charted.length ? fit(charted) : null) ?? whole ?? Math.hypot(view.x, view.y, view.z);
+  return {
+    position: cameraPositionAt(view, distance) ?? view,
+    // Keeps the promise the bounds comment above makes: the distance a level
+    // opens at always sits inside the range it is held to, at any project size.
+    min: Math.min(bounds.min, distance),
+    // Far enough back to reach the uncharted rim. Progressive reveal draws
+    // those regions faint, never removes them, so the camera must be able to
+    // get to them even though it does not open there.
+    max: Math.max(bounds.max, (whole ?? distance) * ZOOM_OUT_HEADROOM),
+  };
+}
+
 // Never straight down and never edge-on: at 0 the galaxy plane collapses to a
 // line, and past ~86 degrees the learner is under the plane looking up at a sky
 // that reads as a different project.
@@ -78,6 +152,8 @@ export function GalaxyCanvas({
   const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
   const dressingRef = useRef(null);
   const bloomRef = useRef(null);
+  const reframeRef = useRef(null);
+  const userFramedRef = useRef(false);
   const focusedIdRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
@@ -186,6 +262,20 @@ export function GalaxyCanvas({
         .linkOpacity(0.5)
         .linkWidth(linkWidth)
         .linkCurvature(0.12)
+        // Uncertainty gets a SHAPE channel, not just an ink. A proven route is
+        // the library's own cylinder; an unproven one is a dashed line we own,
+        // because a cylinder mesh cannot be dashed. Colour alone vanishes under
+        // colour-blindness and in any greyscale capture, and "possible call" is
+        // the one claim a learner must never misread as proven.
+        .linkThreeObject((link) =>
+          link.certain ? null : createPossibleRoute(link, linkColor(link)),
+        )
+        .linkPositionUpdate((object, { start, end }, link) =>
+          // Falsy hands the link back to the library's own positioning; truthy
+          // means we placed it ourselves, which is the only way the dash phase
+          // gets measured (the library never calls computeLineDistances).
+          link.certain ? false : updateRouteGeometry(object, link.__curve, start, end),
+        )
         .linkVisibility((link) => !(mode === "easy" && link.focusDim))
         .linkHoverPrecision(4)
         .linkDirectionalArrowRelPos(1)
@@ -227,31 +317,26 @@ export function GalaxyCanvas({
       controls.minPolarAngle = MIN_POLAR_ANGLE;
       controls.maxPolarAngle = MAX_POLAR_ANGLE;
       controlsRef.current = controls;
+      // Once the learner has moved the camera themselves, a later resize must
+      // not snap their view back to the default fit.
+      const markUserFramed = () => {
+        userFramedRef.current = true;
+      };
+      controls.addEventListener("start", markUserFramed);
       const removePointerGuard = guardOrbitPointerState(host, controls);
 
       bloomRef.current = attachBloom(renderer);
       rendererRef.current = renderer;
 
       const resize = new ResizeObserver(([entry]) => {
-        renderer.width(entry.contentRect.width).height(entry.contentRect.height);
+        const { width, height } = entry.contentRect;
+        renderer.width(width).height(height);
+        if (!userFramedRef.current && height > 0) reframeRef.current?.(width / height);
       });
       resize.observe(host);
-      // A fresh renderer re-mounted into a host of the SAME size -- every
-      // Map -> Galaxy round trip -- was observed opening as a black canvas that
-      // any pointer, key or 1px window resize repaired instantly. That points at
-      // a size that was never applied rather than at a camera pointing the wrong
-      // way, so the size is applied once here instead of waiting for the
-      // observer's first callback. Cheap and idempotent; the observer still owns
-      // every later change.
-      //
-      // Honest limit: this reproduced twice in one Chromium build and not at all
-      // in another, so it is a plausible fix for a race, not a confirmed one.
-      const initial = host.getBoundingClientRect();
-      if (initial.width && initial.height) {
-        renderer.width(initial.width).height(initial.height);
-      }
       return () => {
         resize.disconnect();
+        controls.removeEventListener("start", markUserFramed);
         cancelAnimationFrame(hideNavigationHint);
         removePointerGuard();
         renderer.pauseAnimation();
@@ -292,32 +377,36 @@ export function GalaxyCanvas({
     // is about to be held to. cameraPosition's lookAt writes controls.target
     // directly now that controls are enabled (three-render-objects setLookAt),
     // which is what re-anchors the orbit on every level change for free.
-    const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
-    if (controlsRef.current) {
-      controlsRef.current.minDistance = bounds.min;
-      controlsRef.current.maxDistance = bounds.max;
-    }
-    // Frame what the parser actually laid out, at this canvas's real aspect.
-    // Falls back to the old constants when there is nothing measurable yet --
-    // an unmounted canvas or an empty focus -- so the camera never flies
-    // somewhere arbitrary just because a measurement was not ready.
-    const framed = frameNodes({
-      nodes: data.nodes,
-      width: renderer.width(),
-      height: renderer.height(),
-      fov: renderer.camera().fov,
-      pitch: CAMERA_PITCH[level] ?? CAMERA_PITCH.GALAXY,
-      bounds,
-    });
-    if (framed) {
-      renderer.cameraPosition(framed.position, framed.target, CAMERA_DURATION);
-    } else if (level === LEVELS.GALAXY) {
-      renderer.cameraPosition({ x: 0, y: 105, z: 310 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
-    } else {
-      renderer.cameraPosition({ x: 0, y: 52, z: 150 }, { x: 0, y: 0, z: 0 }, CAMERA_DURATION);
-    }
+    // The aspect is passed in rather than read from camera.aspect: the library
+    // batches width/height and applies them on its next tick, so the camera
+    // still carries the previous viewport at the moment a resize is handled.
+    const applyFraming = (duration, aspect) => {
+      const framed = frameLevel(
+        level,
+        data.nodes,
+        {
+          fov: renderer.camera()?.fov,
+          aspect: aspect || renderer.width() / (renderer.height() || 1),
+        },
+        orbitPlan,
+      );
+      if (controlsRef.current) {
+        controlsRef.current.minDistance = framed.min;
+        controlsRef.current.maxDistance = framed.max;
+      }
+      renderer.cameraPosition(framed.position, ORIGIN, duration);
+    };
+    applyFraming(CAMERA_DURATION);
+    // A resize changes the aspect, and with it what fits; re-frame from the
+    // observer unless the learner has taken the camera themselves, in which
+    // case their view is the one worth keeping.
+    userFramedRef.current = false;
+    reframeRef.current = (aspect) => applyFraming(0, aspect);
     setFocusedIndex(0);
-  }, [data, level, mode]);
+    return () => {
+      reframeRef.current = null;
+    };
+  }, [data, level, mode, orbitPlan]);
 
   useEffect(() => {
     focusedIdRef.current = data.nodes[focusedIndex]?.id ?? null;
@@ -423,6 +512,11 @@ export function GalaxyCanvas({
       .linkColor(renderer.linkColor())
       .linkWidth(renderer.linkWidth())
       .linkDirectionalArrowColor(renderer.linkDirectionalArrowColor());
+    // A dashed route owns its material, so `linkColor` no longer reaches it the
+    // way it reaches a library-built link. Without this, hovering a system lit
+    // its proven routes and left its unproven ones dark -- which would have
+    // made uncertainty look like irrelevance.
+    refreshPossibleRoutes(renderer.scene(), linkColor);
   }, [data, hoverNodeId, level, selectedNode?.id]);
 
   const nameAtlas = useMemo(() => createNameAtlas(data.nodes), [data.nodes]);

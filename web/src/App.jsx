@@ -14,7 +14,7 @@ import { ModeControl } from "./ModeControl.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import {
   LEVELS,
-  communityPaletteIndex,
+  communityFamilyIndex,
   conceptTitle,
   defaultRegion,
   groupByCommunity,
@@ -94,13 +94,6 @@ export function App() {
       const current = session.getSnapshot();
       if (
         current.status !== "ready" ||
-        current.layer !== "map" ||
-        current.level === LEVELS.GALAXY ||
-        current.showChart ||
-        current.finderOpen ||
-        current.sidebarOpen ||
-        current.showChecks ||
-        current.entrypointOpen ||
         // Native dialogs (audience gate, coach marks, confirms) own Escape.
         document.querySelector("dialog[open]") ||
         // So does an open rail disclosure, which closes on Escape and returns
@@ -114,6 +107,26 @@ export function App() {
       ) {
         return;
       }
+      // An open panel is dismissed before the level retreats, and exactly one
+      // of them acts. These used to be bail-outs, on the theory that each panel
+      // would own the key from its own subtree -- but the checks panel and the
+      // module index never claimed it, so Escape there did nothing at all while
+      // the coach marks teach "Escape to come back". Handling them here rather
+      // than in each subtree is the same reason this listener is on the window
+      // at all: the common Easy path leaves focus on <body> or on a panel that
+      // has just unmounted, and a container keydown never hears that.
+      if (current.showChecks) {
+        event.preventDefault();
+        session.dispatch({ type: "CLOSE_CHECKS" });
+        return;
+      }
+      if (current.sidebarOpen) {
+        event.preventDefault();
+        closeModules();
+        return;
+      }
+      if (current.finderOpen || current.showChart || current.entrypointOpen) return;
+      if (current.layer !== "map" || current.level === LEVELS.GALAXY) return;
       event.preventDefault();
       session.dispatch({ type: "RETREAT" });
     }
@@ -167,14 +180,16 @@ export function App() {
     studyError,
   } = state;
 
-  // Region id -> palette slot for the Map's box tints. Derived once per
-  // focused graph; the arithmetic lives in graphData so the galaxy's colours
-  // and the Map's can never disagree about a community's family.
+  // Region id -> palette slot for the Map's box tints. The family itself is
+  // assigned by the graph layer over the WHOLE project, so reading it off the
+  // focused graph is safe: filtering by language hides regions but can never
+  // change which family the survivors belong to. Deriving the family here
+  // instead would have repainted the sky on every focus change.
   const communityIndexByRegion = useMemo(() => {
     if (!focusedGraph) return null;
     const byRegion = new Map();
     for (const item of focusedGraph.regions) {
-      const index = communityPaletteIndex(item.community);
+      const index = communityFamilyIndex(item.community_family);
       if (index !== null) byRegion.set(item.id, index);
     }
     return byRegion;
@@ -1405,20 +1420,7 @@ function IndexSidebar({ index, currentRegionId, onGo, onClose }) {
     closeButtonRef.current?.focus();
   }, []);
   return (
-    <aside
-      className="index-sidebar"
-      aria-label="Project index"
-      // Same story as the checks panel: the window-level handler bails while
-      // `sidebarOpen` is set so this subtree can own Escape, and nothing here
-      // ever claimed it. stopPropagation because that handler reads the session
-      // at event time, and by then this close has cleared the flag it bails on.
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") return;
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }}
-    >
+    <aside className="index-sidebar" aria-label="Project index">
       <header>
         <h2>Modules</h2>
         <button
@@ -1786,23 +1788,6 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
     <aside
       className="check-panel"
       aria-label="Graph-derived understanding checks"
-      // The window-level handler bails while showChecks is set so that the
-      // panel can own Escape -- but nothing here ever claimed it, so Escape did
-      // nothing at all: it neither closed the quiz nor stepped back a level,
-      // while the app's own coach marks teach "Escape to come back". The Close
-      // button is not the answer on its own; it scrolls out of the panel as
-      // soon as the learner reaches the options.
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") return;
-        event.preventDefault();
-        // stopPropagation, not just preventDefault: the window-level handler
-        // bails while `showChecks` is set, but it reads the session at event
-        // time and this close has already cleared it by then, so one Escape
-        // closed the quiz AND retreated a level. The same double-fire the rail
-        // disclosure had, arriving the same way.
-        event.stopPropagation();
-        onClose();
-      }}
     >
       <header className="check-panel__header">
         <div>
