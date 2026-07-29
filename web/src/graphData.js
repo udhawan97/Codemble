@@ -48,7 +48,6 @@ export function languageFocusMap(mapData, language) {
   const boxes = architecture.boxes.filter((box) => box.language === language);
   const keptBoxIds = new Set(boxes.map((box) => box.id));
   const workflow = mapData.workflow;
-  const prefix = `${language}:`;
   return {
     ...mapData,
     architecture: {
@@ -69,10 +68,12 @@ export function languageFocusMap(mapData, language) {
       // dropped simply loses its connector (WorkflowTree derives edges from
       // row.parent and returns null when the parent is gone) and stays put.
       nodes: workflow.nodes.filter((row) => row.language === language),
-      // Unreached rows are never emitted, so they carry no language field here.
-      // Node ids are minted `<language>:<file>:<symbol>` -- the same invariant
-      // the galaxy focus keys off -- so the prefix is their honest language test.
-      unreachable: workflow.unreachable.filter((id) => id.startsWith(prefix)),
+      // Map schema 4: an unreached row states its own language, the same test
+      // the rows above use. It was filtered by an `id.startsWith("<language>:")`
+      // prefix, which is the JS/TS adapter's private id convention -- Python
+      // mints dotted module paths -- so focusing Python reported none of its
+      // never-called structures.
+      unreachable: workflow.unreachable.filter((row) => row.language === language),
     },
   };
 }

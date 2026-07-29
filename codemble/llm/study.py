@@ -5,13 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import tokenize
 import tomllib
 from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 
 from codemble.adapters.base import Edge, Graph, Node
+from codemble.adapters.source_text import read_source_text
 from codemble.lens import lens_notes
 from codemble.llm.providers import (
     RECOMMENDED_MODEL,
@@ -215,12 +215,7 @@ class StudyService:
         if not source_path.is_relative_to(self._project_root) or not source_path.is_file():
             raise StudySourceError("The parser-proven source file is no longer available.")
         try:
-            if node.language == "python":
-                with tokenize.open(source_path) as source_file:
-                    source_text = source_file.read()
-            else:
-                source_text = source_path.read_bytes().decode("utf-8", errors="replace")
-            all_lines = source_text.splitlines()
+            all_lines = read_source_text(source_path, node.language).splitlines()
         except (OSError, SyntaxError, UnicodeDecodeError) as error:
             raise StudySourceError("The parser-proven source could not be decoded safely.") from error
         start = max(1, node.lineno)

@@ -106,16 +106,23 @@ const mapData = {
     ],
     unreachable: ["js"],
   },
+  // Ids are minted the way the adapters actually mint them: the JS/TS adapter
+  // prefixes `<language>:<file>`, the Python adapter emits a dotted module
+  // path with no prefix at all. The old fixture spelled Python ids the JS way,
+  // which is why it agreed with a filter that could not work on a real project.
   workflow: {
-    root: "python:py:run",
+    root: "py.run",
     depth_count: 2,
     width: 320,
     height: 68,
     nodes: [
-      { id: "python:py:run", language: "python", x: 0, y: 0, parent: null },
-      { id: "typescript:ts:main", language: "typescript", x: 28, y: 34, parent: "python:py:run" },
+      { id: "py.run", language: "python", x: 0, y: 0, parent: null },
+      { id: "typescript:ts.ts::main", language: "typescript", x: 28, y: 34, parent: "py.run" },
     ],
-    unreachable: ["javascript:js:helper", "python:py:dead"],
+    unreachable: [
+      { id: "javascript:js.js::helper", language: "javascript" },
+      { id: "py.dead", language: "python" },
+    ],
   },
 };
 
@@ -144,7 +151,7 @@ assert.equal(pyMap.architecture.width, 960, "canvas dimensions are backend-owned
 assert.equal(pyMap.architecture.height, 240);
 assert.deepEqual(
   pyMap.workflow.nodes.map((row) => row.id),
-  ["python:py:run"],
+  ["py.run"],
   "only the focused language's workflow rows survive",
 );
 assert.equal(
@@ -153,18 +160,23 @@ assert.equal(
   "a surviving row keeps its object and coordinates",
 );
 assert.deepEqual(
-  pyMap.workflow.unreachable,
-  ["python:py:dead"],
-  "unreached rows have no language field, so their language:file:symbol id prefix filters them",
+  pyMap.workflow.unreachable.map((row) => row.id),
+  ["py.dead"],
+  "an unreached row states its own language, so a Python id with no prefix survives the focus",
 );
-assert.equal(pyMap.workflow.root, "python:py:run", "the backend root is untouched");
+assert.deepEqual(
+  languageFocusMap(mapData, "javascript").workflow.unreachable.map((row) => row.id),
+  ["javascript:js.js::helper"],
+  "and a prefixed id is matched on the same field, not on its spelling",
+);
+assert.equal(pyMap.workflow.root, "py.run", "the backend root is untouched");
 assert.equal(mapData.architecture.boxes.length, 4, "projection never mutates the map payload");
 assert.equal(mapData.workflow.nodes.length, 2);
 
 const tsMap = languageFocusMap(mapData, "typescript");
 assert.deepEqual(tsMap.architecture.boxes.map((box) => box.id), ["ts"]);
 assert.deepEqual(tsMap.architecture.edges, [], "ts's only edges point at dropped boxes, so none survive");
-assert.deepEqual(tsMap.workflow.nodes.map((row) => row.id), ["typescript:ts:main"]);
+assert.deepEqual(tsMap.workflow.nodes.map((row) => row.id), ["typescript:ts.ts::main"]);
 
 assert.deepEqual(
   projectLanguageOptions(graph).map(({ id, count }) => [id, count]),

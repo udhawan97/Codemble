@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from codemble.adapters.base import Edge, Graph, Node
+from codemble.adapters.project import ProjectParser
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.graph import build_map, finalize_graph
 from codemble.graph.mapview import _MAX_COLUMNS, MAP_SCHEMA_VERSION
@@ -18,8 +19,8 @@ def test_map_payload_is_byte_stable_for_one_graph() -> None:
     second = build_map(PythonAstAdapter().parse(FIXTURE))
 
     assert json.dumps(first, sort_keys=True) == json.dumps(second, sort_keys=True)
-    assert first["schema_version"] == 3
-    assert MAP_SCHEMA_VERSION == 3
+    assert first["schema_version"] == 4
+    assert MAP_SCHEMA_VERSION == 4
     assert all(len(edge["points"]) >= 2 for edge in first["architecture"]["edges"])
 
 
@@ -179,8 +180,9 @@ def test_workflow_expands_the_entrypoint_and_names_every_relation() -> None:
     assert ("pkg.util.normalize", 3, "calls", True, None) in rows
     assert ("pkg.util.normalize", 3, "calls", True, "repeat") in rows
     assert workflow["depth_count"] == 4
-    assert "ambiguous.invoke" in workflow["unreachable"]
-    assert "app.main" not in workflow["unreachable"]
+    unreachable_ids = [row["id"] for row in workflow["unreachable"]]
+    assert "ambiguous.invoke" in unreachable_ids
+    assert "app.main" not in unreachable_ids
 
 
 def test_cycles_are_cut_deterministically_and_stay_visible(tmp_path: Path) -> None:
@@ -447,3 +449,25 @@ def _segment_crosses_box_interior(
             max(start[0], end[0]), right
         )
     raise AssertionError("backend routes must be orthogonal")
+
+
+def test_workflow_unreachable_rows_carry_their_own_language() -> None:
+    """A row must say what language it is, not spell it in its id.
+
+    The renderer filtered these by an ``id.startsWith("<language>:")`` prefix,
+    which is the JS/TS adapter's private id convention. Python ids are dotted
+    module paths, so focusing Python on a mixed project reported zero
+    never-called structures when the truth was two -- a count the learner has
+    no way to check.
+    """
+
+    graph = ProjectParser().parse(Path(__file__).parent / "fixtures" / "polyglot")
+
+    unreachable = build_map(graph)["workflow"]["unreachable"]
+    language_by_id = {node.id: node.language for node in graph.nodes}
+
+    assert unreachable, "the polyglot fixture must have never-called structures"
+    assert all(row["language"] == language_by_id[row["id"]] for row in unreachable)
+    assert {row["language"] for row in unreachable} >= {"python", "javascript"}
+    # The exact failure: no Python id carries the prefix the renderer assumed.
+    assert not any(row["id"].startswith("python:") for row in unreachable)

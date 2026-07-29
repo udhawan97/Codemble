@@ -12,7 +12,7 @@ from pathlib import PurePosixPath
 
 from codemble.adapters.base import Graph, RegionEdge
 
-MAP_SCHEMA_VERSION = 3
+MAP_SCHEMA_VERSION = 4
 
 _MAP_WIDTH = 960.0
 _ROW_HEIGHT = 120.0
@@ -371,7 +371,7 @@ def _workflow(graph: Graph) -> dict[str, object]:
         calls[edge.src][edge.dst] = calls[edge.src].get(edge.dst, False) or edge.certain
         # Only a certain call claims a same-region member for nested "calls"
         # placement -- a "possible" call must never suppress a member's
-        # top-level "defines" row, mirroring layout.py's _call_depths, which
+        # top-level "defines" row, mirroring layout.py's _call_layers, which
         # excludes certain=False edges from deciding orbit placement.
         if edge.certain:
             called_by[edge.dst].add(edge.src)
@@ -464,7 +464,15 @@ def _workflow(graph: Graph) -> dict[str, object]:
         "width": _rounded(max(depth_count, 1) * _TREE_INDENT + _TREE_LABEL_WIDTH),
         "height": _rounded(max(len(rows), 1) * _TREE_ROW),
         "nodes": rows,
-        "unreachable": sorted(node_id for node_id in nodes if node_id not in emitted),
+        # Each row states its own language rather than spelling it in its id.
+        # The renderer filtered these with `id.startsWith("<language>:")`, which
+        # is the JS/TS adapter's private id convention -- Python mints dotted
+        # module paths -- so focusing Python reported zero never-called
+        # structures where the truth was two.
+        "unreachable": [
+            {"id": node_id, "language": nodes[node_id].language}
+            for node_id in sorted(node_id for node_id in nodes if node_id not in emitted)
+        ],
     }
 
 
