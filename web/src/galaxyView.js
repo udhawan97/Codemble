@@ -20,8 +20,8 @@
  * result depends on nothing but the arguments.
  */
 
-import { cameraPositionAt, framingDistance } from "./cameraFraming.js";
-import { LEVELS, isCharted } from "./graphData.js";
+import { cameraPositionAt, frameAround, framingDistance } from "./cameraFraming.js";
+import { LEVELS, drawnRadius, isCharted } from "./graphData.js";
 
 /** How long the camera takes to move between levels, in milliseconds. */
 export const CAMERA_DURATION = 420;
@@ -78,12 +78,21 @@ export function viewportAspect(size) {
   return width / height;
 }
 
-/** Layout coordinates are fixed by the graph layer, so fx/fy/fz are the truth. */
+/**
+ * Layout coordinates are fixed by the graph layer, so fx/fy/fz are the truth.
+ *
+ * Each carries the radius of what is DRAWN there. A coordinate is a star's
+ * centre and a star reaches well past it, so fitting the coordinates alone fits
+ * the centres and crops the stars -- harmless while the camera stood further
+ * back than it needed to, and immediately visible once the aim was corrected
+ * and the standoff shrank with it.
+ */
 const layoutPoints = (nodes) =>
   nodes.map((node) => ({
     x: node.fx ?? node.x ?? 0,
     y: node.fy ?? node.y ?? 0,
     z: node.fz ?? node.z ?? 0,
+    radius: drawnRadius(node),
   }));
 
 /**
@@ -117,10 +126,12 @@ const orbitRingPoints = (plan) => {
  * @param {Array}  [options.orbitPlan] Layers whose guide circles must also fit.
  * @param {number} [options.fov]      Vertical field of view, in degrees.
  * @param {number} [options.aspect]   From `viewportAspect`, never from a camera.
- * @returns {{position: {x,y,z}, distance: number, min: number, max: number, fitted: boolean}}
- *   `distance` is the magnitude of `position`, returned rather than left for
- *   the caller to re-derive with `Math.hypot` -- the same number twice is the
- *   habit this module exists to break, and the two disagree in the last bit.
+ * @returns {{position: {x,y,z}, target: {x,y,z}, distance: number, min: number, max: number, fitted: boolean}}
+ *   `distance` is the magnitude of `position - target`, returned rather than
+ *   left for the caller to re-derive with `Math.hypot` -- the same number twice
+ *   is the habit this module exists to break, and the two disagree in the last
+ *   bit. `target` is what the camera looks at and what the orbit then swings
+ *   around; it is measured, not assumed to be the origin.
  *   `fitted` is false when nothing could be measured -- no aspect, no fov, or
  *   no nodes -- and the level opens at its art-directed default instead. The
  *   caller is told which it got rather than having to guess.
@@ -130,13 +141,9 @@ export function frameLevel({ level, nodes, orbitPlan, fov, aspect }) {
   const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
   const rings = level === LEVELS.GALAXY ? [] : orbitRingPoints(orbitPlan);
   const subjects = Array.isArray(nodes) ? nodes : [];
-  const fit = (subset) =>
-    framingDistance({
-      points: [...layoutPoints(subset), ...rings],
-      direction: view,
-      fov,
-      aspect,
-    });
+  const pointsFor = (subset) => [...layoutPoints(subset), ...rings];
+  const aim = (subset) =>
+    frameAround({ points: pointsFor(subset), direction: view, fov, aspect });
 
   // Open on the sky the learner is meant to read. Fitting all 113 systems
   // instead framed the whole disc and left the charted core a thumbnail --
@@ -144,11 +151,26 @@ export function frameLevel({ level, nodes, orbitPlan, fov, aspect }) {
   // already decides what is worth reading, so the camera follows it. Show all
   // charts every region, so that case fits the lot with no special case.
   const charted = subjects.filter(isCharted);
-  const whole = fit(subjects);
-  const measured = (charted.length ? fit(charted) : null) ?? whole;
-  const distance = measured ?? Math.hypot(view.x, view.y, view.z);
+  const measured = (charted.length ? aim(charted) : null) ?? aim(subjects);
+  const target = measured?.target ?? { x: 0, y: 0, z: 0 };
+  const distance = measured?.distance ?? Math.hypot(view.x, view.y, view.z);
+  const offset = cameraPositionAt(view, distance) ?? view;
+  // The ceiling is measured from the same point the camera is aimed at, or it
+  // would be a reach computed from somewhere the camera never sits.
+  const whole = framingDistance({
+    points: pointsFor(subjects).map((p) => ({
+      x: p.x - target.x,
+      y: p.y - target.y,
+      z: p.z - target.z,
+      radius: p.radius,
+    })),
+    direction: view,
+    fov,
+    aspect,
+  });
   return {
-    position: cameraPositionAt(view, distance) ?? view,
+    position: { x: target.x + offset.x, y: target.y + offset.y, z: target.z + offset.z },
+    target,
     distance,
     min: Math.min(bounds.min, distance),
     // Far enough back to reach the uncharted rim. Progressive reveal draws

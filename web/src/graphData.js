@@ -642,6 +642,35 @@ function sizeFromLoc(loc, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, Math.sqrt(Math.max(1, loc)) * 1.15));
 }
 
+/** Volume per unit of `val`, handed to the renderer as `nodeRelSize`. */
+export const NODE_REL_SIZE = 1.6;
+// The halo sprite is scaled to this multiple of the sphere's DIAMETER, so a
+// star's glow reaches this many halves of its radius from its centre.
+const HALO_SCALE = 6.5;
+
+/** The sphere drawn for a node, in world units. */
+export function nodeRadius(node) {
+  return Math.cbrt(node?.val ?? 1) * NODE_REL_SIZE;
+}
+
+/**
+ * How far a node's glow reaches from the point the layout gives it.
+ *
+ * A layout coordinate is the star's centre, not its extent, and a star is drawn
+ * far larger than a point: on this project the sphere is 2.7-4.6 units and the
+ * halo around it reaches 9-15. Framing the coordinates alone therefore fits the
+ * centres and crops the stars -- invisible while the camera stood further back
+ * than it needed to, and immediately visible once the aim was corrected and the
+ * standoff shrank with it.
+ *
+ * The nebula (14x) is deliberately not counted. It is a soft language wash with
+ * no edge to clip, and reserving room for it would push every sky back by a
+ * third to protect something no one can see the boundary of.
+ */
+export function drawnRadius(node) {
+  return (nodeRadius(node) * HALO_SCALE) / 2;
+}
+
 // Two very different domains share this ramp, so each names its own top step.
 // A region's centrality is the SUM over its members (0..86 on this repo); a
 // single structure's is its count of DISTINCT callers (0..26, and 96% of nodes

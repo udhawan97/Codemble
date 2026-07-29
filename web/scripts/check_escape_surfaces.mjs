@@ -33,6 +33,10 @@ const browser = await chromium.launch({
   args: ["--use-angle=swiftshader", "--enable-webgl"],
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+// A control that has been renamed or removed should fail this gate, not hang
+// it. Playwright's 30s default, times a dozen locators, is long enough to read
+// as a stuck job rather than a broken one.
+page.setDefaultTimeout(15_000);
 
 const results = [];
 const record = (surface, note, ok) => results.push({ surface, note, ok });
@@ -70,9 +74,21 @@ const click = async (name) => {
   return true;
 };
 
+/**
+ * Press Escape and wait for the shell to settle, rather than for a fixed delay.
+ *
+ * A hard sleep cannot measure this: focus return is deferred, and how long that
+ * takes depends on how busy the page is. Tracing this repository under software
+ * WebGL, the settle ranged from 0.4s to 4.4s -- so any constant is either flaky
+ * or slow. Waiting for the condition is neither, and still fails if focus never
+ * arrives at all.
+ */
 const escape = async () => {
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(450);
+  await page
+    .waitForFunction(() => document.activeElement !== document.body, null, { timeout: 6000 })
+    .catch(() => {});
+  await page.waitForTimeout(150);
   return state();
 };
 

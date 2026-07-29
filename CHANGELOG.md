@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **Focus comes back immediately after closing a panel, not a second later.**
+  Returning focus was tied to the galaxy drawing its next frame, so on a busy
+  scene it arrived up to four seconds after the key — measured on this project.
+  It no longer waits for anything to be drawn.
 - **Closing the quiz no longer strands the keyboard.** Every other panel hands
   focus back to the control that opened it; the quiz dropped it, so a learner
   who had just worked through a region by keyboard was left with focus nowhere
@@ -75,6 +79,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   in that shape — so focusing Python said zero where the truth was two. A count
   is the one thing a note like that exists to get right, and it is not something
   you could have checked. Each row now states its own language.
+- **The galaxy opens centred on your code instead of pinned to a corner.** The
+  camera had learned how far back to stand, but it still stared at a fixed point
+  — the origin — and a project's modules are not arranged around it. On this
+  repository that left the sky sitting low and left, with the top 42% of the
+  window empty, a third of the width unused, and the lowest module cut off by
+  the bottom edge. It now aims at what it is showing you. Because a centred
+  subject needs less room around it, the sky also arrives larger: it fills 90%
+  of the window's height where it used to fill 63%, and two more module names
+  fit on screen. Stars are no longer trimmed at the edges either — the framing
+  had been measuring where each star's centre is, not how far its glow reaches.
 - **The galaxy is less likely to open on a view you cannot read.** The camera
   measures the sky each time rather than sitting at a fixed distance, and the
   three faults that measurement has already been through are now covered by

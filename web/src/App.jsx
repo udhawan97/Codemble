@@ -195,17 +195,24 @@ export function App() {
     return byRegion;
   }, [focusedGraph]);
 
+  // Deferred to a task, not to a frame. Focus is a DOM operation and needs
+  // nothing painted -- it only has to run after React has committed the close.
+  // `requestAnimationFrame` also waits for the galaxy to render, and a frame is
+  // not 16ms when the scene is heavy: traced against this repository under
+  // software WebGL, frames arrived every 972-3751ms, so focus landed on the
+  // right control 0.4-4.4s after the key. It always arrived, which is why this
+  // never read as broken -- but a keyboard learner pressing Escape and waiting
+  // a second for focus is a real cost, and it grows with the project.
   function restoreRailFocus(primary, secondary) {
-    requestAnimationFrame(() => {
-      const values = [primary, secondary, mobileMenuRef];
-      for (const value of values) {
+    setTimeout(() => {
+      for (const value of [primary, secondary, mobileMenuRef]) {
         const candidate = value && "current" in value ? value.current : value;
         if (candidate?.isConnected && candidate.getClientRects().length) {
           candidate.focus();
           return;
         }
       }
-    });
+    }, 0);
   }
 
   function toggleModules(event) {
@@ -219,7 +226,7 @@ export function App() {
   }
   // Both ways out of the quiz -- Escape and the panel's own control -- so the
   // two cannot drift. Neither returned focus before, which left a keyboard
-  // learner on <body> after proving a region they had just worked through.
+  // learner on <body> after working through a region.
   function closeChecks() {
     session.dispatch({ type: "CLOSE_CHECKS" });
     restoreRailFocus(checksTriggerRef);
