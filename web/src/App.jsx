@@ -26,6 +26,7 @@ import {
   createHttpLearnerSessionAdapter,
   createLearnerSession,
 } from "./learnerSession.js";
+import { escapeAction } from "./escapeArbiter.js";
 import { PARSE_STAGES } from "./projectMapping.js";
 import { createMapViewportStore } from "./mapViewport.js";
 import { systemOrbitPlan } from "./systemOrbits.js";
@@ -91,29 +92,7 @@ export function App() {
   useEffect(() => {
     function onEscape(event) {
       if (event.key !== "Escape") return;
-      const current = session.getSnapshot();
-      if (
-        current.status !== "ready" ||
-        current.layer !== "map" ||
-        current.level === LEVELS.GALAXY ||
-        current.showChart ||
-        current.finderOpen ||
-        current.sidebarOpen ||
-        current.showChecks ||
-        current.entrypointOpen ||
-        // Native dialogs (audience gate, coach marks, confirms) own Escape.
-        document.querySelector("dialog[open]") ||
-        // So does an open rail disclosure, which closes on Escape and returns
-        // focus to its trigger. Its open state is view-local rather than
-        // session state, so it is read the same way the dialog above is. This
-        // always double-fired -- closing the Menu *and* retreating a level --
-        // but only compact widths had a disclosure to open; it now exists at
-        // desktop too, where Escape is the documented way back.
-        document.querySelector(".rail-overflow[data-open]") ||
-        isEditableTarget(document.activeElement)
-      ) {
-        return;
-      }
+      if (escapeAction(escapeFacts(session.getSnapshot()))?.kind !== "retreat") return;
       event.preventDefault();
       session.dispatch({ type: "RETREAT" });
     }
@@ -597,8 +576,13 @@ export function App() {
           // A full-screen takeover with no Escape reads as a trap even when
           // the header carries an exit. StarChart focuses its own heading, so
           // the key lands inside this subtree.
+          // The same arbiter the window handler asks. This carried its own,
+          // shorter copy of the bail list -- it knew about the finder and the
+          // sidebar and nothing else -- which is exactly the duplication that
+          // let the rail disclosure double-fire.
           onKeyDown={(event) => {
-            if (event.key !== "Escape" || finderOpen || sidebarOpen) return;
+            if (event.key !== "Escape") return;
+            if (escapeAction(escapeFacts(session.getSnapshot()))?.surface !== "chart") return;
             event.preventDefault();
             session.dispatch({ type: "HIDE_CHART" });
             restoreRailFocus(chartTriggerRef);
@@ -919,6 +903,36 @@ const STAGE_COPY = Object.fromEntries(
   PARSE_STAGES.map(({ id, copy }) => [id, copy]),
 );
 const STAGE_ORDER = PARSE_STAGES.map(({ id }) => id);
+
+/**
+ * Everything `escapeArbiter` needs, gathered from the session and the document.
+ *
+ * The only place either is read for this decision. Three of these facts have no
+ * session field and genuinely cannot: a native dialog's open state belongs to
+ * the top layer, a rail disclosure's is view-local, and what has focus is the
+ * document's own business. Reading them here keeps the arbiter a pure function
+ * of stated facts rather than a second thing that queries the DOM.
+ *
+ * `canRetreat` is where "the Map is the layer with a documented way back, and
+ * the galaxy level is already the outermost place there is" is stated once.
+ */
+function escapeFacts(snapshot) {
+  return {
+    ready: snapshot.status === "ready",
+    canRetreat: snapshot.layer === "map" && snapshot.level !== LEVELS.GALAXY,
+    showChart: snapshot.showChart,
+    finderOpen: snapshot.finderOpen,
+    sidebarOpen: snapshot.sidebarOpen,
+    showChecks: snapshot.showChecks,
+    entrypointOpen: snapshot.entrypointOpen,
+    // Native dialogs -- the audience gate, coach marks, confirms -- own Escape.
+    nativeDialogOpen: document.querySelector("dialog[open]") !== null,
+    // So does an open rail disclosure, which closes on Escape and returns focus
+    // to its trigger.
+    railDisclosureOpen: document.querySelector(".rail-overflow[data-open]") !== null,
+    editableFocus: isEditableTarget(document.activeElement),
+  };
+}
 
 // The window-level Escape must never hijack typing: a learner clearing a
 // half-typed path in the picker or finder is editing text, not navigating.
