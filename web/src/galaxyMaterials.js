@@ -69,6 +69,9 @@ export function createDressing(palette) {
   const reticleTexture = owned(ringTexture(HALO_TEXTURE_SIZE));
   const haloMaterials = new Map();
   const nebulaMaterials = new Map();
+  // One amber mote material shared by every spark of every dawn. Built lazily,
+  // because most sessions never light a region at all.
+  let sparkMaterial = null;
   // One texture per distinct label string, not per node: a project repeats
   // basenames (index.ts, __init__.py) constantly, and re-rasterising each of
   // 169 names on every graph refresh is the sort of thing that turns a
@@ -130,6 +133,28 @@ export function createDressing(palette) {
       sprite.renderOrder = -2;
       return sprite;
     },
+    /**
+     * The amber mote the dawn runs along a proven route.
+     *
+     * Shares one owned material with every other spark, so a dawn that lights
+     * three routes at once still uploads nothing: the sequence only adds and
+     * removes sprites, and never disposes anything this module lends it.
+     */
+    spark() {
+      if (!sparkMaterial) {
+        sparkMaterial = owned(new THREE.SpriteMaterial({
+          map: haloTexture,
+          color: new THREE.Color(palette.star),
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          depthWrite: false,
+          opacity: 0,
+        }));
+      }
+      const sprite = new THREE.Sprite(sparkMaterial);
+      sprite.renderOrder = 2;
+      return sprite;
+    },
     reticle(radius) {
       const sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
@@ -183,6 +208,7 @@ export function createDressing(palette) {
       releases.length = 0;
       haloMaterials.clear();
       nebulaMaterials.clear();
+      sparkMaterial = null;
       labelMaterials.clear();
     },
   };
