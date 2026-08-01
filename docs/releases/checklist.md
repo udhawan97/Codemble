@@ -11,9 +11,11 @@ fresh-download checksum and isolated install verified.
    `web/package-lock.json`, `docs-site/package.json`.
    `codemble/__init__.py` is **not** on this list and must not be added back:
    `__version__` derives from the installed distribution's metadata, so re-run
-   `pip install -e ".[dev]"` after the bump and the app follows. This step is no
-   longer enforced by a human reading a list — `tests/test_version_agreement.py`
-   fails when any spot, or a stale local install, disagrees with `pyproject.toml`.
+   `pip install -e ".[dev]"` after the bump and the app follows — the smoke test
+   `test_the_running_app_reports_the_packaged_version` fails if it does not.
+   The three npm manifests are deliberately **not** gated and stay a step you
+   have to remember: nothing consumes their `version` field, neither package is
+   published, so a drift there is cosmetic.
 2. Convert the `[Unreleased]` changelog section into a dated release section
    and open a fresh empty `[Unreleased]`.
 3. Write `docs/releases/vX.Y.Z.md` — highlights and, just as importantly, the

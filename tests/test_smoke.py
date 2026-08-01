@@ -1,5 +1,6 @@
 """Smoke tests for package and CLI wiring."""
 
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -9,9 +10,26 @@ from codemble.adapters.project import ProjectParseError
 from codemble.cli import choose_project_scope, main
 from codemble.server.app import _default_web_dist
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
-def test_version() -> None:
-    assert codemble.__version__
+
+def test_the_running_app_reports_the_packaged_version() -> None:
+    """What `codemble --version`, the API and the outbound user-agent report.
+
+    `pyproject.toml` is the source of truth and `__version__` derives from the
+    installed distribution's metadata rather than restating it, so a stale
+    install is the one remaining way the two can drift. Held as a literal it
+    drifted silently: v0.8.0 shipped a wheel whose app called itself 0.7.0.
+    """
+
+    with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
+        declared = tomllib.load(handle)["project"]["version"]
+
+    assert codemble.__version__ == declared, (
+        f"codemble.__version__ is {codemble.__version__!r} but pyproject declares "
+        f"{declared!r}. __version__ reads the installed distribution's metadata, so "
+        'a stale install says this too — re-run `pip install -e ".[dev]"`.'
+    )
 
 
 def test_bare_codemble_serves_the_picker(monkeypatch) -> None:  # type: ignore[no-untyped-def]
