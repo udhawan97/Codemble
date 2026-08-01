@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-01
+
 ### Fixed
 - **Clearing your progress no longer makes a module impossible to light again.**
   "Clear this project's progress" dimmed every module but kept the individual

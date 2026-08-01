@@ -216,7 +216,9 @@ the map retreat. Fixed; 84 pass. Stated as a limitation rather than hidden: at
 over truncating the breadcrumb or demoting a 36px band of widths to the compact
 shell. 266 pytest, Ruff 0.16 clean, 18 frontend contract checks, the space
 budget at 8 widths plus 4 wide widths × 2 levels, 84 escape assertions,
-byte-identical rebuild.
+byte-identical rebuild. Released as **v0.9.0** (`docs/releases/v0.9.0.md`),
+carrying everything accumulated since v0.8.0. The milestone does not advance:
+issue #13 still requires human tester evidence.
 
 Previously: the app stopped misreporting its own version. It was written down
 twice, and v0.8.0 shipped a wheel whose app called itself 0.7.0 — through
