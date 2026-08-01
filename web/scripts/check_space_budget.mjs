@@ -77,6 +77,10 @@ try {
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
       });
+      // A control that has moved or is covered should fail this gate quickly and
+      // name itself, not sit on Playwright's 30s default and then report a
+      // timeout on something unrelated to the assertion being made.
+      page.setDefaultTimeout(12_000);
       try {
         await page.goto(url, { waitUntil: "networkidle" });
         await settleFirstRun(page, register);
@@ -154,6 +158,7 @@ try {
       viewport: { width, height: 720 },
       deviceScaleFactor: 1,
     });
+    page.setDefaultTimeout(12_000);
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleFirstRun(page, "easy", { home: true });
@@ -203,6 +208,7 @@ try {
       viewport: { width: 1440, height: 720 },
       deviceScaleFactor: 1,
     });
+    page.setDefaultTimeout(12_000);
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleFirstRun(page, "easy", { home: true });
@@ -264,24 +270,48 @@ console.log("space-budget contracts passed");
  */
 async function settleFirstRun(page, register, { home = false } = {}) {
   const gate = page.locator("dialog[open]").first();
-  for (let step = 0; step < 4; step += 1) {
-    if ((await gate.count()) === 0) break;
+  // The gates arrive one after another and each one mounts when the previous
+  // one's answer has been round-tripped, so a fixed pause between them is a bet
+  // on how fast the machine is. It lost on CI: the Home dialog had not appeared
+  // 120ms after the audience answer, the loop saw no open dialog and stopped,
+  // and the *next* click was then intercepted by the dialog that arrived a
+  // moment later. Wait for each one to actually go instead.
+  for (let step = 0; step < 6; step += 1) {
+    if ((await gate.count()) === 0) {
+      // Give a late-arriving gate a chance to mount before deciding they are
+      // all done; nothing is waiting on this but the next assertion.
+      await page
+        .waitForSelector("dialog[open]", { timeout: 1500 })
+        .catch(() => {});
+      if ((await gate.count()) === 0) break;
+    }
     // Picking a Home is the state the learning loop actually runs in, and the
     // breadcrumb it produces is wider than "Home unselected" -- which is the
     // half of the row that has to yield. Skipping it measures a shell no
     // learner stays in.
     const candidate = gate.getByRole("button").filter({ hasText: /candidate 1/ });
-    if (home && (await candidate.count()) > 0) {
-      await candidate.first().click();
-      await page.waitForTimeout(120);
-      continue;
-    }
     const skip = gate.getByRole("button", { name: /^(Skip|Explore without Home)$/ });
     const choose = gate.getByRole("button").first();
-    if ((await skip.count()) > 0) await skip.first().click();
-    else if ((await choose.count()) > 0) await choose.click();
-    else break;
-    await page.waitForTimeout(120);
+    const target =
+      home && (await candidate.count()) > 0
+        ? candidate.first()
+        : (await skip.count()) > 0
+          ? skip.first()
+          : (await choose.count()) > 0
+            ? choose
+            : null;
+    if (!target) break;
+    const openBefore = await page.locator("dialog[open]").count();
+    await target.click();
+    // The dialog this click answered has to be gone before the next iteration
+    // reads `dialog[open]`, or it reads the same one twice.
+    await page
+      .waitForFunction(
+        (count) => document.querySelectorAll("dialog[open]").length < count,
+        openBefore,
+        { timeout: 4000 },
+      )
+      .catch(() => {});
   }
   // Coach marks are an overlay rather than a dialog, so the loop above never
   // sees them.
@@ -289,6 +319,17 @@ async function settleFirstRun(page, register, { home = false } = {}) {
   if ((await coach.count()) > 0 && (await coach.isVisible().catch(() => false))) {
     await coach.click();
     await page.waitForTimeout(150);
+  }
+  // Nothing below may be clicked through an overlay, and a gate that arrives
+  // late is exactly what broke this on CI -- the click landed on the dialog
+  // rather than the control and failed 30 seconds later somewhere unrelated.
+  // Sweep whatever is still up rather than waiting for it to leave on its own.
+  for (let sweep = 0; sweep < 3; sweep += 1) {
+    if ((await gate.count()) === 0) break;
+    const button = gate.getByRole("button").first();
+    if ((await button.count()) === 0) break;
+    await button.click().catch(() => {});
+    await page.waitForTimeout(300);
   }
   // The register toggle lives in the header at desktop and behind the
   // disclosure at compact widths, so open that first if it is there.
