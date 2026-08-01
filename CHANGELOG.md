@@ -22,6 +22,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   the header. The buttons now hold their row and the brand gives way instead,
   so the header stays 148px at every desktop width and every level, and the
   diagram gets 301px back at 1024.
+- **`codemble --version` reported a release behind the one you installed.** The
+  version was written down twice — in `pyproject.toml` and again in the Python
+  package — so v0.8.0 shipped a wheel whose app still called itself 0.7.0. The
+  same stale number went out as the API version and in the user-agent header on
+  every narration request. It is now written down once and read from the
+  installed package, and a test fails if the app ever reports anything other
+  than the version it was packaged as.
 - **The website no longer needs browser zoom to read.** Supporting copy now
   bottoms out at 14px and running text at 18px. Real product screenshots use
   the full content width on ordinary desktops instead of shrinking to a 704px
