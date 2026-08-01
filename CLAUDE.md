@@ -167,8 +167,26 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-29 ·
-Session note: the public website no longer assumes browser zoom. Its reading
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-08-01 ·
+Session note: the app stopped misreporting its own version. It was written down
+twice, and v0.8.0 shipped a wheel whose app called itself 0.7.0 — through
+`--version`, the FastAPI title, and the user-agent on every narration request,
+so the number was wrong in three channels at once. The literal is deleted and
+`__version__` now reads the installed distribution's metadata, which for a built
+wheel *is* the `pyproject.toml` it was built from, so a shipped artifact can no
+longer disagree with its tag. Golavo's `scripts/bump_version.py` was considered
+and deliberately not copied — see the Decision Log for why enforced agreement is
+right there and wrong here. What remains policeable is policed:
+`tests/test_version_agreement.py` holds `pyproject.toml`, both `package.json`
+files and `web/package-lock.json` to one number, and names the reinstall when a
+stale local install is the disagreement. The machine turned out to hold **three**
+versions at once, not the two reported: pyproject at 0.8.0, the source literal
+*and* the active pyenv install at 0.7.0, and the project venv at 0.6.2. Both
+installs were refreshed against the main checkout, so neither editable target
+moved. 268 pytest, Ruff 0.16 clean; the uninstalled fallback was verified in a
+genuinely isolated interpreter rather than argued for.
+
+Previously: the public website no longer assumes browser zoom. Its reading
 scale is now 18px with a 14px informational floor, while the denser local app
 keeps its own scale. At ordinary desktop widths the four real product captures
 use the full content column (1174px at 1440, up from 704px); at narrow widths
@@ -1110,6 +1128,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-29 | `restoreRailFocus` defers to a **task**, not to a frame | Focus is a DOM operation and needs nothing painted — it only has to run after React has committed the close. `requestAnimationFrame` also waits for the galaxy to render, and a frame is not 16ms when the scene is heavy: traced against this repository under software WebGL, frames arrived every **972–3751ms**, so focus landed on the right control **0.4–4.4s** after the key. It always arrived, which is why this never read as broken and why the browser gate was flaky rather than failing — but a keyboard learner pressing Escape and waiting a second for focus is a real cost, and it grows with the project. Found by chasing a 1-in-4 flake through two wrong hypotheses: a stale-focus race (wrong — focus was never stolen) and a commit-ordering race (wrong — a double-rAF re-assert made it *worse*, 3 in 6). Tracing the actual frame timeline settled it in one run |
 | 2026-07-29 | Leaving the quiz returns focus to **Prove understanding**, from Escape and from the panel's own control, through one `closeChecks` helper | Every other dismissible surface returned focus; this one dropped it, so a learner who had just worked through a region by keyboard was left on `<body>` and had to tab in from the top. Pre-existing and shared with `e00b3fe` on both paths, which is why both go through one helper now rather than one being fixed and the other drifting. The trigger stays mounted behind the panel, so there is somewhere obvious to return to — no new component, no new state |
 | 2026-07-29 | The public site uses an 18px prose baseline and 14px informational floor; 1440px product captures stay on a readable full-size canvas with explicit horizontal pan on narrow screens. The cinematic Atlas Journey runs only at ≥120rem and widens its measure there | The previous layout rendered supporting copy at 12–14px, desktop captures at 704px, and mobile captures at 333px. That made the real UI inside the images impossible to inspect without browser zoom. The website scale is intentionally separate from the dense local-app instrument scale, and the tatebanko remains the site's one decorative signature |
+| 2026-08-01 | `codemble.__version__` is **derived** from `importlib.metadata.version("codemble")` rather than restated as a literal; `pyproject.toml` is the single source of truth, and `tests/test_version_agreement.py` holds every spot that cannot derive — both `package.json` files and `web/package-lock.json` — to that one number. `codemble/__init__.py` is struck from the release checklist's bump list | It had already failed: v0.8.0 shipped a wheel whose app reported **0.7.0**, and that number reaches users through three channels at once — `codemble --version`, the FastAPI app's advertised version, and the `user-agent` on every outbound narration request, where it misidentifies the client to Anthropic, OpenAI and Ollama alike. Golavo's `scripts/bump_version.py` was read and deliberately **not** copied, because the two projects differ in kind rather than degree: Golavo has 23 spots that genuinely cannot derive (compiled Rust, `Cargo.lock`, `tauri.conf.json`), so enforced agreement is the only option there, while Codemble is one Python package whose version the build backend already writes into the wheel's own metadata — the duplicate can be *deleted* rather than policed, and a check that polices a duplicate still leaves the duplicate. The failure mode genuinely improves rather than merely moving: a literal can be wrong inside a shipped artifact, whereas derived metadata equals `pyproject.toml` by construction for any built wheel, so what is left is a stale *local* editable install — which never ships, and which the test now names along with the reinstall command. The uninstalled-checkout branch falls back to `0.0.0+unknown` because `import codemble` must not raise: all four call sites import `__version__` at module level, so a bare `PackageNotFoundError` would take down the CLI and the server rather than mislabel them. Worth recording as measured rather than assumed: the machine held **three** versions simultaneously, not the two reported — `pyproject.toml` 0.8.0, the source literal and the active pyenv `dist-info` both 0.7.0, and the project venv 0.6.2 — so the version the app reported depended on which interpreter happened to be on PATH |
 
 ## Non-Goals — do NOT build (point here when asked)
 
