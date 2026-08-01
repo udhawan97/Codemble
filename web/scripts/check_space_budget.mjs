@@ -57,6 +57,10 @@ const VIEWPORTS = [
 // where the two shells differ enough that a swap could not be a rounding error.
 const SHELL_HEADER = { wide: 148, compact: 124 };
 
+// The widths that render the wide rail. Every one of them has to hold its
+// actions on one row at every level, not just at the top of the loop.
+const WIDE_WIDTHS = [1440, 1280, 1100, 1024];
+
 const browser = await chromium.launch({
   channel: "chrome",
   headless: true,
@@ -107,6 +111,11 @@ try {
             measured.horizontalOverflow <= 1,
             `${label}: the page scrolls horizontally by ${measured.horizontalOverflow}px`,
           );
+          assert.deepEqual(
+            measured.overlaps,
+            [],
+            `${label}: header controls sit on top of each other -- ${measured.overlaps.join("; ")}`,
+          );
           // The breakpoint pair: which shell rendered, not just how much it
           // spent. A budget alone cannot catch the breakpoint moving, because
           // the compact shell is *cheaper* -- that is why it was extended down
@@ -130,6 +139,101 @@ try {
       } finally {
         await page.close();
       }
+    }
+  }
+
+  // Everything above measures the *top* level, which is the one state where the
+  // rail carries its fewest actions. The learner spends the loop below it, and
+  // each level down adds the way back out -- "Back to map" at region, "Back to
+  // the module" at study, the widest label in the row. Those states wrapped the
+  // wide rail to two and three rows (header 148 -> 199 -> 259, 52.2% of a 720px
+  // window) while every row above passed, because nothing here ever went a
+  // level deep.
+  for (const width of WIDE_WIDTHS) {
+    const page = await browser.newPage({
+      viewport: { width, height: 720 },
+      deviceScaleFactor: 1,
+    });
+    try {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await settleFirstRun(page, "easy", { home: true });
+      for (const level of ["region", "study"]) {
+        if (!(await descend(page, level))) {
+          failures += 1;
+          console.error(`  FAIL ${width}x720 easy: could not reach ${level} level`);
+          break;
+        }
+        const measured = await measure(page);
+        report.push({ width, height: 720, register: `easy/${level}`, ...measured });
+        try {
+          assert.equal(
+            measured.header,
+            SHELL_HEADER.wide,
+            `${width}x720 easy at ${level} level: header is ${measured.header}px, not ` +
+              `${SHELL_HEADER.wide}px -- the rail's actions have wrapped to another row`,
+          );
+          assert.ok(
+            measured.horizontalOverflow <= 1,
+            `${width}x720 easy at ${level} level: the page scrolls horizontally by ` +
+              `${measured.horizontalOverflow}px -- the actions no longer fit without wrapping`,
+          );
+          assert.deepEqual(
+            measured.overlaps,
+            [],
+            `${width}x720 easy at ${level} level: header controls sit on top of ` +
+              `each other -- ${measured.overlaps.join("; ")}`,
+          );
+        } catch (error) {
+          failures += 1;
+          console.error(`  FAIL ${error.message}`);
+        }
+      }
+    } finally {
+      await page.close();
+    }
+  }
+
+  // The brand's second line is the learner's own directory name, so its length
+  // belongs to the user. It used to size the rail's first column to max-content
+  // while the actions held the only flexible track, which made the header's
+  // height a property of what the folder happened to be called: a 60-character
+  // name measured 199px at 1440, where a 6-character one measured 148px.
+  {
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 720 },
+      deviceScaleFactor: 1,
+    });
+    try {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await settleFirstRun(page, "easy", { home: true });
+      await descend(page, "region");
+      await descend(page, "study");
+      const before = (await measure(page)).header;
+      await page.evaluate(() => {
+        const line = document.querySelector(".brand-lockup div span");
+        if (line) line.textContent = "a-very-long-project-directory-name-".repeat(2);
+      });
+      await page.waitForTimeout(250);
+      const after = await measure(page);
+      try {
+        assert.equal(
+          after.header,
+          before,
+          `1440x720 easy: a ${70}-character project name changed the header from ` +
+            `${before}px to ${after.header}px -- the rail is sized by the folder's name`,
+        );
+        assert.ok(
+          after.horizontalOverflow <= 1,
+          `1440x720 easy: a long project name made the page scroll horizontally by ` +
+            `${after.horizontalOverflow}px`,
+        );
+      } catch (error) {
+        failures += 1;
+        console.error(`  FAIL ${error.message}`);
+      }
+      report.push({ width: 1440, height: 720, register: "easy/long-name", ...after });
+    } finally {
+      await page.close();
     }
   }
 } finally {
@@ -158,16 +262,33 @@ console.log("space-budget contracts passed");
  * settle on the requested register. Every step is optional: the server may
  * already carry a learner's answers, and a clean run is not required here.
  */
-async function settleFirstRun(page, register) {
+async function settleFirstRun(page, register, { home = false } = {}) {
   const gate = page.locator("dialog[open]").first();
   for (let step = 0; step < 4; step += 1) {
     if ((await gate.count()) === 0) break;
+    // Picking a Home is the state the learning loop actually runs in, and the
+    // breadcrumb it produces is wider than "Home unselected" -- which is the
+    // half of the row that has to yield. Skipping it measures a shell no
+    // learner stays in.
+    const candidate = gate.getByRole("button").filter({ hasText: /candidate 1/ });
+    if (home && (await candidate.count()) > 0) {
+      await candidate.first().click();
+      await page.waitForTimeout(120);
+      continue;
+    }
     const skip = gate.getByRole("button", { name: /^(Skip|Explore without Home)$/ });
     const choose = gate.getByRole("button").first();
     if ((await skip.count()) > 0) await skip.first().click();
     else if ((await choose.count()) > 0) await choose.click();
     else break;
     await page.waitForTimeout(120);
+  }
+  // Coach marks are an overlay rather than a dialog, so the loop above never
+  // sees them.
+  const coach = page.getByRole("button", { name: "Skip", exact: true }).first();
+  if ((await coach.count()) > 0 && (await coach.isVisible().catch(() => false))) {
+    await coach.click();
+    await page.waitForTimeout(150);
   }
   // The register toggle lives in the header at desktop and behind the
   // disclosure at compact widths, so open that first if it is there.
@@ -182,6 +303,26 @@ async function settleFirstRun(page, register) {
     await page.waitForTimeout(250);
   }
   await page.waitForTimeout(350);
+}
+
+/**
+ * Take the learner one level deeper: top -> region -> study. Returns false when
+ * the step could not be taken, so a renamed control fails the gate rather than
+ * silently measuring the level above.
+ */
+async function descend(page, level) {
+  if (level === "region") {
+    const box = page.locator("[role='button'][aria-label*='structure']").first();
+    if ((await box.count()) === 0) return false;
+    await box.click({ timeout: 8000 }).catch(() => {});
+  } else {
+    const read = page.getByRole("button", { name: /read the source/i }).first();
+    if ((await read.count()) === 0) return false;
+    await read.click({ timeout: 8000 }).catch(() => {});
+  }
+  await page.waitForTimeout(900);
+  const exit = page.getByRole("button", { name: /^Back to (map|galaxy|the module)$/ });
+  return (await exit.count()) > 0;
 }
 
 function measure(page) {
@@ -218,10 +359,73 @@ function measure(page) {
       }
     }
 
+    // Two controls in the same place. Height alone cannot see this: a row that
+    // refuses to wrap keeps the header at 148px and spills sideways instead,
+    // and `justify-content: flex-end` spills *leftwards* -- straight over the
+    // breadcrumb. Measured at 1024 at study level, the actions ran 177px past
+    // their own column and put "Modules" and "Find" on top of the two crumbs,
+    // so clicking where the app said you were pressed a button instead.
+    const clickable = [...document.querySelectorAll("header button, header a[href], header [role='button']")].filter(
+      (element) => {
+        const box = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return (
+          box.width > 0 &&
+          box.height > 0 &&
+          style.visibility !== "hidden" &&
+          style.display !== "none"
+        );
+      },
+    );
+    // The rect a control actually occupies on screen. An ancestor that hides
+    // its overflow clips both the paint and the hit test, so a breadcrumb crumb
+    // running past its own column is neither visible nor clickable out there --
+    // comparing raw bounding boxes would report that as a collision when the
+    // learner can see and press exactly the right thing.
+    const visibleRect = (element) => {
+      let box = element.getBoundingClientRect();
+      for (let node = element.parentElement; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        // `display: contents` generates no box, so it clips nothing however its
+        // overflow computes. The wide rail turns the disclosure panel into one,
+        // and it reports `overflow: auto` on a 0x0 rect -- clipping to that made
+        // every control in the header zero-sized and the check unable to fail.
+        if (style.display === "contents") continue;
+        if (style.overflow === "visible" && style.overflowX === "visible") continue;
+        const clip = node.getBoundingClientRect();
+        box = {
+          left: Math.max(box.left, clip.left),
+          right: Math.min(box.right, clip.right),
+          top: Math.max(box.top, clip.top),
+          bottom: Math.min(box.bottom, clip.bottom),
+        };
+      }
+      return box;
+    };
+
+    const overlaps = [];
+    for (let i = 0; i < clickable.length; i += 1) {
+      for (let j = i + 1; j < clickable.length; j += 1) {
+        const [first, second] = [clickable[i], clickable[j]];
+        if (first.contains(second) || second.contains(first)) continue;
+        const a = visibleRect(first);
+        const b = visibleRect(second);
+        const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (x > 1 && y > 1) {
+          overlaps.push(
+            `"${(first.textContent || "").trim().slice(0, 20)}" over ` +
+              `"${(second.textContent || "").trim().slice(0, 20)}" (${Math.round(x)}x${Math.round(y)}px)`,
+          );
+        }
+      }
+    }
+
     return {
       header,
       guidance,
       footer,
+      overlaps,
       chromeShare: (header + guidance + footer) / viewportHeight,
       // The Map's drawing. Absent on the Galaxy layer, where the canvas fills
       // whatever is left and has no floor of its own to check.

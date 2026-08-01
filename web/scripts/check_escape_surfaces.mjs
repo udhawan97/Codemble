@@ -237,7 +237,14 @@ async function runViewport(page, viewport, label) {
 
   // ── The checks panel, reached the way a learner reaches it ───────────────
 
-  await click("Map");
+  // The layer switcher is named for the register: Easy calls it "Diagram" and
+  // Expert calls it "Map". This ran Easy and clicked "Map", so it never left the
+  // Galaxy -- the box click below then found nothing, and four widths reported
+  // "could not reach the prove control" and a retreat that never had anywhere
+  // to retreat from. A gate that cannot reach its own surface fails loudly for
+  // the wrong reason, which is indistinguishable from the bug it exists to
+  // catch.
+  await click(/^(Map|Diagram)$/);
   await page.waitForTimeout(600);
   const box = page.locator("svg g[class*='map-box'], svg [class*='box']").first();
   if ((await box.count()) > 0) await box.click({ force: true }).catch(() => {});
@@ -271,7 +278,7 @@ async function runViewport(page, viewport, label) {
 
   // ── Retreat, and the one place there is nothing to retreat to ────────────
 
-  await click("Map");
+  await click(/^(Map|Diagram)$/);
   await page.waitForTimeout(600);
   const deep = page.locator("svg g[class*='map-box'], svg [class*='box']").first();
   if ((await deep.count()) > 0) await deep.click({ force: true }).catch(() => {});

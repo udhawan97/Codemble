@@ -1878,6 +1878,28 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
           </p>
         </div>
       ) : null}
+      {/* A suite whose checks are all answered while the region is still dim.
+          The server can no longer produce it, but a second tab can: complete a
+          region there, clear this project's progress here, and that tab still
+          holds the old suite. Without this the panel rendered a title and a
+          Close button over nothing at all, which is the one thing no surface
+          here may be -- a dead end. */}
+      {suite &&
+      !suite.region_understood &&
+      suite.checks.length > 0 &&
+      !current ? (
+        <div className="check-state">
+          <h2>These checks are out of date.</h2>
+          <p>
+            This module is dim again, but this panel is still holding the
+            answers from before. Reopen it to get the questions back — nothing
+            you proved has been lost anywhere else.
+          </p>
+          <button className="check-primary" type="button" onClick={onClose}>
+            Reopen the checks
+          </button>
+        </div>
+      ) : null}
       {current && !suite.region_understood ? (
         <form className="active-check" onSubmit={submit}>
           <div className="check-progress">

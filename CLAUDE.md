@@ -167,8 +167,58 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-07-29 ·
-Session note: the public website no longer assumes browser zoom. Its reading
+**Current milestone: Phase 1 tester evidence** · Last updated: 2026-08-01 ·
+Session note: an evidence-led user-flow audit of the served build, run as a
+first-run Easy learner on this repository at 1440/1024/768/375/320 with a
+keyboard pass, found **two** gaps — and the more interesting fact is that both
+had already survived the CI job built to catch exactly them. **Clearing your
+progress made a proved module impossible to light again.** `ProgressStore` owns
+which regions are understood and `CheckService._passed` owns which individual
+checks were answered, and the endpoint reached *through* the service to the
+store, so the store emptied and the pass set did not: every module went dim
+while every question stayed marked answered. `for_region` then reported a suite
+that was fully passed on a region that was not understood, the renderer has no
+branch for that, and **the panel drew a title and a Close button over nothing**.
+The product's central action, on the recovery control the app itself offers,
+with no route back short of restarting the server. One caller now clears both
+halves. The panel also gained an honest branch for that shape, because the
+server can no longer produce it but a second tab holding a stale suite still
+can. **The header wrapped to two and three rows across 1024–1279px** — 148 →
+199 at region level and 259 at study (52.2% of a 720px window, the diagram down
+to 190px). The cause is which column yields: brand and breadcrumb were `auto`
+tracks taking max-content while the actions held the only flexible track, so
+every pixel either text column wanted came out of the buttons, and buttons
+cannot shrink. Inverted — the actions size to their content and the two
+ellipsising text columns absorb the shortfall, breadcrumb keeping its 9rem floor
+because "where am I" may not be erased, brand yielding first because it is
+identity rather than navigation. Two details were load-bearing and neither is
+obvious: a wrapping flex container's min-content is its *widest single item*, so
+`auto` alone left the track frozen at one button and grid then shared the
+leftover out **equally** with the brand; and `.rail-actions` declares
+`min-width: 0`, which tells grid the buttons are willing to be zero wide.
+**Why CI was green through all of this is the lesson.** The space budget
+measured only the *top* level, where the rail carries one action fewer, so the
+wrap was one click below anything asserted. And the brand's second line is the
+learner's own directory name, so the header's height was a property of what the
+folder is called — GitHub checks out into `Codemble`, eight characters, where it
+fits; this worktree is `navigation-design-clarity-92b110`, 31, where it does
+not. A 60-character name reproduced the wrap at **1440**. The budget now walks
+region and study level at four wide widths, fails on overlapping header controls
+(clip-aware, since an ancestor hiding its overflow clips the hit test too), and
+injects a 70-character project name. Proven in both directions: the new
+assertions fail on the old CSS naming the exact collision. A third finding was
+the gates themselves — `check_escape_surfaces.mjs` clicks a control named "Map"
+while the Easy register renames it "Diagram", so it never left the Galaxy and
+**eight of its 84 assertions had been failing for the wrong reason**, reporting
+"could not reach the prove control" rather than exercising the checks panel and
+the map retreat. Fixed; 84 pass. Stated as a limitation rather than hidden: at
+1024–1059px at study level only, the "Codemble" wordmark clips by 2px, accepted
+over truncating the breadcrumb or demoting a 36px band of widths to the compact
+shell. 266 pytest, Ruff 0.16 clean, 18 frontend contract checks, the space
+budget at 8 widths plus 4 wide widths × 2 levels, 84 escape assertions,
+byte-identical rebuild.
+
+Previously: the public website no longer assumes browser zoom. Its reading
 scale is now 18px with a 14px informational floor, while the denser local app
 keeps its own scale. At ordinary desktop widths the four real product captures
 use the full content column (1174px at 1440, up from 704px); at narrow widths
@@ -1109,6 +1159,10 @@ shows lower repeated-commit work without changing derived values.
 | 2026-07-29 | The CI job that needs a browser is `browser-checks`, and it hosts two gates: the space budget and `check_escape_surfaces.mjs` | `check_escape_arbiter` proves the *decision* — which surface owns Escape, for every combination. It cannot prove the key arrives, that the surface closes, or that focus lands somewhere a keyboard learner can carry on from, and **every Escape bug this project has shipped was one of those**: the rail disclosure closing *and* retreating, the checks panel and module index never claiming the key, the star chart retreating on top of its own dismissal. One server and one Chromium install answer both gates, so the second costs almost nothing. The in-app browser pane cannot substitute — it reports `document.hidden === true`, which throttles `requestAnimationFrame`, and `restoreRailFocus` is rAF-based, so focus return reads as broken there whether or not it is. The check's first assertion guards that trap so the gate can never pass by measuring a throttled page |
 | 2026-07-29 | `restoreRailFocus` defers to a **task**, not to a frame | Focus is a DOM operation and needs nothing painted — it only has to run after React has committed the close. `requestAnimationFrame` also waits for the galaxy to render, and a frame is not 16ms when the scene is heavy: traced against this repository under software WebGL, frames arrived every **972–3751ms**, so focus landed on the right control **0.4–4.4s** after the key. It always arrived, which is why this never read as broken and why the browser gate was flaky rather than failing — but a keyboard learner pressing Escape and waiting a second for focus is a real cost, and it grows with the project. Found by chasing a 1-in-4 flake through two wrong hypotheses: a stale-focus race (wrong — focus was never stolen) and a commit-ordering race (wrong — a double-rAF re-assert made it *worse*, 3 in 6). Tracing the actual frame timeline settled it in one run |
 | 2026-07-29 | Leaving the quiz returns focus to **Prove understanding**, from Escape and from the panel's own control, through one `closeChecks` helper | Every other dismissible surface returned focus; this one dropped it, so a learner who had just worked through a region by keyboard was left on `<body>` and had to tab in from the top. Pre-existing and shared with `e00b3fe` on both paths, which is why both go through one helper now rather than one being fixed and the other drifting. The trigger stays mounted behind the panel, so there is somewhere obvious to return to — no new component, no new state |
+| 2026-08-01 | Clearing a project's progress is `CheckService.clear_progress()`, which empties the store **and** the in-flight pass set; `DELETE /api/progress` calls it instead of reaching through to `progress.clear()` | Two owners of one fact. Understood regions are persisted; which individual checks a learner has answered lives on the service for the life of the process. Clearing only the store dimmed every module while every question stayed `passed`, so `for_region` returned a fully-passed suite for a region that was not understood — a shape the renderer has no branch for, so **the quiz drew a title and a Close button over nothing**. Illumination is the game, and the documented recovery control turned it off permanently for every region proved in that session, with no route back short of restarting the server. The panel also gained a branch for that state: the server can no longer produce it, but a second tab holding a suite from before the reset still can, and no surface here may be a dead end |
+| 2026-08-01 | In the wide rail the **actions** size to their content and never wrap (`flex-wrap: nowrap`, `min-width: max-content`); the brand and breadcrumb absorb the shortfall, the breadcrumb keeping its 9rem floor and the brand capped at 18rem | Which column yields is the whole bug. Brand and breadcrumb were `auto` — max-content — while the actions held the only flexible track, so every pixel either text column wanted came out of the buttons, and buttons cannot shrink: measured 148 → 199px at region level and **259px at study** (52.2% of a 720px window, the diagram down to 190px) across 1024–1279px. The brand's second line is the learner's own directory name, which made the header's height a property of what the folder is called — a 60-character name reproduced the wrap at **1440**. Two details were load-bearing: a wrapping flex container's min-content is its *widest single item*, so an `auto` track alone froze at one button and grid shared the leftover out **equally** with the brand; and `.rail-actions` sets `min-width: 0`, telling grid the buttons would accept zero width. The priority order is deliberate — the breadcrumb is navigation and keeps its floor, the brand is identity and yields first. Accepted cost, recorded rather than hidden: at 1024–1059px at study level the wordmark clips by 2px, which beats truncating the breadcrumb or demoting a 36px band of widths to the compact shell |
+| 2026-08-01 | The space budget walks **region and study level** at every wide width, fails on overlapping header controls, and asserts the header does not move when the project name is 70 characters | Both gaps above passed the existing gate, and for two structural reasons rather than bad luck. It measured only the top level, where the rail carries one action fewer than the loop the learner actually spends their time in — the wrap was one click below anything asserted. And it ran against a checkout directory named `Codemble`, eight characters, where the row fits; the bug needs a real learner's folder name. Overlap is checked clip-aware, because an ancestor that hides its overflow clips the hit test too and comparing raw boxes reports collisions a learner cannot experience — and `display: contents` must be skipped outright, since the wide rail turns the disclosure panel into one and it reports `overflow: auto` on a 0x0 rect, which silently zeroed every control and made the check unable to fail |
+| 2026-08-01 | `check_escape_surfaces.mjs` clicks the layer switcher by either register's label (`/^(Map\|Diagram)$/`) | It clicked "Map" while running Easy, which renames the layer "Diagram", so it never left the Galaxy: the box click below found nothing and **eight of its 84 assertions had been failing for the wrong reason**, reporting "could not reach the prove control from the map" instead of exercising the checks panel and the map retreat. A gate that cannot reach its own surface fails in a way indistinguishable from the bug it exists to catch, which is worse than not having it |
 | 2026-07-29 | The public site uses an 18px prose baseline and 14px informational floor; 1440px product captures stay on a readable full-size canvas with explicit horizontal pan on narrow screens. The cinematic Atlas Journey runs only at ≥120rem and widens its measure there | The previous layout rendered supporting copy at 12–14px, desktop captures at 704px, and mobile captures at 333px. That made the real UI inside the images impossible to inspect without browser zoom. The website scale is intentionally separate from the dense local-app instrument scale, and the tatebanko remains the site's one decorative signature |
 
 ## Non-Goals — do NOT build (point here when asked)

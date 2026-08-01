@@ -74,6 +74,19 @@ class CheckService:
 
         return self._progress
 
+    def clear_progress(self) -> None:
+        """Forget this project's proof, both persisted and in flight.
+
+        Understood regions live in the store, but which checks a learner has
+        already answered lives here for the life of the process. Clearing only
+        the store dimmed every region while its checks still reported passed,
+        so the panel had no question left to draw and nothing could be re-lit.
+        Both halves are one fact, so one caller clears both.
+        """
+
+        self._progress.clear()
+        self._passed.clear()
+
     def graph(self) -> Graph:
         """Return render data hydrated from currently valid local progress."""
 

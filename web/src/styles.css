@@ -72,6 +72,16 @@ input:focus-visible {
 
 .brand-lockup {
   display: flex;
+  /* The second line is the learner's own directory name, so its length is the
+     user's, not the design's. The wide rail sizes this column to `auto` --
+     max-content -- while the actions are the only flexible track, so every
+     character the folder name gains is taken from the actions and they wrap:
+     measured at 1440, a 60-character name grew this to 506px and pushed the
+     header 148px -> 199px. The same shape as the map canvas absorbing every
+     shortfall in 55147ac. Capping max-content here is what keeps the header's
+     height a property of the layout rather than of what the folder is called;
+     the line already ellipsises, so a long name truncates instead. */
+  max-width: 18rem;
   min-width: 0;
   align-items: center;
   gap: var(--cm-space-sm);
@@ -83,9 +93,12 @@ input:focus-visible {
 }
 
 .brand-lockup strong {
+  overflow: hidden;
   font-family: var(--cm-font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand-lockup span:not(.brand-mark),
@@ -2114,8 +2127,22 @@ input:focus-visible {
    running there, so 640-1023px keeps the compact shell: one Menu button, every
    secondary control inside it, and the height handed to the stage. */
 @media (min-width: 64rem) {
+  /* Which column yields when the row is over-subscribed is the whole story
+     here. It used to be the actions: brand and breadcrumb were `auto` -- they
+     take max-content -- while the actions held the only flexible track, so
+     every pixel either text column wanted came out of the buttons, and buttons
+     cannot shrink, so they wrapped to a second and third row. Measured on this
+     repository the header went 148 -> 199 at region level and 259 at study
+     (52.2% of a 720px window, map canvas 190px), and the 1024 row of the space
+     budget was failing on it.
+
+     Inverted: the actions size to their content and never wrap, and the two
+     text columns absorb the shortfall -- which they can, because both already
+     ellipsise. The breadcrumb keeps its 9rem floor so "where am I" is never
+     erased, and the brand yields first, being identity rather than
+     navigation. */
   .instrument-rail {
-    grid-template-columns: auto minmax(9rem, auto) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, auto) minmax(9rem, 1fr) auto auto;
   }
 
   .rail-overflow {
@@ -2154,6 +2181,23 @@ input:focus-visible {
   .rail-actions {
     grid-column: 3;
     grid-row: 1;
+    /* The track being `auto` is not enough on its own. A wrapping flex
+       container's min-content is its widest single item, so the track froze at
+       one button and grid then handed the leftover out *equally* -- the brand
+       grew to its full max-content while the actions were still 179px short
+       and wrapped anyway. Refusing to wrap makes min-content equal max-content,
+       so the row is satisfied before anything is distributed and the shortfall
+       lands on the two text columns, which ellipsise. The four labels are fixed
+       strings, so the widest this can ask for is 587px against the 914px the
+       narrowest wide window has to give; the space budget's no-horizontal-
+       overflow assertion is what catches it if that ever stops being true. */
+    flex-wrap: nowrap;
+    /* The compact rule sets `min-width: 0`, which tells grid these buttons are
+       willing to be 0px wide -- so the track's base size was 0, the row was
+       "satisfied" before anything was measured, and the leftover got shared out
+       equally with the brand rather than going where it was needed. Buttons
+       have a real minimum and this is where it is stated. */
+    min-width: max-content;
     justify-content: flex-end;
   }
 

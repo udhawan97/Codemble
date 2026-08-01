@@ -307,7 +307,7 @@ def create_app(
     @app.delete("/api/progress")
     def clear_progress() -> dict[str, int]:
         project = _project()
-        project.checks.progress.clear()
+        project.checks.clear_progress()
         project.invalidate_views()
         return {
             "understood_regions": len(project.checks.progress.understood_regions())

@@ -1229,6 +1229,56 @@ def test_progress_can_be_cleared_for_the_bound_project_only(
     ), "the cached graph must not survive a progress reset"
 
 
+def test_cleared_progress_hands_back_answerable_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Clearing progress must restore the loop, not just dim the star.
+
+    The store owns which regions are understood, but the per-check pass set
+    lives on ``CheckService`` for the life of the process. Clearing only the
+    store dimmed the region while every check still reported ``passed``, so the
+    panel had no question left to draw and the region could not be re-lit
+    without restarting the server.
+    """
+
+    monkeypatch.setenv("CODEMBLE_DATA_DIR", str(tmp_path / "data"))
+    graph = PythonAstAdapter().parse(FIXTURE)
+    checks = CheckService(graph, ProgressStore(graph, tmp_path / "progress"))
+    client = TestClient(
+        create_app(
+            graph,
+            tmp_path / "missing",
+            StudyService(graph, cache_root=tmp_path / "cache"),
+            checks,
+        )
+    )
+    suite = generate_checks(graph, "app")
+    for check in suite:
+        client.post(
+            f"/api/regions/app/checks/{check.id}",
+            json={"selected_ids": list(check.answer_ids)},
+        )
+
+    client.delete("/api/progress")
+    after = client.get("/api/regions/app/checks").json()
+
+    assert after["region_understood"] is False
+    assert [check["passed"] for check in after["checks"]] == [False] * len(suite), (
+        "a cleared project must offer its checks again, or the panel renders "
+        "no question and the region can never be re-lit"
+    )
+
+    for check in suite:
+        client.post(
+            f"/api/regions/app/checks/{check.id}",
+            json={"selected_ids": list(check.answer_ids)},
+        )
+    relit = client.get("/api/graph").json()
+    assert next(region for region in relit["regions"] if region["id"] == "app")[
+        "understood"
+    ], "the same proof must be able to light the region a second time"
+
+
 def test_clearing_progress_requires_a_bound_project(tmp_path: Path) -> None:
     from codemble.server.app import PickerConfig
 

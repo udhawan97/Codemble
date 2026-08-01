@@ -6,6 +6,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- **Clearing your progress no longer makes a module impossible to light again.**
+  "Clear this project's progress" dimmed every module but kept the individual
+  questions marked as answered, so reopening the quiz on a module you had
+  already proved showed a panel with nothing in it — no question, no way
+  forward, and no route back to lighting it short of restarting the server. The
+  reset now forgets both halves of that state, so the checks come back from
+  question one and the module can be proved again.
+- **The header no longer wraps to two and three rows, and its height no longer
+  depends on what you named your folder.** Between 1024px and 1279px the row of
+  actions wrapped as soon as you opened a module, and again when you opened its
+  source: the header grew from 148px to 199px and then 259px — 52% of a 720px
+  window — squeezing the diagram to 190px. The same wrap happened at any width
+  once a project directory's name got long enough, because that name was sizing
+  the header. The buttons now hold their row and the brand gives way instead,
+  so the header stays 148px at every desktop width and every level, and the
+  diagram gets 301px back at 1024.
 - **The website no longer needs browser zoom to read.** Supporting copy now
   bottoms out at 14px and running text at 18px. Real product screenshots use
   the full content width on ordinary desktops instead of shrinking to a 704px
@@ -126,6 +142,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   one ordered list, and the star chart reads the same one.
 
 ### Changed
+- The shell's space budget is now measured at region and study level, not only
+  at the top of the loop, and it fails when two header controls overlap or when
+  a long project name changes the header's height. Both gaps above passed the
+  previous checks: one was only reachable a level down, and the other needs a
+  project folder whose name is longer than the one CI checks out into.
+- The Escape gate reaches the surfaces it claims to test again. It clicked a
+  control named "Map" while the Easy register calls it "Diagram", so eight of
+  its assertions had been failing for the wrong reason rather than exercising
+  the checks panel and the map retreat.
 - **Escape is checked on every panel, at phone widths too.** Which panel the key
   closes, that the level does not also move, and where focus lands afterwards
   are now asserted in a real browser on every change — across the star chart,
