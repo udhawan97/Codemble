@@ -19,7 +19,7 @@ jobs:
           python -m build
       - name: Verify the wheel carries the packaged SPA
         run: python -c 'import pathlib, zipfile; wheel = next(pathlib.Path("dist").glob("*.whl")); names = zipfile.ZipFile(wheel).namelist(); assert "codemble/web_dist/index.html" in names; assert any(name.startswith("codemble/web_dist/assets/") for name in names)'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
