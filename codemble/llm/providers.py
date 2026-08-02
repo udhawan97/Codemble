@@ -18,6 +18,29 @@ class ProviderError(RuntimeError):
     """A provider request failed without exposing credentials or response bodies."""
 
 
+class ProviderUnavailableError(ProviderError):
+    """The provider could not be reached at all: DNS, refusal, or timeout.
+
+    Separate from the base because the study panel must not describe a broken
+    network as a correctness refusal. Nothing is wrong with the learner's code
+    or with Codemble's grounding when this is raised -- the request never
+    arrived.
+    """
+
+
+class ProviderRejectedError(ProviderError):
+    """The provider answered with an HTTP error status.
+
+    Carries ``status`` so the panel can separate the two cases a learner can
+    act on -- 401/403 means the key is wrong, 413/400 usually means the prompt
+    was too large -- from the ones they cannot.
+    """
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
+
 class NarrationProvider(Protocol):
     """The transport seam used by the study module."""
 
@@ -174,14 +197,22 @@ def _post_json(url: str, headers: dict[str, str], payload: JsonObject) -> JsonOb
     )
     try:
         # Fixed HTTPS provider URLs; the address is never learner-supplied.
-        with request.urlopen(outbound, timeout=60) as response:
+        # 30s, not 60: the request deadline in the server is shorter than that,
+        # so a 60s ceiling only kept a worker thread blocked long after the
+        # learner had already been answered.
+        with request.urlopen(outbound, timeout=30) as response:
             decoded = json.loads(response.read().decode("utf-8"))
     except error.HTTPError as provider_error:
-        raise ProviderError(
-            f"The provider rejected the request with HTTP {provider_error.code}."
+        raise ProviderRejectedError(
+            f"The provider rejected the request with HTTP {provider_error.code}.",
+            provider_error.code,
         ) from provider_error
-    except (error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ProviderError("The provider request could not be completed safely.") from exc
+    except (error.URLError, TimeoutError) as exc:
+        raise ProviderUnavailableError(
+            "Codemble could not reach the narration provider."
+        ) from exc
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProviderError("The provider returned a response Codemble could not read.") from exc
     if not isinstance(decoded, dict):
         raise ProviderError("The provider returned an unexpected response shape.")
     return decoded
@@ -206,13 +237,16 @@ def _post_local_json(url: str, headers: dict[str, str], payload: JsonObject) -> 
         with _LOOPBACK_OPENER.open(outbound, timeout=120) as response:
             decoded = json.loads(response.read().decode("utf-8"))
     except error.HTTPError as provider_error:
-        raise ProviderError(
-            f"The local model rejected the request with HTTP {provider_error.code}."
+        raise ProviderRejectedError(
+            f"The local model rejected the request with HTTP {provider_error.code}.",
+            provider_error.code,
         ) from provider_error
-    except (error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ProviderError(
+    except (error.URLError, TimeoutError) as exc:
+        raise ProviderUnavailableError(
             "Codemble could not reach a local Ollama server on loopback."
         ) from exc
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProviderError("The local model returned a response Codemble could not read.") from exc
     if not isinstance(decoded, dict):
         raise ProviderError("The local model returned an unexpected response shape.")
     return decoded
@@ -226,4 +260,6 @@ __all__ = [
     "OllamaProvider",
     "OpenAIProvider",
     "ProviderError",
+    "ProviderRejectedError",
+    "ProviderUnavailableError",
 ]

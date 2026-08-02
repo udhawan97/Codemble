@@ -9,6 +9,7 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
+from typing import NamedTuple
 
 from codemble.adapters.base import Edge, Graph, Node
 from codemble.adapters.source_text import read_source_text
@@ -20,12 +21,23 @@ from codemble.llm.providers import (
     OllamaProvider,
     OpenAIProvider,
     ProviderError,
+    ProviderRejectedError,
+    ProviderUnavailableError,
 )
 from codemble.llm.structural import structural_summary
 from codemble.paths import data_dir
 
-PROMPT_VERSION = "study-v3"
+PROMPT_VERSION = "study-v4"
 _CACHE_SCHEMA = 1
+
+# How many source lines one prompt may carry. A module node spans its whole
+# file (see the adapters), so an unbounded prompt numbered thousands of lines
+# into a request: slow, expensive, and past a certain size answered by the
+# provider with an HTTP 400 the panel then reported as a narration failure.
+# Beyond this budget the prompt carries a leading excerpt and says so, and the
+# walkthrough may only cite lines the excerpt actually supplied -- explaining a
+# line the model never saw is a guess, even when the line is real.
+_PROMPT_SOURCE_LINE_BUDGET = 200
 
 
 class UnknownNodeError(LookupError):
@@ -283,14 +295,21 @@ class StudyService:
         if cached is not None:
             return {**cached, "cached": True}
 
-        prompt = _grounded_prompt(node, source, neighbors, lens, mode)
+        excerpt = _prompt_excerpt(node, source)
+        prompt = _grounded_prompt(node, excerpt, neighbors, lens, mode)
         try:
             raw = self._provider.complete(prompt)
-            validated = _validate_explanation(raw, node, neighbors)
+            validated = _validate_explanation(raw, node, excerpt, neighbors)
         except (ProviderError, GroundingError) as error:
             return {
                 "status": "error",
+                # The panel prints a correctness lecture for a grounding refusal
+                # and something actionable for the rest. Collapsing all of these
+                # into one branch is how a flaky network came to be reported as
+                # Codemble withholding ungrounded output.
+                "reason": _failure_reason(error),
                 "message": str(error),
+                "retryable": not isinstance(error, GroundingError),
                 "cached": False,
                 "provider": self._provider.name,
                 "model": self._provider.model,
@@ -369,6 +388,41 @@ def _cache_key(
     return hashlib.sha256(material).hexdigest()
 
 
+def _failure_reason(error: Exception) -> str:
+    if isinstance(error, GroundingError):
+        return "grounding"
+    if isinstance(error, ProviderUnavailableError):
+        return "unavailable"
+    if isinstance(error, ProviderRejectedError):
+        return "rejected"
+    return "provider"
+
+
+class _Excerpt(NamedTuple):
+    """The source lines one prompt is allowed to carry, and their real bounds."""
+
+    lines: list[dict[str, object]]
+    first: int
+    last: int
+    total: int
+
+    @property
+    def truncated(self) -> bool:
+        return len(self.lines) < self.total
+
+
+def _prompt_excerpt(node: Node, source: dict[str, object]) -> _Excerpt:
+    raw = [
+        line
+        for line in source.get("lines", [])  # type: ignore[union-attr]
+        if isinstance(line, dict) and isinstance(line.get("number"), int)
+    ]
+    kept = raw[:_PROMPT_SOURCE_LINE_BUDGET]
+    if not kept:
+        return _Excerpt([], node.lineno, node.end_lineno, len(raw))
+    return _Excerpt(kept, int(kept[0]["number"]), int(kept[-1]["number"]), len(raw))
+
+
 _MODE_STYLE = {
     "easy": (
         "AUDIENCE: someone new to programming.\n"
@@ -379,7 +433,8 @@ _MODE_STYLE = {
     "expert": (
         "AUDIENCE: an experienced developer onboarding onto this codebase.\n"
         "- Be concise and precise; assume language fluency.\n"
-        "- Lead with this structure's role in the wider project.\n"
+        "- Lead with what this structure does and what depends on it, using\n"
+        "  only the evidence supplied below.\n"
         "- Use standard terminology without defining it.\n"
     ),
 }
@@ -387,16 +442,20 @@ _MODE_STYLE = {
 
 def _grounded_prompt(
     node: Node,
-    source: dict[str, object],
+    excerpt: _Excerpt,
     neighbors: list[dict[str, object]],
     lens: list[dict[str, object]],
     mode: str,
 ) -> str:
-    source_lines = source.get("lines", [])
     numbered_source = "\n".join(
-        f"{line['number']:04d}: {line['text']}"
-        for line in source_lines
-        if isinstance(line, dict) and isinstance(line.get("number"), int)
+        f"{line['number']:04d}: {line['text']}" for line in excerpt.lines
+    )
+    excerpt_note = (
+        f"\nThis is an EXCERPT: lines {excerpt.first}-{excerpt.last} of "
+        f"{excerpt.total}. Explain only what these lines show, and do not "
+        "describe the lines that were withheld.\n"
+        if excerpt.truncated
+        else ""
     )
     neighbor_evidence = "\n".join(
         f"- {neighbor['node_id']} ({neighbor['relationship']}, "
@@ -417,7 +476,7 @@ HARD CORRECTNESS CONTRACT:
 - Never invent a structure, identifier, behavior, dependency, or intent.
 - If purpose is unclear from the code, say exactly that it is unclear from the code.
 - Do not introduce identifier names in prose; the UI renders validated node IDs separately.
-- Use only line numbers inside {node.file}:{node.lineno}-{node.end_lineno}.
+- Use only line numbers inside {node.file}:{excerpt.first}-{excerpt.last}.
 - A relationship may name only one of the supplied neighbor node IDs.
 - Approximate relationships must be described as possible, never certain.
 - Return JSON only, with no Markdown fence.
@@ -425,13 +484,13 @@ HARD CORRECTNESS CONTRACT:
 Return this exact shape:
 {{
   "summary": "plain-language explanation",
-  "walkthrough": [{{"line": {node.lineno}, "explanation": "what that line does"}}],
+  "walkthrough": [{{"line": {excerpt.first}, "explanation": "what that line does"}}],
   "relationships": [{{"node_id": "allowed neighbor ID", "explanation": "relationship"}}]
 }}
 
 Selected node: {node.id} ({node.kind})
 Citation: {node.file}:{node.lineno}
-
+{excerpt_note}
 SOURCE:
 {numbered_source}
 
@@ -446,8 +505,26 @@ LANGUAGE-LENS ANNOTATIONS:
 def _validate_explanation(
     raw: str,
     node: Node,
+    excerpt: _Excerpt,
     neighbors: list[dict[str, object]],
 ) -> dict[str, object]:
+    """Validate provider output, dropping faults but never tolerating invention.
+
+    The line this draws is the whole point, so it is stated rather than implied.
+
+    **Fatal** -- a node ID the parser never observed, or a citation outside the
+    lines the prompt actually supplied. Both are invented structure, and the
+    Correctness Contract outranks any reliability goal: the audience cannot
+    detect when this tool is wrong, so a model that demonstrably just made
+    something up does not get its prose displayed.
+
+    **Survivable** -- an absent walkthrough, or one item that is empty or runs
+    past the length ceiling. Those are formatting faults with no bearing on
+    truth, and discarding a good summary over one of them is what made the
+    panel look broken. Anything dropped is counted into ``withheld`` so the
+    panel can say so instead of quietly showing less.
+    """
+
     candidate = raw.strip()
     if candidate.startswith("```"):
         candidate = candidate.removeprefix("```json").removeprefix("```")
@@ -459,49 +536,74 @@ def _validate_explanation(
     if not isinstance(payload, dict):
         raise GroundingError("The provider response did not contain a grounded object.")
 
+    # The summary is the payload: with nothing to fall back on, an empty or
+    # over-long one leaves nothing to render, so it stays fatal.
     summary = _bounded_text(payload.get("summary"), "summary")
+    withheld = 0
+
     raw_walkthrough = payload.get("walkthrough")
-    if not isinstance(raw_walkthrough, list) or not raw_walkthrough:
-        raise GroundingError("The provider response omitted the source walkthrough.")
     walkthrough: list[dict[str, object]] = []
-    for item in raw_walkthrough[:8]:
-        if not isinstance(item, dict) or not isinstance(item.get("line"), int):
-            raise GroundingError("A walkthrough item did not cite a real source line.")
-        line = item["line"]
-        if line < node.lineno or line > node.end_lineno:
-            raise GroundingError("A walkthrough citation fell outside the selected source span.")
-        walkthrough.append(
-            {
-                "line": line,
-                "citation": f"{node.file}:{line}",
-                "text": _bounded_text(item.get("explanation"), "walkthrough explanation"),
-            }
-        )
+    if isinstance(raw_walkthrough, list):
+        for item in raw_walkthrough[:8]:
+            if not isinstance(item, dict) or not isinstance(item.get("line"), int):
+                withheld += 1
+                continue
+            line = item["line"]
+            if line < excerpt.first or line > excerpt.last:
+                raise GroundingError(
+                    "A walkthrough citation fell outside the source lines supplied."
+                )
+            text = _optional_text(item.get("explanation"))
+            if text is None:
+                withheld += 1
+                continue
+            walkthrough.append(
+                {"line": line, "citation": f"{node.file}:{line}", "text": text}
+            )
+    elif raw_walkthrough is not None:
+        withheld += 1
 
     neighbor_by_id = {str(item["node_id"]): item for item in neighbors}
     raw_relationships = payload.get("relationships", [])
-    if not isinstance(raw_relationships, list):
-        raise GroundingError("The provider relationships were not a list.")
     relationships: list[dict[str, object]] = []
-    for item in raw_relationships[:8]:
-        if not isinstance(item, dict) or not isinstance(item.get("node_id"), str):
-            raise GroundingError("A relationship omitted its parser-proven node ID.")
-        neighbor = neighbor_by_id.get(item["node_id"])
-        if neighbor is None:
-            raise GroundingError("The provider named a relationship outside the parser graph.")
-        relationships.append(
-            {
-                "node_id": item["node_id"],
-                "citation": neighbor["citation"],
-                "certain": neighbor["certain"],
-                "text": _bounded_text(item.get("explanation"), "relationship explanation"),
-            }
-        )
+    if isinstance(raw_relationships, list):
+        for item in raw_relationships[:8]:
+            if not isinstance(item, dict) or not isinstance(item.get("node_id"), str):
+                withheld += 1
+                continue
+            neighbor = neighbor_by_id.get(item["node_id"])
+            if neighbor is None:
+                raise GroundingError("The provider named a relationship outside the parser graph.")
+            text = _optional_text(item.get("explanation"))
+            if text is None:
+                withheld += 1
+                continue
+            relationships.append(
+                {
+                    "node_id": item["node_id"],
+                    "citation": neighbor["citation"],
+                    "certain": neighbor["certain"],
+                    "text": text,
+                }
+            )
+    elif raw_relationships is not None:
+        withheld += 1
 
     return {
         "summary": {"text": summary, "citation": f"{node.file}:{node.lineno}"},
         "walkthrough": walkthrough,
         "relationships": relationships,
+        "withheld": withheld,
+        # Stated, not implied: when the prompt carried only part of a long
+        # file, the panel says which part. Silently narrating an excerpt as if
+        # it were the whole structure is the coverage lie graph schema 8 exists
+        # to prevent, one level down.
+        "excerpt": {
+            "first": excerpt.first,
+            "last": excerpt.last,
+            "total": excerpt.total,
+            "truncated": excerpt.truncated,
+        },
     }
 
 
@@ -512,6 +614,15 @@ def _bounded_text(value: object, label: str) -> str:
     if len(text) > 2400:
         raise GroundingError(f"The provider {label} exceeded the grounded response limit.")
     return text
+
+
+def _optional_text(value: object) -> str | None:
+    """``_bounded_text`` for one item of a list: a fault costs the item only."""
+
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    return None if len(text) > 2400 else text
 
 
 __all__ = ["StudyService", "StudySourceError", "UnknownNodeError"]

@@ -46,8 +46,8 @@ def test_easy_voice_spells_small_counts_and_expert_uses_digits():
     neighbors = [_neighbor("inbound"), _neighbor("inbound"), _neighbor("outbound")]
     summary = structural_summary(_node(), neighbors, [])
     assert "Two other parts" in summary["easy"]
-    assert "Inbound 2" in summary["expert"]
-    assert "Outbound 1" in summary["expert"]
+    assert "2 inbound" in summary["expert"]
+    assert "1 outbound" in summary["expert"]
 
 
 def test_possible_relationships_stay_labelled_possible_in_both_voices():
@@ -71,7 +71,7 @@ def test_possible_relationships_stay_labelled_possible_in_both_voices():
 def test_zero_neighbours_is_stated_not_omitted():
     summary = structural_summary(_node(), [], [])
     assert "Nothing else in your code uses it yet." in summary["easy"]
-    assert "Inbound 0" in summary["expert"]
+    assert "0 inbound" in summary["expert"]
 
 
 def test_partial_parse_is_disclosed_in_both_voices():
@@ -104,7 +104,7 @@ def test_more_than_ten_neighbours_render_as_digits_not_words():
     neighbors = [_neighbor("inbound") for _ in range(11)]
     summary = structural_summary(_node(), neighbors, [])
     assert "11 other parts of your code use it." in summary["easy"]
-    assert "Inbound 11" in summary["expert"]
+    assert "11 inbound" in summary["expert"]
 
 
 def test_two_or_more_lens_concepts_join_with_a_comma_and_and():

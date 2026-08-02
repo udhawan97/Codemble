@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
+import anyio
+import anyio.to_thread
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +37,28 @@ from codemble.server.project_selection import (
     ProjectFolderUnreadable,
     ProjectSelector,
 )
+
+# Narration is the only handler that makes an outbound network call, and
+# ``urlopen`` cannot be cancelled: once a worker thread is inside it, that
+# thread is gone until the provider answers or its socket times out. Every
+# route here is a plain ``def``, so all of them share anyio's request
+# threadpool -- which meant enough in-flight explanations starved /api/graph,
+# /api/map, /study and /checks alike. That is the defect a learner reported as
+# "most of the stuff in that view doesn't load", and experts hit it first
+# because they click through structures fastest.
+#
+# The fix is a capacity limiter of Codemble's own. Passing one to
+# ``run_sync`` means the default limiter is never acquired, so narration draws
+# from a separate budget and the parser endpoints keep their full share no
+# matter how many explanations are stuck.
+_NARRATION_SLOTS = 4
+
+# The learner's ceiling, deliberately shorter than the providers' own socket
+# timeouts. Paired with ``abandon_on_cancel`` the request is answered on time
+# while the worker thread runs to completion in the background -- and because
+# that thread still writes the narration cache, a retry after a timeout is
+# usually served instantly from disk.
+NARRATION_DEADLINE_SECONDS = 45.0
 
 
 class CheckSubmission(BaseModel):
@@ -98,6 +123,10 @@ def create_app(
         raise ValueError("create_app needs a parsed graph or a PickerConfig")
     app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
+    # Per app, not module-global: two apps in one test process must not share a
+    # narration budget, or one test's stuck provider throttles another's.
+    narration_limiter = anyio.CapacityLimiter(_NARRATION_SLOTS)
+    app.state.narration_deadline_seconds = NARRATION_DEADLINE_SECONDS
     activation = ProjectActivation(
         graph,
         studies=study_service,
@@ -280,12 +309,30 @@ def create_app(
             ) from error
 
     @app.get("/api/node/{node_id:path}/explanation")
-    def get_node_explanation(
+    async def get_node_explanation(
         node_id: str, mode: Literal["easy", "expert"] = "easy"
     ) -> dict[str, object]:
+        # Async on purpose: see _NARRATION_SLOTS. This is the one handler
+        # allowed to be slow, and it must be slow entirely on its own budget.
         _, studies = _services()
         try:
-            return studies.explain(node_id, mode)
+            with anyio.fail_after(app.state.narration_deadline_seconds):
+                return await anyio.to_thread.run_sync(
+                    partial(studies.explain, node_id, mode),
+                    abandon_on_cancel=True,
+                    limiter=narration_limiter,
+                )
+        except TimeoutError:
+            return {
+                "status": "timeout",
+                "reason": "timeout",
+                "retryable": True,
+                "cached": False,
+                "message": (
+                    "The narration provider did not answer in time. It may still "
+                    "finish in the background, so trying again is often instant."
+                ),
+            }
         except UnknownNodeError as error:
             raise HTTPException(
                 status_code=404, detail="That source node is not in this graph."

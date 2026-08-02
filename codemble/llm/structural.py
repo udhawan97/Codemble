@@ -97,19 +97,34 @@ def _expert_voice(
     possible: list[dict[str, object]],
     concepts: list[str],
 ) -> str:
-    fields = [
+    # Prose, not a "·"-joined field list. The expert register is terse, but the
+    # old single metadata line sat under a heading reading "Structural summary"
+    # beside Easy's five sentences, and read as a section that had failed to
+    # load -- which is exactly what learners reported. Every fact it carried is
+    # still here; only the presentation changed. Digits stay (Easy spells small
+    # counts; the two voices differ on purpose).
+    edges = len(inbound) + len(outbound)
+    sentences = [
         (
-            f"{node.name} · {node.kind} · {node.file}:{node.lineno}-{node.end_lineno}"
-            f" ({_line_count(node.loc)})"
+            f"{node.name} is a {node.kind} at "
+            f"{node.file}:{node.lineno}-{node.end_lineno} ({_line_count(node.loc)})."
         ),
-        f"Inbound {len(inbound)} · Outbound {len(outbound)}"
-        + (f" · {len(possible)} possible" if possible else ""),
+        (
+            f"It has {len(inbound)} inbound and {len(outbound)} outbound "
+            f"parser-proven {'edge' if edges == 1 else 'edges'}."
+        ),
     ]
+    if possible:
+        count = len(possible)
+        sentences.append(
+            f"{count} possible {'edge is' if count == 1 else 'edges are'} "
+            "unproven rather than parser-certain."
+        )
     if concepts:
-        fields.append(f"Concepts: {', '.join(concepts)}")
+        sentences.append(f"Concepts: {', '.join(concepts)}.")
     if node.partial:
-        fields.append("partial parse — structure incomplete")
-    return " · ".join(fields)
+        sentences.append("A partial parse means this structure is incomplete.")
+    return " ".join(sentences)
 
 
 def _count_word(count: int) -> str:

@@ -301,7 +301,7 @@ def test_repeated_calls_to_the_same_helper_count_as_one_neighbor(tmp_path: Path)
     structural = result["structural"]  # type: ignore[index]
     assert "It uses one other part of your code." in structural["easy"]
     assert "three" not in structural["easy"].lower()
-    assert "Outbound 1" in structural["expert"]
+    assert "1 outbound" in structural["expert"]
 
     explanation = service.explain("repeated_calls.caller")
     assert explanation["status"] == "ready"

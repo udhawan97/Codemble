@@ -57,29 +57,35 @@ export function StudyPanel({
       {!study && !error ? (
         <p className="study-loading" role="status">Reading parser evidence…</p>
       ) : null}
-      {study ? (
-        <div className="study-content">
-          <StructuralSummary structural={study.structural} mode={mode} />
-          <Explanation
-            explanation={explanation}
-            loading={explanationLoading}
-            error={explanationError}
-            llmStatus={llmStatus}
-            mode={mode}
-            node={node}
-            onSelectNode={onSelectNode}
-            onRetry={onRetryNarration}
-          />
-          <Connections
-            neighbors={study.neighbors}
-            node={node}
-            mode={mode}
-            onSelectNode={onSelectNode}
-          />
-          <SourceExcerpt source={study.source} />
-          <LensNotes lens={study.lens} language={node.language} mode={mode} />
-        </div>
-      ) : null}
+      {/* Narration sits outside the `study` gate on purpose. The two arrive on
+          separate requests, so gating the whole panel on the parser payload
+          also erased a narration that had already succeeded -- and gating
+          narration on the parser payload made one failure look like five. */}
+      <div className="study-content">
+        {study ? <StructuralSummary structural={study.structural} mode={mode} /> : null}
+        <Explanation
+          explanation={explanation}
+          loading={explanationLoading}
+          error={explanationError}
+          llmStatus={llmStatus}
+          mode={mode}
+          node={node}
+          onSelectNode={onSelectNode}
+          onRetry={onRetryNarration}
+        />
+        {study ? (
+          <>
+            <Connections
+              neighbors={study.neighbors}
+              node={node}
+              mode={mode}
+              onSelectNode={onSelectNode}
+            />
+            <SourceExcerpt source={study.source} />
+            <LensNotes lens={study.lens} language={node.language} mode={mode} />
+          </>
+        ) : null}
+      </div>
     </aside>
   );
 }
@@ -307,6 +313,14 @@ function SourceExcerpt({ source }) {
   );
 }
 
+const NARRATION_FAILURE_HEADINGS = {
+  grounding: "The explanation was withheld.",
+  unavailable: "Codemble could not reach the model.",
+  rejected: "The model refused the request.",
+  timeout: "The model is taking longer than expected.",
+  provider: "The model's reply could not be read.",
+};
+
 function Explanation({
   explanation,
   loading,
@@ -342,15 +356,24 @@ function Explanation({
   if (explanation.status === "no_key") {
     return <ProviderGuidance message={explanation.message} llmStatus={llmStatus} mode={mode} />;
   }
-  if (explanation.status === "error") {
+  if (explanation.status === "error" || explanation.status === "timeout") {
+    // One heading per failure kind. These all shared the "withheld" wording,
+    // so a dropped Wi-Fi connection told the learner Codemble had refused
+    // ungrounded output -- a correctness lecture for a connectivity fault.
+    const grounding = explanation.reason === "grounding";
     return (
       <section className="study-notice" role="alert" aria-labelledby="explanation-heading">
-        <h2 id="explanation-heading">The explanation was withheld.</h2>
+        <h2 id="explanation-heading">{NARRATION_FAILURE_HEADINGS[explanation.reason] ?? NARRATION_FAILURE_HEADINGS.provider}</h2>
         <p>{explanation.message}</p>
-        <p>Codemble will not display provider output that falls outside parser evidence.</p>
-        <button className="check-primary" type="button" onClick={onRetry}>
-          Try again
-        </button>
+        {grounding ? (
+          <p>Codemble will not display provider output that falls outside parser evidence.</p>
+        ) : null}
+        <p>Every fact from the parser on this panel is unaffected.</p>
+        {explanation.retryable === false ? null : (
+          <button className="check-primary" type="button" onClick={onRetry}>
+            Try again
+          </button>
+        )}
       </section>
     );
   }
@@ -374,15 +397,34 @@ function Explanation({
         {explanation.summary.text}{" "}
         <Citation citation={explanation.summary.citation} fallbackLine={node.lineno} />
       </p>
-      <h3>{mode === "easy" ? "Line by line" : "Walkthrough"}</h3>
-      <ul className="evidence-list">
-        {explanation.walkthrough.map((item) => (
-          <li key={`${item.citation}-${item.text}`}>
-            <p>{item.text}</p>
-            <Citation citation={item.citation} fallbackLine={item.line} />
-          </li>
-        ))}
-      </ul>
+      {explanation.excerpt?.truncated ? (
+        <p className="study-loading">
+          {mode === "easy"
+            ? `This file is long, so the model was shown lines ${explanation.excerpt.first}–${explanation.excerpt.last} of ${explanation.excerpt.total}.`
+            : `Narrated from an excerpt: lines ${explanation.excerpt.first}–${explanation.excerpt.last} of ${explanation.excerpt.total}.`}
+        </p>
+      ) : null}
+      {explanation.withheld > 0 ? (
+        <p className="study-loading">
+          {explanation.withheld} {explanation.withheld === 1 ? "part" : "parts"} of the
+          reply {explanation.withheld === 1 ? "was" : "were"} malformed and left out.
+        </p>
+      ) : null}
+      {/* An empty walkthrough is now ordinary rather than a failure, so the
+          heading follows the content instead of standing over nothing. */}
+      {explanation.walkthrough.length ? (
+        <>
+          <h3>{mode === "easy" ? "Line by line" : "Walkthrough"}</h3>
+          <ul className="evidence-list">
+            {explanation.walkthrough.map((item) => (
+              <li key={`${item.citation}-${item.text}`}>
+                <p>{item.text}</p>
+                <Citation citation={item.citation} fallbackLine={item.line} />
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       {explanation.relationships.length ? (
         <>
           <h3>{mode === "easy" ? "How it fits in" : "Parser relationships"}</h3>

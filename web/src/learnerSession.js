@@ -472,6 +472,11 @@ export function createLearnerSession({
         studyError: "",
         explanation: null,
         explanationError: "",
+        // Cleared here as it already is in advanceRegion and retreat. A
+        // superseded loadExplanation deliberately returns without clearing it,
+        // so whoever moves the learner owns the reset -- and this branch was
+        // the one that did not, leaving a spinner nothing would clear.
+        explanationLoading: false,
       });
       return;
     }
@@ -912,13 +917,46 @@ export function createLearnerSession({
   return Object.freeze({ dispatch, dispose, getSnapshot, start, subscribe });
 }
 
+// Longer than the server's own narration deadline on purpose: the server
+// answers a slow provider honestly within its budget, so this only ever fires
+// when the server itself never replies at all. Without it that case is an
+// unbounded spinner -- the app reads as dead rather than as busy.
+const EXPLANATION_DEADLINE_MS = 60_000;
+
+function withDeadline(options, milliseconds) {
+  // Feature-detected rather than assumed: where either API is missing the
+  // server-side deadline is still in force, so the request stays bounded.
+  if (
+    typeof AbortSignal?.timeout !== "function" ||
+    typeof AbortSignal?.any !== "function"
+  ) {
+    return options;
+  }
+  const deadline = AbortSignal.timeout(milliseconds);
+  return {
+    ...options,
+    signal: options.signal ? AbortSignal.any([options.signal, deadline]) : deadline,
+  };
+}
+
 export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis.fetch) {
   if (typeof fetchImplementation !== "function") {
     throw new TypeError("Learner-session HTTP adapter requires fetch.");
   }
 
   async function request(url, label, options = {}) {
-    const response = await fetchImplementation(url, options);
+    let response;
+    try {
+      response = await fetchImplementation(url, options);
+    } catch (failure) {
+      // AbortSignal.timeout rejects with a TimeoutError, which is distinct from
+      // the AbortError a superseded request raises -- so this surfaces as a real,
+      // retryable failure instead of being swallowed as "the learner moved on".
+      if (failure instanceof Error && failure.name === "TimeoutError") {
+        throw new Error(`${label} timed out. Codemble is still running — try again.`);
+      }
+      throw failure;
+    }
     if (!response.ok) {
       // Every refusal on this server already carries a sentence written for a
       // learner -- "Choose a folder inside your home directory." -- and a bare
@@ -961,7 +999,7 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
       return request(
         `/api/node/${encodeURIComponent(nodeId)}/explanation?mode=${encodeURIComponent(mode)}`,
         "Explanation request",
-        options,
+        withDeadline(options, EXPLANATION_DEADLINE_MS),
       );
     },
     loadChecks(regionId, options = {}) {
