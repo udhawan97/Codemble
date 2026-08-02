@@ -376,3 +376,38 @@ def test_a_slow_provider_returns_a_timeout_instead_of_hanging_the_request(
         assert response.json()["retryable"] is True
     finally:
         release.set()
+
+
+# --------------------------------------------------------------------------
+# Register: Easy may compare things; Expert may not.
+# --------------------------------------------------------------------------
+
+
+def test_only_easy_is_allowed_an_analogy(tmp_path: Path) -> None:
+    """Teaching a beginner without comparison is close to impossible.
+
+    An analogy invents no structure -- it restates supplied evidence in other
+    words -- and the contract still forbids naming identifiers in prose, which
+    is what stops a comparison becoming a claim about code that does not exist.
+    """
+
+    easy = _Provider(_payload())
+    expert = _Provider(_payload())
+    StudyService(_graph(), provider=easy, cache_root=tmp_path / "e").explain("app.main", "easy")
+    StudyService(_graph(), provider=expert, cache_root=tmp_path / "x").explain(
+        "app.main", "expert"
+    )
+
+    assert "comparison is welcome" in easy.prompts[0]
+    assert "No analogies" in expert.prompts[0]
+
+
+def test_both_registers_are_told_to_stay_short(tmp_path: Path) -> None:
+    """The panel's job is what this is FOR; detail is one click away."""
+
+    for mode in ("easy", "expert"):
+        provider = _Provider(_payload())
+        StudyService(_graph(), provider=provider, cache_root=tmp_path / mode).explain(
+            "app.main", mode
+        )
+        assert "Three sentences at most." in provider.prompts[0]

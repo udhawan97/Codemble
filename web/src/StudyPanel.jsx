@@ -508,11 +508,21 @@ function Explanation({
           reply {explanation.withheld === 1 ? "was" : "were"} malformed and left out.
         </p>
       ) : null}
-      {/* An empty walkthrough is now ordinary rather than a failure, so the
-          heading follows the content instead of standing over nothing. */}
+      {/* Behind a disclosure, closed. The line-by-line walkthrough used to be
+          the bulk of what greeted every single click, which is most of what
+          "the explanations are too complex for a casual user" meant: a reader
+          who wanted to know what a file is FOR was handed eight numbered
+          claims about individual lines. It is genuinely useful and it stays --
+          one click away, for the reader who has decided they want it.
+          An empty walkthrough is ordinary rather than a failure, so the
+          disclosure follows the content instead of standing over nothing. */}
       {explanation.walkthrough.length ? (
-        <>
-          <h3>{mode === "easy" ? "Line by line" : "Walkthrough"}</h3>
+        <details className="walkthrough-disclosure">
+          <summary>
+            {mode === "easy"
+              ? `Walk me through it line by line (${explanation.walkthrough.length})`
+              : `Line walkthrough (${explanation.walkthrough.length})`}
+          </summary>
           <ul className="evidence-list">
             {explanation.walkthrough.map((item) => (
               <li key={`${item.citation}-${item.text}`}>
@@ -521,7 +531,7 @@ function Explanation({
               </li>
             ))}
           </ul>
-        </>
+        </details>
       ) : null}
       {explanation.relationships.length ? (
         <>

@@ -714,9 +714,11 @@ function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } 
       createBody({ node, color: node.color, palette, radius, geometry: bodyGeometry }),
     );
   }
-  // An uncharted region is drawn, not deleted: it keeps its true position and
-  // stays clickable, so the sky never misreports how large the project is. It
-  // simply carries no glow, no fog and no name until the learner reaches it.
+  // An uncharted region keeps its true position, its colour, its NAME and its
+  // clickability -- being somewhere the learner has not been is not a reason
+  // to hide it. What it does without, until reached, is the glow and the
+  // language fog, so the charted sky still reads as the part of the project
+  // they have actually walked.
   const uncharted = isUncharted(node);
   // Dimmed nodes keep their true colour and lose their glow. Dimming by
   // removing light rather than shifting hue keeps a lit star recognisably lit.

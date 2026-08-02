@@ -130,6 +130,15 @@ assert.equal(snapshot.languageFocus, "typescript");
 assert.equal(snapshot.region.id, "main.ts");
 assert.equal(snapshot.selectedNode.id, "typescript:main.ts:main");
 assert.equal(snapshot.studyData.node.id, "typescript:main.ts:main");
+// Jumping straight to a structure charts its module. This route is how the
+// Workflow tree, the Connections list and the Impact widget all move the
+// learner, and every one of them can land on a module they have never flown
+// to -- so without this they would read its real source while the map quietly
+// forgot they had been there, dropping its routes again on the next move.
+assert.ok(
+  snapshot.visitedRegionIds.has("main.ts"),
+  "SELECT_STUDY_NODE must chart the module it lands in",
+);
 
 await session.dispatch({ type: "SET_LANGUAGE_FOCUS", language: "python" });
 snapshot = session.getSnapshot();

@@ -563,6 +563,12 @@ export function createLearnerSession({
     const nextRegion = snapshot.graph.regions.find(
       (candidate) => candidate.id === nextNode.region,
     );
+    // Charted here too, and this is the route that most needed it: the
+    // Workflow tree, the Connections list and the Impact widget all jump
+    // straight to a structure in a module the learner has never flown to.
+    // Without this they read its real source and the map forgot they had been
+    // -- the region fell out of the reveal seed the moment they moved on.
+    if (nextRegion) recordVisit(nextRegion.id);
     commit({
       languageFocus:
         snapshot.languageFocus !== "all" && nextNode.language !== snapshot.languageFocus

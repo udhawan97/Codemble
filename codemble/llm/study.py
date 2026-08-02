@@ -430,10 +430,22 @@ def _prompt_excerpt(node: Node, source: dict[str, object]) -> _Excerpt:
 
 _MODE_STYLE = {
     "easy": (
-        "AUDIENCE: someone new to programming.\n"
+        "AUDIENCE: someone new to programming, exploring code they did not\n"
+        "write and may not have asked to understand in detail.\n"
         "- Use short sentences and everyday words.\n"
         "- Explain any technical term in the same sentence you use it.\n"
         "- Assume no knowledge of frameworks, patterns, or jargon.\n"
+        "- Lead with what this is FOR in the project, not with how it works.\n"
+        # Analogy is permitted here and nowhere else. Teaching a beginner
+        # without comparison to something familiar is close to impossible, and
+        # an analogy invents no structure -- it describes real, supplied
+        # evidence in other words. The contract below still forbids naming
+        # identifiers in prose, which is what keeps a comparison from turning
+        # into a claim about code that does not exist.
+        "- A short everyday comparison is welcome when it makes the purpose\n"
+        "  clearer, as long as it describes only what the code below does.\n"
+        "- Three sentences at most. A learner who wants line-by-line detail\n"
+        "  asks for it separately.\n"
     ),
     "expert": (
         "AUDIENCE: an experienced developer onboarding onto this codebase.\n"
@@ -441,6 +453,8 @@ _MODE_STYLE = {
         "- Lead with what this structure does and what depends on it, using\n"
         "  only the evidence supplied below.\n"
         "- Use standard terminology without defining it.\n"
+        "- No analogies or comparisons; state the mechanism directly.\n"
+        "- Three sentences at most.\n"
     ),
 }
 

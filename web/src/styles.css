@@ -3387,3 +3387,20 @@ input:focus-visible {
     color: var(--cm-orbit);
   }
 }
+
+/* The walkthrough disclosure. Closed by default: the line-by-line detail is
+   the single largest block in the panel, and greeting every click with it is
+   what made a casual read feel like homework. */
+.walkthrough-disclosure > summary {
+  min-height: 44px;
+  padding: var(--cm-space-xs) 0;
+  color: var(--cm-orbit);
+  cursor: pointer;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+}
+
+.walkthrough-disclosure > summary:focus-visible {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 2px;
+}
