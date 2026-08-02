@@ -55,6 +55,49 @@ _DEFINITION_TYPES = frozenset(
 )
 _STARTUP_FILE_STEMS = frozenset({"app", "cli", "index", "main", "server"})
 
+# Names the language or its host environment provides, which therefore leave
+# the project exactly as `Math.max` already did. Python's adapter has said this
+# about its own builtins from the start; JS/TS had no equivalent, so `new Set()`
+# was reported as `unresolved:javascript:graphData.js:Set` -- which reads as
+# "Codemble believes this is yours and could not find it". A coverage gap and a
+# project boundary are different facts, and this is the channel graph schema 8
+# exists to keep honest. Measured on `web/src`, 45% of unresolved call targets
+# were these.
+#
+# Deliberately not exhaustive and deliberately not inferred: every entry is a
+# global with no possible project definition. A name absent from this table
+# falls through to the unresolved answer, which is the safe direction -- a
+# missing entry costs precision, whereas a wrong one would silently reclassify
+# a learner's own code as somebody else's.
+_ECMASCRIPT_GLOBALS = frozenset(
+    {
+        # Values and collections
+        "Array", "BigInt", "Boolean", "Map", "Number", "Object", "Proxy",
+        "Reflect", "RegExp", "Set", "String", "Symbol", "WeakMap", "WeakRef",
+        "WeakSet",
+        # Errors
+        "AggregateError", "Error", "EvalError", "RangeError", "ReferenceError",
+        "SyntaxError", "TypeError", "URIError",
+        # Async and time
+        "AbortController", "AbortSignal", "Date", "Promise", "queueMicrotask",
+        "setInterval", "setTimeout", "clearInterval", "clearTimeout",
+        "requestAnimationFrame", "cancelAnimationFrame", "requestIdleCallback",
+        # Typed arrays and binary
+        "ArrayBuffer", "BigInt64Array", "DataView", "Float32Array",
+        "Float64Array", "Int8Array", "Int16Array", "Int32Array", "SharedArrayBuffer",
+        "Uint8Array", "Uint8ClampedArray", "Uint16Array", "Uint32Array",
+        # Encoding and parsing
+        "decodeURI", "decodeURIComponent", "encodeURI", "encodeURIComponent",
+        "isFinite", "isNaN", "parseFloat", "parseInt", "structuredClone",
+        "TextDecoder", "TextEncoder", "URL", "URLSearchParams",
+        # Host objects a browser or Node supplies
+        "Blob", "CustomEvent", "DOMException", "Event", "EventTarget", "File",
+        "FileReader", "FormData", "Headers", "Image", "IntersectionObserver",
+        "MutationObserver", "Request", "Response", "ResizeObserver", "Worker",
+        "fetch",
+    }
+)
+
 _JS_LANGUAGE = Language(tree_sitter_javascript.language())
 _TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
 _TSX_LANGUAGE = Language(tree_sitter_typescript.language_tsx())
@@ -1011,6 +1054,22 @@ def _resolve_call(
                 lineno,
                 index,
             )
+        # Reached only after every project-local answer has been tried, so a
+        # name that gets here is either a language/host global or something
+        # this parser genuinely cannot place. The first is a boundary and the
+        # second is a coverage gap; they are different claims and only now can
+        # they be told apart.
+        if name in _ECMASCRIPT_GLOBALS:
+            return [
+                Edge(
+                    definition.node_id,
+                    f"external:{name}",
+                    "call",
+                    certain=False,
+                    lineno=lineno,
+                    external=True,
+                )
+            ]
         return [
             Edge(
                 definition.node_id,
