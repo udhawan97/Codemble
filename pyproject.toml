@@ -46,7 +46,7 @@ dependencies = [
   #     188,755 named nodes across all six grammars on 0.26.0 is clean, and
   #     only the adapter's own query/cursor work trips it.
   # Raise this only once a grammar release is verified against the newer core.
-  "tree-sitter>=0.25,<0.26",
+  "tree-sitter>=0.25,<0.27",
   "tree-sitter-javascript>=0.25,<0.26",
   "tree-sitter-typescript>=0.23.2,<0.24",
   # The Phase 2 language slate. Each is capped the same way the JS/TS grammars
