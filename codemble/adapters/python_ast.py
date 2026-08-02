@@ -261,9 +261,29 @@ class _ConceptCollector(ast.NodeVisitor):
         self.add("exception-handling", syntax)
         self.generic_visit(syntax)
 
+    def visit_Match(self, syntax: ast.Match) -> None:
+        self.add("pattern-matching", syntax)
+        self.generic_visit(syntax)
+
+    def visit_JoinedStr(self, syntax: ast.JoinedStr) -> None:
+        self.add("f-string", syntax)
+        self.generic_visit(syntax)
+
+    def visit_NamedExpr(self, syntax: ast.NamedExpr) -> None:
+        self.add("walrus", syntax)
+        self.generic_visit(syntax)
+
     def visit_AnnAssign(self, syntax: ast.AnnAssign) -> None:
         self.add("type-hint", syntax.annotation)
         self.generic_visit(syntax)
+
+
+def _decorator_leaf_name(decorator: ast.expr) -> str | None:
+    """The bare name of a decorator, through a call and through a dotted path."""
+
+    target = decorator.func if isinstance(decorator, ast.Call) else decorator
+    written = _dotted_name(target)
+    return written.rsplit(".", 1)[-1] if written else None
 
 
 def _concepts_for_target(
@@ -275,6 +295,18 @@ def _concepts_for_target(
     if isinstance(target, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
         for decorator in target.decorator_list:
             collector.add("decorator", decorator)
+            # A dataclass is a decorator AND a distinct idea worth naming: the
+            # learner is looking at a class whose __init__, __repr__ and
+            # __eq__ are written for it, and none of them appear in the file.
+            # Matched on the leaf name so `@dataclass`, `@dataclasses.dataclass`
+            # and `@dataclass(frozen=True)` all count.
+            if _decorator_leaf_name(decorator) == "dataclass":
+                collector.add("dataclass", decorator)
+    if isinstance(target, ast.ClassDef):
+        for base in target.bases:
+            written = _dotted_name(base)
+            if written and written.rsplit(".", 1)[-1] == "Protocol":
+                collector.add("protocol", base)
     if isinstance(target, ast.AsyncFunctionDef):
         collector.add("async-await", target)
     if isinstance(target, (ast.FunctionDef, ast.AsyncFunctionDef)):

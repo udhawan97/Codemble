@@ -5,6 +5,41 @@ from __future__ import annotations
 from codemble.adapters.base import ConceptAnnotation
 
 _PYTHON_NOTES = {
+    "dataclass": (
+        "Dataclass",
+        {
+            "easy": "The @dataclass line writes the boring parts for you: how one of these is created, how it prints, and how two of them are compared. That is why you cannot see that code here.",
+            "expert": "@dataclass generates __init__, __repr__ and __eq__ from the annotated fields; eq/order/frozen change what is generated.",
+        },
+    ),
+    "protocol": (
+        "Protocol",
+        {
+            "easy": "This lists what something has to be able to do. Anything that can do those things counts, without having to say it is related to this.",
+            "expert": "A typing.Protocol: structural typing checked by the type checker, with no inheritance required at runtime.",
+        },
+    ),
+    "pattern-matching": (
+        "Pattern matching",
+        {
+            "easy": "This takes a value apart and does something different depending on what shape it turned out to be.",
+            "expert": "A match statement. Patterns destructure as they test, and a bare name in a case binds rather than compares.",
+        },
+    ),
+    "f-string": (
+        "f-string",
+        {
+            "easy": "The f before the quotes lets you drop values straight into the text inside the curly braces.",
+            "expert": "A formatted string literal; expressions are evaluated at runtime and formatted through __format__.",
+        },
+    ),
+    "walrus": (
+        "Walrus operator",
+        {
+            "easy": "The := sign stores a value and uses it in the same breath, so the same thing is not worked out twice.",
+            "expert": "An assignment expression: it binds in the enclosing scope and evaluates to the bound value.",
+        },
+    ),
     "decorator": (
         "Decorator",
         {

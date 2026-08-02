@@ -163,3 +163,59 @@ def test_a_cycle_in_the_class_hierarchy_terminates(tmp_path: Path) -> None:
     graph = PythonAstAdapter().parse(root)
 
     assert graph.nodes, "a cyclic hierarchy must still produce a graph"
+
+
+def test_the_lens_names_the_python_a_learner_actually_meets(tmp_path: Path) -> None:
+    """Five idioms that dominate modern Python and had no note at all.
+
+    They matter most for this product's audience specifically: someone reading
+    code an AI wrote for them meets dataclasses, f-strings and Protocols
+    constantly, and a lens that stayed silent on all three taught nothing about
+    the file in front of them.
+    """
+
+    root = tmp_path / "modern"
+    root.mkdir()
+    (root / "app.py").write_text(
+        "from dataclasses import dataclass\n"
+        "from typing import Protocol\n"
+        "\n"
+        "@dataclass(frozen=True)\n"
+        "class Point:\n"
+        "    x: int\n"
+        "\n"
+        "class Reader(Protocol):\n"
+        "    def read(self) -> str: ...\n"
+        "\n"
+        "def describe(value):\n"
+        "    match value:\n"
+        "        case 1:\n"
+        "            pass\n"
+        "    if (found := len(str(value))) > 0:\n"
+        "        return f'got {found}'\n"
+        "    return ''\n",
+        encoding="utf-8",
+    )
+
+    graph = PythonAstAdapter().parse(root)
+    found = {annotation.concept for annotation in graph.concept_annotations}
+
+    assert {"dataclass", "protocol", "pattern-matching", "f-string", "walrus"} <= found
+
+
+def test_every_python_concept_the_parser_emits_can_be_taught(tmp_path: Path) -> None:
+    """A detected idiom with no note is a fact the learner never receives.
+
+    The adapter and the lens are separate files, so a new concept can ship
+    detected and silent -- which is exactly how five of them stayed invisible.
+    """
+
+    from codemble.lens import lens_notes
+
+    graph = PythonAstAdapter().parse(Path(__file__).parent.parent / "codemble")
+    detected = {annotation.concept for annotation in graph.concept_annotations}
+    voiced = {
+        note["concept"] for note in lens_notes("python", list(graph.concept_annotations))
+    }
+
+    assert detected <= voiced, f"detected but never taught: {sorted(detected - voiced)}"
