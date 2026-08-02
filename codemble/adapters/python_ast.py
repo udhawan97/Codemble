@@ -651,7 +651,7 @@ def _entrypoint_ranks(
                 candidate_id = f"{parsed.module}.{statement.name}"
                 if statement.name == "main" and candidate_id in node_by_id:
                     ranks[candidate_id] = min(ranks.get(candidate_id, 1), 1)
-            if _is_app_assignment(statement):
+            if _is_app_assignment(statement) or _is_entrypoint_decorated(statement):
                 module_rank = min(module_rank if module_rank is not None else 2, 2)
         if parsed.path.name == "__main__.py":
             module_rank = min(module_rank if module_rank is not None else 3, 3)
@@ -698,10 +698,33 @@ def _is_app_assignment(statement: ast.stmt) -> bool:
         target, value = statement.targets[0], statement.value
     elif isinstance(statement, ast.AnnAssign):
         target, value = statement.target, statement.value
-    if not isinstance(target, ast.Name) or target.id != "app" or not isinstance(value, ast.Call):
+    # The factory is the evidence; what the variable is called is a naming
+    # convention. This used to require the name `app`, so `srv = Flask(...)`
+    # and `cli = typer.Typer()` ranked nowhere -- a project's real entrypoint
+    # made invisible by its author's choice of word.
+    if not isinstance(target, ast.Name) or not isinstance(value, ast.Call):
         return False
     factory = _dotted_name(value.func)
     return bool(factory and factory.rsplit(".", 1)[-1] in _APP_FACTORIES)
+
+
+# Decorators that register a command or a route. A click CLI has no app object
+# at all -- the decorator is the only evidence the module is an entrypoint --
+# and matching on the leaf name covers `@click.command()`, `@cli.command()`,
+# `@app.route(...)` and `@api.get(...)` alike without hardcoding a variable.
+_ENTRYPOINT_DECORATORS = frozenset({"command", "group", "route"})
+
+
+def _is_entrypoint_decorated(
+    statement: ast.stmt,
+) -> bool:
+    if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return False
+    for decorator in statement.decorator_list:
+        leaf = _decorator_leaf_name(decorator)
+        if leaf in _ENTRYPOINT_DECORATORS:
+            return True
+    return False
 
 
 def _resolve_import(

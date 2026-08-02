@@ -272,3 +272,92 @@ def test_an_all_tests_project_still_gets_a_home(tmp_path: Path) -> None:
     graph = PythonAstAdapter().parse(root)
 
     assert any(node.entrypoint_rank is not None for node in graph.nodes)
+
+
+def _framework_project(tmp_path: Path, name: str, body: str) -> Path:
+    root = tmp_path / name
+    root.mkdir()
+    (root / "service.py").write_text(body, encoding="utf-8")
+    (root / "helper.py").write_text("def util():\n    return 1\n", encoding="utf-8")
+    return root
+
+
+def test_an_app_object_counts_whatever_the_variable_is_called(tmp_path: Path) -> None:
+    """The factory is the evidence; the variable name is a naming convention.
+
+    Detection required the variable to be literally named `app`, so
+    `srv = Flask(__name__)` and `cli = typer.Typer()` ranked nowhere at all --
+    a project's real entrypoint invisible because its author chose a different
+    word.
+    """
+
+    flask = _framework_project(
+        tmp_path,
+        "flask_app",
+        "from flask import Flask\nsrv = Flask(__name__)\n\n@srv.route('/')\ndef index():\n    return 'x'\n",
+    )
+    typer_cli = _framework_project(
+        tmp_path,
+        "typer_app",
+        "import typer\ncli = typer.Typer()\n\n@cli.command()\ndef run():\n    return 1\n",
+    )
+
+    for root in (flask, typer_cli):
+        graph = PythonAstAdapter().parse(root)
+        ranked = {
+            node.id for node in graph.nodes if node.entrypoint_rank is not None
+        }
+        assert "service" in ranked, f"{root.name}: the app module must be a candidate"
+
+
+def test_a_decorated_command_makes_its_module_an_entrypoint(tmp_path: Path) -> None:
+    """A click CLI has no app object at all -- the decorator is the evidence."""
+
+    root = _framework_project(
+        tmp_path,
+        "click_app",
+        "import click\n\n@click.command()\ndef start():\n    return 1\n",
+    )
+
+    graph = PythonAstAdapter().parse(root)
+
+    assert any(
+        node.id == "service" and node.entrypoint_rank is not None
+        for node in graph.nodes
+    )
+
+
+def test_one_best_candidate_is_chosen_whatever_its_rank(tmp_path: Path) -> None:
+    """Home used to require a rank-ZERO candidate to auto-select.
+
+    A web service frequently has no `__main__` guard at all, so its only
+    candidate sat at the app-object rank and Home resolved to nothing -- the
+    learner met the picker holding a single option. If exactly one candidate is
+    the best available, there is no question to ask.
+    """
+
+    root = _framework_project(
+        tmp_path,
+        "service_only",
+        "from fastapi import FastAPI\napi = FastAPI()\n\n@api.get('/health')\ndef health():\n    return {}\n",
+    )
+
+    graph = PythonAstAdapter().parse(root)
+
+    assert graph.selected_entrypoint == "service"
+
+
+def test_a_genuine_tie_still_asks(tmp_path: Path) -> None:
+    """Two equally good candidates is a learner decision, not a guess."""
+
+    root = tmp_path / "two_entries"
+    root.mkdir()
+    for name in ("first", "second"):
+        (root / f"{name}.py").write_text(
+            "def main():\n    return 1\n\nif __name__ == '__main__':\n    main()\n",
+            encoding="utf-8",
+        )
+
+    graph = PythonAstAdapter().parse(root)
+
+    assert graph.selected_entrypoint is None

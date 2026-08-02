@@ -43,12 +43,23 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
         raise GraphFinalizationError(
             f"entrypoint is not parser-ranked: {entrypoint} (candidates: {choices})"
         )
-    rank_zero = [
+    # The BEST available rank, not rank zero specifically. A web service
+    # frequently has no `__main__` guard at all, so its only candidate sat at
+    # the app-object rank and Home resolved to nothing -- the learner met the
+    # picker holding a single option and was asked a question with one answer.
+    # When exactly one candidate is the best available there is nothing to ask;
+    # when several tie, that is a genuine decision and the picker still opens.
+    ranks = [
+        node_by_id[candidate].entrypoint_rank
+        for candidate in candidates
+        if node_by_id[candidate].entrypoint_rank is not None
+    ]
+    best = [
         candidate
         for candidate in candidates
-        if node_by_id[candidate].entrypoint_rank == 0
+        if ranks and node_by_id[candidate].entrypoint_rank == min(ranks)
     ]
-    selected_entrypoint = entrypoint or (rank_zero[0] if len(rank_zero) == 1 else None)
+    selected_entrypoint = entrypoint or (best[0] if len(best) == 1 else None)
     finalized = replace(
         graph,
         nodes=nodes,
