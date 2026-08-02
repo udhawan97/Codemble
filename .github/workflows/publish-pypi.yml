@@ -13,7 +13,7 @@ jobs:
       # v6 to match ci.yml and pages.yml, which have been green on it with the
       # identical `python-version: "3.11"` input. This workflow was the only
       # one still on v5 -- the release path missed a sweep the others got.
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Build sdist and wheel
