@@ -5,7 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-02
+
 ### Added
+- **Codemble now reads seven languages.** Go, Java, Rust and C# join Python,
+  JavaScript and TypeScript. Each is parsed the same way the others are —
+  real structures at real line spans, imports and calls, entrypoint ranking
+  and language-specific idiom notes — and each keeps the same rule about
+  honesty: a call Codemble cannot prove from the code alone is shown as a
+  possible relationship, never as a certain one. A file with a syntax error
+  still contributes everything that parsed, and the count of files Codemble
+  could not read no longer mentions a language it can now read.
 - **Every module is now visible, coloured and named from the first frame.** The
   galaxy used to draw anything you had not reached yet as a faint, anonymous
   speck — on a project this size that was roughly 100 of 128 systems — so

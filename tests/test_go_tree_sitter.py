@@ -51,8 +51,8 @@ def test_nodes_are_parser_proven_language_tagged_and_spanned(graph) -> None:  # 
     assert nodes["go:internal/report/report.go::Map"].kind == "function"
     assert nodes["go:internal/store/store.go::New"].region == "go:internal/store/store.go"
     assert all(node.file and node.lineno >= 1 and node.loc >= 1 for node in graph.nodes)
-    # `type Alias = T` and `type ID string` name no structure to study, so they
-    # are recognised as types without becoming nodes.
+    # An unexported struct is still a structure a learner can open, so being
+    # lowercase is no reason to leave it out of the graph.
     assert "go:internal/store/store.go::base" in nodes
 
 
@@ -290,6 +290,109 @@ def test_a_local_name_shadowing_a_package_never_resolves_through_it(
 
     assert ("go:app.go::main", "go:db/db.go::Open", True, False) not in calls
     assert ("go:app.go::main", "unresolved:go:app.go:db.Open", False, False) in calls
+
+
+def test_a_name_bound_at_any_depth_shadows_the_package_scope(tmp_path: Path) -> None:
+    # Every one of these binds a name somewhere the enclosing declaration's own
+    # `parameters` field cannot see. Reading only that field made each call
+    # below a *certain* edge to the package function the local name hides.
+    (tmp_path / "go.mod").write_text("module example.com/x\n", encoding="utf-8")
+    (tmp_path / "db").mkdir()
+    (tmp_path / "db" / "db.go").write_text(
+        "package db\n\nfunc Open() {}\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "main.go").write_text(
+        "package main\n"
+        "\n"
+        'import "example.com/x/db"\n'
+        "\n"
+        "func run(apply func(func())) {\n"
+        "\tapply(func(helper func()) {\n"
+        "\t\thelper()\n"
+        "\t})\n"
+        "}\n"
+        "\n"
+        "func sel(ch chan func()) {\n"
+        "\tselect {\n"
+        "\tcase db := <-ch:\n"
+        "\t\tdb.Open()\n"
+        "\t}\n"
+        "}\n"
+        "\n"
+        "func guard(v any) {\n"
+        "\tswitch helper := v.(type) {\n"
+        "\tcase func():\n"
+        "\t\thelper()\n"
+        "\t}\n"
+        "}\n"
+        "\n"
+        "func helper() {}\n",
+        encoding="utf-8",
+    )
+
+    calls = _edges(GoAdapter().parse(tmp_path), "call")
+    proven = {(src, dst) for src, dst, certain, _ in calls if certain}
+
+    # A closure parameter, a select receive, and a type-switch alias.
+    assert ("go:main.go::run", "go:main.go::helper") not in proven
+    assert ("go:main.go::sel", "go:db/db.go::Open") not in proven
+    assert ("go:main.go::guard", "go:main.go::helper") not in proven
+    # Shadowed, never dropped: each stays a possible call to an unnamed target.
+    assert ("go:main.go::run", "unresolved:go:main.go::run:helper", False, False) in calls
+    assert ("go:main.go::sel", "unresolved:go:main.go:db.Open", False, False) in calls
+    assert (
+        "go:main.go::guard",
+        "unresolved:go:main.go::guard:helper",
+        False,
+        False,
+    ) in calls
+    # An unshadowed call in the same declaration is still proven.
+    assert ("go:main.go::run", "unresolved:go:main.go::run:apply", False, False) in calls
+
+
+def test_a_conversion_through_an_imported_package_is_not_a_call(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "go.mod").write_text("module example.com/x\n", encoding="utf-8")
+    (tmp_path / "units").mkdir()
+    (tmp_path / "units" / "units.go").write_text(
+        "package units\n"
+        "\n"
+        "type Celsius float64\n"
+        "\n"
+        "type Meters = float64\n"
+        "\n"
+        "func Make() Celsius { return 0 }\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "main.go").write_text(
+        "package main\n"
+        "\n"
+        'import "example.com/x/units"\n'
+        "\n"
+        "type Local float64\n"
+        "\n"
+        "type Alias = float64\n"
+        "\n"
+        "func main() {\n"
+        "\t_ = units.Celsius(1)\n"
+        "\t_ = units.Meters(2)\n"
+        "\t_ = Local(3)\n"
+        "\t_ = Alias(4)\n"
+        "\t_ = units.Make()\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    graph = GoAdapter().parse(tmp_path)
+
+    # A named type and an alias are both types; neither becomes a structure,
+    # and converting through one is not a relationship to anything.
+    assert not any(node.id.endswith("::Celsius") for node in graph.nodes)
+    assert _edges(graph, "call") == {
+        ("go:main.go::main", "go:units/units.go::Make", True, False)
+    }
 
 
 def test_partial_files_stay_visible_without_claiming_broken_structures(graph) -> None:  # type: ignore[no-untyped-def]

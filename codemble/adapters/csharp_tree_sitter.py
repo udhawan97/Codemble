@@ -65,6 +65,12 @@ class _ParsedFile:
     module_id: str
     raw: bytes
     source: str
+    # The file split the way tree-sitter counts rows, so a line number taken
+    # from the tree indexes the line it names. `str.splitlines` cannot be used
+    # for this: it also breaks on VT, FF, NEL, U+2028 and six more characters
+    # the grammar reads as ordinary text, so one form feed inside a string
+    # literal shifted every later snippet onto its predecessor's line.
+    lines: tuple[str, ...]
     digest: str
     tree: Tree
 
@@ -104,6 +110,13 @@ class _CSharpIndex:
     # absent, so an inferred local can never borrow a declared type's certainty.
     receiver_types_by_owner: dict[str, dict[str, str]]
     member_types_by_type: dict[str, dict[str, str]]
+    # Members whose dispatch C# settles at run time rather than at the call
+    # site. Calling one by name reaches whichever override the instance
+    # carries, and an override can live in a class this parse never sees.
+    virtual_member_ids: frozenset[str]
+    # The type names written after `:` on each type declaration, which is the
+    # only evidence this parse has for what `base` refers to.
+    base_type_names_by_type: dict[str, tuple[str, ...]]
 
     @classmethod
     def build(
@@ -145,6 +158,29 @@ class _CSharpIndex:
         frozen_ranges = {
             owner: frozenset(ranges) for owner, ranges in nested_ranges.items()
         }
+
+        virtual_members: set[str] = set()
+        base_type_names: dict[str, tuple[str, ...]] = {}
+        for definition in definitions:
+            if definition.declaration in _TYPE_DECLARATIONS:
+                base_type_names[definition.node_id] = _declared_base_type_names(
+                    definition.syntax,
+                    parsed_by_module[definition.module_id].raw,
+                )
+                continue
+            if definition.declaration not in _MEMBER_DECLARATIONS:
+                continue
+            owner_definition = definitions_by_id.get(definition.parent_id)
+            owner_declaration = (
+                owner_definition.declaration if owner_definition is not None else ""
+            )
+            if owner_declaration == "interface_declaration" or any(
+                _has_modifier(definition.syntax, keyword)
+                for keyword in ("abstract", "override", "virtual")
+            ):
+                # An interface member carries no modifiers and is virtual all
+                # the same, so the declaration that owns it is evidence too.
+                virtual_members.add(definition.node_id)
 
         local_names: dict[str, frozenset[str]] = {}
         receiver_types: dict[str, dict[str, str]] = {}
@@ -194,6 +230,8 @@ class _CSharpIndex:
             local_names_by_owner=local_names,
             receiver_types_by_owner=receiver_types,
             member_types_by_type=member_types,
+            virtual_member_ids=frozenset(virtual_members),
+            base_type_names_by_type=base_type_names,
         )
 
     def with_nodes(self, nodes: tuple[Node, ...]) -> _CSharpIndex:
@@ -329,6 +367,7 @@ class CSharpAdapter:
             module_id=node.region,
             raw=raw,
             source=source,
+            lines=_source_lines(source),
             digest=hashlib.sha256(raw).hexdigest(),
             tree=Parser(_CS_LANGUAGE).parse(raw),
         )
@@ -348,16 +387,29 @@ class CSharpAdapter:
         ]
 
 
+def _source_lines(source: str) -> tuple[str, ...]:
+    """Split ``source`` into the rows tree-sitter reports line numbers against."""
+
+    lines = source.split("\n")
+    if lines and lines[-1] == "":
+        # A trailing newline ends the last line rather than starting an empty
+        # one, which is the count a reader means by "how long is this file".
+        lines.pop()
+    return tuple(lines)
+
+
 def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
     raw = path.read_bytes()
     relative = path.relative_to(project_root).as_posix()
+    source = raw.decode("utf-8", errors="replace")
     parsed = _ParsedFile(
         path=path,
         project_root=project_root,
         relative_path=relative,
         module_id=f"csharp:{relative}",
         raw=raw,
-        source=raw.decode("utf-8", errors="replace"),
+        source=source,
+        lines=_source_lines(source),
         digest=hashlib.sha256(raw).hexdigest(),
         tree=Parser(_CS_LANGUAGE).parse(raw),
     )
@@ -366,7 +418,7 @@ def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
 
 
 def _module_node(parsed: _ParsedFile) -> Node:
-    line_count = max(1, len(parsed.source.splitlines()))
+    line_count = max(1, len(parsed.lines))
     return Node(
         id=parsed.module_id,
         kind="module",
@@ -604,6 +656,23 @@ def _body_bindings(
     return frozenset(names), types
 
 
+def _declared_base_type_names(type_syntax: SyntaxNode, raw: bytes) -> tuple[str, ...]:
+    """Return the simple names written after ``:`` on a type declaration."""
+
+    base_list = next(
+        (child for child in type_syntax.children if child.type == "base_list"),
+        None,
+    )
+    if base_list is None:
+        return ()
+    names = [
+        name
+        for child in base_list.named_children
+        if (name := _simple_type_name(child, raw)) is not None
+    ]
+    return tuple(names)
+
+
 def _declared_member_types(type_syntax: SyntaxNode, raw: bytes) -> dict[str, str]:
     """Return field and property names of one type mapped to their written type."""
 
@@ -691,7 +760,7 @@ def _concepts_for_owner(
     walked = _walk_owned(syntax, nested_definition_ranges)
     candidates: Iterable[SyntaxNode] = (syntax, *walked) if include_owner else walked
     annotations: set[ConceptAnnotation] = set()
-    source_lines = parsed.source.splitlines()
+    source_lines = parsed.lines
     for candidate in candidates:
         if candidate.has_error:
             continue
@@ -768,7 +837,8 @@ def _import_edges(parsed: _ParsedFile, index: _CSharpIndex) -> list[Edge]:
         target = _using_target(syntax)
         if target is None:
             continue
-        namespace = _node_text(target, parsed.raw)
+        written = _node_text(target, parsed.raw)
+        namespace = _using_namespace(syntax, written)
         # A `using` names a namespace, never a file, and a C# namespace is open
         # across files. Where several project files declare it, the parser
         # cannot say which one this file leans on, so each candidate stays a
@@ -793,7 +863,7 @@ def _import_edges(parsed: _ParsedFile, index: _CSharpIndex) -> list[Edge]:
         edges.append(
             Edge(
                 src=parsed.module_id,
-                dst=f"external:{namespace}",
+                dst=f"external:{written}",
                 kind="import",
                 certain=True,
                 lineno=syntax.start_point.row + 1,
@@ -804,14 +874,29 @@ def _import_edges(parsed: _ParsedFile, index: _CSharpIndex) -> list[Edge]:
 
 
 def _using_target(syntax: SyntaxNode) -> SyntaxNode | None:
-    """Return the namespace a ``using`` names, past any alias or ``static``."""
+    """Return what a ``using`` names, past any alias keyword."""
 
     named = [child for child in syntax.named_children if not child.has_error]
     if not named:
         return None
     # `using Alias = Acme.Core;` puts the alias in the `name` field and the
-    # namespace last; a plain or `static` using has only the namespace.
+    # target last; a plain or `static` using has only the target.
     return named[-1]
+
+
+def _using_namespace(syntax: SyntaxNode, written: str) -> str:
+    """Return the namespace a ``using`` reaches into.
+
+    ``using static Acme.Lib.Helpers;`` names a *type*, so the namespace is its
+    qualifier. Looking the whole thing up found no declaring file and the
+    directive was published as a certain route out of the project -- while the
+    type it names was sitting in the parse.
+    """
+
+    if not any(child.type == "static" for child in syntax.children):
+        return written
+    qualifier, separator, _ = written.rpartition(".")
+    return qualifier if separator else written
 
 
 def _call_edges(index: _CSharpIndex) -> list[Edge]:
@@ -857,37 +942,41 @@ def _resolve_invocation(
     if target is None:
         return [_dynamic_call_edge(owner.node_id, lineno)]
 
-    if target.type == "identifier":
-        name = _node_text(target, parsed.raw)
-        if name in index.local_names_by_owner.get(owner.node_id, frozenset()):
+    # `Wrap<int>()` names its member as plainly as `Wrap()` does; only the type
+    # arguments differ, and they change no name this parse resolves by.
+    invoked = _invoked_name(target, parsed.raw)
+    if invoked is not None:
+        if invoked in index.local_names_by_owner.get(owner.node_id, frozenset()):
             # A parameter or local invoked by name is a delegate, and what it
             # points at is chosen while the program runs.
             return [
                 Edge(
                     owner.node_id,
-                    f"unresolved:{owner.node_id}:{name}",
+                    f"unresolved:{owner.node_id}:{invoked}",
                     "call",
                     certain=False,
                     lineno=lineno,
                 )
             ]
-        candidates = _members_named(index, owner.enclosing_type_id, name)
-        if not candidates:
-            candidates = sorted(
-                index.nodes_by_module_name.get((owner.module_id, name), ()),
-                key=lambda node: node.id,
-            )
+        candidates = _members_named(index, owner.enclosing_type_id, invoked)
         if candidates:
+            return _member_call_edges(owner.node_id, candidates, lineno, index)
+        # Sharing a file settles nothing: an unqualified name reaches a member
+        # of another type in it only through inheritance or a `using static`
+        # this parse has not followed, so the match stays a possible call.
+        siblings = sorted(
+            index.nodes_by_module_name.get((owner.module_id, invoked), ()),
+            key=lambda node: node.id,
+        )
+        if siblings:
             return [
-                _call_edge(
-                    owner.node_id, candidate.id, lineno, certain=len(candidates) == 1
-                )
-                for candidate in candidates
+                _call_edge(owner.node_id, node.id, lineno, certain=False)
+                for node in siblings
             ]
         return [
             Edge(
                 owner.node_id,
-                f"unresolved:{owner.module_id}:{name}",
+                f"unresolved:{owner.module_id}:{invoked}",
                 "call",
                 certain=False,
                 lineno=lineno,
@@ -898,6 +987,39 @@ def _resolve_invocation(
         return _resolve_member_call(owner, target, parsed, index, lineno)
 
     return [_dynamic_call_edge(owner.node_id, lineno)]
+
+
+def _invoked_name(target: SyntaxNode, raw: bytes) -> str | None:
+    """Return the bare member name an invocation target writes, if it writes one."""
+
+    if target.type == "identifier":
+        return _node_text(target, raw)
+    if target.type == "generic_name":
+        first = target.named_child(0)
+        if first is not None and first.type == "identifier":
+            return _node_text(first, raw)
+    return None
+
+
+def _member_call_edges(
+    owner_id: str,
+    candidates: list[Node],
+    lineno: int,
+    index: _CSharpIndex,
+) -> list[Edge]:
+    """Edge each candidate, certain only where C# settles dispatch at the call.
+
+    A `virtual`, `abstract` or `override` member -- and every interface member,
+    which is virtual without saying so -- reaches whichever override the
+    instance carries, and that override can be declared in a class outside this
+    parse. Only a member no derived class may replace binds here for good.
+    """
+
+    certain = len(candidates) == 1 and candidates[0].id not in index.virtual_member_ids
+    return [
+        _call_edge(owner_id, candidate.id, lineno, certain=certain)
+        for candidate in candidates
+    ]
 
 
 def _resolve_member_call(
@@ -913,15 +1035,46 @@ def _resolve_member_call(
         return [_dynamic_call_edge(owner.node_id, lineno)]
     name = _node_text(member, parsed.raw)
 
-    if receiver is not None and receiver.type in {"this", "base"}:
+    if receiver is not None and receiver.type == "this":
         candidates = _members_named(index, owner.enclosing_type_id, name)
         if candidates:
-            return [
-                _call_edge(
-                    owner.node_id, candidate.id, lineno, certain=len(candidates) == 1
+            return _member_call_edges(owner.node_id, candidates, lineno, index)
+
+    if receiver is not None and receiver.type == "base":
+        # `base.M()` is the one call C# guarantees does NOT reach this type's
+        # own member -- it reaches the one it overrides. Resolving it against
+        # the enclosing type named the override as the target of the call that
+        # exists precisely to skip it, so the base types written on the
+        # declaration are the only honest place to look. They are simple names
+        # this parse never checks a namespace against, and the member found
+        # there may itself override something further up, so nothing is certain.
+        inherited = sorted(
+            (
+                node
+                for base_name in index.base_type_names_by_type.get(
+                    owner.enclosing_type_id or "", ()
                 )
-                for candidate in candidates
+                for type_id in index.type_ids_by_name.get(base_name, ())
+                for node in index.children_by_parent.get(type_id, ())
+                if node.name == name
+            ),
+            key=lambda node: node.id,
+        )
+        if inherited:
+            return [
+                _call_edge(owner.node_id, node.id, lineno, certain=False)
+                for node in inherited
             ]
+        return [
+            Edge(
+                owner.node_id,
+                f"external:base.{name}",
+                "call",
+                certain=False,
+                lineno=lineno,
+                external=True,
+            )
+        ]
 
     if receiver is not None and receiver.type == "identifier":
         receiver_name = _node_text(receiver, parsed.raw)
@@ -1043,9 +1196,12 @@ def _call_edge(src: str, dst: str, lineno: int, certain: bool) -> Edge:
 
 
 def _dynamic_call_edge(src: str, lineno: int) -> Edge:
+    # Scoped by the calling structure, as the `unresolved:` targets are: a bare
+    # line number made two unrelated calls in two unrelated files share one
+    # destination, which reads as a place they both go.
     return Edge(
         src,
-        f"external:dynamic-call@{lineno}",
+        f"external:dynamic-call:{src}@{lineno}",
         "call",
         certain=False,
         lineno=lineno,

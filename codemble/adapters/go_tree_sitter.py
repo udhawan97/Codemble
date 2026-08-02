@@ -81,6 +81,17 @@ _DEFINITION_TYPES = frozenset(
 )
 _CLASS_TYPES = frozenset({"interface_type", "struct_type"})
 
+# Every parameter list binds its names, wherever it sits: a receiver, a generic
+# parameter, a named result, or the parameters of a closure written inline.
+_BINDING_LISTS = frozenset({"parameter_list", "type_parameter_list"})
+# Statements that introduce a name, and the field holding the names they bind.
+_BINDING_STATEMENTS = {
+    "short_var_declaration": "left",
+    "range_clause": "left",
+    "receive_statement": "left",
+    "type_switch_statement": "alias",
+}
+
 _GO_LANGUAGE = Language(tree_sitter_go.language())
 
 
@@ -1057,6 +1068,14 @@ def _resolve_qualified_call(
                     lineno,
                     certain=certain_allowed and binding.target.certain,
                 )
+            if name in index.type_names_by_package.get(
+                binding.target.package_dir, frozenset()
+            ):
+                # `units.Celsius(1)` converts a value; Go has no call here. The
+                # same-package spelling was already excluded, and the imported
+                # package was parsed too, so its declared type names are the
+                # same evidence rather than an assumption about the name.
+                return []
             return [
                 _unresolved_edge(
                     definition.node_id,
@@ -1111,30 +1130,39 @@ def _dynamic_call_edge(src: str, lineno: int) -> Edge:
 
 
 def _local_binding_names(syntax: SyntaxNode, raw_source: bytes) -> set[str]:
-    """Names bound inside this declaration, which shadow the package scope."""
+    """Names bound anywhere inside this declaration, which shadow package scope.
+
+    Keyed on the node types that introduce a name rather than on the fields of
+    the declaration itself, because a binding can appear at any depth: a closure
+    passed as an argument brings its own parameter list, ``case v := <-ch``
+    binds through a receive statement, and a type switch binds through its
+    alias. Reading only the declaration's own ``parameters`` missed all three,
+    and a missed shadow is not a missed edge -- it is a *certain* edge to the
+    package-scope function the local name is hiding, which the code never calls.
+
+    Over-collecting is the safe direction: a name gathered from a scope the call
+    is not in only costs certainty, while a name missed invents a relationship.
+    """
 
     names: set[str] = set()
-    for field in ("receiver", "parameters", "result", "type_parameters"):
-        parameter_node = syntax.child_by_field_name(field)
-        if parameter_node is not None:
+    for child in (syntax, *_walk(syntax)):
+        bound: SyntaxNode | None = None
+        if child.type in _BINDING_LISTS:
+            bound = child
+        elif (field := _BINDING_STATEMENTS.get(child.type)) is not None:
+            bound = child.child_by_field_name(field)
+        elif child.type in {"var_spec", "const_spec"}:
             names.update(
                 _node_text(item, raw_source)
-                for item in (parameter_node, *_walk(parameter_node))
+                for item in child.named_children
                 if item.type == "identifier"
             )
-    for child in _walk(syntax):
-        if child.type in {"short_var_declaration", "range_clause"}:
-            left = child.child_by_field_name("left")
-            if left is not None:
-                names.update(
-                    _node_text(item, raw_source)
-                    for item in (left, *_walk(left))
-                    if item.type == "identifier"
-                )
-        elif child.type in {"var_spec", "const_spec"}:
-            for item in child.named_children:
-                if item.type == "identifier":
-                    names.add(_node_text(item, raw_source))
+        if bound is not None:
+            names.update(
+                _node_text(item, raw_source)
+                for item in (bound, *_walk(bound))
+                if item.type == "identifier"
+            )
     return names
 
 

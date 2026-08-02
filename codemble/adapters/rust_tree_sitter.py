@@ -47,6 +47,11 @@ _PATH_SEGMENT_TYPES = frozenset(
 # `impl` blocks carry the type they are written for, which is what makes
 # `Formatter::new` resolvable without type inference.
 _CONTAINER_KINDS = frozenset({"enum_item", "impl_item", "mod_item", "struct_item", "trait_item"})
+# The scopes a bare `name()` may resolve in. An `impl` or `trait` block is
+# deliberately absent: Rust does not bring associated functions into bare-name
+# scope, so a sibling method is never what `helper()` names -- the module-level
+# function of that name is.
+_BARE_NAME_SCOPES = frozenset({"function_item", "mod_item"})
 
 _LANGUAGE = Language(tree_sitter_rust.language())
 
@@ -401,13 +406,14 @@ def _collect_definitions(parsed: _ParsedFile) -> tuple[list[Node], list[_Definit
         parent_id: str,
         self_type: str | None,
     ) -> tuple[str, tuple[str, ...]]:
-        next_qualname = (*qualname, segment)
-        node_id = _unique_node_id(
-            f"{parsed.module_id}::{'.'.join(next_qualname)}",
-            syntax,
-            used_ids,
-        )
+        base_id = f"{parsed.module_id}::{'.'.join((*qualname, segment))}"
+        node_id = _unique_node_id(base_id, syntax, used_ids)
         used_ids.add(node_id)
+        # Children hang off the id the block actually received, not off the
+        # segment it asked for: a file with two `impl Foo` blocks disambiguates
+        # the second one, and without this its methods would be named as members
+        # of the first block instead.
+        next_qualname = (*qualname, node_id[len(base_id) - len(segment) :])
         lineno, end_lineno = _line_span(syntax)
         nodes.append(
             Node(
@@ -729,6 +735,14 @@ def _imports_for_file(
 ) -> tuple[list[Edge], list[_UseBinding]]:
     edges: list[Edge] = []
     bindings: list[_UseBinding] = []
+    # A bare root that names a `mod` block written in this very file is in-crate
+    # evidence sitting in the same tree, so the "it must be a dependency"
+    # reading of that root is not proven.
+    inline_mods = frozenset(
+        index.node_by_id[definition.node_id].name
+        for definition in index.definitions_by_module.get(parsed.module_id, ())
+        if definition.syntax.type == "mod_item"
+    )
     for syntax in _walk(parsed.tree.root_node):
         if syntax.has_error or syntax.type != "use_declaration":
             continue
@@ -738,7 +752,16 @@ def _imports_for_file(
         lineno = syntax.start_point.row + 1
         for path, local_name in _use_leaves(argument, (), parsed.raw):
             resolved, external_crate = _resolve_use(parsed, path, index)
-            edges.extend(_import_edges(parsed, lineno, path, resolved, external_crate))
+            edges.extend(
+                _import_edges(
+                    parsed,
+                    lineno,
+                    path,
+                    resolved,
+                    external_crate,
+                    external_certain=external_crate not in inline_mods,
+                )
+            )
             if local_name is not None:
                 bindings.append(
                     _UseBinding(local_name, path[-1], resolved, None if resolved else external_crate)
@@ -752,8 +775,15 @@ def _import_edges(
     path: tuple[str, ...],
     resolved: tuple[_ResolvedModule, ...],
     external_crate: str | None,
+    *,
+    external_certain: bool,
 ) -> list[Edge]:
-    if resolved:
+    # A file never imports itself. `crate::`, `self::` and `super::` all reach
+    # the crate root on an empty remainder, so an unresolvable path under one of
+    # those roots would otherwise land back on the importing module and invent a
+    # route the source never wrote.
+    targets = tuple(target for target in resolved if target.module_id != parsed.module_id)
+    if targets:
         return [
             Edge(
                 src=parsed.module_id,
@@ -762,7 +792,7 @@ def _import_edges(
                 certain=target.certain,
                 lineno=lineno,
             )
-            for target in resolved
+            for target in targets
         ]
     if external_crate is not None:
         return [
@@ -770,7 +800,7 @@ def _import_edges(
                 src=parsed.module_id,
                 dst=f"external:{external_crate}",
                 kind="import",
-                certain=True,
+                certain=external_certain,
                 lineno=lineno,
                 external=True,
             )

@@ -29,7 +29,7 @@ npm run build                   # what the Pages workflow runs
 
 | Path | What |
 | --- | --- |
-| `codemble/adapters/` | LanguageAdapter seam; `python_ast.py` is the first adapter (M1) |
+| `codemble/adapters/` | LanguageAdapter seam. Seven languages: `python_ast.py` (stdlib `ast`), and `typescript_tree_sitter.py`, `go_tree_sitter.py`, `java_tree_sitter.py`, `rust_tree_sitter.py`, `csharp_tree_sitter.py` (tree-sitter). The registry is one tuple in `project.py` |
 | `codemble/graph/` | Language-tagged graph + render-ready metadata (the frontend is a pure consumer) |
 | `codemble/lens/` | Language lens: parser-detected idiom annotations → teachable notes |
 | `codemble/checks/` | Active checks generated FROM the graph; answers never come from the LLM |
@@ -89,7 +89,8 @@ human-approved only; never self-promote.
 - **Persistence:** local JSON in `~/.codemble/`, keyed by project path + file
   hashes; a changed file re-dims only its region.
 - **Polyglot (from Phase 1):** nodes are language-tagged; users filter/focus
-  the galaxy by language, each language with its own idiom lens.
+  the galaxy by language, each language with its own idiom lens. Seven ship
+  today: Python, JavaScript, TypeScript, Go, Java, Rust and C#.
 
 ## Architecture rules
 
@@ -161,14 +162,18 @@ evidence continues in parallel — exercise the loop on real learner projects.
 The v0.1.0 Python learner-acceptance issue stays open; technical completion
 does not claim those external runs passed.
 
-**NEXT — the language slate, promoted from Phase 2.** Go, Java, Rust and C#
-adapters behind the unchanged `LanguageAdapter` seam, plus Python raised to
-"god level" (attribute/method resolution through class hierarchies and type
-hints so fewer edges are merely *possible*, framework-aware entrypoints, a
-richer idiom lens) and a TypeScript deepening. Existing-language depth comes
-first because it upgrades every graph the other phases already render, and
-because the impact widget is only as good as the call edges beneath it. LOD
-culling + clustering for larger repos follows.
+**NEXT — existing-language depth, then scale.** The four new adapters shipped
+in v0.10.0; what did **not** ship from that slate is the deepening, and it is
+now the most valuable work left. Python to "god level": attribute and method
+call resolution through class hierarchies and type hints so fewer edges are
+merely *possible*, framework-aware entrypoint ranking (FastAPI/Flask/Django
+routes, click/typer CLIs, pytest), a richer idiom lens (dataclasses, protocols,
+pattern matching), airtight relative and namespace imports. Then the same for
+TypeScript. This outranks a sixth language because every certainty upgrade
+sharpens the impact widget, the checks and the map at once — on the
+seven-language fixture 82 of 137 edges are currently hedged, and each one that
+becomes provable makes the whole product more useful. LOD culling + clustering
+for larger repos follows.
 
 **LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
 cloud touch). Extra quest types: trace-a-request, fix-the-failing-test.
@@ -248,8 +253,30 @@ and the new Impact rows, all of which can land on a module never flown to; that
 claim is now gated rather than restated. Measured palette: lit 0.665 > family
 0.470 > ramp 0.439/0.220 > sky 0.0163.
 
-301 pytest, Ruff clean, 19 frontend contract checks, bundle rebuilt
-reproducibly, verified against a running server at 1440 and narrow widths. The
+**Phase 4 shipped the language slate but not its deepening, and the split is
+deliberate.** Go, Java, Rust and C# now parse behind the unchanged seam —
+adding them was a tuple in `project.py`, four adapter files and four lens
+tables, which is the seam's claim actually being cashed. Written by four
+parallel agents each followed by an adversarial verifier, then composed: seven
+languages in one deterministic graph (csharp 39, go 24, java 43, javascript 4,
+python 4, rust 28, typescript 17 = 159 nodes, 137 edges, 33 regions). The
+number worth watching is that **82 of those 137 edges are hedged** — a Go call
+through an interface value, a Java call on a variable whose type the tree does
+not give, a Rust trait-object dispatch, a C# call on a `var` local. That is the
+honest figure rather than a flattering one, and it is also the argument for
+what comes next: the *deepening* (Python and TypeScript call resolution) was
+scoped into this release and is **not** done, and it now outranks a sixth
+language, because every edge that becomes provable sharpens the impact widget,
+the checks and the map at once. Schema 8 needed no second list — `.go`,
+`.java`, `.rs` and `.cs` left `unsupported_sources` automatically, which is
+what that design promised, and there is now a test for the promise.
+
+Released as **v0.10.0**. 379 pytest, Ruff clean, 19 frontend contract checks,
+bundle rebuilt reproducibly, verified against a running server at 1440 and
+narrow widths in both registers. Note the suite count is from a **clean venv**:
+the ambient editable install points at another session's worktree, so the
+version-agreement test reads stale metadata locally — see the memory note
+rather than reinstalling, which would repoint that session's environment. The
 milestone does not advance: issue #13 still requires human tester evidence.
 
 Previously (2026-08-01):
@@ -1285,6 +1312,10 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | The **impact widget** is graph-layer truth (`codemble/graph/impact.py`) shipped in the `/study` payload, and leads the Expert panel | UD asked for Expert to be "quick widget style — this controls this and this can be impacted by this" for someone onboarding a codebase. That question was already answered by the parser and was being routed through a provider that might not be configured, might be slow, and might refuse; making it graph-layer means the Expert panel's lead content **works with no API key at all**, which removes the single largest cause of the original complaint. The Correctness Contract clause that shapes the module: a chain through one unproven edge is unproven for its whole length, so certainty comes from a second walk restricted to certain edges — tracking it in one pass forces a choice between reporting the true distance and the true certainty, because the shallowest route and the only proven route are frequently different routes. External edges are excluded here (they stay in the connections list) because every row must be somewhere the learner can actually go; the depth cap is reported rather than applied silently |
 | 2026-08-02 | The line-by-line walkthrough moves **behind a closed disclosure**; both registers answer in at most three sentences; **Easy may use analogy and Expert may not** | "Most of the explanations when opened up are either too complex for a casual user" — and the walkthrough was the bulk of what greeted every click, so a reader who wanted to know what a file is FOR was handed eight numbered claims about individual lines. It is genuinely useful and stays one click away. Analogy is permitted in Easy only, approved by UD: teaching a beginner without comparison to something familiar is close to impossible, and an analogy invents no structure — it restates supplied evidence in other words. The contract's existing ban on naming identifiers in prose is what keeps a comparison from becoming a claim about code that does not exist |
 | 2026-08-02 | `recordVisit` is called from `selectStudyNode` as well as `advance`/`advanceRegion`, and the session check gates it | Found in review, and the impact widget had just made it worse. The helper's own docstring claimed it covered "every route into a system" and did not cover the handler behind the Workflow tree, the Connections list and the new Impact rows — all three of which can land on a module the learner has never flown to. They read its real source while the map quietly forgot they had been there, and its routes went dark again on the next move. A docstring that overstates its own coverage is how this class of half-wiring survives (the Escape sweep is the precedent), so the claim is gated rather than restated |
+
+| 2026-08-02 | Go, Java, Rust and C# ship as four separate tree-sitter adapters, and their lens voices ship as **one** module | Two opposite calls for two different kinds of code. The adapters are genuinely different — Go's method receivers, Java's wildcard imports, Rust's inherent-vs-trait impls, C#'s file-scoped namespaces — and the project already had two independent adapters rather than a shared core, so a fifth through eighth match the established architecture and can each be verified alone. The lens tables are the opposite: pure data of identical shape, where four files would differ only in their contents. The lookup still keys by language, because Rust and C# both detect `async-await` and each deserves its own wording, and `generic` means different enough things in Java and C# to be worth saying differently. A concept with no entry yields no note rather than borrowing another language's — an invented caption on real evidence is still an invented claim |
+| 2026-08-02 | Certainty is the place the new adapters were held hardest, and 82 of 137 edges on the seven-language fixture are hedged | Every language added a new way to be wrong about a call: a Go call through an interface value or function variable, a Java call on a variable whose declared type is not in the file (and a wildcard `import com.foo.*`, which names no type at all), a Rust trait-object or generic dispatch, a C# call on a `var` local, an interface-typed field or a delegate. None of those are statically provable from the parse tree, so every one is `certain=False`. Reporting a smaller hedged count would have meant guessing, and this is exactly the wrong a learner cannot detect. It is also the measurement that sets the next milestone: each edge that becomes provable through deeper resolution sharpens the impact widget, the checks and the map simultaneously |
+| 2026-08-02 | The v0.10.0 suite count is verified in a **throwaway venv**, and the ambient editable install is deliberately left alone | `test_the_running_app_reports_the_packaged_version` compares `__version__` — read from installed distribution metadata — against `pyproject.toml`, so a version bump makes it fail locally until the package is reinstalled. Its own message says so. But the pyenv editable install's `direct_url.json` pointed at *another session's worktree*, so reinstalling from here would have repointed that session's environment mid-flight. CI installs fresh from the branch and matches; a `python -m venv` install reproduces CI exactly and confirmed 379 passing. The gate is right, the local environment is stale, and the honest fix was to verify rather than to disturb somebody else's tree |
 
 ## Non-Goals — do NOT build (point here when asked)
 
