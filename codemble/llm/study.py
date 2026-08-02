@@ -13,6 +13,7 @@ from typing import NamedTuple
 
 from codemble.adapters.base import Edge, Graph, Node
 from codemble.adapters.source_text import read_source_text
+from codemble.graph.impact import blast_radius
 from codemble.lens import lens_notes
 from codemble.llm.providers import (
     RECOMMENDED_MODEL,
@@ -178,6 +179,10 @@ class StudyService:
             "neighbors": neighbors,
             "lens": lens,
             "structural": structural_summary(node, neighbors, lens),
+            # Parser truth, so it arrives with the rest of the local payload and
+            # never waits on a provider. This is what lets the Expert panel lead
+            # with something useful when no key is configured at all.
+            "impact": blast_radius(self._graph, node.id),
         }
 
     def explain(self, node_id: str, mode: str = "easy") -> dict[str, object]:

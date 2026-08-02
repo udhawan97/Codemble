@@ -63,6 +63,13 @@ export function StudyPanel({
           narration on the parser payload made one failure look like five. */}
       <div className="study-content">
         {study ? <StructuralSummary structural={study.structural} mode={mode} /> : null}
+        {/* Expert leads with impact. Someone onboarding onto a codebase is
+            asking "what does this control, and what can break it" before they
+            are asking for prose -- and this answer is parser truth, so it is
+            the one part of the panel that is always there, key or no key. */}
+        {study && mode !== "easy" ? (
+          <ImpactWidget impact={study.impact} mode={mode} onSelectNode={onSelectNode} />
+        ) : null}
         <Explanation
           explanation={explanation}
           loading={explanationLoading}
@@ -73,6 +80,9 @@ export function StudyPanel({
           onSelectNode={onSelectNode}
           onRetry={onRetryNarration}
         />
+        {study && mode === "easy" ? (
+          <ImpactWidget impact={study.impact} mode={mode} onSelectNode={onSelectNode} />
+        ) : null}
         {study ? (
           <>
             <Connections
@@ -102,6 +112,94 @@ function StructuralSummary({ structural, mode }) {
       </div>
       <p>{structural[mode] ?? structural.easy}</p>
     </section>
+  );
+}
+
+/**
+ * "Change this and these places feel it" / "this breaks if these change".
+ *
+ * Every row is graph truth with a real citation, so this section renders
+ * identically with no provider configured -- which is the point. The depth
+ * badge and the possible-route wording are both load-bearing: a chain that
+ * passes through one unproven edge is unproven for its whole length, and the
+ * backend labels it that way rather than rounding it up to a fact.
+ */
+function ImpactWidget({ impact, mode, onSelectNode }) {
+  if (!impact) return null;
+  const affects = impact.affects ?? [];
+  const depends = impact.depends_on ?? [];
+  if (!affects.length && !depends.length) return null;
+  const easy = mode === "easy";
+  return (
+    <section className="impact-widget" aria-labelledby="impact-heading">
+      <div className="study-section-heading">
+        <h2 id="impact-heading">{easy ? "What this touches" : "Impact"}</h2>
+        <span>No model needed</span>
+      </div>
+      <div className="impact-columns">
+        <ImpactColumn
+          title={easy ? "Change this and these change too" : "Change this → affected"}
+          empty={
+            easy
+              ? "Nothing else in your code would notice if you changed this."
+              : "No parser-proven dependents."
+          }
+          items={affects}
+          mode={mode}
+          onSelectNode={onSelectNode}
+        />
+        <ImpactColumn
+          title={easy ? "This needs these to work" : "Depends on → breaks if changed"}
+          empty={
+            easy
+              ? "This does not rely on anything else in your code."
+              : "No parser-proven dependencies."
+          }
+          items={depends}
+          mode={mode}
+          onSelectNode={onSelectNode}
+        />
+      </div>
+      {impact.truncated ? (
+        <p className="study-loading">
+          {easy
+            ? `Traced ${impact.max_depth} steps out; the chain continues past that.`
+            : `Traced to depth ${impact.max_depth}; deeper reach is not shown.`}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function ImpactColumn({ title, empty, items, mode, onSelectNode }) {
+  return (
+    <div className="impact-column">
+      <h3>{title}</h3>
+      {items.length === 0 ? (
+        <p className="study-loading">{empty}</p>
+      ) : (
+        <ul className="impact-list">
+          {items.map((item) => (
+            <li key={item.node_id}>
+              <button type="button" onClick={() => onSelectNode(item.node_id)}>
+                <span className="impact-name">{item.name}</span>
+                <span className="impact-meta">
+                  {/* Depth 1 is "directly"; anything further is reach, and a
+                      learner deciding what to read next needs the difference. */}
+                  {item.depth === 1
+                    ? mode === "easy" ? "directly" : "direct"
+                    : mode === "easy"
+                      ? `${item.depth} steps away`
+                      : `depth ${item.depth}`}
+                  {item.certain ? "" : mode === "easy" ? " · possible link" : " · possible"}
+                </span>
+                <span className="impact-citation">{item.citation}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

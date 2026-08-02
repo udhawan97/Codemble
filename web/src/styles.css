@@ -3321,3 +3321,69 @@ input:focus-visible {
 .progress-reset__error {
   color: var(--cm-error);
 }
+
+/* --- Impact widget -------------------------------------------------------
+   Two columns at desktop, stacked when the panel is narrow. It deliberately
+   reuses the connection-list button shape rather than inventing a second row
+   style: these are the same kind of thing -- a cited, clickable structure --
+   and a learner should not have to learn two visual languages for it. */
+.impact-columns {
+  display: grid;
+  gap: var(--cm-space-md);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.impact-column h3 {
+  margin: 0;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.impact-list {
+  margin: var(--cm-space-2xs) 0 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.impact-list button {
+  display: grid;
+  width: 100%;
+  /* The 44px touch-target floor the rest of the app holds to. */
+  min-height: 44px;
+  gap: var(--cm-space-2xs);
+  padding: var(--cm-space-xs) 0;
+  border: 0;
+  border-block-end: 1px solid var(--cm-hairline);
+  background: transparent;
+  color: var(--cm-ink);
+  cursor: pointer;
+  text-align: start;
+}
+
+.impact-name {
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+}
+
+.impact-meta,
+.impact-citation {
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.impact-citation {
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .impact-list button:hover .impact-name {
+    color: var(--cm-orbit);
+  }
+}
