@@ -219,3 +219,56 @@ def test_every_python_concept_the_parser_emits_can_be_taught(tmp_path: Path) -> 
     }
 
     assert detected <= voiced, f"detected but never taught: {sorted(detected - voiced)}"
+
+
+def test_a_projects_own_entrypoint_outranks_its_test_suite(tmp_path: Path) -> None:
+    """Home is chosen for the learner when one candidate clearly wins.
+
+    Measured on this repository before this rule: seven candidates, five of
+    them test fixtures, and three tied at rank 0 -- so no Home could be
+    selected and a first-run learner was handed a picker whose list was mostly
+    `tests/`. The project's own entry was in there, indistinguishable.
+
+    Test-scoped candidates are demoted rather than dropped: a project that IS
+    a test suite still needs somewhere to start, and removing them outright
+    would leave such a project with no Home at all. Same reasoning as the Easy
+    guidance penalty (Decision Log, 2026-07-22).
+    """
+
+    root = tmp_path / "app"
+    (root / "tests").mkdir(parents=True)
+    (root / "cli.py").write_text(
+        "def main():\n    return 1\n\nif __name__ == '__main__':\n    main()\n",
+        encoding="utf-8",
+    )
+    (root / "tests" / "harness.py").write_text(
+        "def main():\n    return 2\n\nif __name__ == '__main__':\n    main()\n",
+        encoding="utf-8",
+    )
+
+    graph = PythonAstAdapter().parse(root)
+
+    ranks = {
+        node.id: node.entrypoint_rank
+        for node in graph.nodes
+        if node.entrypoint_rank is not None
+    }
+    assert ranks["cli"] < ranks["tests.harness"], "the project's own entry must win"
+    assert graph.selected_entrypoint == "cli", (
+        "one unambiguous best candidate means the learner is never asked"
+    )
+
+
+def test_an_all_tests_project_still_gets_a_home(tmp_path: Path) -> None:
+    """Demotion, not exclusion. A test-only project must still be explorable."""
+
+    root = tmp_path / "suite"
+    (root / "tests").mkdir(parents=True)
+    (root / "tests" / "harness.py").write_text(
+        "def main():\n    return 1\n\nif __name__ == '__main__':\n    main()\n",
+        encoding="utf-8",
+    )
+
+    graph = PythonAstAdapter().parse(root)
+
+    assert any(node.entrypoint_rank is not None for node in graph.nodes)
