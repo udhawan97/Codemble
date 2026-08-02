@@ -5,6 +5,74 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- **Every module is now visible, coloured and named from the first frame.** The
+  galaxy used to draw anything you had not reached yet as a faint, anonymous
+  speck — on a project this size that was roughly 100 of 128 systems — so
+  exploring meant navigating a sky that told you almost nothing until you had
+  proved your way across it. Names and colour are no longer something you earn.
+  What still fills in as you go is the web of import routes between systems,
+  which is what made a large project unreadable in the first place.
+- **Flying to a system charts it, and Codemble remembers.** Exploring now
+  leaves a permanent trail: the routes around a system you have visited stay
+  drawn, and the star chart counts the systems you have explored. This is
+  deliberately separate from lighting a system amber, which still happens only
+  when you answer questions drawn from your own code. Having been somewhere and
+  understanding it are different claims, and Codemble keeps them apart.
+- **An Impact panel for anyone onboarding onto a codebase.** Opening a
+  structure now shows what a change to it would reach, and what it depends on,
+  as two lists of clickable, cited rows with a depth for each. Anything reached
+  only through a relationship the parser could not prove is labelled possible
+  for its whole chain. It is computed entirely from your code, so it works with
+  no API key configured at all.
+
+### Changed
+- **The sky is lit rather than nearly black.** The galaxy background was
+  literally the colour of the app's panels. It now has its own colour, a
+  galactic band of ambient light, a deeper starfield, and a brighter range for
+  unlit stars — so the roughly thirty modules that belong to none of your
+  project's main groups are plainly visible instead of nearly invisible. A lit
+  amber star is still, by a wide and now-measured margin, the brightest thing
+  in the sky.
+- **Explanations answer in three sentences, and the line-by-line walkthrough
+  moved behind a click.** Opening a structure used to greet you with eight
+  numbered claims about individual lines whether or not you wanted them. The
+  write-up now leads with what the thing is *for*; the detail is one click
+  away. In Easy mode Codemble may also use an everyday comparison to explain a
+  purpose, which it will not do in Expert.
+- The Expert structural summary is written as prose. It was a single line of
+  metadata sitting under a heading, which read as a section that had failed to
+  load.
+
+### Fixed
+- **One slow explanation no longer stalls the whole app.** Narration was
+  sharing a fixed pool of workers with every other request, and a call to a
+  model cannot be interrupted once it starts — so clicking through structures
+  faster than the model could answer would eventually leave the galaxy, the
+  diagram, the source view and the quizzes all waiting behind explanations that
+  were already abandoned. Experts hit this first, because they navigate
+  fastest. Narration now runs on its own budget and answers within 45 seconds
+  either way; because the work finishes in the background, retrying after a
+  timeout is usually instant.
+- **A failed connection stopped being reported as a correctness problem.** A
+  dropped network, a rejected key and a genuine refusal to show ungrounded
+  output all produced the same message — "the explanation was withheld" —
+  followed by an explanation of Codemble's grounding rules. Each now says what
+  actually happened.
+- **A malformed reply no longer throws away a good explanation.** One
+  over-long or empty item used to discard the entire write-up. The faulty part
+  is dropped, the panel says how many parts were left out, and the rest is
+  shown. Anything that names code the parser never found is still refused
+  outright.
+- **Very long files no longer break their own explanation.** A whole file was
+  being sent for narration, which on a large one was slow and could be rejected
+  outright. Codemble now sends a bounded excerpt, says which lines it sent, and
+  will not describe a line it was not shown.
+- Opening a module from the workflow tree, the connections list or the impact
+  panel now charts it, as flying to it always did.
+- The onboarding cards no longer describe behaviour that was removed; they now
+  explain charting and lighting as the separate things they are.
+
 ## [0.9.0] - 2026-08-01
 
 ### Fixed

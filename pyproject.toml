@@ -41,6 +41,14 @@ dependencies = [
   "tree-sitter>=0.25,<0.26",
   "tree-sitter-javascript>=0.25,<0.26",
   "tree-sitter-typescript>=0.23.2,<0.24",
+  # The Phase 2 language slate. Each is capped the same way the JS/TS grammars
+  # are: a grammar release is only safe once it has been run against the pinned
+  # core on a project of real size, and the segfault that produced that rule
+  # only ever showed up at scale.
+  "tree-sitter-go>=0.23,<0.24",
+  "tree-sitter-java>=0.23,<0.24",
+  "tree-sitter-rust>=0.23,<0.24",
+  "tree-sitter-c-sharp>=0.23,<0.24",
   "uvicorn>=0.30",
 ]
 
