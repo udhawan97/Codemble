@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 
 import {
+  NEBULA_TINTS,
   buildConceptChart,
   communityName,
   communityFamilyIndex,
   communityShade,
+  conceptTitle,
   galaxyData,
   groupByCommunity,
   highlightColor,
@@ -16,6 +18,7 @@ import {
   languageFocusMap,
   linkLabel,
   moduleIndex,
+  nebulaTintPaint,
   nodeLabel,
   projectLanguageOptions,
   revealedRegionIds,
@@ -191,6 +194,26 @@ assert.deepEqual(
     ["typescript", 1],
   ],
 );
+
+// --- names and tints, one per language Codemble reads -----------------------
+// Both were half-finished when the language slate landed: the title-case
+// fallback spelled C# "Csharp", and four of the seven had no tint at all, so
+// their legend swatch was an empty box and the map's language stripe resolved
+// to nothing and inherited the box fill.
+
+assert.equal(conceptTitle("csharp"), "C#", "a language's own spelling of its name wins");
+assert.equal(conceptTitle("linq-query"), "LINQ Query", "LINQ is an initialism, not a word");
+assert.equal(conceptTitle("pattern-matching"), "Pattern Matching", "the fallback still title-cases");
+
+for (const language of Object.keys(NEBULA_TINTS)) {
+  assert.match(
+    nebulaTintPaint(language) ?? "",
+    /^var\(--cm-neb-[a-z]+\)$/,
+    `${language} must paint from a tint token: without one the legend prints a ` +
+      "name beside an empty box and the map stripe disappears into its box",
+  );
+}
+assert.equal(nebulaTintPaint("kotlin"), null, "an unread language borrows no hue");
 
 const chart = buildConceptChart(graph, new Set(["ts"]));
 assert.deepEqual(

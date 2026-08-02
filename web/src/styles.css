@@ -2925,13 +2925,9 @@ input:focus-visible {
   border-radius: 2px;
 }
 
-.legend-tint--python { background: var(--cm-neb-python); }
-.legend-tint--javascript { background: var(--cm-neb-js); }
-.legend-tint--typescript { background: var(--cm-neb-ts); }
-.legend-tint--go { background: var(--cm-neb-go); }
-.legend-tint--java { background: var(--cm-neb-java); }
-.legend-tint--rust { background: var(--cm-neb-rust); }
-.legend-tint--csharp { background: var(--cm-neb-csharp); }
+/* The swatch background is set inline from graphData's tint table, not by a
+   rule per language: seven rules restating that table is how four languages
+   came to render a name beside an empty box. */
 
 /* The community-family row previews four of the eight hues as one composite
    swatch: the legend teaches the ENCODING (hue = one import community), not an

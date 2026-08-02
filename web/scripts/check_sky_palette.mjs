@@ -17,6 +17,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { NEBULA_TINTS } from "../src/graphData.js";
+
+// Derived, never restated: the app's own tint table names the tokens, so this
+// gate grows with the adapter registry instead of having to be remembered.
+const nebulaTokens = Object.values(NEBULA_TINTS).map((property) => property.replace(/^--/, ""));
+
 const raw = readFileSync(
   fileURLToPath(new URL("../src/tokens.css", import.meta.url)),
   "utf8",
@@ -151,8 +157,7 @@ for (const name of ["cm-star-cool", "cm-star-pale"]) {
 for (const name of [
   "cm-com-0", "cm-com-1", "cm-com-2", "cm-com-3",
   "cm-com-4", "cm-com-5", "cm-com-6", "cm-com-7",
-  "cm-neb-python", "cm-neb-js", "cm-neb-ts",
-  "cm-neb-go", "cm-neb-java", "cm-neb-rust", "cm-neb-csharp",
+  ...nebulaTokens,
   "cm-route-possible",
 ]) {
   const value = rgb(name);
@@ -215,22 +220,22 @@ console.log(
 
 // --- one tint per language Codemble reads ---------------------------------
 // A language with no tint draws no fog and shows an empty legend swatch: a
-// channel silently missing rather than honestly absent. This table has to grow
-// with the adapter registry, so the gate says so when it has not.
+// channel silently missing rather than honestly absent. The list is read off
+// NEBULA_TINTS, so a language added to the table with no token fails here on
+// the missing token rather than shipping a colourless swatch.
 {
-  const tints = ["python", "js", "ts", "go", "java", "rust", "csharp"];
-  const luminances = tints.map((name) => luminance(rgb(`cm-neb-${name}`)));
+  const luminances = nebulaTokens.map((name) => luminance(rgb(name)));
   const spread = Math.max(...luminances) - Math.min(...luminances);
   assert.ok(
     spread < 0.02,
     `nebula tints span ${spread.toFixed(3)} in luminance; one language must ` +
       "not read as more important than another",
   );
-  for (const name of tints) {
-    const h = hue(rgb(`cm-neb-${name}`));
+  for (const name of nebulaTokens) {
+    const h = hue(rgb(name));
     assert.ok(
       h < 20 || h > 60,
-      `--cm-neb-${name} sits at hue ${h.toFixed(0)}deg, inside the kohaku band`,
+      `--${name} sits at hue ${h.toFixed(0)}deg, inside the kohaku band`,
     );
   }
 }

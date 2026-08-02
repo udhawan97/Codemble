@@ -19,6 +19,7 @@ import {
   defaultRegion,
   groupByCommunity,
   languageLabel,
+  nebulaTintPaint,
   sharedTopSegment,
   unsupportedSummary,
 } from "./graphData.js";
@@ -799,7 +800,16 @@ export function App() {
                 .filter((option) => option.id !== "all")
                 .map((option) => (
                   <span key={option.id}>
-                    <i className={`legend-tint legend-tint--${option.id}`} /> {option.label}
+                    {/* Painted from graphData's tint table rather than a
+                        per-language CSS rule: the swatch and the fog the sky
+                        actually draws then cannot disagree, and a language
+                        with no tint shows an empty box honestly instead of by
+                        omission. */}
+                    <i
+                      className="legend-tint"
+                      style={{ background: nebulaTintPaint(option.id) ?? undefined }}
+                    />{" "}
+                    {option.label}
                   </span>
                 ))}
             </>

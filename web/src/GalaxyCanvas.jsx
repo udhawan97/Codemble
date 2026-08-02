@@ -26,7 +26,7 @@ import {
   isUncharted,
   nodeRadius,
   linkLabel,
-  nebulaTintKey,
+  NEBULA_TINTS,
   nodeLabel,
   systemData,
 } from "./graphData.js";
@@ -726,8 +726,8 @@ function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } 
   // stands in for a body at galaxy range would only wash it out.
   if (!node.focusDim && !uncharted && !worldTier) group.add(dressing.halo(node, radius));
   if (node.kind === "region" && !uncharted) {
-    const tint = nebulaTintKey(node.language);
-    if (tint) group.add(dressing.nebula(palette[tint], radius * 14));
+    const tint = palette.nebula[node.language];
+    if (tint) group.add(dressing.nebula(tint, radius * 14));
   }
   if (node.label) {
     const plate = dressing.label(node.label, radius);
@@ -816,13 +816,13 @@ function readPalette() {
     faded: value("--cm-hairline-soft"),
     star: value("--cm-star-high"),
     starHalo: value("--cm-star-halo"),
-    nebPython: value("--cm-neb-python"),
-    nebJs: value("--cm-neb-js"),
-    nebTs: value("--cm-neb-ts"),
-    nebGo: value("--cm-neb-go"),
-    nebJava: value("--cm-neb-java"),
-    nebRust: value("--cm-neb-rust"),
-    nebCsharp: value("--cm-neb-csharp"),
+    // Keyed by language, straight off graphData's one tint table, so a new
+    // language cannot arrive here with fog missing and nothing to say so.
+    nebula: Object.freeze(
+      Object.fromEntries(
+        Object.entries(NEBULA_TINTS).map(([language, property]) => [language, value(property)]),
+      ),
+    ),
     // The eight community family hues (D1). Read in index order so
     // communityPaletteIndex's arithmetic and this array can never disagree.
     communities: Object.freeze(

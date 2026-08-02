@@ -129,14 +129,17 @@ export function buildConceptChart(graph, studiedNodeIds) {
 export function conceptTitle(concept) {
   // Names whose real spelling the title-case fallback below cannot produce.
   // The fallback is right for hyphenated concept ids ("pattern-matching" ->
-  // "Pattern matching"); it is wrong for any language whose own name is not
-  // simply capitalised, which is how the C# adapter's `csharp` tag reached the
-  // focus control, the legend and the star chart reading "Csharp".
+  // "Pattern matching"); it is wrong for any name carrying an acronym or a
+  // symbol, which is how the C# adapter's `csharp` tag reached the focus
+  // control, the legend and the star chart reading "Csharp". `linq-query` is
+  // the same error one level down: LINQ is an initialism, the lens note calls
+  // it one, and the star chart was the only surface spelling it "Linq".
   const exact = {
     javascript: "JavaScript",
     jsx: "JSX",
     typescript: "TypeScript",
     csharp: "C#",
+    "linq-query": "LINQ Query",
   };
   if (exact[concept]) return exact[concept];
   return concept
@@ -158,21 +161,27 @@ function shortLanguageLabel(language) {
 // Language gets its own visual channel (nebula tint) so it never competes with
 // brightness, which belongs to centrality and understanding. Unknown languages
 // return null and render no fog rather than borrowing another language's hue.
-// One entry per language Codemble reads. A language with no tint draws no fog
-// and shows an empty legend swatch, which is a channel silently missing rather
-// than honestly absent -- so this table has to grow with the adapter registry.
-const NEBULA_TINTS = {
-  python: "nebPython",
-  javascript: "nebJs",
-  typescript: "nebTs",
-  go: "nebGo",
-  java: "nebJava",
-  rust: "nebRust",
-  csharp: "nebCsharp",
-};
+//
+// This is the ONE table: the galaxy's fog, the Architecture map's language
+// stripe, the legend swatch and the palette gate all derive from it, so a new
+// language is one row here plus one token. It used to hand out a private key
+// that three separate tables translated into a colour, and adding four
+// languages grew two of them -- leaving the map stripe resolving to
+// `undefined`, which inherits the box's own fill and disappears.
+export const NEBULA_TINTS = Object.freeze({
+  python: "--cm-neb-python",
+  javascript: "--cm-neb-js",
+  typescript: "--cm-neb-ts",
+  go: "--cm-neb-go",
+  java: "--cm-neb-java",
+  rust: "--cm-neb-rust",
+  csharp: "--cm-neb-csharp",
+});
 
-export function nebulaTintKey(language) {
-  return NEBULA_TINTS[language] ?? null;
+/** CSS paint for a language's tint, or null when a language has none. */
+export function nebulaTintPaint(language) {
+  const property = NEBULA_TINTS[language];
+  return property ? `var(${property})` : null;
 }
 
 // How far from Home a region may sit and still be visible on a first run. Two

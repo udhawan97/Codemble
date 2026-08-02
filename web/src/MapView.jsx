@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { nebulaTintKey, unsupportedSummary } from "./graphData.js";
+import { nebulaTintPaint, unsupportedSummary } from "./graphData.js";
 import {
   centerMapPoint,
   clampMapZoom,
@@ -241,15 +241,8 @@ function MapCanvas({
 // Every coordinate here comes from GET /api/map. This file draws numbers and
 // decides nothing: no layout, no ordering, no layering happens client-side.
 
-const TINT_VAR = {
-  nebPython: "var(--cm-neb-python)",
-  nebJs: "var(--cm-neb-js)",
-  nebTs: "var(--cm-neb-ts)",
-};
-
 function tintFor(language) {
-  const key = nebulaTintKey(language);
-  return key ? TINT_VAR[key] : "var(--cm-hairline)";
+  return nebulaTintPaint(language) ?? "var(--cm-hairline)";
 }
 
 function architectureEdgePath(points) {
