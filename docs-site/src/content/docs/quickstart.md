@@ -49,16 +49,22 @@ codemble --path ./my-project/src
 
 ## 3. Find Home
 
-Your entrypoint system is marked **Home** — where execution starts. If the
-entrypoint is ambiguous, Codemble shows only parser-ranked candidates and you
-pick. The CLI equivalent is `--entrypoint module.qualname`; an unranked value
-is rejected rather than guessed.
+Your entrypoint system is marked **Home** — where execution starts. On most
+projects Codemble settles it without asking. A candidate that lives in a test
+folder, or is named like one (`test_*.py`, `*_test.py`, `conftest.py`), ranks
+below your project's own code, so a repository whose fixtures carry their own
+`main()` no longer buries the real entrypoint among them. Test candidates are
+demoted, not removed: a project that *is* a test suite still gets a Home, and
+the rank you are shown is the real one.
+
+When candidates genuinely tie for best rank, Codemble asks rather than guessing.
+It offers only parser-ranked candidates; the CLI equivalent is `--entrypoint
+module.qualname`, and an unranked value is rejected.
 
 The picker states how many candidates there are and groups them by the
-top-level folder each one really lives in — so a candidate under `tests/` is
-never mistaken for your application's entrypoint. The best-ranked group opens
-first, and **Explore without Home** stays on screen however long the list is:
-every system, check, explanation and lens note works without a Home.
+top-level folder each one really lives in. The best-ranked group opens first,
+and **Explore without Home** stays on screen however long the list is: every
+system, check, explanation and lens note works without a Home.
 
 ## 4. Choose a layer, then zoom in
 

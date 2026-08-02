@@ -162,21 +162,21 @@ evidence continues in parallel — exercise the loop on real learner projects.
 The v0.1.0 Python learner-acceptance issue stays open; technical completion
 does not claim those external runs passed.
 
-**NEXT — finish the deepening, then scale.** v0.11.0 did the two highest-value
-pieces of Python's: call resolution on constructed, inherited and annotated
-receivers (1993 fewer unproven edges), and the missing idiom lens notes. What
-remains, in order:
+**NEXT — scale, and the deepening that is genuinely left.** The slate is now
+mostly done: Python's call resolution and lens (v0.11.0), and JS/TS builtin
+classification plus test-demoted entrypoint ranking (v0.12.0). **The
+TypeScript "deepening" was measured and largely refused** — see the Decision
+Log; TS's unproven edges are 80% honest boundaries and 1% fan-out, so copying
+Python's receiver resolution would have been work against a problem that is not
+there. What actually remains:
 
-1. **TypeScript deepening** — the same three sources of evidence. TS carries
-   *more* type information than Python, so the ceiling here is higher.
-2. **Python framework-aware entrypoint ranking** — FastAPI/Flask/Django routes,
-   click/typer commands, and demoting test modules so a project's own entry
-   outranks its test suite when Home is chosen.
-3. **Airtight relative and namespace imports** for Python.
-
-This still outranks an eighth language: every certainty upgrade sharpens the
-impact widget, the checks and the map simultaneously. LOD culling + clustering
-for larger repos follows.
+1. **Framework-aware entrypoints** — FastAPI/Flask/Django routes and
+   click/typer commands. `app = FastAPI()` already ranks; a decorated
+   `@app.command()` CLI with no `__main__` guard does not.
+2. **Airtight relative and namespace imports** for Python.
+3. **LOD culling + clustering** for larger repos — with 166 regions and 9,890
+   edges on this project, this is now the binding constraint on scale rather
+   than parse accuracy.
 
 **LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
 cloud touch). Extra quest types: trace-a-request, fix-the-failing-test.
@@ -289,8 +289,20 @@ the unresolved list entirely; what tops it now is builtins, correctly external.
 The lens also stopped being silent on the Python this audience actually meets —
 dataclass, Protocol, `match`, f-string, walrus — with a gate asserting every
 emitted concept can be voiced, since the adapter and lens are separate files
-and a concept can ship detected-and-silent. Still open from the slate: the
-TypeScript deepening, and Python's framework-aware entrypoint ranking.
+and a concept can ship detected-and-silent. **v0.12.0 then measured TypeScript the same way and mostly refused the work.**
+80% of its unproven edges are already `external:` and 1% is in-project fan-out,
+so TS has no ambiguity explosion and porting Python's receiver resolution would
+have been effort against a problem that is not there. What the measurement did
+find was a *category* error: `Set`, `Map`, `AbortController` and
+`requestAnimationFrame` reported as `unresolved:javascript:graphData.js:Set` —
+"we think this is yours and cannot find it" — when they are language globals
+that leave the project exactly as `Math.max` does. 258 → 114 unresolved. And
+Home stopped being unanswerable: five of seven candidates here were test
+fixtures with three tied at rank 0, so `selected_entrypoint` was **None** and a
+first-run learner met a picker listing mostly `tests/`. Test-scoped candidates
+now take a bounded penalty — demoted, never dropped, since a project that *is*
+a test suite still needs a Home — and this one resolves to `codemble.cli` with
+no question asked.
 
 Released as **v0.10.0**. 379 pytest, Ruff clean, 19 frontend contract checks,
 bundle rebuilt reproducibly, verified against a running server at 1440 and
@@ -1338,6 +1350,8 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | Certainty is the place the new adapters were held hardest, and 82 of 137 edges on the seven-language fixture are hedged | Every language added a new way to be wrong about a call: a Go call through an interface value or function variable, a Java call on a variable whose declared type is not in the file (and a wildcard `import com.foo.*`, which names no type at all), a Rust trait-object or generic dispatch, a C# call on a `var` local, an interface-typed field or a delegate. None of those are statically provable from the parse tree, so every one is `certain=False`. Reporting a smaller hedged count would have meant guessing, and this is exactly the wrong a learner cannot detect. It is also the measurement that sets the next milestone: each edge that becomes provable through deeper resolution sharpens the impact widget, the checks and the map simultaneously |
 | 2026-08-02 | Python resolves a call on a **constructed receiver** (`Adapter().parse()`) as CERTAIN, on an **inherited** method through the in-project base chain, and on an **annotated** receiver as POSSIBLE | Measured, 79% of Python call edges were unproven, and the shape was worse than the number: `.parse()` emitted an edge to every class in the project defining `parse` — nine here, 237 call sites each — so eight in nine were relationships that do not exist, inflating centrality (which drives a star's brightness), padding the impact widget's blast radius and thickening the route mesh. They were labelled possible, so the *letter* of the Correctness Contract held; this is its spirit, because a hedge is honest about a relationship that might exist, not a licence to list nine when the evidence names one. The three certainty levels are not arbitrary: a constructor names its class outright and is the most statically determined dispatch Python offers (only a `__new__` returning another type breaks it, which no parser can see); an annotation names one class but Python dispatches on the *runtime* type, so a subclass may override — the same reasoning that keeps Java's virtual dispatch hedged here. Only in-project bases and types are recorded, because `class Adapter(Protocol)` inherits from something Codemble never parsed. **Worth recording that the first attempt missed**: the hierarchy and annotation branches alone moved the number the *wrong* way (+65 edges), because this codebase's `.parse()` calls are on constructor results rather than annotated names. Measuring which call sites actually produced the fan-out is what found the branch that mattered — 8508 → 6778 edges, 1993 fewer unproven |
 | 2026-08-02 | The Python lens gains dataclass, Protocol, pattern-matching, f-string and walrus, and a test asserts every emitted concept can be voiced | The lens taught eight concepts and was silent on the ones that dominate the code this product exists to explain: 47 dataclasses, 307 f-strings, 4 walrus operators and 3 Protocols on this repository alone produced no note. A dataclass is deliberately both a decorator note and its own, because the learner is looking at a class whose `__init__`, `__repr__` and `__eq__` are written for it and appear nowhere in the file — exactly the kind of absence that makes AI-written code confusing. The gate exists because the adapter and the lens are separate files, so a concept can ship *detected and silent*, which is precisely how these five stayed invisible |
+| 2026-08-02 | **The TypeScript deepening was measured and then largely refused.** JS/TS gets a builtin table instead | The obvious plan was to give TS what Python got. Measuring first said not to: of 1401 unproven JS/TS call edges on `web/src`, **80% were already `external:`** — React hooks, three.js, `Math.max`, calls that genuinely leave the project and are correctly hedged — and only **1% (20 edges)** was in-project fan-out. TypeScript has no ambiguity explosion, so porting Python's receiver resolution would have been effort against a problem that is not there. What the measurement *did* find is that 45% of the remaining `unresolved:` targets were ECMAScript and host globals — `Set`, `Map`, `Error`, `AbortController`, `requestAnimationFrame` — reported as `unresolved:javascript:graphData.js:Set`, which reads as "Codemble believes this is yours and could not find it". A coverage gap and a project boundary are different facts, and that distinction is what graph schema 8 exists to keep honest; Python's adapter has drawn it since M1 and JS/TS had no equivalent. The table is deliberately not exhaustive and not inferred: a name absent from it falls through to `unresolved:`, which is the safe direction, since a missing entry costs precision while a wrong one would reclassify a learner's own code as somebody else's. 258 → 114 unresolved |
+| 2026-08-02 | Test-scoped Python files take a bounded **entrypoint rank penalty**; demoted, never dropped | Home selection offered seven candidates on this repository and five were test fixtures, with three tied at rank 0 — so `selected_entrypoint` resolved to **None** and a first-run learner was handed a picker listing mostly `tests/`, with the project's own entry indistinguishable from a fixture's `main()`. Demotion rather than exclusion because a project that *is* a test suite still needs somewhere to start, and dropping them would leave it with no Home at all. Detection is path-based on purpose: `tests/fixtures/sampleproj/app.py` is not named like a test and is one, and that shape — fixtures carrying their own `main()` and `__main__` guards — is exactly what buried the real entrypoint. Same principle as the 2026-07-22 Easy-guidance penalty: bias the ranking, never the reported fact. Home now resolves to `codemble.cli` with no question asked |
 | 2026-08-02 | The v0.10.0 suite count is verified in a **throwaway venv**, and the ambient editable install is deliberately left alone | `test_the_running_app_reports_the_packaged_version` compares `__version__` — read from installed distribution metadata — against `pyproject.toml`, so a version bump makes it fail locally until the package is reinstalled. Its own message says so. But the pyenv editable install's `direct_url.json` pointed at *another session's worktree*, so reinstalling from here would have repointed that session's environment mid-flight. CI installs fresh from the branch and matches; a `python -m venv` install reproduces CI exactly and confirmed 379 passing. The gate is right, the local environment is stale, and the honest fix was to verify rather than to disturb somebody else's tree |
 
 ## Non-Goals — do NOT build (point here when asked)

@@ -63,6 +63,26 @@ rejected, a reply it could not parse, and a model taking too long each say what
 they are. A connectivity fault reported as a correctness refusal teaches the
 wrong lesson about both.
 
+## A boundary is not a gap
+
+Rule 6 makes Codemble honest about what it could not prove. It also has to be
+honest about what was never its to prove. `new Set()`, `new AbortController()`
+and `requestAnimationFrame(...)` are supplied by the language or the host, not
+by your files — but in JavaScript and TypeScript they were reported as
+unresolved references *into* your project, which reads as "this is yours and I
+could not find it". They now read as calls that leave the project, exactly as
+`Math.max` always did.
+
+Nothing was dropped and nothing became certain: only the category changed, from
+a gap in coverage to the edge of the project. Measured on Codemble's own
+frontend source, 144 call targets were re-labelled and unresolved references
+fell from 258 to 114.
+
+The list of recognised globals is deliberately not exhaustive and never
+inferred. A name that is not on it still falls through to unresolved, which is
+the safe direction — a missing entry costs precision, while a wrong one would
+quietly hand a learner's own code to somebody else.
+
 ## What is missing is stated too
 
 Inventing nothing is only half the job. A galaxy drawn from part of your project

@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-02
+
+### Changed
+- **Codemble picks Home for you on a normal project.** Choosing a starting
+  point used to offer every file that looked like an entry — on this project
+  seven candidates, five of them test fixtures, with three tied for best, so
+  no choice could be made and you were asked to pick from a list that was
+  mostly `tests/`. A file inside a test folder is now ranked below the
+  project's own code. It is demoted, not hidden: a project that *is* a test
+  suite still gets a Home.
+- **JavaScript and TypeScript stopped reporting language builtins as things
+  Codemble could not find.** `new Set()`, `new Map()`, `AbortController` and
+  `requestAnimationFrame` were listed as unresolved references into your own
+  files. They are not missing — they belong to the language, and they now read
+  the same way `Math.max` always did: as a call that leaves your project. On
+  this project that re-labelled 144 of them.
+
 ## [0.11.0] - 2026-08-02
 
 ### Changed

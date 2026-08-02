@@ -258,10 +258,12 @@ least one candidate. The Home you choose is remembered for the next run of the
 same project, and a saved choice the parser no longer ranks is dropped rather
 than restored.
 
-On a first run with more than one honest Home candidate, Codemble asks for your
-audience first, then Home, then opens the three-step coach. Those decisions do
-not stack on top of one another, and Easy-mode guidance waits until all three
-are finished before it suggests anything.
+On a first run Codemble asks for your audience, then opens the three-step coach.
+Home becomes a question between them only when candidates tie for best rank —
+test-scoped candidates rank below your project's own code, so on most projects
+it is settled without asking. Those decisions do not stack on top of one
+another, and Easy-mode guidance waits until they are finished before it suggests
+anything.
 
 The audience question is about **you**, so it is asked once and remembered for
 the next project you open. Each project still keeps its own mode, which the
