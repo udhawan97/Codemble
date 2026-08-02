@@ -6,9 +6,14 @@ ones that exist). Paired with 0.26.0 the parser dies with SIGSEGV inside
 ``node_get_named_children`` partway through a real project, taking the whole
 process — and, in the app, the local server — down with it.
 
-A behavioural test cannot catch this: a small snippet parses and walks fine on
-0.26.0, and every fixture in this suite is small. It only trips on a corpus of
-real size, which is exactly why it reached a release. So the guard asserts the
+A behavioural test cannot catch this here, but not for the reason first
+recorded. Re-verified 2026-08-02: it is the JAVASCRIPT grammar specifically --
+parsing only ``.ts`` is clean, as are Go, Java, Rust, C# and Python -- and 23
+``.js``/``.jsx`` files are enough to reproduce it, every run. What is true is
+that a bare traversal will not show it: walking 188,755 named nodes across all
+six grammars on 0.26.0 is clean, and only the adapter's own query and cursor
+work trips it. A test that parsed a fixture would therefore have to crash the
+interpreter to fail, taking the suite with it, so the guard asserts the
 resolved version instead of the behaviour.
 
 Raise the ceiling only after verifying a grammar release against the newer core
