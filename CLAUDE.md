@@ -170,13 +170,27 @@ Log; TS's unproven edges are 80% honest boundaries and 1% fan-out, so copying
 Python's receiver resolution would have been work against a problem that is not
 there. What actually remains:
 
-1. **Framework-aware entrypoints** — FastAPI/Flask/Django routes and
-   click/typer commands. `app = FastAPI()` already ranks; a decorated
-   `@app.command()` CLI with no `__main__` guard does not.
-2. **Airtight relative and namespace imports** for Python.
-3. **LOD culling + clustering** for larger repos — with 166 regions and 9,890
-   edges on this project, this is now the binding constraint on scale rather
-   than parse accuracy.
+**All three items previously listed here were measured, and two of them were
+refused on the evidence.** Recorded because the measurements are reusable:
+
+- **Framework entrypoints — done** (v0.13.0). Was real: a FastAPI service, a
+  Flask app whose variable is not called `app`, a typer CLI and a click CLI
+  all resolved Home to *nothing*.
+- **Relative/namespace imports — nothing to fix.** Measured 500 Python import
+  edges on this project: zero possible, zero project modules missed. Python
+  import resolution is already complete.
+- **LOD culling — not the constraint at the supported cap.** The galaxy draws
+  *regions*, not nodes: 166 stars here, and at a real 1,000-module project
+  1,000 stars with the route mesh thinned by reveal to 5 charted. It renders
+  with no console error, and the existing guards (node resolution dropping
+  above 900, reveal, the label budget) are aimed exactly here. **Honest limit:
+  framerate itself was not measured** — the in-app browser reports
+  `document.hidden`, which throttles `requestAnimationFrame`, so the evidence
+  is structural rather than a frame count. LOD belongs with raising the
+  1,000-file cap, not before it.
+
+What is genuinely next: raising the scale cap (with LOD as its prerequisite),
+and Phase 3 — the shareable read-only galaxy link and extra quest types.
 
 **LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
 cloud touch). Extra quest types: trace-a-request, fix-the-failing-test.
@@ -1352,6 +1366,8 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | The Python lens gains dataclass, Protocol, pattern-matching, f-string and walrus, and a test asserts every emitted concept can be voiced | The lens taught eight concepts and was silent on the ones that dominate the code this product exists to explain: 47 dataclasses, 307 f-strings, 4 walrus operators and 3 Protocols on this repository alone produced no note. A dataclass is deliberately both a decorator note and its own, because the learner is looking at a class whose `__init__`, `__repr__` and `__eq__` are written for it and appear nowhere in the file — exactly the kind of absence that makes AI-written code confusing. The gate exists because the adapter and the lens are separate files, so a concept can ship *detected and silent*, which is precisely how these five stayed invisible |
 | 2026-08-02 | **The TypeScript deepening was measured and then largely refused.** JS/TS gets a builtin table instead | The obvious plan was to give TS what Python got. Measuring first said not to: of 1401 unproven JS/TS call edges on `web/src`, **80% were already `external:`** — React hooks, three.js, `Math.max`, calls that genuinely leave the project and are correctly hedged — and only **1% (20 edges)** was in-project fan-out. TypeScript has no ambiguity explosion, so porting Python's receiver resolution would have been effort against a problem that is not there. What the measurement *did* find is that 45% of the remaining `unresolved:` targets were ECMAScript and host globals — `Set`, `Map`, `Error`, `AbortController`, `requestAnimationFrame` — reported as `unresolved:javascript:graphData.js:Set`, which reads as "Codemble believes this is yours and could not find it". A coverage gap and a project boundary are different facts, and that distinction is what graph schema 8 exists to keep honest; Python's adapter has drawn it since M1 and JS/TS had no equivalent. The table is deliberately not exhaustive and not inferred: a name absent from it falls through to `unresolved:`, which is the safe direction, since a missing entry costs precision while a wrong one would reclassify a learner's own code as somebody else's. 258 → 114 unresolved |
 | 2026-08-02 | Test-scoped Python files take a bounded **entrypoint rank penalty**; demoted, never dropped | Home selection offered seven candidates on this repository and five were test fixtures, with three tied at rank 0 — so `selected_entrypoint` resolved to **None** and a first-run learner was handed a picker listing mostly `tests/`, with the project's own entry indistinguishable from a fixture's `main()`. Demotion rather than exclusion because a project that *is* a test suite still needs somewhere to start, and dropping them would leave it with no Home at all. Detection is path-based on purpose: `tests/fixtures/sampleproj/app.py` is not named like a test and is one, and that shape — fixtures carrying their own `main()` and `__main__` guards — is exactly what buried the real entrypoint. Same principle as the 2026-07-22 Easy-guidance penalty: bias the ranking, never the reported fact. Home now resolves to `codemble.cli` with no question asked |
+| 2026-08-02 | Home is selected from the **single best-ranked** candidate rather than only from rank zero, an app object no longer has to be named `app`, and a command/route decorator ranks a module on its own | Three arbitrary limits, each of which left the commonest shapes of Python project with no Home at all. The variable name was a naming convention masquerading as evidence — the *factory* is the evidence, so `srv = Flask(__name__)` and `cli = typer.Typer()` ranked nowhere. A click CLI has no app object whatever, so the decorator is the only evidence there is. And requiring rank zero meant a web service with no `__main__` guard had its only candidate sitting at the app-object rank while Home resolved to nothing: the learner was shown a picker holding one option, asked a question with one answer. Selecting the unique best candidate at whatever rank generalises the existing rule rather than replacing it — a genuine tie still opens the picker, because that is a learner decision and not a guess. Verified against four real shapes that each previously resolved to nothing |
+| 2026-08-02 | **LOD culling and Python import resolution were both measured and refused**, and the measurements are recorded so the next session does not redo them | Two more pieces of planned work that the evidence said not to do. Python's relative and namespace imports are already complete — 500 import edges on this project, zero possible, zero project modules missed — so "airtight imports" had nothing to fix. LOD is subtler: the galaxy draws *regions*, not nodes, so the 900-node resolution guard is measured against the wrong quantity to worry about. Served a real 1,000-module project at the documented cap: 1,000 stars, route mesh thinned by reveal to 5 charted, no console error, camera correctly framed on the charted set. LOD belongs with *raising* the cap rather than before it. Stated as a limit rather than hidden: **framerate itself was not measured**, because the in-app browser reports `document.hidden === true` and therefore throttles `requestAnimationFrame` — the same trap recorded on 2026-07-29 for focus return — so the evidence here is structural, not a frame count |
 | 2026-08-02 | The v0.10.0 suite count is verified in a **throwaway venv**, and the ambient editable install is deliberately left alone | `test_the_running_app_reports_the_packaged_version` compares `__version__` — read from installed distribution metadata — against `pyproject.toml`, so a version bump makes it fail locally until the package is reinstalled. Its own message says so. But the pyenv editable install's `direct_url.json` pointed at *another session's worktree*, so reinstalling from here would have repointed that session's environment mid-flight. CI installs fresh from the branch and matches; a `python -m venv` install reproduces CI exactly and confirmed 379 passing. The gate is right, the local environment is stale, and the honest fix was to verify rather than to disturb somebody else's tree |
 
 ## Non-Goals — do NOT build (point here when asked)

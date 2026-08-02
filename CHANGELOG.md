@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-02
+
+### Changed
+- **Codemble finds Home in a web service or a CLI, not just a script.** Three
+  limits meant the most common shapes of Python project never resolved a
+  starting point and always showed you the picker — sometimes holding a single
+  option. The app object no longer has to be named `app`, so
+  `srv = Flask(__name__)` and `cli = typer.Typer()` count; a command decorator
+  is enough on its own, so a click CLI with no app object counts; and Home is
+  chosen whenever one candidate is the best available, rather than only when
+  something looks like a runnable script. When two candidates genuinely tie,
+  you are still asked. Verified against a FastAPI service, a Flask app, a
+  typer CLI and a click CLI — all four previously resolved to nothing.
+
 ## [0.12.0] - 2026-08-02
 
 ### Changed
