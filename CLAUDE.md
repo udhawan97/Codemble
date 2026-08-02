@@ -162,17 +162,20 @@ evidence continues in parallel — exercise the loop on real learner projects.
 The v0.1.0 Python learner-acceptance issue stays open; technical completion
 does not claim those external runs passed.
 
-**NEXT — existing-language depth, then scale.** The four new adapters shipped
-in v0.10.0; what did **not** ship from that slate is the deepening, and it is
-now the most valuable work left. Python to "god level": attribute and method
-call resolution through class hierarchies and type hints so fewer edges are
-merely *possible*, framework-aware entrypoint ranking (FastAPI/Flask/Django
-routes, click/typer CLIs, pytest), a richer idiom lens (dataclasses, protocols,
-pattern matching), airtight relative and namespace imports. Then the same for
-TypeScript. This outranks a sixth language because every certainty upgrade
-sharpens the impact widget, the checks and the map at once — on the
-seven-language fixture 82 of 137 edges are currently hedged, and each one that
-becomes provable makes the whole product more useful. LOD culling + clustering
+**NEXT — finish the deepening, then scale.** v0.11.0 did the two highest-value
+pieces of Python's: call resolution on constructed, inherited and annotated
+receivers (1993 fewer unproven edges), and the missing idiom lens notes. What
+remains, in order:
+
+1. **TypeScript deepening** — the same three sources of evidence. TS carries
+   *more* type information than Python, so the ceiling here is higher.
+2. **Python framework-aware entrypoint ranking** — FastAPI/Flask/Django routes,
+   click/typer commands, and demoting test modules so a project's own entry
+   outranks its test suite when Home is chosen.
+3. **Airtight relative and namespace imports** for Python.
+
+This still outranks an eighth language: every certainty upgrade sharpens the
+impact widget, the checks and the map simultaneously. LOD culling + clustering
 for larger repos follows.
 
 **LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
@@ -270,6 +273,24 @@ language, because every edge that becomes provable sharpens the impact widget,
 the checks and the map at once. Schema 8 needed no second list — `.go`,
 `.java`, `.rs` and `.cs` left `unsupported_sources` automatically, which is
 what that design promised, and there is now a test for the promise.
+
+**v0.11.0 started the deepening, and the useful part is how nearly it went
+wrong.** 79% of Python call edges were unproven, but the number was the less
+important half: `.parse()` drew an edge to every class in the project defining
+`parse`, so eight in nine were relationships that do not exist — quietly
+inflating brightness, blast radius and the route mesh while staying technically
+within the contract. The first fix (base-class walk plus annotated receivers)
+was reasoned from what *ought* to be common and moved the count the **wrong
+way**, +65 edges. Counting which call sites actually produced the fan-out took
+one command and named the real shape: `Adapter().parse()`, a receiver
+constructed on the spot, which is also the one form Python makes fully
+provable. Result 8508 → 6778 edges, 1993 fewer unproven, and `.parse` gone from
+the unresolved list entirely; what tops it now is builtins, correctly external.
+The lens also stopped being silent on the Python this audience actually meets —
+dataclass, Protocol, `match`, f-string, walrus — with a gate asserting every
+emitted concept can be voiced, since the adapter and lens are separate files
+and a concept can ship detected-and-silent. Still open from the slate: the
+TypeScript deepening, and Python's framework-aware entrypoint ranking.
 
 Released as **v0.10.0**. 379 pytest, Ruff clean, 19 frontend contract checks,
 bundle rebuilt reproducibly, verified against a running server at 1440 and
@@ -1315,6 +1336,8 @@ shows lower repeated-commit work without changing derived values.
 
 | 2026-08-02 | Go, Java, Rust and C# ship as four separate tree-sitter adapters, and their lens voices ship as **one** module | Two opposite calls for two different kinds of code. The adapters are genuinely different — Go's method receivers, Java's wildcard imports, Rust's inherent-vs-trait impls, C#'s file-scoped namespaces — and the project already had two independent adapters rather than a shared core, so a fifth through eighth match the established architecture and can each be verified alone. The lens tables are the opposite: pure data of identical shape, where four files would differ only in their contents. The lookup still keys by language, because Rust and C# both detect `async-await` and each deserves its own wording, and `generic` means different enough things in Java and C# to be worth saying differently. A concept with no entry yields no note rather than borrowing another language's — an invented caption on real evidence is still an invented claim |
 | 2026-08-02 | Certainty is the place the new adapters were held hardest, and 82 of 137 edges on the seven-language fixture are hedged | Every language added a new way to be wrong about a call: a Go call through an interface value or function variable, a Java call on a variable whose declared type is not in the file (and a wildcard `import com.foo.*`, which names no type at all), a Rust trait-object or generic dispatch, a C# call on a `var` local, an interface-typed field or a delegate. None of those are statically provable from the parse tree, so every one is `certain=False`. Reporting a smaller hedged count would have meant guessing, and this is exactly the wrong a learner cannot detect. It is also the measurement that sets the next milestone: each edge that becomes provable through deeper resolution sharpens the impact widget, the checks and the map simultaneously |
+| 2026-08-02 | Python resolves a call on a **constructed receiver** (`Adapter().parse()`) as CERTAIN, on an **inherited** method through the in-project base chain, and on an **annotated** receiver as POSSIBLE | Measured, 79% of Python call edges were unproven, and the shape was worse than the number: `.parse()` emitted an edge to every class in the project defining `parse` — nine here, 237 call sites each — so eight in nine were relationships that do not exist, inflating centrality (which drives a star's brightness), padding the impact widget's blast radius and thickening the route mesh. They were labelled possible, so the *letter* of the Correctness Contract held; this is its spirit, because a hedge is honest about a relationship that might exist, not a licence to list nine when the evidence names one. The three certainty levels are not arbitrary: a constructor names its class outright and is the most statically determined dispatch Python offers (only a `__new__` returning another type breaks it, which no parser can see); an annotation names one class but Python dispatches on the *runtime* type, so a subclass may override — the same reasoning that keeps Java's virtual dispatch hedged here. Only in-project bases and types are recorded, because `class Adapter(Protocol)` inherits from something Codemble never parsed. **Worth recording that the first attempt missed**: the hierarchy and annotation branches alone moved the number the *wrong* way (+65 edges), because this codebase's `.parse()` calls are on constructor results rather than annotated names. Measuring which call sites actually produced the fan-out is what found the branch that mattered — 8508 → 6778 edges, 1993 fewer unproven |
+| 2026-08-02 | The Python lens gains dataclass, Protocol, pattern-matching, f-string and walrus, and a test asserts every emitted concept can be voiced | The lens taught eight concepts and was silent on the ones that dominate the code this product exists to explain: 47 dataclasses, 307 f-strings, 4 walrus operators and 3 Protocols on this repository alone produced no note. A dataclass is deliberately both a decorator note and its own, because the learner is looking at a class whose `__init__`, `__repr__` and `__eq__` are written for it and appear nowhere in the file — exactly the kind of absence that makes AI-written code confusing. The gate exists because the adapter and the lens are separate files, so a concept can ship *detected and silent*, which is precisely how these five stayed invisible |
 | 2026-08-02 | The v0.10.0 suite count is verified in a **throwaway venv**, and the ambient editable install is deliberately left alone | `test_the_running_app_reports_the_packaged_version` compares `__version__` — read from installed distribution metadata — against `pyproject.toml`, so a version bump makes it fail locally until the package is reinstalled. Its own message says so. But the pyenv editable install's `direct_url.json` pointed at *another session's worktree*, so reinstalling from here would have repointed that session's environment mid-flight. CI installs fresh from the branch and matches; a `python -m venv` install reproduces CI exactly and confirmed 379 passing. The gate is right, the local environment is stale, and the honest fix was to verify rather than to disturb somebody else's tree |
 
 ## Non-Goals — do NOT build (point here when asked)

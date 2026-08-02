@@ -21,6 +21,13 @@ project, external, and unresolved relationships without guessing. Exact path
 and unique-name resolution can be certain; extension substitution, extensionless
 resolution, and ambiguous candidates remain labeled possible.
 
+Calls resolve on the same principle. A receiver constructed at the call site and
+a method inherited from an in-project base class each identify one declaration,
+so both are certain; a receiver known only by its type annotation resolves to
+that class but stays possible, because the runtime type may be a subclass that
+overrides it. A name no evidence narrows is still recorded as a possible
+relationship rather than dropped.
+
 ### 2. The graph is render-ready
 
 The graph layer computes everything the renderer needs — language, size,

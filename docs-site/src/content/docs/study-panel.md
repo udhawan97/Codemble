@@ -49,6 +49,13 @@ through a relationship the parser could not prove is labelled **possible**, and
 that label applies to the whole chain: one unproven link makes everything beyond
 it unproven, and Codemble will not round that up to a fact.
 
+The lists are also shorter than they used to be. A method call matched on its
+name alone reached every class in the project declaring that name, which padded
+the blast radius with structures a change could not actually touch; several of
+those cases now resolve to the one class involved. The
+[correctness contract](/Codemble/correctness/) sets out the evidence that
+allows it.
+
 It is traced from the parsed graph alone, so it needs no API key and no network.
 Expert mode puts it first — when you are onboarding onto a codebase, *what does
 this control and what can break it* comes before prose. Easy mode states the

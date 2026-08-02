@@ -5,6 +5,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-02
+
+### Changed
+- **The galaxy shows far fewer relationships that were never really there.**
+  A call to a method like `.parse()` used to draw a line to *every* class in
+  your project with a method of that name — nine of them here, from 237
+  different places. At most one was the real one. Codemble now reads three
+  kinds of evidence it was ignoring: an object built on the spot
+  (`Thing().run()` names its class outright), a method inherited from a base
+  class, and a parameter you gave a type to. On this project that removed 1,993
+  relationships that did not exist, which makes module brightness, the Impact
+  panel and the map's web of routes all more truthful. Anything the code does
+  not actually prove is still shown as a possible relationship.
+
+### Added
+- **Five more Python ideas the study panel can now explain**: dataclasses,
+  Protocols, `match` statements, f-strings and the walrus operator. These are
+  everywhere in modern Python and the panel said nothing about any of them —
+  dataclasses especially, where the class's setup, printing and comparison
+  code is generated for you and so appears nowhere in the file you are reading.
+
+### Fixed
+- The Architecture map's language stripe reappeared for Go, Java, Rust and C#.
+  The map kept its own list of language colours, so the four new languages
+  resolved to nothing and their stripe quietly took on the colour of the box
+  behind it.
+- C# is spelled "C#" rather than "Csharp", and LINQ "LINQ" rather than "Linq",
+  in the language filter, the legend and the star chart.
+
 ### Fixed
 - **Go, Java, Rust and C# systems now carry their language colour on the
   Architecture map.** Their nebula and legend swatch arrived in 0.10.0 but the

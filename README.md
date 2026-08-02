@@ -264,6 +264,11 @@ mistake. Accuracy therefore outranks spectacle:
 - Approximate relationships stay visibly uncertain — a distinct colour and no
   drifting particles in the 3D galaxy, a genuinely dashed line in the 2D map,
   and the legend swatch follows whichever layer is on screen.
+- A relationship is hedged where the evidence runs out, not by default. A
+  receiver constructed at the call site, or a method inherited from an
+  in-project base class, resolves to one declaration and is drawn as proven; a
+  receiver known only by a type annotation resolves but stays possible, because
+  a subclass may override it.
 - Provider output that fails grounding validation is withheld instead of being
   softened into a guess — and a network failure, a rejected request and a
   timeout each say what actually happened rather than borrowing that wording.

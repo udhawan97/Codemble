@@ -30,12 +30,18 @@ Each language brings its own lens:
 
 | Language | Idioms the lens recognizes |
 | --- | --- |
-| Python | decorators, comprehensions, generators, context managers, async/await, dunder methods, exception handling, type hints |
+| Python | decorators, comprehensions, generators, context managers, async/await, dunder methods, exception handling, type hints, dataclasses, protocols, pattern matching, f-strings, the walrus operator |
 | JavaScript / TypeScript | async/await, arrow functions, destructuring, optional chaining, nullish coalescing, module syntax, type annotations, interfaces, generics, JSX |
 | Go | goroutines, channels, `defer`, error returns, struct embedding, interface assertions, generics |
 | Java | annotations, lambdas, streams, records, sealed types, default methods, try-with-resources, generics |
 | Rust | ownership and borrowing, mutable borrows, lifetimes, traits, `impl` blocks, pattern matching, `Result`/`Option`, the `?` operator, macros, `unsafe`, async/await |
 | C# | LINQ queries, extension methods, properties, records, nullable types, pattern matching, generics, async/await |
+
+Some idioms are worth teaching for what they take *out* of the file. A
+`@dataclass` generates the class's `__init__`, `__repr__` and `__eq__` from its
+annotated fields, so none of that code appears anywhere you could read it. An
+absence is the hardest thing to look up when you did not write the code
+yourself, which is exactly the position this project's readers are in.
 
 Each note carries its real source snippet and a clickable `file:line` anchor.
 Nested structures own their own annotations, so a parent does not absorb syntax
