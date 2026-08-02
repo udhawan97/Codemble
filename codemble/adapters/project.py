@@ -86,12 +86,28 @@ class ProjectParser:
 
     def __init__(self, adapters: Iterable[LanguageAdapter] | None = None) -> None:
         if adapters is None:
+            # The one place the supported language set is written down. Nothing
+            # else above the seam names a language, which is what keeps adding
+            # one to this tuple the whole integration -- graph, checks, lens
+            # routing, the unsupported-sources tally and the frontend all key
+            # off `Node.language` rather than off a list of their own.
+            from codemble.adapters.csharp_tree_sitter import CSharpAdapter
+            from codemble.adapters.go_tree_sitter import GoAdapter
+            from codemble.adapters.java_tree_sitter import JavaAdapter
             from codemble.adapters.python_ast import PythonAstAdapter
+            from codemble.adapters.rust_tree_sitter import RustAdapter
             from codemble.adapters.typescript_tree_sitter import (
                 JavaScriptTypeScriptAdapter,
             )
 
-            adapters = (PythonAstAdapter(), JavaScriptTypeScriptAdapter())
+            adapters = (
+                PythonAstAdapter(),
+                JavaScriptTypeScriptAdapter(),
+                GoAdapter(),
+                JavaAdapter(),
+                RustAdapter(),
+                CSharpAdapter(),
+            )
         self._adapters = tuple(adapters)
         if not self._adapters:
             raise ValueError("ProjectParser requires at least one language adapter")
