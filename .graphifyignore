@@ -1,0 +1,17 @@
+# What the knowledge graph should not read.
+#
+# Gitignore syntax. This is separate from .gitignore on purpose: everything
+# here is committed to the repository and belongs there, but none of it is
+# source anyone reasons about.
+
+# The production SPA bundle. It is committed and shipped inside the wheel, so
+# git tracks it — but it is minified build output of web/src, which is already
+# in the graph. Left in, it contributed 1966 of 5056 nodes (39%) and took over
+# the god-node list with its mangled one-letter symbols: n(), i(), r(), t(),
+# a(), push(). Those are the graph's answer to "what are this project's core
+# abstractions", so the noise displaced the real answer.
+codemble/web_dist/
+
+# Generated plate artwork, rewritten wholesale from a fixed seed by
+# scripts/build-plates.mjs. The script is the source; the SVGs are its output.
+docs-site/public/brand/plates/
