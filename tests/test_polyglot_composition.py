@@ -10,6 +10,7 @@ composition bug cannot appear.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from dataclasses import asdict
 from pathlib import Path
@@ -49,6 +50,45 @@ def test_every_shipped_language_lands_in_one_graph(polyglot_root: Path) -> None:
         "rust",
         "typescript",
     }
+
+
+def test_every_language_in_the_graph_has_a_tint(polyglot_root: Path) -> None:
+    """A language the parser emits must be paintable in the app.
+
+    The frontend keys every visual channel off `Node.language`, which is what
+    keeps the seam narrow -- but it also means a new adapter can land, parse
+    correctly, and still reach a learner with a whole channel missing. That is
+    what happened when four languages shipped: Go, Java, Rust and C# drew no
+    nebula, showed a blank legend swatch, and lost their Architecture-map
+    stripe into the box it sits on.
+
+    Read as text rather than executed, because the registry lives in Python and
+    the table lives in JS, so something has to look across the boundary. This
+    is the half no JS gate can do: `check_graph_data.mjs` proves the table's
+    own rows all paint, but it iterates that table and so cannot notice a
+    language missing from it.
+    """
+
+    web = Path(__file__).parent.parent / "web" / "src"
+    tints = dict(
+        re.findall(
+            r'^\s*(\w+): "(--cm-neb-[a-z]+)",$',
+            (web / "graphData.js").read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+    )
+    assert tints, "NEBULA_TINTS could not be read from graphData.js"
+    tokens = (web / "tokens.css").read_text(encoding="utf-8")
+
+    for language in {node.language for node in ProjectParser().parse(polyglot_root).nodes}:
+        assert language in tints, (
+            f"{language} has no row in NEBULA_TINTS: its systems would draw no fog, "
+            "its legend row would print a name beside an empty box, and its map "
+            "stripe would inherit the box fill and vanish"
+        )
+        assert f"{tints[language]}:" in tokens, (
+            f"{tints[language]} is missing from tokens.css, so {language} paints nothing"
+        )
 
 
 def test_registering_an_adapter_silences_its_own_extension(polyglot_root: Path) -> None:

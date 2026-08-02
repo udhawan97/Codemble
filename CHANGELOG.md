@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed
+- **Go, Java, Rust and C# systems now carry their language colour on the
+  Architecture map.** Their nebula and legend swatch arrived in 0.10.0 but the
+  map's language stripe did not, so it resolved to nothing and took the colour
+  of the box behind it — a channel the legend advertised and the map never
+  drew. The galaxy, the map and the legend now read one table, so a language
+  cannot again be coloured in one place and blank in another.
+- **The star chart no longer spells LINQ "Linq".** The chart title-cases a
+  concept's parser tag, which is right for `pattern-matching` and wrong for an
+  initialism — and the study panel's own note beside it said "LINQ query".
+
 ## [0.10.0] - 2026-08-02
 
 ### Added

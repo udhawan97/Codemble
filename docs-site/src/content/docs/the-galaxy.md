@@ -87,12 +87,13 @@ wide enough that a module belonging to none of your project's main groups is
 plainly visible — while a lit amber star remains the brightest thing in the sky
 by a wide margin.
 
-At galaxy level, Python, JavaScript, and TypeScript systems sit in a faint
-language-tinted nebula. A Go, Java, Rust, or C# system renders no fog: those
-languages are fully parsed, but no tint has been assigned to them yet, and
-borrowing another language's colour would say something untrue. Their language
-is still named in the focus control, the legend, the star chart, and the study
-panel.
+At galaxy level, every system sits in a faint language-tinted nebula — one hue
+for each of the seven languages Codemble reads. The seven are held at the same
+lightness as each other, so no language reads as more important than another,
+and all of them stay clear of the amber band, which belongs to understanding
+alone. A file in a language Codemble does not read is not in the graph at all,
+so there is no system to tint; the galaxy states how many such files it saw
+rather than drawing a colourless one.
 
 When you pass a region's checks, the next time you are at galaxy level that
 system plays a 1.2-second **nebula dawn**: amber washes out across its halo and
@@ -237,10 +238,9 @@ the *more* visible of the two — an unproven claim should never be the one you
 miss. The legend in the corner names every encoding: size, brightness, amber
 for understood, a corner-flag mark for syntax-error files, the colour-family
 row, a row for each language present, and certain versus possible relationships
-— and every swatch is drawn in the same ink the sky actually uses. Languages
-with no nebula tint (Go, Java, Rust, C#) are named in that list without a
-colour, because there is no colour of theirs to show. In Easy mode the legend
-says the same things in plain language.
+— and every swatch is drawn in the same ink the sky actually uses, read from
+the same table, so the key and the sky cannot drift apart. In Easy mode the
+legend says the same things in plain language.
 
 ## Switching project and changing Home
 

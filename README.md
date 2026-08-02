@@ -302,9 +302,6 @@ game; only the optional prose narration is unavailable.
 - **Rendering:** the 3D galaxy needs WebGL. If your machine cannot draw it, the
   Map layer still works — it is plain SVG over the same parser evidence, not a
   degraded guess.
-- **Nebula tint:** only Python, JavaScript, and TypeScript systems carry a
-  language-tinted fog at galaxy level. A Go, Java, Rust, or C# system renders
-  none; its language is still named everywhere else it matters.
 
 ## Help test the release
 
