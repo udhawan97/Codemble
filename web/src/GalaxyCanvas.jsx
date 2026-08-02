@@ -774,14 +774,23 @@ function readPalette() {
   const value = (token) =>
     toRenderableColor(styles.getPropertyValue(token).trim());
   return Object.freeze({
-    ground: value("--cm-ground"),
+    // The sky is its own token now, not the panel ground: painting the canvas
+    // with --cm-ground made the galaxy's background the interface's background
+    // (relative luminance 0.0037 -- black in all but name), and lifting it
+    // would have dragged every panel with it.
+    ground: value("--cm-sky"),
+    skyGlow: value("--cm-sky-glow"),
     home: value("--cm-ink"),
     orbit: value("--cm-orbit"),
-    // The unlit ramp tops out at --cm-ink-2 so understanding stays the
-    // brightest thing in the sky; a lit star uses --cm-star-high above it.
-    nodeBright: value("--cm-ink-2"),
-    node: value("--cm-ink-3"),
+    // Three canvas-only ramp values. They used to borrow the panel's text
+    // tokens, which tied how bright an un-understood star may be to the
+    // interface's typography. A lit star (--cm-star-high) sits above all
+    // three, and above every community family, by a measured margin.
+    nodeBright: value("--cm-node-bright"),
+    node: value("--cm-node-mid"),
     nodeDim: value("--cm-node-unlit"),
+    starCool: value("--cm-star-cool"),
+    starPale: value("--cm-star-pale"),
     // The dedicated route ink (audit gap 3): --cm-hairline belongs to borders
     // and panel rules, and an edge drawn in chrome ink disappears beside it.
     route: value("--cm-route"),

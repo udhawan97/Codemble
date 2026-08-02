@@ -62,17 +62,53 @@ class ProgressStore:
         payload["regions"] = dict(sorted(regions.items()))
         self._write(payload)
 
+    def visited_regions(self) -> frozenset[str]:
+        """Return the regions this learner has actually travelled to.
+
+        Deliberately NOT signature-scoped, unlike ``understood_regions``. A
+        proof of understanding is a claim about code, so editing that code must
+        retire it; having been somewhere is a fact about the learner's own
+        history and no edit can undo it. Filtered against the current graph all
+        the same, so a region that has since been deleted stops being reported
+        as somewhere in this project.
+        """
+
+        saved = self._read().get("visited")
+        if not isinstance(saved, list):
+            return frozenset()
+        return frozenset(
+            region_id for region_id in saved if region_id in self._signatures
+        )
+
+    def mark_visited(self, region_id: str) -> None:
+        """Record that the learner reached one region. Never marks it understood."""
+
+        if region_id not in self._signatures:
+            raise UnknownRegionError(region_id)
+        payload = self._read()
+        saved = payload.get("visited")
+        visited = set(saved) if isinstance(saved, list) else set()
+        visited.add(region_id)
+        payload["schema_version"] = _SCHEMA_VERSION
+        payload["project_root"] = self._graph.project_root
+        payload["visited"] = sorted(visited)
+        self._write(payload)
+
     def clear(self) -> None:
-        """Forget this project's understood regions, keeping its preferences.
+        """Forget this project's understood regions and trail, keeping preferences.
 
         Scoped to ``self.path``, which is keyed by this project's root, so no
-        other project's progress can be touched.
+        other project's progress can be touched. The trail goes with the
+        understood set rather than surviving it: this control is a reset, and a
+        map still showing everywhere you had been would be a half reset -- the
+        same two-owners-of-one-fact shape as the 2026-08-01 quiz defect.
         """
 
         payload = self._read()
         payload["schema_version"] = _SCHEMA_VERSION
         payload["project_root"] = self._graph.project_root
         payload["regions"] = {}
+        payload["visited"] = []
         self._write(payload)
 
     def mode(self) -> str:

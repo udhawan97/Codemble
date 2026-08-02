@@ -25,6 +25,13 @@ classifiers = [
   "Topic :: Education",
 ]
 dependencies = [
+  # Direct, not transitive, and the floor is load-bearing. Narration runs on
+  # `anyio.to_thread.run_sync(..., abandon_on_cancel=True)`, and that keyword
+  # was named `cancellable` until anyio 4.1 -- so on any older resolution every
+  # /explanation request raises TypeError before it reaches a single `except`.
+  # Codemble only ever received anyio through Starlette, whose own constraint
+  # is `anyio>=3.6.2,<5` and therefore permits exactly that.
+  "anyio>=4.1",
   "fastapi>=0.115",
   # Hard upper bound, not caution: tree-sitter 0.26.0 segfaults (SIGSEGV in
   # node_get_named_children) against the newest published grammar wheels

@@ -1,85 +1,199 @@
-@import url("../../docs-site/src/styles/tokens.css");
+/* Codemble app design tokens — the local instrument's own source of truth.
+ * ============================================================================
+ * This file used to `@import` docs-site/src/styles/tokens.css, which made a
+ * public-website edit restyle the shipped app with no signal and no rebuild --
+ * a standing Gotcha in CLAUDE.md. It is forked, so the two now move
+ * independently: the site keeps Formal Edo exactly as published, and the app
+ * is free to make its sky a place worth exploring.
+ *
+ * The fork frees ground darkness, ambient light and accent vividness. It does
+ * NOT free the locked meaning rules, and every one of them was re-measured
+ * against these values rather than assumed:
+ *
+ *   - amber (kohaku) means understanding and must be the brightest thing in
+ *     the sky. A lit star is relative luminance 0.665 here, against 0.470 for
+ *     the brightest community family and 0.419 for the top of the unlit
+ *     centrality ramp -- 40% and 57% of headroom respectively.
+ *   - one hue means one import community, at most eight ranked families.
+ *   - every value used as a legend swatch clears WCAG 4.5:1 on BOTH
+ *     --cm-ground and --cm-ground-2. The families now measure 9.6:1 and 8.4:1,
+ *     up from 8.1:1 and 7.0:1.
+ *
+ * The app is dark-only -- it sets no `data-theme` and reads no
+ * `prefers-color-scheme` -- so the site's light-ground block is deliberately
+ * not carried over rather than copied in unused.
+ * ========================================================================== */
 
 :root {
-  /* Uncertainty, and its twin claim "unchartable". "Approximate call edges are
-     labeled possible call" is a Correctness Contract clause, so this swatch
-     being legible is correctness, not polish: at its old value it measured
-     2.18:1 on --cm-ground-2 (the legend panel's own background) and 2.51:1 on
-     --cm-ground -- present, but below the floor at which a reader can see it.
-     Now 6.35:1 on --cm-ground and 5.50:1 on --cm-ground-2. It stays below
-     --cm-ink-2, the cap of the unlit centrality ramp, so a lit amber star
-     (--cm-star-high, 12.06:1) still owns the top of the brightness range. On
-     the canvas this also widens the gap from a *certain* route (--cm-hairline)
-     from 1.60:1 to 4.04:1 -- uncertainty is now the more visible of the two,
-     which is the right way round for a claim the parser could not prove. */
-  --cm-route-possible: color-mix(in srgb, var(--cm-ink-2) 30%, var(--cm-ink-3));
-  /* The ink a proven connection is DRAWN in, on both layers. It exists because
-     routes used to borrow --cm-hairline -- the same ink as box borders and
-     panel rules -- at 1.6:1 on the canvas ground, so the relationships the app
-     exists to teach were its least visible marks. Plain rgb() (readPalette
-     hands it to WebGL): 4.0:1 on --cm-ground, 3.5:1 on --cm-ground-2, and
-     deliberately BELOW --cm-route-possible (6.4:1) so an unproven claim stays
-     the more visible of the two. */
-  --cm-route: rgb(96 113 152);
-  /* Floor of the unlit centrality ramp. The ramp stops at --cm-ink-2 so that a
-     lit star (--cm-star-high) is always the brightest object in the sky —
-     understanding, not call centrality, owns the top of the range. */
-  --cm-node-unlit: color-mix(in srgb, var(--cm-ink-3) 78%, var(--cm-ground));
-  /* Language nebula tints. Plain rgb() only -- readPalette hands the authored
-     text to WebGL, and a color-mix() token renders black. Lightness is tuned so
-     a legend swatch clears 4.5:1 on --cm-ground AND --cm-ground-2 while staying
-     below --cm-ink-2, so no nebula can outshine a lit star. Fog alpha lives in
-     the material, not here. */
-  --cm-neb-python: rgb(89 144 121);
-  --cm-neb-js: rgb(139 126 169);
-  --cm-neb-ts: rgb(86 139 170);
-  /* Neutral base for the halo sprite texture. Always multiplied by the node's
-     own colour, so it can never brighten an unlit node past a lit one. */
-  --cm-star-halo: rgb(242 239 233);
-  /* Community colour families (Decision Log 2026-07-22): each parser-proven
-     import community takes one of eight traditional Japanese hues,
-     deterministically (community id mod 8 -- same code, same sky). Plain rgb()
-     because readPalette hands these to WebGL. Every value is lightness-tuned
-     to the SAME luminance as --cm-ink-2 (0.389), the unlit ramp's ceiling:
-     measured 8.1:1 on --cm-ground and 7.0:1 on --cm-ground-2 as legend
-     swatches, while a lit star (--cm-star-high, luminance 0.60) stays the
-     brightest object in the sky by a wide margin. Hues sit between 79 and 344
-     degrees -- the kohaku amber band (~40) is excluded, so no community can
-     read as "understood", and the ordering interleaves the wheel so adjacent
-     community ids land on distant hues. */
-  --cm-com-0: rgb(109 181 153); /* 青磁 seiji · celadon */
-  --cm-com-1: rgb(187 155 211); /* 藤 fuji · wisteria */
-  --cm-com-2: rgb(155 175 113); /* 苔 koke · moss */
-  --cm-com-3: rgb(110 177 190); /* 浅葱 asagi · pale indigo-teal */
-  --cm-com-4: rgb(215 149 167); /* 鴇 toki · ibis rose */
-  --cm-com-5: rgb(191 158 175); /* 梅鼠 umenezumi · plum mauve */
-  --cm-com-6: rgb(94 185 133);  /* 若竹 wakatake · young bamboo */
-  --cm-com-7: rgb(170 160 218); /* 桔梗 kikyō · bellflower */
-  /* Canvas name plates. Plain rgb() for the same reason the nebula tints are:
-     readPalette hands the authored text straight to WebGL. The plate is drawn
-     into a canvas texture rather than composited by CSS, so its own alpha lives
-     in the rgba() below. Ink on plate measures 13.1:1, well clear of the 4.5:1
-     floor, and the plate is dark enough that a name stays readable where it
-     crosses a nebula or a lit star's halo. The ink is deliberately NOT
-     --cm-star-high: amber means understanding, and a label is not a claim about
-     understanding anything. */
-  --cm-label-plate: rgba(9 14 28 / 0.82);
-  --cm-label-ink: rgb(214 219 231);
-  /* One value, because both the sidebar's own width and the offset the stage
-     overlays need when it is open are the same number. */
-  --cm-sidebar-width: min(19rem, 82vw);
-  --cm-scrim: color-mix(in srgb, var(--cm-ground) 82%, transparent);
-  --cm-error: oklch(72% 0.16 28);
-  --cm-space-2xs: 0.125rem;
-  --cm-space-2xl: 6rem;
-  --cm-radius: 0.25rem;
+  /* --- Type ---------------------------------------------------------------
+     Self-hosted (see the Decision Log): the app says "Local only" in its own
+     footer, so it must never reach a font CDN. */
+  --cm-font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --cm-font-body: "Zen Kaku Gothic New", "Hiragino Sans", system-ui, sans-serif;
+  --cm-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* The app's own denser instrument scale -- deliberately not the website's
+     reading scale, which is tuned for long prose at 100% browser zoom. */
   --cm-text-xs: 0.75rem;
   --cm-text-sm: 0.875rem;
   --cm-text-base: 1rem;
   --cm-text-lg: 1.25rem;
+  --cm-text-xl: clamp(1.25rem, 0.5vw + 1.1rem, 1.5rem);
   --cm-text-display: clamp(1.75rem, 3vw + 1rem, 3.25rem);
+
+  /* --- Spacing (4-point scale) -------------------------------------------- */
+  --cm-space-2xs: 0.125rem;
+  --cm-space-xs: 0.5rem;
+  --cm-space-sm: 0.75rem;
+  --cm-space-md: 1rem;
+  --cm-space-lg: 2rem;
+  --cm-space-xl: 4rem;
+  --cm-space-2xl: 6rem;
+
+  /* --- Geometry ----------------------------------------------------------- */
+  --cm-radius: 0.25rem;
+  --cm-rule: 1px;
+
+  /* --- Motion -------------------------------------------------------------
+     House easing shared with the camera rails. Never default `ease`, never
+     bounce -- a planetarium console does not spring. */
+  --cm-ease: cubic-bezier(0.16, 0.7, 0.3, 1);
+  --cm-dur-quick: 160ms;
+  --cm-dur-reveal: 420ms;
+  /* The scripted warp between systems. Long enough to read as travel rather
+     than a cut, short enough that exploring never feels like waiting. */
+  --cm-dur-warp: 900ms;
+
+  /* --- Stacking ----------------------------------------------------------- */
   --cm-z-base: 1;
   --cm-z-raised: 10;
   --cm-z-sticky: 200;
   --cm-z-panel: 400;
+
+  /* --- Chrome grounds and ink ---------------------------------------------
+     Unchanged from the values the interface was measured against, so no panel,
+     button or body-text contrast moves with this fork. The sky is a separate
+     token below precisely so it can brighten without dragging these with it. */
+  --cm-ground: #070b1c;
+  --cm-ground-2: #101a3e;
+  --cm-hairline: #24325c;
+  --cm-hairline-soft: #17203f;
+
+  --cm-ink: #eef2fa;
+  --cm-ink-2: #9aa8c4;
+  --cm-ink-3: #7d8aa8;
+
+  /* Accent 1 — KOHAKU 琥珀 (amber). ONE job: illumination = understanding. */
+  --cm-star: #e89b2e;
+  /* A lit star, and the brightest object anywhere in the app (lum 0.665).
+     Raised from #f4c46a with the rest of the canvas so the margin over the
+     brightened unlit range is wider than it was before, not narrower. */
+  --cm-star-high: #f6d087;
+
+  /* Accent 2 — RURI 瑠璃 (lapis). ONE job: interaction. Never progress. */
+  --cm-orbit: #82abec;
+  --cm-orbit-deep: #2b4d96;
+  --cm-orbit-low: #14264a;
+
+  --cm-error: oklch(72% 0.16 28);
+  --cm-scrim: color-mix(in srgb, var(--cm-ground) 82%, transparent);
+  --cm-sidebar-width: min(19rem, 82vw);
+
+  /* =======================================================================
+     CANVAS ONLY. Plain rgb() is mandatory below this line: readPalette hands
+     a custom property's authored TEXT straight to WebGL, so a color-mix()
+     token renders black. See the Gotchas in CLAUDE.md.
+     ======================================================================= */
+
+  /* The sky itself. The canvas used to paint --cm-ground, so the galaxy's
+     background was the panel colour: relative luminance 0.0037, which is
+     black in all but name. This is 4.4x that and still deep night -- the
+     complaint was never that stars lacked contrast, it was that the sky read
+     as an empty void rather than as space with light in it. Lifting the
+     ground alone would have cost star contrast, so the real work is done by
+     the glow band and the brighter node range below. */
+  --cm-sky: rgb(19 31 75);
+  /* The galactic plane: a broad, very dim band of light across the disc, at
+     lum 0.076. Encodes nothing -- it is the ambient that makes the emptiness
+     read as distance rather than as absence. */
+  --cm-sky-glow: rgb(42 75 145);
+
+  /* The unlit centrality ramp: three canvas-only values, no longer borrowed
+     from --cm-ink-2 and --cm-ink-3. Those are TEXT tokens, so the sky's
+     brightness range was tied to the panel's typography and could not be
+     tuned without moving the interface too -- the seam this fork exists for.
+
+     The floor matters most. A region belonging to none of the eight ranked
+     communities falls through to this ramp, and on this repository that is
+     ~30 of 123 modules: at the old floor they were all but invisible, which
+     is a large part of what "the galaxy is too dark" actually meant. It now
+     measures 4.1:1 against the sky, so the least important module in the
+     project is still plainly a star.
+
+     Ordering, measured, and the thing that must never break:
+     floor 0.220 < mid 0.322 < ceiling 0.439 < community 0.470 < LIT 0.665. */
+  --cm-node-unlit: rgb(115 129 162);
+  --cm-node-mid: rgb(142 154 180);
+  --cm-node-bright: rgb(169 177 197);
+
+  /* Starfield and neutral-node temperature. Blue to white only: there is
+     deliberately NO warm end, because a warm tint at this brightness sits in
+     the kohaku band and a decorative star would start reading as understood.
+     Real hot stars are blue-white, so declining to render the red end costs
+     nothing in honesty and protects amber's one job. */
+  --cm-star-cool: rgb(150 180 236);
+  --cm-star-pale: rgb(214 222 240);
+
+  /* Uncertainty, and its twin claim "unchartable". "Approximate call edges
+     are labeled possible call" is a Correctness Contract clause, so this
+     swatch being legible is correctness, not polish. It stays BELOW the lit
+     star and ABOVE --cm-route, so an unproven claim remains the more visible
+     of the two -- the right way round for something the parser could not
+     prove. */
+  --cm-route-possible: rgb(146 160 194);
+  /* The ink a proven connection is DRAWN in, on both layers. Routes used to
+     borrow --cm-hairline -- the ink of box borders -- at 1.6:1 on the canvas
+     ground, so the relationships the app exists to teach were its least
+     visible marks. */
+  --cm-route: rgb(96 113 152);
+
+  /* Language nebula tints. Raised to lum ~0.33 so a system sits in visible
+     atmosphere rather than in nothing; fog alpha lives in the material, not
+     here, so the on-screen value is far below this. Still well under the
+     unlit ceiling, so no nebula can outshine a star of any kind. Legend
+     swatches measure 7.0:1 and 6.1:1. */
+  --cm-neb-python: rgb(112 166 144);
+  --cm-neb-js: rgb(161 151 185);
+  --cm-neb-ts: rgb(119 161 186);
+
+  /* Neutral base for the halo sprite texture. Always multiplied by the node's
+     own colour, so it can never brighten an unlit node past a lit one. */
+  --cm-star-halo: rgb(242 239 233);
+
+  /* Community colour families. Each parser-proven import community among the
+     project's eight LARGEST takes one, assigned in the graph layer and
+     serialized as Region.community_family; a ninth community borrows no hue
+     and keeps the neutral ramp, because a borrowed hue would be a false claim
+     about which part of the project a module belongs to.
+
+     Every value is lightness-tuned to the same relative luminance (0.470) so
+     no family is louder than another, and all eight sit far below a lit star
+     (0.665). Hues run 79-344 degrees; the kohaku amber band (~40) is excluded
+     so no community can read as "understood", and the ordering interleaves
+     the wheel so adjacent community ids land on distant hues. */
+  --cm-com-0: rgb(136 195 172); /* 青磁 seiji · celadon */
+  --cm-com-1: rgb(199 172 219); /* 藤 fuji · wisteria */
+  --cm-com-2: rgb(172 189 138); /* 苔 koke · moss */
+  --cm-com-3: rgb(137 191 202); /* 浅葱 asagi · pale indigo-teal */
+  --cm-com-4: rgb(222 169 183); /* 鴇 toki · ibis rose */
+  --cm-com-5: rgb(202 175 189); /* 梅鼠 umenezumi · plum mauve */
+  --cm-com-6: rgb(124 198 155); /* 若竹 wakatake · young bamboo */
+  --cm-com-7: rgb(185 176 224); /* 桔梗 kikyō · bellflower */
+
+  /* Canvas name plates. The plate is drawn into a canvas texture rather than
+     composited by CSS, so its alpha lives in the rgba() below. The ink is
+     deliberately NOT --cm-star-high: amber means understanding, and a label
+     is not a claim about understanding anything. */
+  --cm-label-plate: rgba(9 14 28 / 0.82);
+  --cm-label-ink: rgb(214 219 231);
 }

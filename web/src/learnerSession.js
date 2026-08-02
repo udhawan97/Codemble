@@ -31,6 +31,12 @@ export function createLearnerSession({
     explanationError: "",
     showChart: false,
     studiedNodeIds: new Set(),
+    // The explorer's trail. Persisted server-side, unlike studiedNodeIds above
+    // which is deliberately session-local: flying somewhere is a fact about
+    // where the learner has been and is meant to outlive the process, which is
+    // what makes travel chart the map. It seeds reveal and nothing else -- it
+    // may never light a star, because amber means understanding alone.
+    visitedRegionIds: new Set(),
     showChecks: false,
     checkData: null,
     checkError: "",
@@ -194,11 +200,18 @@ export function createLearnerSession({
     // synchronously (rather than rejecting a promise) still settles instead of
     // escaping allSettled and being mistaken for a graph load failure.
     const requestModeLifecycle = modeLifecycle;
-    const [modeResult, statusResult] = await Promise.allSettled([
+    const [modeResult, statusResult, visitedResult] = await Promise.allSettled([
       (async () => adapter.loadMode({ signal: controller.signal }))(),
       (async () => adapter.fetchLlmStatus({ signal: controller.signal }))(),
+      (async () => adapter.fetchVisited?.({ signal: controller.signal }))(),
     ]);
     if (requestLifecycle !== lifecycle || controller.signal.aborted) return;
+    // The trail rides with the other preferences for the same reason they use
+    // allSettled: a server that cannot report where the learner has been must
+    // cost them their charted routes, never their galaxy.
+    if (visitedResult.status === "fulfilled" && Array.isArray(visitedResult.value?.visited)) {
+      commit({ visitedRegionIds: new Set(visitedResult.value.visited) });
+    }
     // A same-project setMode call (in flight or already committed) is a newer
     // truth than this fetch, which was issued before it: never let it clobber
     // the learner's choice. setMode bumps modeLifecycle synchronously, so a
@@ -233,6 +246,10 @@ export function createLearnerSession({
     // galaxy the learner is still looking at.
     const requestLifecycle = lifecycle;
     await adapter.clearProgress({});
+    // The server clears the trail with the understood set (one caller owns
+    // both halves), so the local mirror follows or the sky would keep drawing
+    // routes to places the store no longer remembers.
+    commit({ visitedRegionIds: new Set() });
     // The reload below belongs to the project that asked for the clear. A
     // project released or switched across that await owns the session now, and
     // reloading into it would either resurrect the old graph or, against an
@@ -429,6 +446,26 @@ export function createLearnerSession({
   // parser found, focus or no focus) and the Easy-mode hint chip. Resolving the
   // id here rather than in React is what keeps a focused-out box from handing
   // `undefined` to advance() -- and it keeps the renderer free of graph lookups.
+  /**
+   * Chart one region because the learner actually arrived there.
+   *
+   * Called from every route into a system -- clicking a star, the module
+   * index, the map, the guidance chip -- because a trail that only records
+   * some arrivals is worse than none: the learner cannot tell which of their
+   * journeys the map kept. Optimistic, and the POST is not awaited: charting
+   * is a view concern, and travel must never wait on the network.
+   */
+  function recordVisit(regionId) {
+    if (!regionId || snapshot.visitedRegionIds.has(regionId)) return;
+    const visited = new Set(snapshot.visitedRegionIds).add(regionId);
+    commit({ visitedRegionIds: visited });
+    void Promise.resolve(adapter.markVisited?.(regionId)).catch(() => {
+      // A failed write costs this run's trail its persistence, not its
+      // correctness -- and there is nothing for a learner to act on, so it
+      // stays silent rather than interrupting an exploration with an error.
+    });
+  }
+
   function advanceRegion(regionId) {
     // Searched against the whole graph, never the focused projection: the
     // learner named a module that really exists, so the honest answer is to go
@@ -439,6 +476,7 @@ export function createLearnerSession({
     const region = snapshot.graph?.regions.find((candidate) => candidate.id === regionId);
     if (!region) return;
     cancelStudy();
+    recordVisit(region.id);
     commit({
       languageFocus:
         snapshot.languageFocus !== "all" && region.language !== snapshot.languageFocus
@@ -464,6 +502,7 @@ export function createLearnerSession({
       const nextRegion =
         snapshot.focusedGraph.regions.find((candidate) => candidate.id === node.id) ?? node;
       cancelStudy();
+      recordVisit(nextRegion.id);
       commit({
         region: nextRegion,
         selectedNode: null,
@@ -1069,6 +1108,17 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
     clearProgress(options = {}) {
       return request("/api/progress", "Progress reset", { ...options, method: "DELETE" });
     },
+    fetchVisited(options = {}) {
+      return request("/api/progress/visited", "Explored regions", options);
+    },
+    markVisited(regionId, options = {}) {
+      return request("/api/progress/visited", "Explored regions", {
+        ...options,
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ region_id: regionId }),
+      });
+    },
     async selectProject(path, options = {}) {
       const response = await fetchImplementation("/api/picker/select", {
         ...options,
@@ -1115,6 +1165,7 @@ export function createInMemoryLearnerSessionAdapter({
   let currentMode = mode ?? "easy";
   let modeChosen = initialModeChosen;
   const currentChecks = new Map(Object.entries(checks));
+  const visited = new Set();
   const pickerPhase = picker ? { ...picker, selected: false } : null;
   // A scripted queue rather than a fixture map: progress is a *sequence* the
   // poll loop walks, and each entry must be served exactly once so a test can
@@ -1222,7 +1273,17 @@ export function createInMemoryLearnerSessionAdapter({
     },
     async clearProgress(options = {}) {
       throwIfAborted(options.signal);
+      visited.clear();
       return { understood_regions: 0 };
+    },
+    async fetchVisited(options = {}) {
+      throwIfAborted(options.signal);
+      return { visited: [...visited].sort() };
+    },
+    async markVisited(regionId, options = {}) {
+      throwIfAborted(options.signal);
+      visited.add(regionId);
+      return { visited: [...visited].sort() };
     },
   });
 }

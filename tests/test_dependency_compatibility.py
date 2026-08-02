@@ -41,3 +41,26 @@ def test_tree_sitter_core_is_new_enough_for_the_grammars() -> None:
 def test_grammar_wheels_are_the_pinned_pairing() -> None:
     assert _version_tuple("tree-sitter-javascript") >= (0, 25)
     assert _version_tuple("tree-sitter-typescript") >= (0, 23, 2)
+
+
+def test_anyio_is_new_enough_for_the_narration_limiter() -> None:
+    """Narration's isolation depends on a keyword that anyio 4.1 renamed.
+
+    ``to_thread.run_sync(..., abandon_on_cancel=True)`` was ``cancellable=True``
+    before 4.1, and passing the new name to an older anyio raises TypeError --
+    from inside the request handler, matching none of its ``except`` clauses.
+    Every explanation would 500: the exact "it doesn't load" failure this
+    release exists to remove, arriving through the dependency graph instead of
+    the code. anyio reaches Codemble through Starlette, whose own constraint is
+    ``anyio>=3.6.2,<5`` and so permits a version without the keyword.
+    """
+
+    import inspect
+
+    import anyio.to_thread
+
+    assert _version_tuple("anyio") >= (4, 1), (
+        "anyio < 4.1 has no abandon_on_cancel; /api/node/*/explanation would "
+        "raise TypeError on every request"
+    )
+    assert "abandon_on_cancel" in inspect.signature(anyio.to_thread.run_sync).parameters

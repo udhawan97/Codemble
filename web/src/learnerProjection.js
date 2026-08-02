@@ -66,7 +66,12 @@ export function createLearnerProjection() {
         ? hintFor(focusedGraph, state.mode, level, region?.id ?? null, state.layer)
         : null,
       revealedRegionIds: focusedGraph
-        ? revealFor(focusedGraph, state.showAll, region?.id ?? null)
+        ? revealFor(
+            focusedGraph,
+            state.showAll,
+            region?.id ?? null,
+            state.visitedRegionIds,
+          )
         : EMPTY_REVEAL,
       moduleIndex: focusedGraph ? modulesFor(focusedGraph) : EMPTY_LIST,
     };
@@ -182,18 +187,24 @@ export function createLearnerProjection() {
     return hintCache.value;
   }
 
-  function revealFor(graph, showAll, selectionId) {
+  function revealFor(graph, showAll, selectionId, visitedIds) {
+    // visitedIds joins the cache key by identity, which is sound because
+    // recordVisit always commits a NEW Set rather than mutating in place --
+    // the same discipline studiedNodeIds follows. A mutated set would leave
+    // this cache serving a stale trail.
     if (
       !revealCache ||
       revealCache.graph !== graph ||
       revealCache.showAll !== showAll ||
-      revealCache.selectionId !== selectionId
+      revealCache.selectionId !== selectionId ||
+      revealCache.visitedIds !== visitedIds
     ) {
       revealCache = {
         graph,
         showAll,
         selectionId,
-        value: revealedRegionIds(graph, { showAll, selectionId }),
+        visitedIds,
+        value: revealedRegionIds(graph, { showAll, selectionId, visitedIds }),
       };
     }
     return revealCache.value;

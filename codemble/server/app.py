@@ -25,6 +25,7 @@ from codemble.adapters.project import (
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
+from codemble.progress import UnknownRegionError
 from codemble.server.project_activation import (
     LiveProject,
     ProjectActivation,
@@ -59,6 +60,12 @@ _NARRATION_SLOTS = 4
 # that thread still writes the narration cache, a retry after a timeout is
 # usually served instantly from disk.
 NARRATION_DEADLINE_SECONDS = 45.0
+
+
+class RegionVisit(BaseModel):
+    """One region the learner has travelled to."""
+
+    region_id: str
 
 
 class CheckSubmission(BaseModel):
@@ -359,6 +366,27 @@ def create_app(
         return {
             "understood_regions": len(project.checks.progress.understood_regions())
         }
+
+    @app.get("/api/progress/visited")
+    def get_visited() -> dict[str, object]:
+        checks, _ = _services()
+        return {"visited": sorted(checks.progress.visited_regions())}
+
+    @app.post("/api/progress/visited")
+    def mark_visited(visit: RegionVisit) -> dict[str, object]:
+        # Deliberately NOT part of the graph document, and therefore not a
+        # cache invalidation. `understood` belongs there because it decides a
+        # star's colour; a visit only seeds which routes are drawn, which is
+        # already a frontend projection. Putting it in the graph would re-pay
+        # hydration and serialization on every system the learner flies to.
+        checks, _ = _services()
+        try:
+            checks.progress.mark_visited(visit.region_id)
+        except UnknownRegionError as error:
+            raise HTTPException(
+                status_code=404, detail="That region is not in this graph."
+            ) from error
+        return {"visited": sorted(checks.progress.visited_regions())}
 
     distribution = web_dist or _default_web_dist()
     if distribution.is_dir() and (distribution / "index.html").is_file():

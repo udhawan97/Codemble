@@ -165,21 +165,23 @@ export function nebulaTintKey(language) {
 const REVEAL_FLOOR_HOPS = 2;
 
 /**
- * The regions currently drawn as charted sky.
+ * The regions whose import ROUTES are drawn, and the sky the camera opens on.
  *
- * Three sources union together: the floor (within REVEAL_FLOOR_HOPS of Home,
- * so a first run is never empty), the earned set (every lit region and its
- * import neighbours, which is what makes understanding uncover the map), and
- * the transient set (the current selection and its neighbours).
+ * Four sources union together: the floor (within REVEAL_FLOOR_HOPS of Home, so
+ * a first run is never empty), the explored set (every region the learner has
+ * actually flown to, which is what makes travelling chart the map), the earned
+ * set (every lit region and its import neighbours), and the transient set (the
+ * current selection and its neighbours).
  *
- * A region outside the result is NOT removed from the graph -- the renderer
- * draws it as an uncharted marker and it stays clickable. Hiding a module
- * outright would misreport the project's size, which is exactly the kind of
- * wrong a learner cannot detect.
+ * What this no longer decides: whether a region is visible, coloured or named.
+ * Every module is all three from the first frame. Reveal governs the route
+ * mesh -- which is what actually made 169 systems unreadable -- and the
+ * camera's opening frame, so the learner starts among what they know rather
+ * than staring at the whole disc from far enough away to read none of it.
  */
 export function revealedRegionIds(
   graph,
-  { showAll = false, selectionId = null } = {},
+  { showAll = false, selectionId = null, visitedIds = null } = {},
 ) {
   const everything = () => new Set(graph.regions.map((region) => region.id));
   if (showAll) return everything();
@@ -196,6 +198,11 @@ export function revealedRegionIds(
     }
     // A region you proved you understand can never go dark again.
     if (region.understood) seeds.add(region.id);
+    // Nor can one you have actually been to. This is the explorer's trail:
+    // travel charts the map, with no quiz required. It is deliberately a
+    // separate claim from `understood` -- been-there is not know-it, and only
+    // the second one is ever allowed to light a star amber.
+    if (visitedIds && visitedIds.has(region.id)) seeds.add(region.id);
   }
   if (selectionId) seeds.add(selectionId);
   for (const id of seeds) revealed.add(id);
@@ -508,34 +515,36 @@ export function galaxyData(graph, palette, revealed = null) {
         ...region,
         kind: "region",
         name: region.id,
-        // The label is the parser's own path for the module, shortened to its
-        // last two segments so a 60-character path cannot become a
-        // 60-character sprite while `__init__.py` plates stay distinguishable
-        // from one another. Uncharted regions carry none -- a name is the
-        // reward for reaching them, and labelling all 169 was the original
-        // hairball.
-        label: charted ? pathTail(files.get(region.id) ?? region.id) : "",
+        // Every region carries its name, charted or not. The label is the
+        // parser's own path shortened to its last two segments, so a
+        // 60-character path cannot become a 60-character sprite while
+        // `__init__.py` plates stay distinguishable. Withholding names was
+        // aimed at the 169-system hairball, but the hairball was the route
+        // MESH -- and paying for it with anonymity made a sky you could not
+        // explore without first proving you understood it. The declutter
+        // budget in nameAtlas, not reveal, is what keeps plates readable.
+        label: pathTail(files.get(region.id) ?? region.id),
         charted,
         fx: region.x,
         fy: region.y,
         fz: region.z,
         val: sizeFromLoc(region.loc, 5, 24),
-        // Precedence is meaning, not decoration: uncharted stays dim (a name
-        // and a colour are the reward for reaching it), amber stays the sole
-        // mark of understanding, uncertainty keeps its own channel, and only
-        // then does the community hue say which part of the project this is.
-        color: !charted
-          ? palette.nodeDim
-          : region.understood
-            ? palette.star
-            : graph.nodes.some((node) => node.region === region.id && node.partial)
-              ? palette.routePossible
-              : communityShade(
-                  palette,
-                  region.community_family,
-                  region.centrality,
-                  REGION_BRIGHT_AT,
-                ),
+        // Precedence is meaning, not decoration: amber stays the sole mark of
+        // understanding, uncertainty keeps its own channel, and only then does
+        // the community hue say which part of the project this is. Being
+        // uncharted no longer costs a region its colour -- "somewhere you have
+        // not been" and "something you do not understand" are different claims,
+        // and only the second one is what the sky's brightness is for.
+        color: region.understood
+          ? palette.star
+          : graph.nodes.some((node) => node.region === region.id && node.partial)
+            ? palette.routePossible
+            : communityShade(
+                palette,
+                region.community_family,
+                region.centrality,
+                REGION_BRIGHT_AT,
+              ),
         focusDim: false,
       };
     }),

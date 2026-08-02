@@ -375,16 +375,33 @@ assert.equal(
   sky.regions.length,
   "every region is still drawn: reveal must never misreport the project's size",
 );
+// Reversed deliberately: this used to assert an uncharted region carried NO
+// label. Withholding names was aimed at the hairball, but the hairball is the
+// route mesh (asserted above, unchanged) -- and paying for it with anonymity
+// made a sky nobody could explore without first proving they understood it.
 assert.equal(
   skyData.nodes.find((node) => node.id === "far").label,
-  "",
-  "an uncharted region carries no label",
+  "src/far.py",
+  "every region is named, charted or not: a name is how you find somewhere to go",
 );
 assert.equal(
   skyData.nodes.find((node) => node.id === "near").label,
   "src/near.py",
   "a charted region is labelled with the tail of the parser's own path",
 );
+// Stated as the property rather than as a swatch: charted state must not
+// appear anywhere in the colour decision. Comparing a region's colour with
+// reveal on and off is the direct test -- asserting a specific swatch would
+// have passed for the wrong reason, since a low-centrality region reaches the
+// ramp's floor on its own merits whether or not anyone has been there.
+const fullySeen = galaxyData(sky, swatches, null);
+for (const node of skyData.nodes) {
+  assert.equal(
+    node.color,
+    fullySeen.nodes.find((seen) => seen.id === node.id).color,
+    `${node.id}: reveal must not change a region's colour, only its routes`,
+  );
+}
 
 // Basenames collide hard -- every Python package carries an __init__.py -- and
 // identical plates over different modules are worse than none. This is the
