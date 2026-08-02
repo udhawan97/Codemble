@@ -819,6 +819,10 @@ function readPalette() {
     nebPython: value("--cm-neb-python"),
     nebJs: value("--cm-neb-js"),
     nebTs: value("--cm-neb-ts"),
+    nebGo: value("--cm-neb-go"),
+    nebJava: value("--cm-neb-java"),
+    nebRust: value("--cm-neb-rust"),
+    nebCsharp: value("--cm-neb-csharp"),
     // The eight community family hues (D1). Read in index order so
     // communityPaletteIndex's arithmetic and this array can never disagree.
     communities: Object.freeze(

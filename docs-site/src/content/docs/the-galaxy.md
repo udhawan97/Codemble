@@ -7,7 +7,7 @@ description: How your code becomes a sky — and why the camera stays on rails.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble at galaxy level on a first run: 123 star systems parsed from real source, 24 of them charted and named by their file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble at galaxy level on a first run: star systems parsed from real source, each named by its file path and wearing its import-community colour family in traditional Japanese hues, with import routes drawn around the systems charted so far and an as-yet unlit Home, plus the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -28,6 +28,17 @@ from the parsed structure of your code:
 | Lit amber / dim | Understood / not yet |
 | Drifting particles | A call the parser proved; possible calls stay still |
 | Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
+| Routes drawn around a system | You have flown there; the system is charted |
+
+Every system is drawn, coloured and named from the very first frame, whether or
+not you have been near it. What fills in as you explore is the web of **import
+routes** between systems — drawing all of them at once is what makes a large
+project unreadable — along with the frame the camera opens on, so a first run
+starts among the modules closest to Home rather than staring at the whole disc
+from far enough away to read none of it.
+
+Hover a star and it names itself and reports how many structures use it and how
+many it uses. A count of zero is left out rather than printed.
 
 Nothing that is merely busy can outshine something you understand: the unlit
 brightness ramp stops below the amber a lit star uses. Brightness counts the
@@ -70,10 +81,18 @@ sky is a claim, so it is spent where a claim exists.
 
 The background starfield is not decoration either. It is generated from a seed
 derived from your project's own file hashes, so the same code always produces
-the same sky. At galaxy level, Python, JavaScript, and TypeScript systems sit
-in a faint language-tinted nebula; a system in any other language renders no
-fog at all rather than borrowing a colour that would imply evidence Codemble
-does not have.
+the same sky. The ground it sits on carries its own colour and a band of ambient
+light rather than matching the app's panels, and the unlit brightness range is
+wide enough that a module belonging to none of your project's main groups is
+plainly visible — while a lit amber star remains the brightest thing in the sky
+by a wide margin.
+
+At galaxy level, Python, JavaScript, and TypeScript systems sit in a faint
+language-tinted nebula. A Go, Java, Rust, or C# system renders no fog: those
+languages are fully parsed, but no tint has been assigned to them yet, and
+borrowing another language's colour would say something untrue. Their language
+is still named in the focus control, the legend, the star chart, and the study
+panel.
 
 When you pass a region's checks, the next time you are at galaxy level that
 system plays a 1.2-second **nebula dawn**: amber washes out across its halo and
@@ -84,6 +103,24 @@ lit state — not a faster animation, none at all.
 
 Keyboard focus carries a visible reticle in the 3D scene as well as a live text
 readout, so arrow-key navigation is never a guess about where you are.
+
+## The trail you leave by exploring
+
+Flying to a system **charts** it. Its import routes stay drawn from then on, the
+orientation line counts it among the charted systems, and the star chart records
+it under **Systems explored**. This survives restarts, saved beside the rest of
+your progress.
+
+Charting is deliberately not lighting. It is earned by travel and says only that
+you went there; the amber of an understood system is earned by answering
+questions drawn from your own code. Keeping them apart is the point — a map that
+filled in as a reward for moving around would eventually claim you understood a
+project you had only toured. Opening a module from the workflow tree, the
+connections list, or the impact panel charts it too, exactly as flying to it
+does.
+
+Clearing a project's progress clears both: the understood regions and the
+explored trail.
 
 ## Bounded orbit, not free flight
 
@@ -161,11 +198,13 @@ fabricated depth. A **Prove understanding** button opens that region's checks.
 
 ## Focus a mixed sky without changing it
 
-When a project contains more than one supported language, the top rail offers
-**All**, **Python**, **JS**, and **TS** focus buttons with system counts. Focus
-filters the current view, its routes, partial-file notices, and star-chart rows.
-It does not reparse code, move systems, erase progress, or hide external and
-unresolved relationships originating from the focused language.
+When a project contains more than one supported language, the top rail offers an
+**All** button plus one button per language actually present, each with its
+system count — JavaScript and TypeScript are shortened to **JS** and **TS**, and
+the rest are named in full. Focus filters the current view, its routes,
+partial-file notices, and star-chart rows. It does not reparse code, move
+systems, erase progress, or hide external and unresolved relationships
+originating from the focused language.
 
 Switching focus away from the system you are viewing returns safely to the
 focused galaxy. Following a real relationship into another supported language
@@ -197,8 +236,10 @@ from panel rules and box borders, and a possible relationship is deliberately
 the *more* visible of the two — an unproven claim should never be the one you
 miss. The legend in the corner names every encoding: size, brightness, amber
 for understood, a corner-flag mark for syntax-error files, the colour-family
-row, one swatch per language, and certain versus possible relationships — and
-every swatch is drawn in the same ink the sky actually uses. In Easy mode it
+row, a row for each language present, and certain versus possible relationships
+— and every swatch is drawn in the same ink the sky actually uses. Languages
+with no nebula tint (Go, Java, Rust, C#) are named in that list without a
+colour, because there is no colour of theirs to show. In Easy mode the legend
 says the same things in plain language.
 
 ## Switching project and changing Home

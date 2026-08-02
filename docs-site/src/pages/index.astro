@@ -41,7 +41,16 @@ const contract = [
   "Approximate call edges are labelled “possible call” — never stated as fact.",
 ];
 
-const langs = ["Python", "JavaScript", "TypeScript", "Mixed projects"];
+const langs = [
+  "Python",
+  "JavaScript",
+  "TypeScript",
+  "Go",
+  "Java",
+  "Rust",
+  "C#",
+  "Mixed projects",
+];
 const install = "uvx codemble";
 
 // A real sequence: uv comes first, and the atlas follows.
@@ -160,8 +169,8 @@ const steps = [
             You built it with AI. Codemble reads your project on your own
             machine and draws it the way an Edo astronomer drew the sky —
             modules as star systems, functions as planets, your entrypoint as
-            Home. Every star starts dark. You light it by proving you
-            understand it.
+            Home. Every star is named from the first frame, and every one of
+            them starts dark. You light it by proving you understand it.
           </p>
           <div class="hero-actions">
             <a class="btn btn-primary" href={doc("quickstart")}>
@@ -249,8 +258,9 @@ const steps = [
               <h3>One score, and it is the real one</h3>
               <p>
                 No XP, no streaks, no leaderboards. A fully lit atlas means you
-                understand your project. The star chart beside it records every
-                language concept you met on the way.
+                understand your project. Exploring is tracked separately and
+                says less on purpose: flying to a system charts it and keeps its
+                routes drawn, but only a passed check turns it amber.
               </p>
             </article>
           </div>
@@ -338,7 +348,8 @@ const steps = [
             Your code is parsed locally. The only network calls are the LLM
             requests you configure, sent from your machine straight to your
             provider. Without a key you still get the atlas, the source, the
-            lens and the checks — only the prose needs a model.
+            lens, the checks, and the lists of what a change would reach — only
+            the prose needs a model.
           </p>
           <div class="hero-actions">
             <a class="btn btn-primary" href={doc("installation")}>

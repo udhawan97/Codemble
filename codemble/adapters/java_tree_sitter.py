@@ -117,11 +117,18 @@ class _SyntaxEvidenceIndex:
     children_by_parent: dict[str, tuple[Node, ...]]
     nested_ranges_by_owner: dict[str, frozenset[tuple[int, int]]]
     local_bindings_by_owner: dict[str, frozenset[str]]
-    # A type's node id keyed by its fully qualified name, and again by the file
-    # that declares it -- a same-file nested type is reachable by simple name
-    # with no import at all.
+    # A type's node id keyed by its fully qualified name, and again by the
+    # declaration that lexically encloses it -- a nested type is reachable by
+    # simple name from inside its owner with no import at all, and from nowhere
+    # else. Keying that by the file instead would let a sibling top-level type
+    # reach `Outer.Inner` as bare `Inner`, which Java does not.
     type_by_qualified: dict[str, str]
-    type_by_module_name: dict[tuple[str, str], str]
+    type_by_scope_name: dict[tuple[str, str], str]
+    parent_by_definition: dict[str, str]
+    # The type variables each declaration introduces. `class Box<T>` makes `T`
+    # a type variable inside it, so a project class that happens to be called
+    # `T` is not what `T item` refers to.
+    type_parameters_by_scope: dict[str, frozenset[str]]
     modules_by_package: dict[str, tuple[str, ...]]
     # Declared field types per owning type, so a call on a field can be proven
     # without inferring anything from the assigned value.
@@ -166,7 +173,7 @@ class _SyntaxEvidenceIndex:
         }
 
         type_by_qualified: dict[str, str] = {}
-        type_by_module_name: dict[tuple[str, str], str] = {}
+        type_by_scope_name: dict[tuple[str, str], str] = {}
         modules_by_package: dict[str, list[str]] = defaultdict(list)
         for parsed in parsed_files:
             modules_by_package[parsed.package].append(parsed.module_id)
@@ -175,7 +182,7 @@ class _SyntaxEvidenceIndex:
                 continue
             node = node_by_id[definition.node_id]
             parsed = parsed_by_module[definition.module_id]
-            type_by_module_name.setdefault((definition.module_id, node.name), node.id)
+            type_by_scope_name.setdefault((definition.parent_id, node.name), node.id)
             # Only a top-level type carries a plain qualified name; a nested one
             # is reached through its owner, and inventing `pkg.Inner` for it
             # would resolve imports that Java itself would reject.
@@ -197,7 +204,16 @@ class _SyntaxEvidenceIndex:
             nested_ranges_by_owner=frozen_ranges,
             local_bindings_by_owner=local_bindings_by_owner,
             type_by_qualified=type_by_qualified,
-            type_by_module_name=type_by_module_name,
+            type_by_scope_name=type_by_scope_name,
+            parent_by_definition={
+                definition.node_id: definition.parent_id for definition in definitions
+            },
+            type_parameters_by_scope={
+                definition.node_id: _type_parameter_names(
+                    definition.syntax, parsed_by_module[definition.module_id].raw
+                )
+                for definition in definitions
+            },
             modules_by_package={
                 package: tuple(sorted(module_ids))
                 for package, module_ids in modules_by_package.items()
@@ -502,7 +518,21 @@ def _collect_definitions(
                     node_id if is_type else enclosing_type_id,
                 )
                 continue
-            visit(child, qualname, parent_id, enclosing_type_id)
+            # `new Runnable() { ... }` declares a type the tree never names, so
+            # an unqualified call inside it may reach that anonymous type's own
+            # inherited member instead of the enclosing class's. Dropping the
+            # enclosing type here keeps such a call visible and uncertain
+            # rather than resolving it confidently to the wrong owner.
+            anonymous = (
+                child.type == "class_body"
+                and container.type == "object_creation_expression"
+            )
+            visit(
+                child,
+                qualname,
+                parent_id,
+                None if anonymous else enclosing_type_id,
+            )
 
     visit(parsed.tree.root_node, "", parsed.module_id, None)
     return nodes, definitions
@@ -579,6 +609,44 @@ def _declared_type_name(syntax: SyntaxNode | None, raw: bytes) -> str | None:
     if syntax.type == "scoped_type_identifier":
         return _node_text(syntax, raw).rsplit(".", 1)[-1]
     return None
+
+
+def _type_parameter_names(syntax: SyntaxNode, raw: bytes) -> frozenset[str]:
+    """Return the type variables this declaration introduces."""
+
+    parameters = syntax.child_by_field_name("type_parameters")
+    if parameters is None:
+        return frozenset()
+    names: set[str] = set()
+    for parameter in parameters.named_children:
+        if parameter.type != "type_parameter":
+            continue
+        for child in parameter.named_children:
+            if child.type == "type_identifier":
+                names.add(_node_text(child, raw))
+                break
+    return frozenset(names)
+
+
+def _supertype_names(syntax: SyntaxNode, raw: bytes) -> tuple[str, ...]:
+    """Return the simple names of the types this declaration extends or implements.
+
+    Only the direct entries of the clause are read. Walking the whole subtree
+    would collect type arguments too, so `implements List<Shape>` would claim
+    `Shape` as a supertype -- a relationship the source never states.
+    """
+
+    names: list[str] = []
+    for clause in syntax.named_children:
+        if clause.type not in {"extends_interfaces", "super_interfaces", "superclass"}:
+            continue
+        for child in clause.named_children:
+            entries = child.named_children if child.type == "type_list" else (child,)
+            for entry in entries:
+                name = _declared_type_name(entry, raw)
+                if name is not None:
+                    names.append(name)
+    return tuple(names)
 
 
 def _unique_node_id(base_id: str, syntax: SyntaxNode, used_ids: set[str]) -> str:
@@ -820,16 +888,22 @@ def _type_references(parsed: _ParsedFile) -> tuple[_TypeReference, ...]:
         )
         if static:
             # `import static a.b.C.m` names the type in the second-to-last
-            # segment; the wildcard form still names the type exactly and only
-            # leaves the member open, so the type stays proven.
-            type_qualified, _, member = dotted.rpartition(".")
+            # segment, while `import static a.b.C.*` has already stopped at the
+            # type -- the asterisk is its own node, so the dotted text IS the
+            # type. Trimming a segment from the wildcard form would name the
+            # package `a.b` and call that proven, which is a claim about a
+            # different thing entirely.
+            if wildcard:
+                type_qualified, member = dotted, None
+            else:
+                type_qualified, _, member = dotted.rpartition(".")
             if not type_qualified:
                 continue
             references.append(
                 _TypeReference(
                     qualified=type_qualified,
                     simple_name=type_qualified.rsplit(".", 1)[-1],
-                    member=None if wildcard else member,
+                    member=member,
                     certain=True,
                     lineno=lineno,
                 )
@@ -924,21 +998,30 @@ def _import_edges(
 
 
 def _resolve_type(
+    scope_id: str,
     module_id: str,
     simple_name: str,
     references: tuple[_TypeReference, ...],
     index: _SyntaxEvidenceIndex,
 ) -> str | None:
-    """Return the project type ``simple_name`` names here, or ``None``.
+    """Return the project type ``simple_name`` names at ``scope_id``, or ``None``.
 
-    The order is Java's own: a type declared in this file wins, then an
-    explicit single-type import, then the file's own package. A type-wildcard
-    import is deliberately not consulted -- it proves no specific type.
+    The order is Java's own: the innermost lexical scope declaring the name
+    wins, then an explicit single-type import, then the file's own package. A
+    type-wildcard import is deliberately not consulted -- it proves no specific
+    type. A type variable in scope stops the search rather than falling
+    through, because `T` inside `class Box<T>` refers to nothing the project
+    declares even when a class named `T` exists.
     """
 
-    declared = index.type_by_module_name.get((module_id, simple_name))
-    if declared is not None:
-        return declared
+    scope: str | None = scope_id
+    while scope is not None:
+        if simple_name in index.type_parameters_by_scope.get(scope, frozenset()):
+            return None
+        declared = index.type_by_scope_name.get((scope, simple_name))
+        if declared is not None:
+            return declared
+        scope = index.parent_by_definition.get(scope)
     for reference in references:
         if reference.simple_name == simple_name and reference.certain:
             imported = index.type_by_qualified.get(reference.qualified)
@@ -949,11 +1032,101 @@ def _resolve_type(
     return index.type_by_qualified.get(qualified)
 
 
+@dataclass(frozen=True, slots=True)
+class _DispatchEvidence:
+    """What the tree proves about which declaration a call actually reaches."""
+
+    # Callables the tree shows with no body: an interface or abstract method.
+    # Such a declaration cannot be the one that runs, so naming it as a proven
+    # target would be certain about the one answer that is definitely wrong.
+    bodyless_members: frozenset[str]
+    # Per type, the method names some project subtype redeclares. Java dispatch
+    # is virtual, so an overridden name reaches a body the tree cannot pick.
+    overridden_by_type: dict[str, frozenset[str]]
+
+    @classmethod
+    def build(
+        cls,
+        index: _SyntaxEvidenceIndex,
+        references_by_module: dict[str, tuple[_TypeReference, ...]],
+    ) -> _DispatchEvidence:
+        subtypes: dict[str, list[str]] = defaultdict(list)
+        for definition in index.definitions:
+            if not definition.is_type:
+                continue
+            raw = index.parsed_by_module[definition.module_id].raw
+            for name in _supertype_names(definition.syntax, raw):
+                supertype = _resolve_type(
+                    definition.node_id,
+                    definition.module_id,
+                    name,
+                    references_by_module[definition.module_id],
+                    index,
+                )
+                if supertype is not None:
+                    subtypes[supertype].append(definition.node_id)
+
+        overridden: dict[str, frozenset[str]] = {}
+        for type_id, direct in subtypes.items():
+            names: set[str] = set()
+            seen = {type_id}
+            # An iterative walk, because a malformed project can state a cycle
+            # (`A extends B`, `B extends A`) that the compiler would reject and
+            # a recursive one would hang on.
+            pending = list(direct)
+            while pending:
+                current = pending.pop()
+                if current in seen:
+                    continue
+                seen.add(current)
+                names.update(
+                    node.name
+                    for node in index.children_by_parent.get(current, ())
+                    if node.kind == "function"
+                )
+                pending.extend(subtypes.get(current, ()))
+            overridden[type_id] = frozenset(names)
+
+        return cls(
+            bodyless_members=frozenset(
+                definition.node_id
+                for definition in index.definitions
+                if not definition.is_type
+                and definition.syntax.child_by_field_name("body") is None
+            ),
+            overridden_by_type=overridden,
+        )
+
+    def resolves_to_one_body(
+        self,
+        candidates: list[Node],
+        dispatch_type: str | None,
+    ) -> bool:
+        """True when exactly one declaration can be what this call reaches.
+
+        ``dispatch_type`` is the type a virtual call dispatches on, or ``None``
+        where the receiver named the owning type outright -- a static call is
+        not dispatched, so a subtype redeclaring the name cannot intercept it.
+        """
+
+        if len(candidates) != 1:
+            return False
+        target = candidates[0]
+        if target.id in self.bodyless_members:
+            return False
+        if dispatch_type is None:
+            return True
+        return target.name not in self.overridden_by_type.get(
+            dispatch_type, frozenset()
+        )
+
+
 def _call_edges(
     index: _SyntaxEvidenceIndex,
     references_by_module: dict[str, tuple[_TypeReference, ...]],
 ) -> list[Edge]:
     edges: list[Edge] = []
+    dispatch = _DispatchEvidence.build(index, references_by_module)
     # Types are walked too, not only callables: `_walk_owned` stops at every
     # nested definition, so what remains of a type is its field initializers
     # and initializer blocks -- real call sites that would otherwise be dropped
@@ -975,6 +1148,7 @@ def _call_edges(
                     references,
                     index,
                     index.local_bindings_by_owner[definition.node_id],
+                    dispatch,
                 )
             )
     return edges
@@ -987,6 +1161,7 @@ def _resolve_call(
     references: tuple[_TypeReference, ...],
     index: _SyntaxEvidenceIndex,
     local_binding_names: frozenset[str],
+    dispatch: _DispatchEvidence,
 ) -> Edge:
     lineno = syntax.start_point.row + 1
     name_node = syntax.child_by_field_name("name")
@@ -1003,10 +1178,12 @@ def _resolve_call(
     if receiver is None or receiver.type == "this":
         candidates = index.members_named(owner_type, name)
         if candidates:
-            return _first_or_ambiguous(definition.node_id, candidates, lineno)
+            return _member_call_edge(
+                definition.node_id, candidates, lineno, dispatch, owner_type
+            )
         if receiver is None:
             static = _static_import_target(
-                definition.node_id, name, references, index, lineno
+                definition.node_id, name, references, index, lineno, dispatch
             )
             if static is not None:
                 return static
@@ -1031,17 +1208,23 @@ def _resolve_call(
             )
             if field_type is not None:
                 owner = _resolve_type(
-                    definition.module_id, field_type, references, index
+                    definition.node_id, definition.module_id, field_type, references, index
                 )
                 candidates = index.members_named(owner, name)
                 if candidates:
-                    return _first_or_ambiguous(definition.node_id, candidates, lineno)
+                    return _member_call_edge(
+                        definition.node_id, candidates, lineno, dispatch, owner
+                    )
+            # The receiver names the type itself, so this is a static call: no
+            # dispatch happens and no subtype can intercept it.
             static_owner = _resolve_type(
-                definition.module_id, receiver_name, references, index
+                definition.node_id, definition.module_id, receiver_name, references, index
             )
             candidates = index.members_named(static_owner, name)
             if candidates:
-                return _first_or_ambiguous(definition.node_id, candidates, lineno)
+                return _member_call_edge(
+                    definition.node_id, candidates, lineno, dispatch, None
+                )
         return Edge(
             definition.node_id,
             f"external:{receiver_name}.{name}",
@@ -1069,6 +1252,7 @@ def _static_import_target(
     references: tuple[_TypeReference, ...],
     index: _SyntaxEvidenceIndex,
     lineno: int,
+    dispatch: _DispatchEvidence,
 ) -> Edge | None:
     """Resolve an unqualified call brought into scope by a static import."""
 
@@ -1078,18 +1262,25 @@ def _static_import_target(
         owner = index.type_by_qualified.get(reference.qualified)
         candidates = index.members_named(owner, name)
         if candidates:
-            return _first_or_ambiguous(src, candidates, lineno)
+            # A static import names the owning type, so nothing dispatches.
+            return _member_call_edge(src, candidates, lineno, dispatch, None)
     return None
 
 
-def _first_or_ambiguous(src: str, candidates: list[Node], lineno: int) -> Edge:
-    """One name, one target: certain. Overloads share a name, so they are not."""
+def _member_call_edge(
+    src: str,
+    candidates: list[Node],
+    lineno: int,
+    dispatch: _DispatchEvidence,
+    dispatch_type: str | None,
+) -> Edge:
+    """Keep the observed target, certain only where one body can answer it."""
 
     return Edge(
         src,
         candidates[0].id,
         "call",
-        certain=len(candidates) == 1,
+        certain=dispatch.resolves_to_one_body(candidates, dispatch_type),
         lineno=lineno,
     )
 

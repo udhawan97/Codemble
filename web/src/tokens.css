@@ -165,6 +165,15 @@
   --cm-neb-python: rgb(112 166 144);
   --cm-neb-js: rgb(161 151 185);
   --cm-neb-ts: rgb(119 161 186);
+  /* One per language Codemble reads. Without these the legend printed a name
+     beside an empty box and the sky drew no fog at all for four of its seven
+     languages -- a channel silently missing rather than honestly absent. All
+     four sit at the same luminance as the first three, so no language reads as
+     more important, and every hue avoids the kohaku amber band. */
+  --cm-neb-go: rgb(98 167 174);
+  --cm-neb-java: rgb(196 140 152);
+  --cm-neb-rust: rgb(195 138 178);
+  --cm-neb-csharp: rgb(120 169 87);
 
   /* Neutral base for the halo sprite texture. Always multiplied by the node's
      own colour, so it can never brighten an unlit node past a lit one. */

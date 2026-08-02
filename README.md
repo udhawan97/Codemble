@@ -22,7 +22,7 @@
   <a href="https://github.com/udhawan97/Codemble/releases/latest"><img src="https://img.shields.io/github/v/release/udhawan97/Codemble?style=flat-square&label=release&color=2b4d96" alt="Latest release"></a>
   <a href="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml"><img src="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <img src="https://img.shields.io/badge/Python-3.11+-2b4d96?style=flat-square" alt="Python 3.11 or newer">
-  <img src="https://img.shields.io/badge/maps-Python_·_JavaScript_·_TypeScript-3f6ac0?style=flat-square" alt="Maps Python, JavaScript, and TypeScript projects">
+  <img src="https://img.shields.io/badge/maps-7_languages-3f6ac0?style=flat-square" alt="Maps Python, JavaScript, TypeScript, Go, Java, Rust, and C# projects">
   <img src="https://img.shields.io/badge/license-Apache_2.0-070b1c?style=flat-square" alt="Apache 2.0 license">
 </p>
 
@@ -34,19 +34,20 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level on a first run: 123 star systems parsed from real source, 24 charted and named by file path, constellations wearing their import-community colour families in traditional Japanese hues around an as-yet unlit Home, with language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next" width="960">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble at galaxy level on a first run: star systems parsed from real source, each one named by its file path and wearing its import-community colour, with the import routes drawn around the systems charted so far and an as-yet unlit Home, plus language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next" width="960">
 </p>
 
 <p align="center"><sub>
-  Galaxy level. Every system is one module; size is lines of code, brightness is
-  how many distinct structures call it. Files the parser could not read stay
-  visible and say so.
+  Galaxy level. Every system is one module, named and coloured from the first
+  frame; size is lines of code, brightness is how many distinct structures call
+  it. The routes between systems fill in as you explore. Files the parser could
+  not read stay visible and say so.
 </sub></p>
 
 > [!IMPORTANT]
-> **Codemble is in its Phase 1 tester release.** It maps Python,
-> JavaScript, TypeScript, and mixed projects in one parser-proven galaxy,
-> installable straight from PyPI with an in-app project picker. The
+> **Codemble is in its Phase 1 tester release.** It maps Python, JavaScript,
+> TypeScript, Go, Java, Rust, C#, and mixed projects in one parser-proven
+> galaxy, installable straight from PyPI with an in-app project picker. The
 > technical release is complete; unaided learner runs are the evidence still
 > being collected. [Try the ten-minute tester loop](https://github.com/udhawan97/Codemble/blob/main/TESTING.md).
 
@@ -82,9 +83,9 @@ Codemble opens your browser — pick your project folder there. To skip the
 picker, pass a path: `codemble ./your-ai-built-project`.
 
 The wheel already contains the web app, so Node.js is not required. No API key
-is needed for the galaxy, the map, the structural summary, source viewer,
-language Lens, checks, lighting, or saved progress. Add your own Anthropic or
-OpenAI key only if you want grounded prose explanations:
+is needed for the galaxy, the map, the structural summary, the impact lists,
+source viewer, language Lens, checks, lighting, or saved progress. Add your own
+Anthropic or OpenAI key only if you want grounded prose explanations:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY=sk-...
@@ -105,10 +106,14 @@ ollama pull gemma4:12b && export CODEMBLE_PROVIDER=ollama
 | Step | What Codemble does | What you gain |
 | --- | --- | --- |
 | **1. Chart** | Parses your project without running its code or package scripts | A deterministic map made from source evidence |
-| **2. Navigate** | Two layers over one graph: a 3D galaxy on scripted camera rails, and a flat map of architecture and workflow | Orientation without getting lost in free flight |
-| **3. Study** | Shows the real source, exact line numbers, neighbors, and parser-detected language idioms | Context tied to code you can inspect |
+| **2. Navigate** | Two layers over one graph: a 3D galaxy on scripted camera rails, and a flat map of architecture and workflow. Flying to a system charts it and keeps its routes drawn | Orientation without getting lost in free flight |
+| **3. Study** | Shows the real source, exact line numbers, what a change here reaches, neighbors, and parser-detected language idioms | Context tied to code you can inspect |
 | **4. Prove** | Generates and scores checks from the graph—never from the model | A region lights only when understanding is demonstrated |
 | **5. Return** | Saves progress locally; changing one file re-dims only its module | A living map that stays honest as the project changes |
+
+Charting and lighting are kept apart on purpose. Exploring a system draws its
+routes and counts it on the star chart; only passing that region's checks turns
+it amber. Having been somewhere and understanding it are different claims.
 
 No XP. No streaks. No leaderboard. The visible reward is the useful one: more
 of your own code becomes a sky you understand.
@@ -173,9 +178,23 @@ evidence; only the wording follows the audience.
 
 The study panel builds itself outward from the most certain evidence: a
 structural summary written from parser facts alone — no key, no network, no
-model — then grounded narration if you configured a provider, then every
-connection into and out of the structure with its direction, its certainty, and
-a `file:line` you can click, then the real source and the language Lens notes.
+model — then **Impact**, two lists of what a change here would reach and what
+this depends on, then grounded narration if you configured a provider, then
+every connection into and out of the structure with its direction, its
+certainty, and a `file:line` you can click, then the real source and the
+language Lens notes.
+
+Impact rows are clickable, cited, and carry the depth at which each one was
+reached, traced up to three hops. A chain that passes through a relationship the
+parser could not prove is labelled possible for its whole length. Because it is
+traced from the parser alone, it is there with no key configured at all; Expert
+mode puts it first, and Easy mode states the same two lists in plain words below
+the write-up.
+
+The explanation itself answers in at most three sentences and leads with what
+the structure is *for*. The line-by-line walkthrough is one click away behind a
+closed disclosure rather than the first thing you meet. Easy mode may reach for
+an everyday comparison; Expert mode may not.
 
 Sections other than the narration never involve a model at all.
 
@@ -209,7 +228,14 @@ You can also switch project or change Home without leaving the app.
 | Nebula tint | Language, at galaxy level |
 | Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
 | Drifting particles | A call the parser proved; a possible call stays still |
+| Routes drawn around a system | You have been there. Flying to a system charts it and its routes stay drawn |
 | Dim → lit | Not yet proven → understood |
+
+Every system is drawn, coloured and named from the first frame, whether or not
+you have reached it. What fills in as you explore is the web of import routes
+between systems — the thing that makes a large project unreadable when it is all
+drawn at once — and the frame the camera opens on. Hover a star and it also
+reports how many structures use it and how many it uses.
 
 Understanding owns the top of the brightness range: the unlit ramp stops below
 the amber a lit star uses, so a busy module you have not proven can never
@@ -221,8 +247,8 @@ flat Map, modules with no import route from Home fold into a counted shelf
 (**Show them** draws every one), so test scaffolding never buries the connected
 core it cannot reach.
 
-Python-only, JavaScript-only, TypeScript-only, and mixed projects share the same
-graph contract. Language focus changes only what you are looking at; it never
+All seven supported languages share the same graph contract, alone or mixed in
+one project. Language focus changes only what you are looking at; it never
 changes coordinates, progress, or parser truth.
 
 ## Honest by construction
@@ -239,7 +265,10 @@ mistake. Accuracy therefore outranks spectacle:
   drifting particles in the 3D galaxy, a genuinely dashed line in the 2D map,
   and the legend swatch follows whichever layer is on screen.
 - Provider output that fails grounding validation is withheld instead of being
-  softened into a guess.
+  softened into a guess — and a network failure, a rejected request and a
+  timeout each say what actually happened rather than borrowing that wording.
+- Charting a system records that you went there. It never claims you understood
+  it; only a passed check does that.
 
 Read the full [correctness contract](https://udhawan97.github.io/Codemble/correctness/).
 A wrong explanation is a highest-severity bug—[report it without mercy](https://github.com/udhawan97/Codemble/issues).
@@ -249,7 +278,7 @@ A wrong explanation is a highest-severity bug—[report it without mercy](https:
 | Stays on your machine | Leaves only when you ask |
 | --- | --- |
 | Project discovery and parsing | The bounded Study context sent to your configured provider |
-| Graph, structural summary, language Lens, and checks | A request triggered only when you open Study |
+| Graph, structural summary, impact lists, language Lens, and checks | A request triggered only when you open Study |
 | Local server and packaged web app | Nothing in the background |
 | Progress and explanation cache in `~/.codemble/` | No accounts, telemetry, or Codemble cloud |
 | Narration too, if you choose a local Ollama | Nothing at all in that case |
@@ -259,8 +288,10 @@ game; only the optional prose narration is unavailable.
 
 ## Boundaries that keep the map truthful
 
-- **Supported source:** Python 3.11+, JavaScript/JSX, TypeScript/TSX, and mixed
-  projects. Unsupported languages stay outside the graph rather than being guessed.
+- **Supported source:** Python, JavaScript/JSX, TypeScript/TSX, Go, Java, Rust,
+  C#, and any mix of them. Python is parsed with the standard library's `ast`;
+  the other six use tree-sitter. Unsupported languages stay outside the graph
+  rather than being guessed, and Codemble states how many of their files it saw.
 - **Scale:** above roughly 1,000 supported source files, choose a subdirectory —
   the in-app picker offers the busiest scopes as buttons and accepts a typed
   path, or pass `codemble --path ./project/subdirectory`.
@@ -271,6 +302,9 @@ game; only the optional prose narration is unavailable.
 - **Rendering:** the 3D galaxy needs WebGL. If your machine cannot draw it, the
   Map layer still works — it is plain SVG over the same parser evidence, not a
   degraded guess.
+- **Nebula tint:** only Python, JavaScript, and TypeScript systems carry a
+  language-tinted fog at galaxy level. A Go, Java, Rust, or C# system renders
+  none; its language is still named everywhere else it matters.
 
 ## Help test the release
 
@@ -306,7 +340,7 @@ The load-bearing design and architecture contracts are documented, not implied:
 | Horizon | Work |
 | --- | --- |
 | **Now** | Collect unaided first-run evidence on the current release across supported project types |
-| **Next** | Go, Rust, and Java adapters; level-of-detail rendering for larger repositories |
+| **Next** | Level-of-detail rendering and clustering for larger repositories (the Go, Rust, Java, and C# adapters have shipped) |
 | **Later** | Read-only share links, new quest types, and the coordinated public launch |
 
 The [public roadmap](https://udhawan97.github.io/Codemble/roadmap/) separates

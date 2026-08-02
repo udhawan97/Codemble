@@ -12,9 +12,12 @@ teaches them right there, anchored to the line where they live.
 
 ## The chart
 
-The star chart is your second progress screen. Its three measures deliberately
-mean different things:
+The star chart is your second progress screen. Its four measures deliberately
+mean different things, and they are ordered from the weakest claim to the
+strongest:
 
+- **Systems explored** counts the systems you have flown to. It is earned by
+  travel and says nothing at all about comprehension.
 - **Encountered** comes from syntax the parser found in the current project.
 - **Studied** counts structures you opened during this session.
 - **Understood** stays dark until a graph-derived check passes.
@@ -23,11 +26,16 @@ Opening a Study view can move Studied, but it cannot claim you understand the
 concept. It only ever claims a concept exists where the parser actually detected
 it — the lens never guesses.
 
-The Python Lens recognizes decorators, comprehensions, generators, context
-managers, async/await, dunder methods, exception handling, and type hints. The
-JavaScript/TypeScript Lens recognizes async/await, arrow functions,
-destructuring, optional chaining, nullish coalescing, module syntax, type
-annotations, interfaces, generics, and JSX.
+Each language brings its own lens:
+
+| Language | Idioms the lens recognizes |
+| --- | --- |
+| Python | decorators, comprehensions, generators, context managers, async/await, dunder methods, exception handling, type hints |
+| JavaScript / TypeScript | async/await, arrow functions, destructuring, optional chaining, nullish coalescing, module syntax, type annotations, interfaces, generics, JSX |
+| Go | goroutines, channels, `defer`, error returns, struct embedding, interface assertions, generics |
+| Java | annotations, lambdas, streams, records, sealed types, default methods, try-with-resources, generics |
+| Rust | ownership and borrowing, mutable borrows, lifetimes, traits, `impl` blocks, pattern matching, `Result`/`Option`, the `?` operator, macros, `unsafe`, async/await |
+| C# | LINQ queries, extension methods, properties, records, nullable types, pattern matching, generics, async/await |
 
 Each note carries its real source snippet and a clickable `file:line` anchor.
 Nested structures own their own annotations, so a parent does not absorb syntax
@@ -45,5 +53,9 @@ finder used by the Map and Galaxy, including modules not yet charted.
 
 "Studied" counts the structures you have opened **in this session** and resets
 when you reload — that is deliberate. Opening a file is not evidence that you
-understood it, so only "Understood", which comes from passing graph-derived
-checks, is persisted.
+understood it.
+
+Two measures do persist, and they say different things. "Systems explored" is
+saved because a map you filled in by travelling should still be filled in
+tomorrow; it claims only that you went there. "Understood" is saved because you
+proved it with graph-derived checks. Clearing a project's progress clears both.

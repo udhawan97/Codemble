@@ -4,8 +4,9 @@ description: Requirements and setup, including bring-your-own-key configuration.
 ---
 
 :::note[Polyglot tester release]
-The complete learning loop supports Python, JavaScript, TypeScript, and mixed
-projects. Human first-run evidence is still being collected separately.
+The complete learning loop supports Python, JavaScript, TypeScript, Go, Java,
+Rust, C#, and mixed projects. Human first-run evidence is still being collected
+separately.
 :::
 
 ## Requirements
@@ -109,8 +110,9 @@ model-free and stay trustworthy either way.
 ## No model? Still useful
 
 Without any provider you still get the full galaxy and Map, the structural
-summary, source, parser relationships, language lens, and checks — only the
-prose explanations need a model.
+summary, the **Impact** lists of what a change reaches and what it depends on,
+source, parser relationships, language lens, and checks — only the prose
+explanations need a model.
 
 ## Limits that fail honestly
 
@@ -124,5 +126,11 @@ prose explanations need a model.
   no inner structure or model narration is invented.
 
 Supported source extensions are `.py`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`,
-`.tsx`, `.mts`, and `.cts`. Codemble parses them; it does not run source files,
-package scripts, compilers, or bundlers.
+`.tsx`, `.mts`, `.cts`, `.go`, `.java`, `.rs`, and `.cs`. Codemble parses them;
+it does not run source files, package scripts, compilers, or bundlers.
+
+Python is read with the standard library's `ast` module; the other six languages
+use tree-sitter grammars shipped in the wheel. All seven sit behind the same
+adapter interface and obey the same rule about certainty: a relationship the
+parser cannot prove from the source alone is shown as **possible**, never as
+fact.

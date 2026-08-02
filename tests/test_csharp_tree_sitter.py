@@ -205,6 +205,310 @@ def test_delegate_invocation_is_never_resolved_to_a_structure(tmp_path: Path) ->
     assert calls[0].certain is False
 
 
+def test_virtual_dispatch_is_never_certain(tmp_path: Path) -> None:
+    """A member a derived class may replace is not settled by the call site."""
+
+    (tmp_path / "Dispatch.cs").write_text(
+        "namespace Probe;\n"
+        "\n"
+        "public interface IThing\n"
+        "{\n"
+        "    void Ping();\n"
+        "\n"
+        "    void PingTwice()\n"
+        "    {\n"
+        "        Ping();\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "public abstract class Base\n"
+        "{\n"
+        "    public void Run()\n"
+        "    {\n"
+        "        Step();\n"
+        "        this.Tidy();\n"
+        "        Settled();\n"
+        "    }\n"
+        "\n"
+        "    public virtual void Step()\n"
+        "    {\n"
+        "    }\n"
+        "\n"
+        "    protected abstract void Tidy();\n"
+        "\n"
+        "    private void Settled()\n"
+        "    {\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    graph = CSharpAdapter().parse(tmp_path)
+    calls = {(edge.src, edge.dst): edge.certain for edge in graph.edges if edge.kind == "call"}
+    module = "csharp:Dispatch.cs"
+
+    # `virtual` and `abstract` reach whichever override the instance carries,
+    # and that override may be declared outside this parse entirely.
+    assert calls[(f"{module}::Probe.Base.Run", f"{module}::Probe.Base.Step")] is False
+    assert calls[(f"{module}::Probe.Base.Run", f"{module}::Probe.Base.Tidy")] is False
+    # An interface member writes no modifier and is virtual all the same.
+    assert (
+        calls[(f"{module}::Probe.IThing.PingTwice", f"{module}::Probe.IThing.Ping")]
+        is False
+    )
+    # A private member no derived class may replace still binds here for good,
+    # so the rule withholds certainty rather than abolishing it.
+    assert calls[(f"{module}::Probe.Base.Run", f"{module}::Probe.Base.Settled")] is True
+
+
+def test_base_call_targets_the_base_type_never_the_calling_override(
+    tmp_path: Path,
+) -> None:
+    """`base.M()` is the one call guaranteed not to reach this type's member."""
+
+    (tmp_path / "Inherit.cs").write_text(
+        "namespace Probe;\n"
+        "\n"
+        "public class Parent\n"
+        "{\n"
+        "    public virtual void Save()\n"
+        "    {\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "public class Child : Parent\n"
+        "{\n"
+        "    public override void Save()\n"
+        "    {\n"
+        "        base.Save();\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "public class Orphan : System.Exception\n"
+        "{\n"
+        "    public override string ToString() => base.ToString();\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    graph = CSharpAdapter().parse(tmp_path)
+    module = "csharp:Inherit.cs"
+    calls = [edge for edge in graph.edges if edge.kind == "call"]
+
+    child_save = f"{module}::Probe.Child.Save"
+    assert (child_save, f"{module}::Probe.Parent.Save", False) in [
+        (edge.src, edge.dst, edge.certain) for edge in calls
+    ]
+    # Resolving `base` against the enclosing type named the override as the
+    # target of the call that exists to skip it -- a structure that calls
+    # itself, which is not what the source says.
+    assert not any(edge.src == edge.dst for edge in calls)
+    # A base type outside this parse names no project structure to point at.
+    assert (f"{module}::Probe.Orphan.ToString", "external:base.ToString", False, True) in [
+        (edge.src, edge.dst, edge.certain, edge.external) for edge in calls
+    ]
+
+
+def test_unqualified_call_across_types_in_one_file_stays_possible(
+    tmp_path: Path,
+) -> None:
+    """Sharing a file settles nothing about what an unqualified name reaches."""
+
+    (tmp_path / "Neighbours.cs").write_text(
+        "namespace Probe;\n"
+        "\n"
+        "public class Holder\n"
+        "{\n"
+        "    public void Go()\n"
+        "    {\n"
+        "        Helper();\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "public static class Other\n"
+        "{\n"
+        "    public static void Helper()\n"
+        "    {\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    graph = CSharpAdapter().parse(tmp_path)
+    module = "csharp:Neighbours.cs"
+
+    edge = next(
+        edge
+        for edge in graph.edges
+        if edge.kind == "call" and edge.src == f"{module}::Probe.Holder.Go"
+    )
+    assert edge.dst == f"{module}::Probe.Other.Helper"
+    # `Holder` reaches `Other.Helper` unqualified only through inheritance or a
+    # `using static` this parse has not followed, so the name match is a lead.
+    assert edge.certain is False
+
+
+def test_generic_invocation_resolves_the_member_it_names(tmp_path: Path) -> None:
+    (tmp_path / "Generic.cs").write_text(
+        "namespace Probe;\n"
+        "\n"
+        "public class Runner\n"
+        "{\n"
+        "    public void Go()\n"
+        "    {\n"
+        "        Wrap<int>();\n"
+        "    }\n"
+        "\n"
+        "    private void Wrap<T>()\n"
+        "    {\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    graph = CSharpAdapter().parse(tmp_path)
+    module = "csharp:Generic.cs"
+
+    edge = next(
+        edge
+        for edge in graph.edges
+        if edge.kind == "call" and edge.src == f"{module}::Probe.Runner.Go"
+    )
+    # Type arguments change no name this parse resolves by, so calling the
+    # member outside the project was a claim the tree contradicts.
+    assert (edge.dst, edge.certain, edge.external) == (
+        f"{module}::Probe.Runner.Wrap",
+        True,
+        False,
+    )
+
+
+def test_using_static_reaches_the_project_file_declaring_its_namespace(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "Lib.cs").write_text(
+        "namespace Acme.Lib;\n"
+        "\n"
+        "public static class Helpers\n"
+        "{\n"
+        "    public static void Ping()\n"
+        "    {\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "Caller.cs").write_text(
+        "using static Acme.Lib.Helpers;\nusing static System.Math;\n",
+        encoding="utf-8",
+    )
+
+    graph = CSharpAdapter().parse(tmp_path)
+    imports = {
+        (edge.dst, edge.certain, edge.external)
+        for edge in graph.edges
+        if edge.kind == "import" and edge.src == "csharp:Caller.cs"
+    }
+
+    # `using static` names a type, so the namespace is its qualifier. Looking
+    # the whole thing up found no declaring file and published the route as a
+    # certain exit from the project, with the type sitting in the parse.
+    assert ("csharp:Lib.cs", True, False) in imports
+    assert not any(dst.startswith("external:Acme.") for dst, _, _ in imports)
+    # A namespace no project file declares is still honestly external.
+    assert ("external:System.Math", True, True) in imports
+
+
+def test_unresolvable_calls_do_not_share_one_destination(tmp_path: Path) -> None:
+    for name in ("First", "Second"):
+        (tmp_path / f"{name}.cs").write_text(
+            "namespace Probe;\n"
+            f"public class {name}\n"
+            "{\n"
+            "    public void Go(System.Func<int>[] fs)\n"
+            "    {\n"
+            "        fs[0]();\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+    graph = CSharpAdapter().parse(tmp_path)
+    dynamic = [
+        edge
+        for edge in graph.edges
+        if edge.kind == "call" and edge.dst.startswith("external:dynamic-call")
+    ]
+
+    assert len(dynamic) == 2
+    # Two unrelated calls that happened to sit on the same line shared one
+    # destination, which reads as a place they both go.
+    assert len({edge.dst for edge in dynamic}) == 2
+    assert not any(edge.certain for edge in dynamic)
+
+
+def test_line_numbers_index_the_line_they_name(tmp_path: Path) -> None:
+    """Line numbers come from the tree, so the source must be split its way."""
+
+    # A form feed is one of nine characters `str.splitlines` breaks on and the
+    # grammar reads as ordinary text. One inside a string literal shifted every
+    # later snippet onto its predecessor's line while still citing its own.
+    source = (
+        "namespace Probe;\n"
+        "\n"
+        "public class Doc\n"
+        "{\n"
+        '    public string Page() => "top\fbottom";\n'
+        "\n"
+        "    public async Task Later()\n"
+        "    {\n"
+        "        await Task.Delay(1);\n"
+        "    }\n"
+        "}\n"
+    )
+    (tmp_path / "Doc.cs").write_text(source, encoding="utf-8")
+
+    graph = CSharpAdapter().parse(tmp_path)
+    real_lines = source.split("\n")
+    module = next(node for node in graph.nodes if node.kind == "module")
+
+    assert (module.end_lineno, module.loc) == (11, 11)
+    assert graph.concept_annotations
+    for annotation in graph.concept_annotations:
+        assert annotation.snippet == real_lines[annotation.lineno - 1].strip()
+    for node in graph.nodes:
+        assert node.end_lineno <= 11
+
+
+def test_degenerate_files_degrade_to_partial_parses(tmp_path: Path) -> None:
+    (tmp_path / "Empty.cs").write_bytes(b"")
+    (tmp_path / "Comments.cs").write_bytes(b"// only a comment\n/* and a block */\n")
+    (tmp_path / "Severe.cs").write_bytes(b"}}}} class ??? {{{ <<<>>> namespace ;;;\n")
+    # Undecodable bytes inside a string literal: the grammar reads bytes, so
+    # this parses, and the decoded source must not take spans with it.
+    (tmp_path / "Bytes.cs").write_bytes(
+        b'namespace Probe;\npublic class B { public string S() => "\xff\xfe"; }\n'
+    )
+    (tmp_path / "Binary.cs").write_bytes(b"\xff\xfe\x00\x01\x02binary\x00\x00")
+
+    graph = CSharpAdapter().parse(tmp_path)
+    nodes = {node.id: node for node in graph.nodes}
+
+    assert graph.partial_files == ("Binary.cs", "Severe.cs")
+    assert nodes["csharp:Empty.cs"].partial is False
+    assert (nodes["csharp:Empty.cs"].lineno, nodes["csharp:Empty.cs"].loc) == (1, 1)
+    assert nodes["csharp:Comments.cs"].partial is False
+    # Nothing is claimed inside a file the parser could not read through.
+    assert not any(
+        node.id.startswith(("csharp:Binary.cs::", "csharp:Severe.cs::"))
+        for node in graph.nodes
+    )
+    assert "csharp:Bytes.cs::Probe.B.S" in nodes
+    for node in graph.nodes:
+        assert node.file in graph.file_hashes
+        assert 1 <= node.lineno <= node.end_lineno
+    assert graph.to_json()
+
+
 def test_constructor_overloads_stay_possible(tmp_path: Path) -> None:
     (tmp_path / "Box.cs").write_text(
         "public class Box\n"

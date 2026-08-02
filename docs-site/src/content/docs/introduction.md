@@ -20,13 +20,19 @@ Point Codemble at your project. It parses your code into a real structural
 graph — no guessing — and gives you two ways to look at that one graph: a **3D
 galaxy** where modules are star systems, functions are planets and your
 entrypoint is Home, and a flat **Map** that lays out architecture and workflow
-as a diagram. Every node starts dim.
+as a diagram. Every module is drawn, coloured and named from the first frame;
+every one of them starts dim.
 
-You explore, read what the parser knows before any model is asked, read
-explanations grounded in your actual source, learn the language idioms your code
-uses, and pass short **checks** whose answers come from the code's real
-structure. Each region you truly understand **lights up — permanently**. The
-goal state is a fully lit galaxy.
+You explore, read what the parser knows before any model is asked, see what a
+change to a structure would reach, read explanations grounded in your actual
+source, learn the language idioms your code uses, and pass short **checks**
+whose answers come from the code's real structure. Each region you truly
+understand **lights up — permanently**. The goal state is a fully lit galaxy.
+
+Travelling counts for something too, but for something smaller: flying to a
+system charts it and keeps its routes drawn, and the star chart records how many
+you have explored. That is a record of where you have been, never a claim about
+what you understood — only a passed check makes that claim.
 
 ## Who it's for
 
@@ -37,8 +43,8 @@ through Ollama and send nothing anywhere.
 
 :::note[Status]
 Codemble is in its Phase 1 tester release, installable from PyPI. Python,
-JavaScript, TypeScript, and mixed projects run through the same local learning
-loop. The original unaided Python
+JavaScript, TypeScript, Go, Java, Rust, C#, and mixed projects run through the
+same local learning loop. The original unaided Python
 learner-acceptance issue remains open; technical completion does not substitute
 for human evidence. Follow on [GitHub](https://github.com/udhawan97/Codemble) —
 the roadmap stays public.

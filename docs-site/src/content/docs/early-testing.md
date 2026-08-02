@@ -3,9 +3,10 @@ title: Early testing
 description: A ten-minute, privacy-safe first-run test for Codemble.
 ---
 
-Codemble needs learners who built a small Python, JavaScript, TypeScript, or
-mixed project with AI and want to understand it better. Success is simple:
-without maintainer help, light one system and confirm it stays lit after restart.
+Codemble needs learners who built a small project with AI and want to understand
+it better — Python, JavaScript, TypeScript, Go, Java, Rust, C#, or any mix.
+Success is simple: without maintainer help, light one system and confirm it
+stays lit after restart.
 
 ## Install
 
@@ -29,9 +30,11 @@ the product should teach the loop itself.
 
 1. Find or choose Home.
 2. In a mixed project, focus one language and return to **All**.
-3. Enter a system and open one source structure.
-4. Return to the system, choose **Prove understanding**, and light it.
-5. Quit, run the same command, and confirm the system remains lit.
+3. Fly to two or three systems and notice their routes stay drawn.
+4. Enter a system and open one source structure. Read what it touches.
+5. Return to the system, choose **Prove understanding**, and light it.
+6. Quit, run the same command, and confirm the system remains lit and the
+   systems you explored are still charted.
 
 ## Report the friction
 

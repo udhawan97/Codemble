@@ -152,6 +152,7 @@ for (const name of [
   "cm-com-0", "cm-com-1", "cm-com-2", "cm-com-3",
   "cm-com-4", "cm-com-5", "cm-com-6", "cm-com-7",
   "cm-neb-python", "cm-neb-js", "cm-neb-ts",
+  "cm-neb-go", "cm-neb-java", "cm-neb-rust", "cm-neb-csharp",
   "cm-route-possible",
 ]) {
   const value = rgb(name);
@@ -211,3 +212,25 @@ console.log(
     `ramp ${luminance(ramp.ceiling).toFixed(3)}/${luminance(ramp.floor).toFixed(3)} > ` +
     `sky ${luminance(sky).toFixed(4)})`,
 );
+
+// --- one tint per language Codemble reads ---------------------------------
+// A language with no tint draws no fog and shows an empty legend swatch: a
+// channel silently missing rather than honestly absent. This table has to grow
+// with the adapter registry, so the gate says so when it has not.
+{
+  const tints = ["python", "js", "ts", "go", "java", "rust", "csharp"];
+  const luminances = tints.map((name) => luminance(rgb(`cm-neb-${name}`)));
+  const spread = Math.max(...luminances) - Math.min(...luminances);
+  assert.ok(
+    spread < 0.02,
+    `nebula tints span ${spread.toFixed(3)} in luminance; one language must ` +
+      "not read as more important than another",
+  );
+  for (const name of tints) {
+    const h = hue(rgb(`cm-neb-${name}`));
+    assert.ok(
+      h < 20 || h > 60,
+      `--cm-neb-${name} sits at hue ${h.toFixed(0)}deg, inside the kohaku band`,
+    );
+  }
+}

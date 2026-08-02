@@ -9,16 +9,16 @@ only when milestones actually complete. The shape:
 
 ## NOW — Phase 1 tester evidence
 
-The Phase 1 technical release maps Python, JavaScript, TypeScript, and mixed
-projects through one local parser-proven learning loop. The current work is
-first-run evidence and correctness reports on real learner projects. The
-original v0.1.0 Python learner-acceptance issue remains open and is not treated
-as passed by the technical Phase 1 completion.
+The Phase 1 technical release maps Python, JavaScript, TypeScript, Go, Java,
+Rust, C#, and mixed projects through one local parser-proven learning loop. The
+current work is first-run evidence and correctness reports on real learner
+projects. The original v0.1.0 Python learner-acceptance issue remains open and
+is not treated as passed by the technical Phase 1 completion.
 
-## NEXT — more languages and scale
+## NEXT — scale
 
-Go / Rust / Java adapters, plus level-of-detail rendering and clustering for
-larger repos.
+Level-of-detail rendering and clustering for larger repos. The Go, Rust, Java,
+and C# adapters that were planned for this phase have shipped ahead of it.
 
 ## LATER — reach
 

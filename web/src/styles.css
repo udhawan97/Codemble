@@ -2928,6 +2928,10 @@ input:focus-visible {
 .legend-tint--python { background: var(--cm-neb-python); }
 .legend-tint--javascript { background: var(--cm-neb-js); }
 .legend-tint--typescript { background: var(--cm-neb-ts); }
+.legend-tint--go { background: var(--cm-neb-go); }
+.legend-tint--java { background: var(--cm-neb-java); }
+.legend-tint--rust { background: var(--cm-neb-rust); }
+.legend-tint--csharp { background: var(--cm-neb-csharp); }
 
 /* The community-family row previews four of the eight hues as one composite
    swatch: the legend teaches the ENCODING (hue = one import community), not an

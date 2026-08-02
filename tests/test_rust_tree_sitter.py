@@ -223,6 +223,228 @@ def test_a_local_binding_never_inherits_a_module_function_certainty(tmp_path: Pa
     assert calls[0].certain is False
 
 
+def _write(root: Path, relative: str, source: str) -> None:
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(source, encoding="utf-8")
+
+
+def _calls(graph, src: str) -> set[tuple[str, bool, bool]]:  # type: ignore[no-untyped-def]
+    return {
+        (edge.dst, edge.certain, edge.external)
+        for edge in graph.edges
+        if edge.kind == "call" and edge.src == src
+    }
+
+
+def test_a_bare_call_never_resolves_into_an_impl_or_an_inline_mod(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "src/lib.rs",
+        "pub fn helper() -> u32 {\n"
+        "    1\n"
+        "}\n"
+        "\n"
+        "pub struct Widget;\n"
+        "\n"
+        "impl Widget {\n"
+        "    pub fn helper(&self) -> u32 {\n"
+        "        2\n"
+        "    }\n"
+        "\n"
+        "    pub fn run(&self) -> u32 {\n"
+        "        helper()\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "pub mod inner {\n"
+        "    pub fn shout() -> u32 {\n"
+        "        3\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "pub fn calls_inner() -> u32 {\n"
+        "    shout()\n"
+        "}\n",
+    )
+
+    graph = RustAdapter().parse(tmp_path)
+
+    # Rust does not put an inherent method in bare-name scope, so `helper()`
+    # inside the impl block names the module-level function beside it.
+    assert _calls(graph, "rust:src/lib.rs::Widget#impl.run") == {
+        ("rust:src/lib.rs::helper", True, False)
+    }
+    # An item behind an inline `mod` is not in scope either, so the only honest
+    # reading of `shout()` is a possible one.
+    assert _calls(graph, "rust:src/lib.rs::calls_inner") == {
+        ("rust:src/lib.rs::inner.shout", False, False)
+    }
+
+
+def test_a_crate_rooted_path_never_makes_a_file_import_itself(tmp_path: Path) -> None:
+    _write(tmp_path, "src/lib.rs", "pub mod util;\n\npub fn describe() {}\n")
+    _write(tmp_path, "src/main.rs", "mod util;\n\nuse crate::describe;\n\nfn main() {}\n")
+    _write(tmp_path, "src/util.rs", "use self::missing::Thing;\n\npub fn run() {}\n")
+
+    graph = RustAdapter().parse(tmp_path)
+    imports = {
+        (edge.src, edge.dst, edge.certain)
+        for edge in graph.edges
+        if edge.kind == "import"
+    }
+
+    # `crate::`, `self::` and `super::` all reach the crate root on an empty
+    # remainder, which would otherwise land back on the importing module.
+    assert not any(src == dst for src, dst, _ in imports)
+    assert ("rust:src/main.rs", "rust:src/lib.rs", False) in imports
+    assert (
+        "rust:src/util.rs",
+        "unresolved:rust:src/util.rs:self::missing::Thing",
+        False,
+    ) in imports
+
+
+def test_self_qualified_calls_read_the_enclosing_type_not_a_crate(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "src/lib.rs",
+        "pub struct Widget;\n"
+        "\n"
+        "impl Widget {\n"
+        "    pub fn build() -> Widget {\n"
+        "        Self::make()\n"
+        "    }\n"
+        "\n"
+        "    pub fn make() -> Widget {\n"
+        "        Widget\n"
+        "    }\n"
+        "}\n",
+    )
+
+    graph = RustAdapter().parse(tmp_path)
+
+    assert _calls(graph, "rust:src/lib.rs::Widget#impl.build") == {
+        ("rust:src/lib.rs::Widget#impl.make", True, False)
+    }
+
+
+def test_an_external_crate_claim_yields_to_a_mod_written_in_the_same_file(
+    tmp_path: Path,
+) -> None:
+    _write(
+        tmp_path,
+        "src/lib.rs",
+        "pub mod inner {\n"
+        "    pub fn run() {}\n"
+        "}\n"
+        "\n"
+        "use inner::run;\n"
+        "use std::fmt::Write;\n",
+    )
+
+    graph = RustAdapter().parse(tmp_path)
+    imports = {
+        (edge.dst, edge.certain, edge.external)
+        for edge in graph.edges
+        if edge.kind == "import"
+    }
+
+    # `inner` is in this very tree, so "it must be a dependency" is not proven;
+    # `std` matches nothing in the project and stays exact.
+    assert ("external:inner", False, True) in imports
+    assert ("external:std", True, True) in imports
+
+
+def test_a_trait_default_body_dispatches_to_an_implementor_it_cannot_name(
+    tmp_path: Path,
+) -> None:
+    _write(
+        tmp_path,
+        "src/lib.rs",
+        "pub trait Greet {\n"
+        "    fn name(&self) -> String;\n"
+        "\n"
+        "    fn greet(&self) -> String {\n"
+        "        self.name()\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "pub struct Loud;\n"
+        "\n"
+        "impl Greet for Loud {\n"
+        "    fn name(&self) -> String {\n"
+        '        String::from("loud")\n'
+        "    }\n"
+        "}\n"
+        "\n"
+        "impl Loud {\n"
+        "    pub fn twice(&self) -> String {\n"
+        "        self.name()\n"
+        "    }\n"
+        "}\n",
+    )
+
+    graph = RustAdapter().parse(tmp_path)
+
+    # Inside the trait, `Self` is whichever type implements it -- the same
+    # uncertainty as a method call on a generic parameter.
+    assert _calls(graph, "rust:src/lib.rs::Greet.greet") == {
+        ("rust:src/lib.rs::Greet.name", False, False)
+    }
+    # On a concrete type the receiver is known, so the same shape stays exact.
+    assert _calls(graph, "rust:src/lib.rs::Loud#impl.twice") == {
+        ("rust:src/lib.rs::Loud#Greet.name", True, False)
+    }
+
+
+def test_a_second_impl_block_keeps_its_own_members(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "src/lib.rs",
+        "pub struct Thing;\n"
+        "\n"
+        "impl Thing {\n"
+        "    pub fn a(&self) {}\n"
+        "}\n"
+        "\n"
+        "impl Thing {\n"
+        "    pub fn b(&self) {}\n"
+        "}\n",
+    )
+
+    graph = RustAdapter().parse(tmp_path)
+    node_ids = {node.id for node in graph.nodes}
+
+    assert "rust:src/lib.rs::Thing#impl.a" in node_ids
+    # The second block is disambiguated by line, and its method must be named
+    # under the id that block actually received rather than the first one's.
+    assert "rust:src/lib.rs::Thing#impl@7" in node_ids
+    assert "rust:src/lib.rs::Thing#impl@7.b" in node_ids
+    assert "rust:src/lib.rs::Thing#impl.b" not in node_ids
+
+
+def test_degenerate_sources_degrade_to_partial_parses_rather_than_raising(
+    tmp_path: Path,
+) -> None:
+    _write(tmp_path, "src/lib.rs", "pub fn ok() {}\n")
+    (tmp_path / "src" / "empty.rs").write_bytes(b"")
+    (tmp_path / "src" / "comments.rs").write_bytes(b"// only a comment\n/* block */\n")
+    (tmp_path / "src" / "severe.rs").write_bytes(b"fn ((((( {{{{ impl impl ]]]] \x00 fn\n")
+    (tmp_path / "src" / "bytes.rs").write_bytes(b"pub fn caf\xe9() {\n    // \xff\xfe\n}\n")
+
+    graph = RustAdapter().parse(tmp_path)
+    nodes = {node.id: node for node in graph.nodes}
+
+    assert graph.partial_files == ("src/bytes.rs", "src/severe.rs")
+    assert nodes["rust:src/severe.rs"].partial is True
+    assert nodes["rust:src/empty.rs"].partial is False
+    assert nodes["rust:src/empty.rs"].loc == 1
+    # Nothing is claimed for the unreadable files beyond the modules themselves.
+    assert not any(node.id.startswith("rust:src/severe.rs::") for node in graph.nodes)
+    assert graph.to_json()
+
+
 def test_partial_files_stay_visible_without_claiming_broken_structures(graph) -> None:  # type: ignore[no-untyped-def]
     node_ids = {node.id for node in graph.nodes}
     broken = next(node for node in graph.nodes if node.id == "rust:src/broken.rs")

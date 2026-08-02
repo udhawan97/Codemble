@@ -908,25 +908,66 @@ def _resolve_named_call(
         # A local `let` or parameter shadows every item of the same name, so the
         # module-level function that shares it is not what is being called.
         return [_unresolved_call_edge(definition.node_id, definition.node_id, name, lineno)]
-    siblings = [
-        node
-        for node in index.children_by_parent.get(definition.parent_id, ())
-        if node.name == name
-    ]
-    if siblings:
-        return _candidate_edges(definition.node_id, siblings, lineno, certain=len(siblings) == 1)
-    module_level = list(index.nodes_by_module_name.get((definition.module_id, name), ()))
-    if module_level:
-        return _candidate_edges(
-            definition.node_id,
-            module_level,
-            lineno,
-            certain=len(module_level) == 1,
-        )
+    for scope_id in _bare_name_scopes(definition, index):
+        in_scope = [
+            node for node in index.children_by_parent.get(scope_id, ()) if node.name == name
+        ]
+        if in_scope:
+            return _candidate_edges(
+                definition.node_id,
+                in_scope,
+                lineno,
+                certain=len(in_scope) == 1,
+            )
+    # Anything else sharing the name lives in a scope this call cannot reach by
+    # a bare name -- inside an `impl`, or behind an inline `mod` -- so it is
+    # offered as a possible target and never as the proven one.
+    elsewhere = list(index.nodes_by_module_name.get((definition.module_id, name), ()))
+    if elsewhere:
+        return _candidate_edges(definition.node_id, elsewhere, lineno, certain=False)
     binding = bindings.get(name)
     if binding is not None:
         return _binding_call_edges(definition.node_id, binding, binding.imported_name, lineno, index)
     return [_unresolved_call_edge(definition.node_id, definition.module_id, name, lineno)]
+
+
+def _bare_name_scopes(
+    definition: _Definition,
+    index: _SyntaxEvidenceIndex,
+) -> Iterable[str]:
+    """Yield the enclosing scopes a bare name resolves in, innermost first.
+
+    Only module and function bodies contribute: an item written inside an `impl`
+    or a `trait` is reachable as `Self::x` or `self.x()`, never as a bare `x()`.
+    """
+
+    scope = definition.parent_id
+    while True:
+        owner = index.definition_by_id.get(scope)
+        if owner is None:
+            # No definition owns it, so this is the module node itself.
+            yield scope
+            return
+        if owner.syntax.type in _BARE_NAME_SCOPES:
+            yield scope
+        scope = owner.parent_id
+
+
+def _dispatches_dynamically(definition: _Definition, index: _SyntaxEvidenceIndex) -> bool:
+    """Report whether ``Self`` here is an unknown implementor rather than a type.
+
+    Inside a `trait` body `Self` is whichever type implements the trait, so
+    `self.other()` in a default method reaches an implementation the tree does
+    not contain -- the same uncertainty as calling a method on a generic
+    parameter, which is already reported as possible.
+    """
+
+    ancestor = index.definition_by_id.get(definition.parent_id)
+    while ancestor is not None:
+        if ancestor.syntax.type in _CONTAINER_KINDS:
+            return ancestor.syntax.type == "trait_item"
+        ancestor = index.definition_by_id.get(ancestor.parent_id)
+    return False
 
 
 def _resolve_method_call(
@@ -948,7 +989,7 @@ def _resolve_method_call(
                 definition.node_id,
                 candidates,
                 lineno,
-                certain=len(candidates) == 1,
+                certain=len(candidates) == 1 and not _dispatches_dynamically(definition, index),
             )
     # Any other receiver needs the type of an expression, which no syntax tree
     # carries: a trait object or a generic parameter can be any implementation.
@@ -989,6 +1030,12 @@ def _resolve_path_call(
 ) -> list[Edge]:
     name = segments[-1]
     prefix = segments[:-1]
+    # `Self` is the type the enclosing block is written for, which the tree does
+    # carry. Reading it as a path root instead would claim a dependency on a
+    # crate named `Self`.
+    through_self = prefix == ("Self",) and definition.self_type is not None
+    if through_self:
+        prefix = (definition.self_type,)  # type: ignore[assignment]
 
     if len(prefix) == 1:
         local_members = [
@@ -1005,7 +1052,10 @@ def _resolve_path_call(
                 definition.node_id,
                 local_members,
                 lineno,
-                certain=len(local_members) == 1,
+                certain=(
+                    len(local_members) == 1
+                    and not (through_self and _dispatches_dynamically(definition, index))
+                ),
             )
         binding = bindings.get(prefix[0])
         if binding is not None:

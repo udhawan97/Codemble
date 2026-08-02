@@ -219,6 +219,219 @@ def test_a_call_in_a_field_initializer_is_kept_not_dropped(tmp_path: Path) -> No
     ) in calls
 
 
+def _write(root: Path, files: dict[str, str]) -> Path:
+    for name, text in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return root
+
+
+def test_a_static_wildcard_import_names_the_type_not_its_package(
+    tmp_path: Path,
+) -> None:
+    # `import static a.b.C.*` has already stopped at the type -- the asterisk
+    # only leaves which member open. Trimming a segment named the package `a.b`
+    # instead, and here `a.b` is itself a project class, so the mistake landed
+    # as a certain import edge to an unrelated module.
+    root = _write(
+        tmp_path,
+        {
+            "a/b.java": "package a;\npublic class b {\n}\n",
+            "a/b2/C.java": "package a.b;\npublic class C {\n"
+            "    public static void m() {}\n}\n",
+            "z/User.java": "package z;\n\nimport static a.b.C.*;\n\nclass User {\n}\n",
+        },
+    )
+
+    assert _edges(JavaAdapter().parse(root), "import") == {
+        ("java:z/User.java", "java:a/b2/C.java", True, False)
+    }
+
+
+def test_an_abstract_declaration_is_never_the_proven_target(tmp_path: Path) -> None:
+    # Deliberately no project type implements `Shape`: an implementer would
+    # redeclare `area` and the override rule would carry this case on its own,
+    # leaving the guard under test never exercised.
+    root = _write(
+        tmp_path,
+        {
+            "Shape.java": "public interface Shape {\n    double area();\n"
+            "    default double scaled() { return 1.0; }\n}\n",
+            "Board.java": "public class Board {\n    private Shape shape;\n"
+            "    void draw() {\n        shape.area();\n        shape.scaled();\n"
+            "    }\n}\n",
+        },
+    )
+
+    calls = _edges(JavaAdapter().parse(root), "call")
+
+    # The tree shows `area()` with no body at all, so that declaration is the
+    # one target the call provably does not reach.
+    assert ("java:Board.java::Board.draw", "java:Shape.java::Shape.area", False, False) in calls
+    # `scaled()` has a body and nothing redeclares it, so it stays proven --
+    # the downgrade above is evidence, not blanket caution.
+    assert (
+        "java:Board.java::Board.draw",
+        "java:Shape.java::Shape.scaled",
+        True,
+        False,
+    ) in calls
+
+
+def test_an_overridden_method_is_not_a_proven_target(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "Animal.java": "public class Animal {\n"
+            "    public String name() { return \"a\"; }\n"
+            "    public void speak() {}\n"
+            "    public static void register() {}\n}\n",
+            "Dog.java": "public class Dog extends Animal {\n"
+            "    public void speak() {}\n}\n",
+            "Zoo.java": "public class Zoo {\n    private Animal animal;\n"
+            "    void go() {\n        animal.name();\n        animal.speak();\n"
+            "        Animal.register();\n    }\n}\n",
+        },
+    )
+
+    calls = _edges(JavaAdapter().parse(root), "call")
+
+    # Java dispatches on the runtime type, so a subtype redeclaring the name
+    # means the tree cannot say which body runs.
+    assert ("java:Zoo.java::Zoo.go", "java:Animal.java::Animal.speak", False, False) in calls
+    # No subtype redeclares `name`, so the subclass proves nothing against it.
+    assert ("java:Zoo.java::Zoo.go", "java:Animal.java::Animal.name", True, False) in calls
+    # The receiver names the type itself: a static call is not dispatched, so
+    # the presence of a subclass cannot intercept it.
+    assert (
+        "java:Zoo.java::Zoo.go",
+        "java:Animal.java::Animal.register",
+        True,
+        False,
+    ) in calls
+
+
+def test_an_override_is_found_through_a_whole_supertype_chain(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "Base.java": "public interface Base {\n    default void run() {}\n}\n",
+            "Mid.java": "public class Mid implements Base {\n}\n",
+            "Leaf.java": "public class Leaf extends Mid {\n    public void run() {}\n}\n",
+            "Site.java": "public class Site {\n    private Base b;\n"
+            "    void go() { b.run(); }\n}\n",
+        },
+    )
+
+    assert (
+        "java:Site.java::Site.go",
+        "java:Base.java::Base.run",
+        False,
+        False,
+    ) in _edges(JavaAdapter().parse(root), "call")
+
+
+def test_illegal_cyclic_inheritance_terminates(tmp_path: Path) -> None:
+    # A compiler would reject this, but a half-written project reaches the
+    # adapter and walking supertypes must not depend on the source compiling.
+    root = _write(
+        tmp_path,
+        {
+            "A.java": "public class A extends B {\n    void f() {}\n}\n",
+            "B.java": "public class B extends A {\n    void f() {}\n}\n",
+            "C.java": "public class C {\n    private A a;\n    void go() { a.f(); }\n}\n",
+        },
+    )
+
+    assert ("java:C.java::C.go", "java:A.java::A.f", False, False) in _edges(
+        JavaAdapter().parse(root), "call"
+    )
+
+
+def test_a_nested_type_is_invisible_to_a_sibling_top_level_type(
+    tmp_path: Path,
+) -> None:
+    root = _write(
+        tmp_path,
+        {
+            "other/Helper.java": "package other;\npublic class Helper {\n"
+            "    public static void x() {}\n}\n",
+            "Pair.java": "import other.Helper;\n\n"
+            "class Outer {\n    static class Helper {\n        static void x() {}\n    }\n"
+            "    void inside() { Helper.x(); }\n}\n\n"
+            "class Sibling {\n    void f() { Helper.x(); }\n}\n",
+        },
+    )
+
+    calls = _edges(JavaAdapter().parse(root), "call")
+
+    # `Outer.Helper` is not in scope for `Sibling`, so Java reads the import.
+    assert (
+        "java:Pair.java::Sibling.f",
+        "java:other/Helper.java::Helper.x",
+        True,
+        False,
+    ) in calls
+    # From inside its own owner the nested type still wins, as Java says.
+    assert (
+        "java:Pair.java::Outer.inside",
+        "java:Pair.java::Outer$Helper.x",
+        True,
+        False,
+    ) in calls
+
+
+def test_an_anonymous_class_body_does_not_borrow_the_enclosing_type(
+    tmp_path: Path,
+) -> None:
+    # `wrap` here is inherited into the anonymous subclass of `Formatter`, so
+    # Java runs `Formatter.wrap`, not the enclosing `Host.wrap`. The parser
+    # cannot see an external supertype's members either way, so the honest
+    # answer is that the target is unproven.
+    root = _write(
+        tmp_path,
+        {
+            "Formatter.java": "public class Formatter {\n"
+            "    public void wrap() {}\n}\n",
+            "Host.java": "public class Host {\n    void wrap() {}\n"
+            "    void go() {\n"
+            "        Formatter f = new Formatter() {\n"
+            "            public void inner() { wrap(); }\n        };\n    }\n}\n",
+        },
+    )
+
+    calls = _edges(JavaAdapter().parse(root), "call")
+
+    assert (
+        "java:Host.java::Host.go.inner",
+        "unresolved:java:Host.java:wrap",
+        False,
+        False,
+    ) in calls
+    assert not any(
+        edge[0] == "java:Host.java::Host.go.inner" and edge[2] for edge in calls
+    )
+
+
+def test_a_type_parameter_is_not_a_project_type(tmp_path: Path) -> None:
+    # `T` inside `class Box<T>` is a type variable. Reading it as the project
+    # class that happens to share the name invents a call across the project.
+    root = _write(
+        tmp_path,
+        {
+            "T.java": "public class T {\n    public void render() {}\n}\n",
+            "Box.java": "public class Box<T> {\n    private T item;\n"
+            "    void go() { item.render(); }\n}\n",
+        },
+    )
+
+    calls = _edges(JavaAdapter().parse(root), "call")
+
+    assert ("java:Box.java::Box.go", "external:item.render", False, True) in calls
+    assert not any(edge[1] == "java:T.java::T.render" for edge in calls)
+
+
 def test_partial_files_stay_visible_without_claiming_broken_structures(graph) -> None:  # type: ignore[no-untyped-def]
     ids = {node.id for node in graph.nodes}
     broken = next(node for node in graph.nodes if node.id == BROKEN)
@@ -231,6 +444,38 @@ def test_partial_files_stay_visible_without_claiming_broken_structures(graph) ->
     assert f"{BROKEN}::Broken.readable" in ids
     # The member whose own parameter list never parsed is never claimed.
     assert f"{BROKEN}::Broken.unreadable" not in ids
+
+
+def test_unreadable_bytes_degrade_to_a_partial_parse_and_never_raise(
+    tmp_path: Path,
+) -> None:
+    # A galaxy must still draw when one file is empty, unreadable, or not even
+    # UTF-8. Byte offsets drive every span, so a lossy decode has to leave the
+    # line numbering of the sound files alone rather than crash the run.
+    (tmp_path / "Empty.java").write_bytes(b"")
+    (tmp_path / "Comments.java").write_bytes(b"// only a comment\n")
+    (tmp_path / "Severe.java").write_bytes(b"class {{{ ]]] <<<\n\x00\x01 void )( {\n")
+    (tmp_path / "Latin.java").write_bytes(
+        b"package demo;\n// caf\xe9 na\xefve \xff\xfe\nclass Latin {\n"
+        b"    void go() { helper(); }\n    void helper() {}\n}\n"
+    )
+
+    graph = JavaAdapter().parse(tmp_path)
+    ids = {node.id for node in graph.nodes}
+
+    assert graph.partial_files == ("Severe.java",)
+    assert "java:Empty.java" in ids
+    assert "java:Comments.java" in ids
+    # The undecodable bytes sit above `go`, so its span proves the line
+    # numbering survived the replacement decode.
+    latin = next(node for node in graph.nodes if node.id == "java:Latin.java::Latin.go")
+    assert (latin.lineno, latin.end_lineno) == (4, 4)
+    assert (
+        "java:Latin.java::Latin.go",
+        "java:Latin.java::Latin.helper",
+        True,
+        False,
+    ) in _edges(graph, "call")
 
 
 def test_entrypoint_ranking_puts_main_first_and_tests_last(graph) -> None:  # type: ignore[no-untyped-def]

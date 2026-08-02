@@ -9,8 +9,10 @@ description: The adapter seam, the render-ready graph, and why the LLM only narr
 
 Every language plugs in behind one interface: `parse()` produces the structural
 graph; `concepts()` produces idiom annotations for the lens. Python uses the
-stdlib `ast` module; JavaScript/TypeScript use the official tree-sitter grammar
-wheels. Nothing above the seam hardcodes a language.
+stdlib `ast` module; JavaScript/TypeScript, Go, Java, Rust, and C# use official
+tree-sitter grammar wheels. Nothing above the seam hardcodes a language, and the
+registry of adapters is a single tuple in `codemble/adapters/project.py` — that
+is the whole of what a seventh language had to touch outside its own file.
 
 One project parser selects adapters by extension, merges their graphs, resolves
 Home globally, and rejects node-ID or file-hash conflicts. Adapters walk files
@@ -26,15 +28,19 @@ centrality, entrypoint rank, region, understood-state — and the 3D frontend is
 **pure consumer**. No layout or game logic lives in the renderer. This is what
 keeps a future read-only share link (and any alternative renderer) cheap.
 
-Graph JSON is schema-versioned and byte-deterministic. Schema 4 includes stable
-node IDs, source spans, regions, entrypoint ranks, call in-degree, file hashes,
+Graph JSON is schema-versioned and byte-deterministic. It carries stable node
+IDs, source spans, regions, entrypoint ranks, call in-degree, file hashes,
 parser-owned concept annotations, and explicit certainty/external flags on
 edges. It also separates parser-ranked entrypoint candidates from the explicit
 Home selection, so ambiguous rank-zero candidates remain unselected until the
-learner chooses. Concept annotations contain the exact node, line span, and
+learner chooses. Later revisions added the import community a region belongs to,
+its hop distance from Home, each node's call-depth orbit, a count of files in
+languages no adapter read, and which communities are large enough to be given a
+colour family — all of them facts the renderer would otherwise have to infer. Concept annotations contain the exact node, line span, and
 source snippet that the Lens is allowed to teach. Each annotation also carries
-its language so identically named Python and JS/TS concepts remain separate in
-the star chart. The file hashes are the cache and progress invalidation key.
+its language, so identically named concepts stay separate in the star chart.
+Several of the supported languages have an `async/await`, and each keeps its own
+evidence rather than pooling it under one row. The file hashes are the cache and progress invalidation key.
 
 The mixed-project language focus is a pure frontend projection over that graph.
 It retains the original node and region records, coordinates, metadata,
@@ -56,7 +62,15 @@ hash. Invalid provider output is withheld rather than softened into a guess.
 Lens notes take a separate, model-free path: the language adapter emits a
 concept ID only for a proven syntax node, and a deterministic language module
 maps that ID to a teachable note. The star chart aggregates those same graph
-annotations. Studied state is ephemeral; understood state remains check-owned.
+annotations. Studied state is ephemeral; understood state remains check-owned,
+and the explored set — which systems the learner has visited — is persisted
+beside it as its own record, so neither can ever be read as the other.
+
+The impact trace takes the same model-free path. It is a bounded breadth-first
+walk over the graph's own edges, out to three hops in each direction, recording
+the shallowest depth at which each structure is reached and marking a row
+uncertain when no fully proven route to it exists. No provider is involved, so
+the section renders identically with no key configured.
 
 Checks use another deep interface with no provider dependency. `CheckService`
 derives stable question suites from certain calls, project imports, direct

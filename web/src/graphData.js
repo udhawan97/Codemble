@@ -127,10 +127,16 @@ export function buildConceptChart(graph, studiedNodeIds) {
 }
 
 export function conceptTitle(concept) {
+  // Names whose real spelling the title-case fallback below cannot produce.
+  // The fallback is right for hyphenated concept ids ("pattern-matching" ->
+  // "Pattern matching"); it is wrong for any language whose own name is not
+  // simply capitalised, which is how the C# adapter's `csharp` tag reached the
+  // focus control, the legend and the star chart reading "Csharp".
   const exact = {
     javascript: "JavaScript",
     jsx: "JSX",
     typescript: "TypeScript",
+    csharp: "C#",
   };
   if (exact[concept]) return exact[concept];
   return concept
@@ -152,11 +158,21 @@ function shortLanguageLabel(language) {
 // Language gets its own visual channel (nebula tint) so it never competes with
 // brightness, which belongs to centrality and understanding. Unknown languages
 // return null and render no fog rather than borrowing another language's hue.
+// One entry per language Codemble reads. A language with no tint draws no fog
+// and shows an empty legend swatch, which is a channel silently missing rather
+// than honestly absent -- so this table has to grow with the adapter registry.
+const NEBULA_TINTS = {
+  python: "nebPython",
+  javascript: "nebJs",
+  typescript: "nebTs",
+  go: "nebGo",
+  java: "nebJava",
+  rust: "nebRust",
+  csharp: "nebCsharp",
+};
+
 export function nebulaTintKey(language) {
-  if (language === "python") return "nebPython";
-  if (language === "javascript") return "nebJs";
-  if (language === "typescript") return "nebTs";
-  return null;
+  return NEBULA_TINTS[language] ?? null;
 }
 
 // How far from Home a region may sit and still be visible on a first run. Two

@@ -8,6 +8,12 @@ description: The game loop — prove you understand a region, light it up foreve
 Reading an explanation is the weakest form of learning. Codemble makes you
 **prove** understanding with short active checks before a region lights up.
 
+Exploring earns something too, and it is deliberately something else. Flying to
+a system **charts** it: its routes stay drawn and the star chart counts it. Only
+a passed check turns it amber. Being somewhere and understanding it are
+different claims, and the two are kept apart so that neither can be mistaken for
+the other.
+
 ## Where questions come from
 
 Every check is generated from your code's real graph, so the answer is always
@@ -37,7 +43,7 @@ that cannot be derived with certainty is not offered.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Lit galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy-lit.png" alt="The galaxy just after a region was proved: codemble/cli.py burns amber as the one understood system while every other star stays dim, and the guidance chip has moved on to &quot;Study codemble.adapters.project next · 1 route from Home&quot;.">
+    <img src="/Codemble/shots/galaxy-lit.png" alt="The galaxy just after a region was proved: codemble/cli.py burns amber as the one understood system while every other star stays dim but named and coloured, and the guidance chip has moved on to &quot;Study codemble.adapters.project next · 1 route from Home&quot;.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -81,6 +87,7 @@ checks appear.
 ## Starting a project over
 
 The star chart has a **Clear this project's progress** control behind a
-confirmation. It forgets the understood regions for the project you have open
-and nothing else: progress is stored per project in `~/.codemble/progress/`,
-and other projects keep theirs. Your Easy/Expert preference survives the reset.
+confirmation. It forgets both halves of your record for the project you have
+open — the understood regions and the systems you explored — and nothing else:
+progress is stored per project in `~/.codemble/progress/`, and other projects
+keep theirs. Your Easy/Expert preference survives the reset.

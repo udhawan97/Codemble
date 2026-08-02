@@ -26,8 +26,9 @@ uvx codemble
 ```
 
 Codemble opens your browser to an in-app picker: browse your home folders or
-reopen a recent project, then pick your Python, JavaScript, TypeScript, or
-mixed project. To skip the picker, pass a path directly:
+reopen a recent project, then pick it. Python, JavaScript, TypeScript, Go, Java,
+Rust, C#, and any mix of them are read the same way. To skip the picker, pass a
+path directly:
 
 ```bash
 codemble ./my-project
@@ -64,15 +65,15 @@ every system, check, explanation and lens note works without a Home.
 The header switches between two layers. **Galaxy** is the 3D view; its camera
 moves on rails through three levels. **Map** is a flat diagram with two tabs.
 Easy mode starts on the Map, Expert starts on the Galaxy, and you can switch at
-any time. In a mixed project, use the **Focus** control to show All, Python,
-JavaScript, or TypeScript. Focus and layer are only views: neither alters
-coordinates, progress, or graph evidence.
+any time. In a mixed project the **Focus** control offers **All** plus one
+button per language actually present, with its system count. Focus and layer are
+only views: neither alters coordinates, progress, or graph evidence.
 
 | Galaxy level | What you see | What it's for |
 | --- | --- | --- |
 | **Galaxy** | Source modules as star systems, imports as routes | Orientation |
 | **System** | Functions and classes in call-depth orbits — the inner ring runs first | Structure |
-| **Study** | Real source with line numbers and a validated, cached explanation | Learning |
+| **Study** | Real source with line numbers, what a change here reaches, and a validated, cached explanation | Learning |
 
 | Map tab | What you see | What it's for |
 | --- | --- | --- |
@@ -93,14 +94,21 @@ selected parser-backed target. Use **Fit** when you want the whole diagram as an
 overview, and press the percentage button to return to 100%. Codemble keeps your
 zoom and pan when fresh Map data arrives or you briefly switch layers.
 
-No API key is required to inspect source and parser relationships. With a key,
-Codemble sends only the selected source context directly to your configured
-provider when you open Study; it does not run narration in the background.
+No API key is required to inspect source, parser relationships, or the **Impact**
+lists that show what a change to a structure would reach and what it depends on.
+With a key, Codemble sends only the selected source context directly to your
+configured provider when you open Study; it does not run narration in the
+background.
 
-## 5. Light it up
+## 5. Explore, then light it up
 
-Pass a region's checks and its stars light up — permanently. Watch your
-[star chart](/Codemble/star-chart/) grow as you meet new language concepts.
+Flying to a system charts it: its import routes stay drawn, and the star chart
+counts it under **Systems explored**. That is saved with the rest of your
+progress, and it is the smaller of the two claims Codemble makes about you.
+
+The larger one is earned. Pass a region's checks and its stars light up —
+permanently. Watch your [star chart](/Codemble/star-chart/) grow as you meet new
+language concepts.
 
 A fully lit galaxy means you understand your project. That's the game.
 
