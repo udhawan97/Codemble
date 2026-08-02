@@ -170,6 +170,7 @@ export function App() {
     projectFailure,
     region,
     revealedRegionIds,
+    visitedRegionIds,
     selectedNode,
     showAll,
     showChart,
@@ -649,6 +650,7 @@ export function App() {
           <StarChart
             chart={chart}
             studiedCount={focusedStudiedCount}
+            exploredCount={visitedRegionIds.size}
             projectName={projectName}
             onClearProgress={() => session.dispatch({ type: "CLEAR_PROGRESS" })}
           />
@@ -1947,7 +1949,7 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
   );
 }
 
-function StarChart({ chart, studiedCount, projectName, onClearProgress }) {
+function StarChart({ chart, studiedCount, exploredCount, projectName, onClearProgress }) {
   const understood = chart.filter((item) => item.understood_nodes > 0).length;
   const headingRef = useRef(null);
   useLayoutEffect(() => {
@@ -1961,9 +1963,15 @@ function StarChart({ chart, studiedCount, projectName, onClearProgress }) {
           Your language star chart.
         </h1>
         <p>
-          Encountered comes from real syntax. Studied tracks this session. Understood lights only after graph-derived checks pass.
+          Explored counts the systems you have flown to. Encountered comes from real syntax. Studied tracks this session. Understood lights only after graph-derived checks pass.
         </p>
         <dl>
+          {/* Explored sits first and deliberately reads as the humbler claim:
+              it is earned by travel and says nothing about comprehension. It
+              is here so exploring a project leaves a visible record even for a
+              learner who never opens a quiz -- and so the two can never be
+              mistaken for each other, which is why they are separate rows. */}
+          <div><dt>Systems explored</dt><dd>{exploredCount}</dd></div>
           <div><dt>Concepts encountered</dt><dd>{chart.length}</dd></div>
           <div><dt>Studied this session</dt><dd>{studiedCount}</dd></div>
           <div><dt>Concepts understood</dt><dd>{understood}</dd></div>

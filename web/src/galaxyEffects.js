@@ -8,8 +8,11 @@ import * as THREE from "three";
 // 1.80.0 / three 0.185.1.
 const BLOOM_STRENGTH = 0.9;
 const BLOOM_RADIUS = 0.45;
-// Tuned so a lit amber star blooms hard and the unlit ramp barely does: the
-// threshold sits above --cm-ink-2's luminance and below --cm-star-high's.
+// Tuned so a lit amber star blooms hard and nothing unlit does. The threshold
+// sits above the brightest community family (0.470) and the top of the unlit
+// centrality ramp (--cm-node-bright, 0.439), and below a lit star
+// (--cm-star-high, 0.665). It is checked by check_sky_palette.mjs, which
+// measures those values out of tokens.css rather than trusting this comment.
 const BLOOM_THRESHOLD = 0.52;
 // Bloom is the expensive pass: its mip chain starts at half the buffer and runs
 // a separable blur over every level, so on a 2x display it costs ~4x what it

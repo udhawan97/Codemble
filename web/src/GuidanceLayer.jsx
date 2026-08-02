@@ -30,15 +30,15 @@ export function HintChip({ hint, onFollow }) {
 const GALAXY_STEPS = [
   {
     title: "What you see",
-    body: "Every star system is one file, named once you have charted it. Size is how much code it holds; brightness is how many places in your project call it. Faint unnamed markers are modules you have not reached yet.",
+    body: "Every star system is one file, and every one is named — you can go anywhere from the first moment. Size is how much code it holds, colour groups files that import each other, and brightness is how many places in your project call it.",
   },
   {
     title: "How to move",
-    body: "Drag to look around and scroll to zoom — the view stays locked on whatever you are studying, so you cannot get lost. Click a system to go in, Escape to come back, and press ⌘K to jump straight to any module by name.",
+    body: "Drag to look around and scroll to zoom — the view stays locked on whatever you are studying, so you cannot get lost. Click a system to fly there, Escape to come back, and press ⌘K to jump straight to any module by name.",
   },
   {
-    title: "What lights stars",
-    body: "A system lights up only after you answer questions drawn from your own code. Nothing lights up just by looking at it — and each one you light reveals the modules it connects to.",
+    title: "Charting and lighting",
+    body: "Flying to a system charts it, drawing the routes between it and the files it uses — exploring alone fills in your map. Lighting a system amber is separate and optional: that happens only when you answer questions drawn from your own code.",
   },
 ];
 

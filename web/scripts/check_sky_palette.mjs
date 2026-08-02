@@ -172,6 +172,25 @@ assert.ok(
     "Contract requires a possible call to announce itself",
 );
 
+// --- bloom is the mechanism, so it is measured too --------------------------
+
+const effects = readFileSync(
+  fileURLToPath(new URL("../src/galaxyEffects.js", import.meta.url)),
+  "utf8",
+);
+const threshold = Number(effects.match(/BLOOM_THRESHOLD\s*=\s*([\d.]+)/)?.[1]);
+assert.ok(Number.isFinite(threshold), "BLOOM_THRESHOLD must be readable");
+assert.ok(
+  threshold > luminance(ramp.ceiling) && threshold > Math.max(...familyLuminance),
+  `bloom threshold ${threshold} is at or below something unlit: an ` +
+    "un-understood star would glow like an understood one",
+);
+assert.ok(
+  threshold < luminance(lit),
+  `bloom threshold ${threshold} is above a lit star (${luminance(lit).toFixed(3)}), ` +
+    "so the one moment the app is built around would not glow at all",
+);
+
 // --- nothing in the sky is invisible ---------------------------------------
 
 const dimmestStar = contrast(ramp.floor, sky);

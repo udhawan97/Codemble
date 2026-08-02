@@ -11,7 +11,12 @@ import {
   frameStudy,
   viewportAspect,
 } from "./galaxyView.js";
-import { createDressing, createStarfield, seedFromHashes } from "./galaxyMaterials.js";
+import {
+  createDressing,
+  createGalacticGlow,
+  createStarfield,
+  seedFromHashes,
+} from "./galaxyMaterials.js";
 import {
   LEVELS,
   NODE_REL_SIZE,
@@ -406,19 +411,28 @@ export function GalaxyCanvas({
     const renderer = rendererRef.current;
     if (!renderer) return undefined;
     const scene = renderer.scene();
-    const previous = scene.getObjectByName("codemble-starfield");
-    if (previous) {
-      scene.remove(previous);
-      previous.geometry.dispose();
-      previous.material.dispose();
+    for (const name of ["codemble-starfield", "codemble-galactic-glow"]) {
+      const previous = scene.getObjectByName(name);
+      if (previous) {
+        scene.remove(previous);
+        previous.geometry?.dispose();
+        previous.material?.dispose();
+      }
     }
     // Seeded by the project's own file hashes: same code, same sky, every run.
     const starfield = createStarfield(starfieldSeed, palette);
+    // Unseeded on purpose: the glow carries no per-project information at all,
+    // so there is nothing for a seed to make deterministic.
+    const glow = createGalacticGlow(palette);
     scene.add(starfield);
+    scene.add(glow);
     return () => {
       scene.remove(starfield);
       starfield.geometry.dispose();
       starfield.material.dispose();
+      scene.remove(glow);
+      glow.material.map?.dispose();
+      glow.material.dispose();
     };
   }, [starfieldSeed, palette]);
 

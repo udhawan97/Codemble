@@ -296,32 +296,89 @@ function fnv1a(text) {
   return hash >>> 0;
 }
 
-export function createStarfield(seedText, palette, count = 1400, radius = 1600) {
+export function createStarfield(seedText, palette, count = 3200, radius = 1600) {
   const random = mulberry32(fnv1a(seedText));
   const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const cool = new THREE.Color(palette.starCool ?? palette.nodeDim);
+  const pale = new THREE.Color(palette.starPale ?? palette.nodeBright);
+  const tint = new THREE.Color();
   for (let index = 0; index < count; index += 1) {
-    // Uniform on a sphere shell, from the seeded stream only -- never Math.random.
+    // Uniform on a sphere shell, from the seeded stream only -- never
+    // Math.random: "same code -> same sky" is an acceptance criterion.
     const theta = random() * Math.PI * 2;
     const phi = Math.acos(2 * random() - 1);
     const distance = radius * (0.65 + random() * 0.35);
+    // Two thirds of the dust is flattened toward the galactic plane. A uniform
+    // shell reads as a featureless dome from every angle; a band gives the
+    // emptiness a direction, which is what makes it read as distance rather
+    // than as absence. The layout itself is a disc, so the band agrees with it.
+    const flatten = index % 3 === 0 ? 1 : 0.18;
     positions[index * 3] = distance * Math.sin(phi) * Math.cos(theta);
-    positions[index * 3 + 1] = distance * Math.cos(phi);
+    positions[index * 3 + 1] = distance * Math.cos(phi) * flatten;
     positions[index * 3 + 2] = distance * Math.sin(phi) * Math.sin(theta);
+    // Temperature runs blue to white and never warm: a warm tint at this
+    // brightness sits in the kohaku band, and decoration may not borrow the
+    // one hue that means understanding.
+    tint.copy(cool).lerp(pale, random());
+    colors[index * 3] = tint.r;
+    colors[index * 3 + 1] = tint.g;
+    colors[index * 3 + 2] = tint.b;
+    sizes[index] = 1.4 + random() * 2.6;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
   const points = new THREE.Points(
     geometry,
     new THREE.PointsMaterial({
-      // Dust, not stars: it must read as depth, never compete with a lit system.
-      color: new THREE.Color(palette.nodeDim),
-      size: 2.2,
+      // Dust, not stars: it must read as depth, never compete with a lit
+      // system. vertexColors carries the per-star temperature above.
+      vertexColors: true,
+      size: 2.4,
       sizeAttenuation: true,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.62,
       depthWrite: false,
     }),
   );
   points.name = "codemble-starfield";
   return points;
+}
+
+/**
+ * The galactic plane: one very dim, very large additive disc.
+ *
+ * The complaint that opened this work was that the galaxy read as an empty
+ * void. Lifting the background alone would have cost every star its contrast,
+ * so the ambient comes from here instead -- light that has a shape and a
+ * direction, sitting far behind everything and writing no depth, so it can
+ * never occlude a star or a route.
+ *
+ * It encodes nothing. That is deliberate and is what makes it safe: no fact
+ * about the learner's code is readable from it, so it cannot mislead.
+ */
+export function createGalacticGlow(palette, radius = 2100) {
+  const material = new THREE.SpriteMaterial({
+    map: radialTexture(256, [
+      [0, 0.5],
+      [0.35, 0.22],
+      [0.7, 0.05],
+      [1, 0],
+    ]),
+    color: new THREE.Color(palette.skyGlow ?? palette.ground),
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const sprite = new THREE.Sprite(material);
+  // Wide and flat: a band across the disc rather than a ball around it.
+  sprite.scale.set(radius * 2, radius * 0.5, 1);
+  sprite.renderOrder = -1;
+  sprite.name = "codemble-galactic-glow";
+  return sprite;
 }
