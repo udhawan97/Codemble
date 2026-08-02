@@ -508,11 +508,17 @@ export function highlightLinkColor(link, highlight, palette, endId) {
 export function galaxyData(graph, palette, revealed = null) {
   const isRevealed = (regionId) => revealed === null || revealed.has(regionId);
   const files = regionFiles(graph);
+  // Counted over EVERY route, not the drawn subset: the tooltip answers "how
+  // connected is this module", which is a fact about the project and must not
+  // change with how much of the sky the learner happens to have charted.
+  const degree = degreeIndex(graph.region_edges);
   return {
     nodes: graph.regions.map((region) => {
       const charted = isRevealed(region.id);
       return {
         ...region,
+        usedBy: degree.usedBy.get(region.id) ?? 0,
+        uses: degree.uses.get(region.id) ?? 0,
         kind: "region",
         name: region.id,
         // Every region carries its name, charted or not. The label is the
@@ -580,6 +586,7 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
   // Presentation of an already-computed edge list, not layout: which nodes the
   // selection touches. Study level fades the rest instead of dimming the whole
   // scene, so the selected node's connections stay readable.
+  const memberDegree = degreeIndex(graph.edges.filter((edge) => !edge.external));
   const connected = new Set(selectedId ? [selectedId] : []);
   if (selectedId) {
     for (const edge of callEdges) {
@@ -590,6 +597,12 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
   return {
     nodes: members.map((node) => ({
       ...node,
+      // Every proven relationship this structure has, project-wide -- not only
+      // the ones inside this system. A helper called from four other modules
+      // is not a leaf, and a tooltip that counted only its siblings would say
+      // it was.
+      usedBy: memberDegree.usedBy.get(node.id) ?? 0,
+      uses: memberDegree.uses.get(node.id) ?? 0,
       fx: node.system_x,
       fy: node.system_y,
       fz: node.system_z,
@@ -617,10 +630,34 @@ export function defaultRegion(graph) {
   return graph.regions.find((region) => region.home) ?? graph.regions[0] ?? null;
 }
 
+/**
+ * Direct in/out degree for every id in one pass.
+ *
+ * This is the hover-peek: the impact question ("what uses this, what does it
+ * use") answered without opening anything, so a learner scanning a sky can
+ * tell a hub from a leaf before deciding where to fly. Direct edges only --
+ * transitive reach is the study panel's Impact widget, and a tooltip is the
+ * wrong place to make a claim that needs a certainty caveat attached to it.
+ */
+export function degreeIndex(edges) {
+  const usedBy = new Map();
+  const uses = new Map();
+  for (const edge of edges ?? []) {
+    uses.set(edge.src, (uses.get(edge.src) ?? 0) + 1);
+    usedBy.set(edge.dst, (usedBy.get(edge.dst) ?? 0) + 1);
+  }
+  return { usedBy, uses };
+}
+
 export function nodeLabel(node) {
   const role = node.kind === "region" ? "star system" : node.kind;
   const uncertainty = node.partial ? " · unchartable · syntax error" : "";
   const home = node.home ? " · Home" : "";
+  // Omitted entirely at zero rather than printed as "used by 0": a tooltip
+  // listing what is not there is noise on every leaf in the project.
+  const reach =
+    (node.usedBy ? ` · used by ${node.usedBy}` : "") +
+    (node.uses ? ` · uses ${node.uses}` : "");
   const orbit =
     node.system_orbit?.kind === "unreached"
       ? " · no proven call path"
@@ -628,7 +665,7 @@ export function nodeLabel(node) {
           node.system_orbit.call_depth > 0
         ? ` · call layer ${node.system_orbit.call_depth}`
         : "";
-  return `${node.name} · ${role} · ${node.loc} LOC${home}${uncertainty}${orbit}`;
+  return `${node.name} · ${role} · ${node.loc} LOC${home}${reach}${uncertainty}${orbit}`;
 }
 
 export function linkLabel(link) {

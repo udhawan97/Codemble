@@ -669,3 +669,29 @@ assert.equal(
 );
 
 console.log("transient colour and reveal predicates passed");
+
+// --- hover peek -----------------------------------------------------------
+// Direct in/out degree on the tooltip, so a learner scanning the sky can tell
+// a hub from a leaf without opening anything.
+{
+  const peek = galaxyData(sky, swatches, revealedRegionIds(sky));
+  const home = peek.nodes.find((node) => node.id === "home");
+  assert.equal(home.uses, 1, "Home imports one module in this fixture");
+  assert.ok(
+    nodeLabel(home).includes("uses 1"),
+    "the tooltip must state outbound reach",
+  );
+  const far = peek.nodes.find((node) => node.id === "far");
+  assert.ok(
+    !nodeLabel(far).includes("used by 0"),
+    "a leaf must not advertise the relationships it does not have",
+  );
+  // Counted over every route, never the drawn subset: how connected a module
+  // is, is a fact about the project, not about how much sky you have charted.
+  const everything = galaxyData(sky, swatches, null);
+  for (const node of peek.nodes) {
+    const same = everything.nodes.find((other) => other.id === node.id);
+    assert.equal(node.usedBy, same.usedBy, `${node.id}: reveal must not change degree`);
+    assert.equal(node.uses, same.uses, `${node.id}: reveal must not change degree`);
+  }
+}
