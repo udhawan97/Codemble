@@ -176,7 +176,83 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: Phase 1 tester evidence** · Last updated: 2026-08-01 ·
+**Current milestone: the explorable galaxy** · Last updated: 2026-08-02 ·
+Session note: UD's complaint was that the galaxy is "too dark and hard to just
+explore even if you are not learning", that the product's main goal is
+exploring code like an astronaut with learning **optional**, and that
+explanations are "too complex for a casual user" while "for experts most of the
+stuff in that view doesn't load". A grilling session resolved those into an
+approved four-phase redesign
+(`docs/superpowers/specs/2026-08-02-explorable-galaxy-redesign.md`); the first
+three shipped and are on `main`.
+
+**The darkness was not a bug, and that is why it needed a decision.** The unlit
+ramp was capped below a *text* token so amber would always win, and progressive
+reveal drew everything uncharted faint, unnamed and edgeless — about 100 of 128
+systems here. The sky was faithfully rendering "you have not learned this yet"
+and charging exploration for the privilege. UD chose a presentation flip rather
+than an identity flip: every meaning rule is intact, amber still means
+understanding and is still the brightest thing in the sky, checks are still the
+only way to earn it — but none of that may make the galaxy unexplorable first.
+So reveal now gates the **route mesh and the camera's opening frame only**,
+which is what the hairball actually was, and every module is visible, coloured
+and named from the first frame. Travel earns something of its own: visiting a
+region **charts** it, persisted, drawing its routes permanently and counting on
+the star chart as "Systems explored" — deliberately a separate row from
+understood, because been-there is not know-it. It is not signature-scoped the
+way `understood` is, and the asymmetry is the point: a proof of understanding
+is a claim about code and must retire when that code changes, while having been
+somewhere is a fact about the learner's own history that no edit can undo.
+
+**"Most of the stuff doesn't load" was never a panel bug.** Every route was a
+plain `def`, so all of them shared anyio's request threadpool, and `urlopen`
+cannot be cancelled — once a worker is inside it that thread is gone until the
+provider answers. Enough in-flight explanations starved `/api/graph`,
+`/api/map`, `/study` and `/checks` alike, and experts hit it first because they
+click through structures fastest. Narration now runs under a `CapacityLimiter`
+of its own, so the default limiter is never acquired. **The regression test for
+it is worth reading before writing another one like it**: the cascade is *not*
+reproducible in-process, because `TestClient` gives each threaded request its
+own event loop — measured, 45 concurrent requests against the old sync route
+ran 45 provider calls at once and `/api/graph` still answered in 0.01s. A test
+asserting "the parser endpoints stay responsive" passes with the fix reverted
+and is worth nothing. What is gated is the bound (28 pre-fix, 4 post-fix).
+Review then caught the same defect class arriving through the dependency graph:
+`abandon_on_cancel` was named `cancellable` before anyio 4.1, and anyio only
+ever reached Codemble through Starlette's `>=3.6.2,<5`, so an older resolution
+would have raised TypeError on every narration request. It is a direct
+dependency now, with a gate.
+
+**The Expert panel stopped depending on a model for its lead content.**
+`codemble/graph/impact.py` computes blast radius from proven edges — what feels
+a change here, what this depends on, depth-capped and cited — and ships in the
+`/study` payload, which never touches a provider. Certainty comes from a
+*second* walk restricted to certain edges, because the shallowest route to a
+node and its only proven route are frequently different routes, and one pass
+forces a choice between reporting the true distance and the true certainty. A
+chain through one unproven edge is unproven for its whole length. Hovering any
+star now answers the same question in miniature (`used by 7 · uses 2`), direct
+edges only. Explanations lead with what a thing is *for* in at most three
+sentences, the line-by-line walkthrough moved behind a closed disclosure, and
+Easy may use an everyday comparison where Expert may not.
+
+**Two gates were added because prose was doing their job.** `check_sky_palette`
+measures the meaning rules out of `tokens.css` — ordering, per-family parity,
+the reserved kohaku hue band, the legend floor, uncertainty louder than
+certainty, bloom threshold bracketing, no invisible star — and refuses an
+`@import` back to the docs tokens, so the palette fork cannot quietly undo
+itself. Proven in three directions. And review found `recordVisit` claiming in
+its own docstring to cover "every route into a system" while missing
+`selectStudyNode` — the handler behind the Workflow tree, the Connections list
+and the new Impact rows, all of which can land on a module never flown to; that
+claim is now gated rather than restated. Measured palette: lit 0.665 > family
+0.470 > ramp 0.439/0.220 > sky 0.0163.
+
+301 pytest, Ruff clean, 19 frontend contract checks, bundle rebuilt
+reproducibly, verified against a running server at 1440 and narrow widths. The
+milestone does not advance: issue #13 still requires human tester evidence.
+
+Previously (2026-08-01):
 Session note: an evidence-led user-flow audit of the served build, run as a
 first-run Easy learner on this repository at 1440/1024/768/375/320 with a
 keyboard pass, found **two** gaps — and the more interesting fact is that both
