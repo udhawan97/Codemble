@@ -261,16 +261,28 @@ in user space so a thin route gets the same arrow as a thick one. All 248 edges
 on this project now end with a vertical segment; the test asserts the property
 for every edge rather than for the flank case alone.
 
-**One finding is deferred, stated rather than quietly dropped.** A structure
-whose planet the camera projects under the System view's orientation panel
-cannot be clicked — the click reaches the panel's own button. Sampling six
-points across that button returns the button at every one, so the *mechanism* is
-general; whether a body lands there depends on the system's layout (reproduced
-on `codemble.cli`, absent on `codemble.adapters.base`). The correct fix is to
-frame the camera into the unobstructed region, and camera framing has produced
-three shipped regressions here, so it is not worth a rushed change for a defect
-whose target stays reachable through Find, the module index and the connections
-list.
+**The seventh finding was deferred, then asked for and done properly in
+v0.15.0.** A planet the camera projected under the System panel's button could
+not be clicked; the click reached the button and opened the quiz. The layout is
+parser-owned, so the body cannot move — the camera does, which is exactly the
+rule `nameAtlas` has always applied to name plates, extended to what the camera
+aims at. `aimIntoClearRegion` takes the largest rectangle of the canvas that no
+*control* covers, offsets the aim into it, and pushes back only if the sky no
+longer fits.
+
+**What made this affordable in the module with three shipped framing
+regressions is one property**: with no chrome the clear region *is* the canvas,
+so the scale is 1 and the offset is 0 and the result is bit-identical to the
+frame it was handed. Every existing framing contract therefore keeps asserting
+the numbers it always did, and only the new behaviour needed new assertions.
+Only controls are reserved, never the prose beside them — a
+`pointer-events: none` paragraph over a star costs nothing, since the star stays
+clickable and visible around the text, while reserving the whole 417×328 panel
+would have pushed every system back for a problem only its buttons have. The
+gate is proven in both directions, and the first fixture written for it **failed
+to reproduce the defect** and said so, which is the reason it is trustworthy:
+the points projected nowhere near the control, and a gate that cannot see the
+bug it guards is worse than none.
 
 **Measurement discipline paid twice.** A candidate finding — "Expert has no Read
 the source" — was **withdrawn** on evidence: holding the layer constant showed
@@ -1478,6 +1490,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | The check panel's primary action is `position: sticky`; the study panel's "Read the source" scrolls to the source | One shape, two surfaces: a panel putting its own primary content or control out of reach with no affordance — the class already fixed once on the Map's region caption. Measured: the submit button was 47% covered by the status line at 1440x900 (a hit test at its bottom edge returned the footer) and sat 101px below the fold at 1280x720; the source sat 4144px — 6.6 viewports — below a control literally named "Read the source". Severity is stated precisely because it was not what it looked like: **keyboard users were never blocked**, since focusing the submit button scrolls it into view (`scrollTop` 0 → 241, measured), so this failed silently for pointer users only, which is why neither the space budget (header overlaps only) nor the escape sweep could see it. Only the named control scrolls; every other route to a node still opens at the top of the panel |
 | 2026-08-02 | A structure occluded by the System view's orientation panel is **deferred**, not fixed | Sampling six points across that panel's button returns the button at every one, so any body the camera projects into its rectangle is unclickable — the mechanism is general, the occurrence depends on the system's layout (reproduced on `codemble.cli`, absent on `codemble.adapters.base`). The correct fix is to frame the camera into the *unobstructed* canvas region, which is exactly the module that has produced three shipped regressions in this project, and the defect is P2 with three working routes to the same structure (Find, the module index, the connections list). Recorded here rather than left in a report, because the next session should not rediscover it and should not reach for a quick z-index patch either |
 | 2026-08-02 | The entrypoint test-bias is a **sort key**, not an edit to `entrypoint_rank` | v0.14.0 added a penalty to the field, and `finalize_graph` runs **twice** on the normal path -- once inside an adapter's `parse_files`, again when `ProjectParser` composes -- so a rule that *adds* is not idempotent: measured, rank 4 became rank 8. It changed no outcome on the projects to hand, which is exactly why a green suite kept it: every new test called `finalize_graph` directly, once, while the composed path is the one every real run takes. It also broke a promise the picker makes and the quickstart repeats -- that the rank shown is the parser's own. A sort key fixes both at once, is idempotent by construction however many times finalization runs, and is the literal reading of the standing rule "bias the ranking, never the reported fact". The regression test goes through `ProjectParser().parse()`, at the seam where it actually happened |
+| 2026-08-02 | The camera frames into the largest rectangle no **control** covers (`aimIntoClearRegion`), reserving buttons but not the prose beside them | A planet the camera projected under the System panel's button could not be clicked -- the button took the click and opened the quiz. The layout is parser-owned, so the body cannot move; the camera does, which is the rule `nameAtlas` has always applied to name plates extended to what the camera aims at. Bounded in this order: offset only while the sky still fits the clear region, and push back only as far as it must when it does not. The safety property is what made this affordable in the module that has caused three shipped framing regressions -- with no chrome the clear region IS the canvas, so the scale is 1 and the offset is 0 and the result is bit-identical to the frame it was handed, which is why every existing framing contract keeps asserting the numbers it always did. Only controls are reserved: a `pointer-events: none` paragraph over a star costs nothing, since the star stays clickable and stays visible around the text, while reserving the whole panel would push every system back for a problem only its buttons have. Proven in both directions -- the fixture asserts a body lands under the control BEFORE the fix, so the gate cannot pass vacuously |
 
 ## Non-Goals — do NOT build (point here when asked)
 

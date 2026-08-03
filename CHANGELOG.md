@@ -5,6 +5,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-02
+
+### Fixed
+- **A structure the camera parked under a floating control can be clicked
+  again.** At System level the orientation panel floats over the sky, and a
+  planet projected beneath its button was unreachable: the click went to the
+  button and opened the quiz instead. Reproduced on `codemble.cli`'s system,
+  absent on `codemble.adapters.base`'s — the mechanism is general, the
+  occurrence depends on the system's own layout.
+
+  The layout is parser-owned, so the body cannot move; the camera does. This is
+  the rule `nameAtlas` has always applied to name plates — never print one under
+  the chrome — extended to what the camera aims at. `aimIntoClearRegion` finds
+  the largest rectangle of the canvas that no *control* covers, then offsets the
+  aim into it, and pushes back only if the sky genuinely no longer fits. With no
+  chrome the clear region is the whole canvas, the scale is 1 and the offset is
+  0, so a level that reserves nothing frames exactly as it did before — which is
+  what keeps every existing framing contract intact.
+
+  Only the controls are reserved, not the prose beside them: a
+  `pointer-events: none` paragraph over a star costs nothing, since the star is
+  still clickable and still visible around the text, while a button over one
+  silently takes the click. Reserving the whole panel would have pushed every
+  system back for a problem only its buttons have.
+
+  Scoped to System level, and that is a measurement rather than caution. Applied
+  to the galaxy as well, the only overlay control there — the small **Key**
+  toggle in a corner — cost the whole sky about 6% of its size, which is a real
+  loss on the view the previous release tuned to fill 90% of the canvas, to
+  dodge a button almost nothing lands under. A system draws a handful of bodies
+  beneath a panel wide enough to hide one outright; the galaxy does not.
+
 ## [0.14.1] - 2026-08-02
 
 Two defects in v0.14.0's own fixes, found by verifying the shipped commit
@@ -90,12 +122,9 @@ fixed here; the seventh is deferred with its reason stated.
 ### Known
 - A structure whose planet the camera projects underneath the System view's
   orientation panel cannot be clicked directly; the click reaches the panel's
-  own button. Reproduced on `codemble.cli`'s system view, absent on
-  `codemble.adapters.base`'s — the mechanism is general, the occurrence depends
-  on the system's layout. Deferred rather than rushed: the correct fix is to
-  frame the camera into the unobstructed region, and that module has caused
-  three shipped regressions. The structure remains reachable through Find, the
-  module index and the study panel's connections.
+  own button. Deferred here rather than rushed, because the correct fix is to
+  frame the camera into the unobstructed region and that module has caused
+  three shipped regressions. **Fixed in 0.15.0.**
 
 ## [0.13.0] - 2026-08-02
 

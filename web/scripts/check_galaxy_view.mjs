@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 
 import { framingDistance } from "../src/cameraFraming.js";
 import {
+  aimIntoClearRegion,
   cameraBoundsFor,
+  clearRegion,
   frameLevel,
   frameStudy,
   viewportAspect,
@@ -438,5 +440,125 @@ assert.deepEqual(twice[0], twice[1], "aiming is deterministic");
 const unmeasurable = frameLevel({ level: LEVELS.GALAXY, nodes: [], orbitPlan: [], fov: 50, aspect: 1.6 });
 assert.equal(unmeasurable.fitted, false);
 assert.deepEqual(unmeasurable.target, { x: 0, y: 0, z: 0 }, "an unfitted level aims at the origin");
+
+// ---------------------------------------------------------------------------
+// Framing away from the controls that float over the canvas.
+//
+// The defect: at System level a planet the camera projected under the
+// orientation panel's button could not be clicked -- the button took the click
+// and opened the quiz. The layout is parser-owned, so the body cannot move;
+// the camera does. `nameAtlas` already refuses to print a plate under the same
+// chrome, and this is that rule applied to what the camera aims at.
+
+const VIEWPORT = { width: 1440, height: 640 };
+// A control over the canvas, positioned so it genuinely covers one of the
+// bodies below -- the shape the defect was reported in, where the leftmost of
+// four planets sat under the panel's button. The assertions below check that
+// the fixture reproduces it before trusting that the fix cleared it.
+const BUTTON = { left: 240, right: 450, top: 296, bottom: 344 };
+
+// The clear region is the whole canvas when nothing sits on it -- the property
+// the whole feature's safety rests on.
+assert.deepEqual(
+  clearRegion(VIEWPORT, []),
+  { left: 0, right: 1440, top: 0, bottom: 640, width: 1440, height: 640 },
+  "no chrome means the whole canvas is clear",
+);
+
+// One control in a corner: the cheapest cut is the band beside it, not above or
+// below it, because that keeps the most area.
+const clear = clearRegion(VIEWPORT, [BUTTON]);
+assert.equal(clear.left, BUTTON.right, "the region starts where the control ends");
+assert.equal(clear.height, VIEWPORT.height, "cutting the cheapest band costs no height");
+
+// A frame handed no chrome must come back bit-identical. This is what lets every
+// other contract in this file keep asserting the numbers it always did.
+const SYSTEM_POINTS = [
+  { x: -60, y: 0, z: 0, radius: 4 },
+  { x: -20, y: 0, z: 0, radius: 4 },
+  { x: 20, y: 0, z: 0, radius: 4 },
+  { x: 60, y: 0, z: 0, radius: 4 },
+];
+const solved = { target: { x: 0, y: 0, z: 0 }, distance: 100 };
+const untouched = aimIntoClearRegion({
+  ...solved,
+  points: SYSTEM_POINTS,
+  direction: { x: 0, y: 0.6, z: 1 },
+  fov: 50,
+  viewport: VIEWPORT,
+  chrome: [],
+});
+assert.deepEqual(untouched, solved, "no chrome changes nothing at all");
+
+// And with a control on it, the aim moves away from that control.
+const moved = aimIntoClearRegion({
+  ...solved,
+  points: SYSTEM_POINTS,
+  direction: { x: 0, y: 0.6, z: 1 },
+  fov: 50,
+  viewport: VIEWPORT,
+  chrome: [BUTTON],
+});
+assert.ok(
+  Math.hypot(
+    moved.target.x - solved.target.x,
+    moved.target.y - solved.target.y,
+    moved.target.z - solved.target.z,
+  ) > 0,
+  "a control over the canvas moves the aim",
+);
+assert.ok(
+  moved.distance >= solved.distance,
+  "the camera never comes closer to dodge chrome -- that would crop the sky",
+);
+
+// The property that actually matters: after re-aiming, nothing the camera is
+// framing still projects inside the control's rectangle.
+function projected(frame, points, { direction, fov, viewport }) {
+  const axis = (() => {
+    const l = Math.hypot(direction.x, direction.y, direction.z);
+    return { x: direction.x / l, y: direction.y / l, z: direction.z / l };
+  })();
+  const seed = Math.abs(axis.y) > 0.9 ? { x: 1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 };
+  const cross = (a, b) => ({
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  });
+  const dot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+  const r0 = cross(seed, axis);
+  const rl = Math.hypot(r0.x, r0.y, r0.z);
+  const right = { x: r0.x / rl, y: r0.y / rl, z: r0.z / rl };
+  const up = cross(axis, right);
+  const half = (fov * Math.PI) / 360;
+  return points.map((point) => {
+    const v = {
+      x: point.x - frame.target.x,
+      y: point.y - frame.target.y,
+      z: point.z - frame.target.z,
+    };
+    const depth = frame.distance - dot(v, axis);
+    const perPixel = (2 * depth * Math.tan(half)) / viewport.height;
+    return {
+      x: viewport.width / 2 + dot(v, right) / perPixel,
+      y: viewport.height / 2 - dot(v, up) / perPixel,
+    };
+  });
+}
+
+const optics = { direction: { x: 0, y: 0.6, z: 1 }, fov: 50, viewport: VIEWPORT };
+const before = projected(solved, SYSTEM_POINTS, optics);
+const after = projected(moved, SYSTEM_POINTS, optics);
+const inside = (p) =>
+  p.x >= BUTTON.left && p.x <= BUTTON.right && p.y >= BUTTON.top && p.y <= BUTTON.bottom;
+assert.ok(before.some(inside), "the fixture must reproduce the defect before the fix");
+assert.ok(!after.some(inside), "no structure is left under the control after re-aiming");
+// ...and it is still on the canvas, not pushed off the far edge to get there.
+for (const point of after) {
+  assert.ok(
+    point.x >= 0 && point.x <= VIEWPORT.width && point.y >= 0 && point.y <= VIEWPORT.height,
+    "re-aiming must not push the sky off the opposite edge",
+  );
+}
 
 console.log("galaxy-view contracts passed");

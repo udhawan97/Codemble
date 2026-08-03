@@ -132,6 +132,15 @@ every node position, so nodes do not drag away from the graph. Reading never
 happens "in space": the study panel takes the foreground, and the sky behind it
 recedes to the structure you are reading and its connections.
 
+The camera also frames around whatever is sitting on the canvas. Inside a
+system, the panel naming the module floats over the sky, and a structure the
+camera parked beneath its button used to be unclickable — the click reached the
+button. Because the parser owns where a structure *is*, the camera is what
+moves: it aims into the largest part of the canvas no control covers, and only
+stands further back if the system no longer fits there. The panel's text is not
+reserved, only its controls: prose over a star costs nothing, because the star
+stays clickable and stays visible around the words.
+
 Keyboard: arrow keys move the selection between siblings and **Enter** opens the
 selected one, at every level including study, where it re-targets the panel.
 **Escape** steps back a level — on the Map as well as in the Galaxy — and closes

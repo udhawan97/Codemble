@@ -359,6 +359,20 @@ export function GalaxyCanvas({
           aspect ??
           viewportAspect(hostRef.current?.getBoundingClientRect()) ??
           viewportAspect({ width: renderer.width(), height: renderer.height() }),
+        // Only the controls, not the prose beside them. A `pointer-events: none`
+        // paragraph over a star costs nothing -- the star is still clickable and
+        // still visible around the text -- while a button over one silently
+        // takes the click and opens something else. Reserving the whole panel
+        // would push every system back for a problem only its buttons have.
+        //
+        // System level only, and that is a measured trade rather than caution.
+        // A system draws a handful of bodies under a panel wide enough to hide
+        // one of them outright. The galaxy's only overlay control is the small
+        // Key toggle in a corner, and reserving it cost the whole sky ~6% of its
+        // size -- a real loss on the view the previous release tuned to fill 90%
+        // of the canvas, to dodge a button almost nothing lands under.
+        viewport: canvasViewport(hostRef.current, renderer),
+        chrome: level === LEVELS.SYSTEM ? interactiveChrome(hostRef.current) : [],
       });
       if (controlsRef.current) {
         controlsRef.current.minDistance = framed.min;
@@ -674,6 +688,43 @@ export function GalaxyCanvas({
 // Read from the DOM each pass rather than cached: the line's width changes with
 // the language focus, with `Show all`, and with the register's wording, and a
 // stale rectangle would reserve sky that is no longer covered.
+/** The canvas box the camera is framing into, in CSS pixels. */
+function canvasViewport(host, renderer) {
+  const box = host?.getBoundingClientRect();
+  if (box?.width && box?.height) return { width: box.width, height: box.height };
+  const width = renderer?.width?.();
+  const height = renderer?.height?.();
+  return width && height ? { width, height } : null;
+}
+
+/**
+ * Chrome that takes clicks, as rectangles relative to the canvas.
+ *
+ * Distinct from `chromeBoxes`, which reserves space for *name plates* and so
+ * cares about anything drawn over the sky. This one answers a different
+ * question -- what would swallow a click meant for a star -- so it lists only
+ * the controls. `.orientation-copy` itself is `pointer-events: none`; its
+ * buttons opt back in, which is exactly the set that can steal a planet.
+ */
+function interactiveChrome(host) {
+  const stage = host?.closest(".map-stage");
+  if (!stage) return [];
+  const origin = host.getBoundingClientRect();
+  const boxes = [];
+  for (const element of stage.querySelectorAll(".orientation-copy button, .legend-toggle")) {
+    if (getComputedStyle(element).pointerEvents === "none") continue;
+    const box = element.getBoundingClientRect();
+    if (!box.width || !box.height) continue;
+    boxes.push({
+      left: box.left - origin.left,
+      right: box.right - origin.left,
+      top: box.top - origin.top,
+      bottom: box.bottom - origin.top,
+    });
+  }
+  return boxes;
+}
+
 function chromeBoxes(host) {
   // The stage, not the host's parent. These overlays are not siblings of the
   // canvas: `.orientation-bar` is a child of the stage while `.keyboard-focus`
