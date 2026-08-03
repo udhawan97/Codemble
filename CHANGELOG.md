@@ -5,6 +5,77 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-02
+
+An evidence-led user-flow audit of the served v0.13.0 build, run as a first-run
+learner on this repository at 1440/1280/1100/1024/375/320 in both registers,
+found six gaps and a seventh arrived from UD while the audit was open. Six are
+fixed here; the seventh is deferred with its reason stated.
+
+### Fixed
+- **Home resolves itself again on a polyglot project.** A first-run learner was
+  handed a picker of 26 candidates, 22 of them under `tests/`, because rank 0
+  held a six-way tie: the project's own `codemble.cli` plus a C#, Go, Java, Rust
+  and TypeScript fixture. Every adapter already had *some* notion of a test, but
+  each asked a question only its own language could answer — Rust `#[test]`,
+  Java `@Test`, C# `[Fact]`, Go the `_test.go` suffix — and none of those sees a
+  plain, unmarked `main()` in a file that is not named like a test, which is
+  exactly the shape of `tests/fixtures/<lang>_sample/`. "Is this file inside the
+  project's own test tree?" is path-based and language-neutral, so it now lives
+  once in `codemble.graph.finalize`, where every adapter already funnels, and the
+  Python-only copy is deleted. An eighth language is demoted for free.
+- **The shell stopped spending 216px of header on a seven-language project.**
+  Between about 1024 and 1279px the rail wrapped to three rows and the Map's
+  drawing collapsed to 106px — worse than the compact shell at 1023px, which
+  gave 325px. The cause was the language focus control: it renders one permanent
+  chip per language, so its width is a property of the *learner's* project, and
+  at seven languages it measures 673px. `min-width: 0` and `overflow-x: auto`
+  were already there and could not help, because a wrapping flex container
+  breaks lines using each item's hypothetical size and only shrinks within a
+  line afterwards. A small flex-basis keeps it on the row and the existing
+  scroll carries the overflow. This also returns the project's own
+  `check_space_budget` gate to green: it had been failing on `main` since
+  `cc8647f`, through three tagged releases.
+- **"Read the source" shows the source.** It opened the study panel at the top,
+  with the source 4144px down — 6.6 viewports — behind the summary, the impact
+  widget and the connections list. It now scrolls to the source. Every other
+  route to a node still opens at the top, because only this control made that
+  promise.
+- **The quiz's submit button is always on screen.** At 1440x900 the status line
+  painted over the lower 21 of its 44px, and a hit test at the button's bottom
+  edge returned the footer; at 1280x720 it sat 101px below the fold in a
+  container whose `overflow: auto` draws no scrollbar until you scroll, so a
+  learner could choose an answer and see no way to submit it. The panel's
+  primary action is now sticky. Keyboard users were never blocked — focus
+  scrolled it into view — which is why this was a silent failure for pointer
+  users only.
+- **Route arrowheads point into the box instead of lying along its edge.**
+  Flank routes — cycles, backward edges and anything skipping a layer — ran the
+  corridor straight to the destination's own top-edge y and turned in
+  horizontally, so the marker arrived sideways flush against the border: a row
+  of little triangles that read as sawtooth decoration on the box rather than as
+  routes arriving, with no visible stub to trace back to a source. Every route
+  now descends to a stub above the box and turns down into its port, and the
+  arrowhead is sized in user space so a thin route gets the same head as a thick
+  one.
+- **The study panel no longer shows two "who uses this" numbers wearing one
+  word.** "Called by 0" — call edges only — sat directly above "Two other parts
+  of your code use it", which counted two *imports*. Both were right and the
+  pair could not be read. The Easy summary now names the relation: "Two other
+  files bring it in." Neither count moved. The existing "Called by" wording is
+  kept: the code comment recording why it was chosen over "Used by" is still
+  correct, and renaming it would have recreated the collision it avoids.
+
+### Known
+- A structure whose planet the camera projects underneath the System view's
+  orientation panel cannot be clicked directly; the click reaches the panel's
+  own button. Reproduced on `codemble.cli`'s system view, absent on
+  `codemble.adapters.base`'s — the mechanism is general, the occurrence depends
+  on the system's layout. Deferred rather than rushed: the correct fix is to
+  frame the camera into the unobstructed region, and that module has caused
+  three shipped regressions. The structure remains reachable through Find, the
+  module index and the study panel's connections.
+
 ## [0.13.0] - 2026-08-02
 
 ### Changed

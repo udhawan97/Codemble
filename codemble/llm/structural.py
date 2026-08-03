@@ -48,6 +48,38 @@ def structural_summary(
     }
 
 
+def _inbound_sentence(inbound: list[dict[str, object]]) -> str:
+    """Say WHICH relation reaches this structure, not just how many do.
+
+    The panel prints "Called by 0" — `centrality`, which counts call edges
+    only — directly above this sentence. Saying "two other parts of your code
+    use it" about two *imports* put two different questions side by side
+    wearing the same word, and "called by" and "use" are synonyms to the early
+    coder this register exists for. Both numbers were right and the pair was
+    unreadable. Naming the relation is what separates them; neither count moves.
+    """
+
+    if not inbound:
+        return "Nothing else in your code brings it in yet."
+    imports = [item for item in inbound if item.get("relationship") == "import"]
+    calls = [item for item in inbound if item.get("relationship") == "call"]
+    clauses: list[str] = []
+    if imports:
+        clauses.append(
+            f"{_count_word(len(imports))} other "
+            f"{'file brings' if len(imports) == 1 else 'files bring'} it in"
+        )
+    if calls:
+        count = _count_word(len(calls))
+        clauses.append(
+            f"{count.lower() if clauses else count} other "
+            f"{'part calls' if len(calls) == 1 else 'parts call'} it"
+        )
+    if not clauses:
+        return "Nothing else in your code brings it in yet."
+    return f"{' and '.join(clauses)}."
+
+
 def _easy_voice(
     node: Node,
     inbound: list[dict[str, object]],
@@ -61,13 +93,7 @@ def _easy_voice(
         f"It lives in {node.file}, starting on line {node.lineno}.",
         f"It is {_line_count(node.loc)} long.",
     ]
-    sentences.append(
-        f"{_count_word(len(inbound))} other "
-        f"{'part' if len(inbound) == 1 else 'parts'} of your code "
-        f"{'uses' if len(inbound) == 1 else 'use'} it."
-        if inbound
-        else "Nothing else in your code uses it yet."
-    )
+    sentences.append(_inbound_sentence(inbound))
     sentences.append(
         f"It uses {_count_word(len(outbound)).lower()} other "
         f"{'part' if len(outbound) == 1 else 'parts'} of your code."

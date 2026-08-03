@@ -171,6 +171,14 @@ lit system is amber in both. Architecture boxes carry their community's colour
 family and a language stripe, and routes are drawn in their own ink so a
 connection never disappears beside a box border.
 
+Every route on the Architecture layer approaches its destination **from above**
+and turns down into it, so its arrowhead points into the box rather than lying
+along the border, and the short vertical stub above each arrow shows the line
+you can follow back to the source. Routes that have to travel — a cycle, a
+backward edge, anything skipping a layer — run out to a corridor beside the
+drawing and return the same way, so a long connection is still traceable
+end to end.
+
 The Map opens at readable 100% on compact screens and centres Home or the
 selected target instead of shrinking every box into a whole-diagram thumbnail.
 **Fit** gives the overview: on a wide drawing it fits the whole shape, and on a

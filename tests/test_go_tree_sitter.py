@@ -408,11 +408,16 @@ def test_partial_files_stay_visible_without_claiming_broken_structures(graph) ->
 
 
 def test_entrypoint_ranking_and_explicit_selection_are_parser_bounded(graph) -> None:  # type: ignore[no-untyped-def]
+    # `TestMain` ranks last, below `Boot`, because graph finalization demotes
+    # any candidate whose file sits in the project's own test tree -- here the
+    # `_test.go` suffix. Go's own ranking still recognises `TestMain` as a real
+    # entrypoint; it is demoted, never dropped, so a project that IS a test
+    # suite still has somewhere to start.
     assert graph.entrypoint_candidates == (
         "go:cmd/app/main.go",
         "go:cmd/app/main.go::main",
-        "go:internal/store/store_test.go::TestMain",
         "go:cmd/app/main.go::Boot",
+        "go:internal/store/store_test.go::TestMain",
     )
     assert graph.selected_entrypoint == "go:cmd/app/main.go"
 

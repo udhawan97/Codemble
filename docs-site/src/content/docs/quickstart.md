@@ -51,11 +51,18 @@ codemble --path ./my-project/src
 
 Your entrypoint system is marked **Home** — where execution starts. On most
 projects Codemble settles it without asking. A candidate that lives in a test
-folder, or is named like one (`test_*.py`, `*_test.py`, `conftest.py`), ranks
-below your project's own code, so a repository whose fixtures carry their own
-`main()` no longer buries the real entrypoint among them. Test candidates are
-demoted, not removed: a project that *is* a test suite still gets a Home, and
-the rank you are shown is the real one.
+folder (`tests/`, `test/`, `testing/`, `__tests__/`, `spec/`), or is named like
+one (`test_*`, `*_test`, `conftest`), ranks below your project's own code — so a
+repository whose fixtures carry their own `main()` no longer buries the real
+entrypoint among them.
+
+That rule reads the file's **path**, so it holds for every language Codemble
+reads, not just the one whose test convention you happen to use. It has to: a
+Go, Java, Rust or C# fixture under `tests/` usually carries an ordinary,
+unmarked `main()` that no language's own test marker (`#[test]`, `@Test`,
+`[Fact]`) would ever catch. Test candidates are demoted, not removed: a project
+that *is* a test suite still gets a Home, and the rank you are shown is the
+real one.
 
 When candidates genuinely tie for best rank, Codemble asks rather than guessing.
 It offers only parser-ranked candidates; the CLI equivalent is `--entrypoint

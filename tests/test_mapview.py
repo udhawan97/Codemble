@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from itertools import pairwise
 from pathlib import Path
 
 from codemble.adapters.base import Edge, Graph, Node
@@ -471,3 +472,42 @@ def test_workflow_unreachable_rows_carry_their_own_language() -> None:
     assert {row["language"] for row in unreachable} >= {"python", "javascript"}
     # The exact failure: no Python id carries the prefix the renderer assumed.
     assert not any(row["id"].startswith("python:") for row in unreachable)
+
+
+def test_every_route_arrives_vertically_so_its_arrowhead_points_into_the_box() -> None:
+    """An arrowhead has to enter the box, not lie along its top edge.
+
+    Flank routes -- cycles, backward edges, and anything skipping a layer --
+    ran the corridor straight to the destination's own top-edge y and then
+    turned in horizontally. The marker is oriented to the last segment, so
+    every one of those arrived sideways, flush along the border: on a real
+    project that drew a row of little triangles across the top of each box,
+    reading as sawtooth decoration rather than as routes arriving, with no
+    visible stub to trace back to a source.
+
+    The fix is geometric, not cosmetic: descend to a stub above the box, then
+    turn down into the port. Asserted for every edge rather than the flank
+    case alone, because adjacent-layer routes already did this and the
+    property a reader relies on is the one worth pinning -- arrows point in.
+    """
+
+    architecture = build_map(ProjectParser().parse(FIXTURE))["architecture"]
+    boxes = {str(box["id"]): box for box in architecture["boxes"]}
+
+    assert architecture["edges"], "the fixture must route something"
+    for edge in architecture["edges"]:
+        points = edge["points"]
+        (before_x, before_y), (last_x, last_y) = points[-2], points[-1]
+        label = f"{edge['src']} -> {edge['dst']}"
+        assert before_x == last_x, (
+            f"{label} arrives horizontally, so its arrowhead lies along the "
+            "border instead of pointing into the box"
+        )
+        assert before_y < last_y, f"{label} must approach from above the box"
+        assert last_y == boxes[str(edge["dst"])]["y"], (
+            f"{label} must land on the destination's top edge"
+        )
+        for start, end in pairwise(points):
+            assert start[0] == end[0] or start[1] == end[1], (
+                f"{label} has a diagonal segment"
+            )

@@ -199,7 +199,92 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: the explorable galaxy** · Last updated: 2026-08-02 ·
-Session note: UD's complaint was that the galaxy is "too dark and hard to just
+Session note: an evidence-led user-flow audit of the served v0.13.0 build, run
+as a first-run Easy learner on this repository at 1440/1280/1100/1024/375/320 in
+both registers, found six gaps; a seventh arrived from UD mid-audit. Six are
+fixed and re-verified live, released as **v0.14.0**.
+
+**The most useful finding was one the project's own gate had already been
+reporting.** `check_space_budget` had failed on every `main` run since
+`cc8647f`, through **three tagged releases** — v0.11.0, v0.12.0 and v0.13.0 were
+each tagged with `browser-checks` red, and it was the *only* failing job. The
+defect is real and its cause is worth recording: the language focus control
+renders one permanent chip per language, so **its width is a property of the
+learner's project, not of the design** — seven languages measure 673px, and
+below about 1280px that plus the layer switcher and the audience toggle no
+longer fits one row. The rail took a third row, header 148 → 216px, and the
+Map's drawing fell to 106px at region level, which is the **compact** shell at
+1023px beating the wide shell at 1024px three times over. `min-width: 0` and
+`overflow-x: auto` were already on that element and could not help, and the
+reason is the load-bearing part: a wrapping flex container breaks lines using
+each item's *hypothetical* main size and only shrinks within a line afterwards,
+so a max-content item is moved to its own row before shrinking is ever
+considered. A small `flex-basis` is what keeps it on the row.
+
+**Home stopped resolving itself when the language slate grew, and the fix is a
+seam correction rather than a heuristic one.** Rank 0 held six candidates:
+`codemble.cli` plus a C#, Go, Java, Rust and TypeScript fixture, so
+`selected_entrypoint` was None and a first-run learner met a picker of 26
+candidates with 22 under `tests/`. The tempting diagnosis — "the new adapters
+have no test demotion" — is **wrong**, and checking it mattered: Rust reads
+`#[test]`, Java `@Test`, C# `[Fact]`/`[TestMethod]`, Go the `_test.go` suffix.
+Every one of them has a rule; none of them fires, because a fixture's entry is
+an ordinary unmarked `main()` in a file not named like a test. Only Python asked
+the *path* question. That question needs no parser evidence and is identical in
+every language, so it now lives once in `graph/finalize.py` — the funnel every
+adapter already returns through — and the Python copy is deleted. An eighth
+language is demoted for free, the same promise `unsupported_sources` makes.
+
+**Two panel fixes share one root and are recorded together deliberately.** The
+control named "Read the source" opened the study panel at the top with the
+source **4144px** down (6.6 viewports) behind the summary, impact widget and
+connections; and the quiz's submit button was 47% covered by the status line at
+1440x900 and 101px *below the fold* at 1280x720, in a container whose
+`overflow: auto` draws no scrollbar until you scroll. Both are the same shape:
+a panel putting its own primary content or control out of reach with no
+affordance — the class this project already fixed once on the Map's region
+caption. Worth stating precisely because it changed the severity: **keyboard
+users were never blocked**, since focusing the submit button scrolls it into
+view (measured, `scrollTop` 0 → 241). It failed silently for pointer users only,
+which is why no gate and no keyboard sweep had caught it.
+
+**The seventh finding came from UD looking at the Map and is a geometry bug, not
+a styling one.** Flank routes — cycles, backward edges, anything skipping a
+layer — ran the corridor straight to the destination's own top-edge y and then
+turned in *horizontally*. An SVG marker orients to its last segment, so every
+one of those arrowheads arrived sideways lying flush along the border: a row of
+small triangles that read as sawtooth decoration on the box rather than as
+routes arriving, with no visible stub to trace back to a source. Routes now
+descend to a stub 24px above the box and turn **down** into the port (the row
+gap is 64px, so the stub can never cross the row above), and the head is sized
+in user space so a thin route gets the same arrow as a thick one. All 248 edges
+on this project now end with a vertical segment; the test asserts the property
+for every edge rather than for the flank case alone.
+
+**One finding is deferred, stated rather than quietly dropped.** A structure
+whose planet the camera projects under the System view's orientation panel
+cannot be clicked — the click reaches the panel's own button. Sampling six
+points across that button returns the button at every one, so the *mechanism* is
+general; whether a body lands there depends on the system's layout (reproduced
+on `codemble.cli`, absent on `codemble.adapters.base`). The correct fix is to
+frame the camera into the unobstructed region, and camera framing has produced
+three shipped regressions here, so it is not worth a rushed change for a defect
+whose target stays reachable through Find, the module index and the connections
+list.
+
+**Measurement discipline paid twice.** A candidate finding — "Expert has no Read
+the source" — was **withdrawn** on evidence: holding the layer constant showed
+it is absent on Galaxy and present on the Map in *both* registers, so it is
+layer-specific and correct. And the ambient `codemble` install resolves to a
+different worktree at v0.9.0, so the whole audit ran from a throwaway venv built
+from this tree; testing the ambient one would have audited the wrong code.
+
+426 pytest, Ruff clean, 17 frontend contract checks, the space budget green at
+every width and level it asserts, 84 escape assertions, reproducible bundle
+(two builds, identical content hashes). The milestone does not advance: issue
+#13 still requires human tester evidence.
+
+Previously (2026-08-02): UD's complaint was that the galaxy is "too dark and hard to just
 explore even if you are not learning", that the product's main goal is
 exploring code like an astronaut with learning **optional**, and that
 explanations are "too complex for a casual user" while "for experts most of the
@@ -1370,6 +1455,12 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | The tree-sitter `<0.26` cap is **re-verified and kept**, with the recorded cause corrected twice; dependabot #37 (`<0.27`) must not be merged | The cap's own comment invited this ("raise only once a grammar release is verified against the newer core"), and it now guards six grammars rather than two, none of the four new ones having ever been tested against 0.26. Tested in an isolated venv: 0.26.0 still SIGSEGVs (exit 139) inside the JS/TS adapter while 0.25.2 parses the same tree cleanly, deterministically, 3 runs of 3. Two corrections to what was written down. It is the **JavaScript** grammar, not JS/TS generally — parsing only `.ts` is clean, as are Go, Java, Rust, C# and Python — so the four new adapters are unaffected and only the oldest one blocks the upgrade. And it does **not** need "a corpus of real size": 23 files reproduce it. The half of the original note that held up is subtler and worth keeping — a bare traversal will not show it at all, since walking 188,755 named nodes across all six grammars on 0.26.0 is clean and only the adapter's own query and cursor work trips it, which is why a behavioural test cannot be the guard (it would have to crash the interpreter to fail) |
 | 2026-08-02 | **LOD culling and Python import resolution were both measured and refused**, and the measurements are recorded so the next session does not redo them | Two more pieces of planned work that the evidence said not to do. Python's relative and namespace imports are already complete — 500 import edges on this project, zero possible, zero project modules missed — so "airtight imports" had nothing to fix. LOD is subtler: the galaxy draws *regions*, not nodes, so the 900-node resolution guard is measured against the wrong quantity to worry about. Served a real 1,000-module project at the documented cap: 1,000 stars, route mesh thinned by reveal to 5 charted, no console error, camera correctly framed on the charted set. LOD belongs with *raising* the cap rather than before it. Stated as a limit rather than hidden: **framerate itself was not measured**, because the in-app browser reports `document.hidden === true` and therefore throttles `requestAnimationFrame` — the same trap recorded on 2026-07-29 for focus return — so the evidence here is structural, not a frame count |
 | 2026-08-02 | The v0.10.0 suite count is verified in a **throwaway venv**, and the ambient editable install is deliberately left alone | `test_the_running_app_reports_the_packaged_version` compares `__version__` — read from installed distribution metadata — against `pyproject.toml`, so a version bump makes it fail locally until the package is reinstalled. Its own message says so. But the pyenv editable install's `direct_url.json` pointed at *another session's worktree*, so reinstalling from here would have repointed that session's environment mid-flight. CI installs fresh from the branch and matches; a `python -m venv` install reproduces CI exactly and confirmed 379 passing. The gate is right, the local environment is stale, and the honest fix was to verify rather than to disturb somebody else's tree |
+| 2026-08-02 | The "is this file inside the project's own test tree?" entrypoint demotion moves to `codemble/graph/finalize.py` and is **deleted** from `python_ast.py` | Six candidates tied at rank 0 on this repository — `codemble.cli` plus a C#, Go, Java, Rust and TypeScript fixture — so `selected_entrypoint` was None and a first-run learner met a picker of 26 candidates, 22 under `tests/`. The obvious diagnosis is wrong and checking it is what produced the right fix: every one of those adapters already demotes tests, but each by a signal only its own language has (Rust `#[test]`, Java `@Test`, C# `[Fact]`/`[TestMethod]`, Go the `_test.go` suffix), and none of them fires on a fixture's ordinary unmarked `main()` in a file not named like a test. Porting attribute detection to five adapters would have been work against the wrong problem. The path question needs no parser evidence and is identical in every language, so it belongs at the one funnel every adapter already returns through — where an eighth language inherits it for free, exactly as `unsupported_sources` promised. Demotion, never exclusion: a project that IS a test suite still resolves a Home |
+| 2026-08-02 | The wide rail gives `.language-focus` a small `flex-basis` (`flex: 1 1 12rem`) rather than relying on its existing `min-width: 0` and `overflow-x: auto` | The focus control renders one permanent chip per language, so **its width is a property of the learner's project, not of the design**: seven languages measure 673px, and below ~1280px that plus the layer switcher and the audience toggle stopped fitting one row. The rail took a third row — header 148 → 216px, chrome 46.3% against a 42% budget, and the Map's drawing 197 → **106px** at region level, which is the compact shell at 1023px (325px) beating the wide shell at 1024px three times over. The scroll and `min-width: 0` were already present and could not help, and the reason is the part worth keeping: a wrapping flex container assigns items to lines by their **hypothetical** main size and only shrinks *within* a line afterwards, so a max-content item is moved to its own row before shrinking is ever considered. This also returns `check_space_budget` to green — it had been red on `main` since `cc8647f`, through three tagged releases, and was the only failing job. Which commit inside `cc8647f` tipped it was **not** bisected; the chip-count mechanism is proven separately by serving a single-language scope, where the same bundle measures 148px and the gate passes |
+| 2026-08-02 | A flank route descends to a stub 24px above its destination and turns **down** into the port; the arrowhead is `markerUnits="userSpaceOnUse"` | An SVG marker orients to its last segment, and flank routes ran the corridor straight to the destination's own top-edge y before turning in horizontally — so every arrowhead on a cycle, backward or layer-skipping edge arrived **sideways, flush along the border**. On a real project that is a row of small triangles across the top of each box, which reads as sawtooth decoration rather than as routes arriving, with no visible stub to trace back to a source. Reported by UD from the served build, and it is geometry rather than styling: no marker size or colour fixes an arrow that is parallel to the edge it is entering. 24px is safe by construction because the row gap is `_ROW_HEIGHT - _BOX_HEIGHT` = 64. `userSpaceOnUse` because a strokeWidth-relative head gave the thinnest — and most numerous — routes the smallest arrows, while direction is a fact every route needs equally. The test asserts the property for **every** edge, not the flank case alone, since adjacent-layer routes already satisfied it and the reader's expectation is what is being pinned |
+| 2026-08-02 | The Easy structural summary names the **relation** ("Two other files bring it in") instead of counting undifferentiated "parts"; the "Called by" label is left exactly as it was | The panel printed "Called by 0" — `centrality`, call edges only — directly above "Two other parts of your code use it", which counted two *imports*. Both numbers were right and the pair was unreadable, which for this audience spends the same trust as being wrong. The naive fix is the trap: `StudyPanel.jsx` carries a comment recording that "Called by" was chosen over "Used by" precisely to avoid this collision, so **renaming the label would have recreated the very contradiction the comment exists to prevent**. Naming the relation separates the two questions without moving either count, and it keeps import vocabulary where the evidence is an import. Neither number changed |
+| 2026-08-02 | The check panel's primary action is `position: sticky`; the study panel's "Read the source" scrolls to the source | One shape, two surfaces: a panel putting its own primary content or control out of reach with no affordance — the class already fixed once on the Map's region caption. Measured: the submit button was 47% covered by the status line at 1440x900 (a hit test at its bottom edge returned the footer) and sat 101px below the fold at 1280x720; the source sat 4144px — 6.6 viewports — below a control literally named "Read the source". Severity is stated precisely because it was not what it looked like: **keyboard users were never blocked**, since focusing the submit button scrolls it into view (`scrollTop` 0 → 241, measured), so this failed silently for pointer users only, which is why neither the space budget (header overlaps only) nor the escape sweep could see it. Only the named control scrolls; every other route to a node still opens at the top of the panel |
+| 2026-08-02 | A structure occluded by the System view's orientation panel is **deferred**, not fixed | Sampling six points across that panel's button returns the button at every one, so any body the camera projects into its rectangle is unclickable — the mechanism is general, the occurrence depends on the system's layout (reproduced on `codemble.cli`, absent on `codemble.adapters.base`). The correct fix is to frame the camera into the *unobstructed* canvas region, which is exactly the module that has produced three shipped regressions in this project, and the defect is P2 with three working routes to the same structure (Find, the module index, the connections list). Recorded here rather than left in a report, because the next session should not rediscover it and should not reach for a quick z-index patch either |
 
 ## Non-Goals — do NOT build (point here when asked)
 

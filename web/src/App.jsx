@@ -45,6 +45,10 @@ export function App() {
   const stageRef = useRef(null);
   const systemCopyRef = useRef(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // View-local, and deliberately not a session field: "did the learner arrive
+  // by the Read-the-source button" is a fact about this click, not about what
+  // the graph or the learner's progress says.
+  const [revealSource, setRevealSource] = useState(false);
   const mapViewportStore = useMemo(() => createMapViewportStore(), []);
   const session = useMemo(
     () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
@@ -370,9 +374,10 @@ export function App() {
             <button
               className="check-launch check-launch--read"
               type="button"
-              onClick={() =>
-                session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: studyEntryNodeId })
-              }
+              onClick={() => {
+                setRevealSource(true);
+                session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: studyEntryNodeId });
+              }}
             >
               Read the source
             </button>
@@ -897,9 +902,13 @@ export function App() {
             explanationLoading={explanationLoading}
             explanationError={explanationError}
             llmStatus={llmStatus}
-            onSelectNode={(nodeId) =>
-              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
-            }
+            revealSource={revealSource}
+            onSelectNode={(nodeId) => {
+              // Following a connection is ordinary navigation and opens at the
+              // top of the panel, as every route but Read-the-source does.
+              setRevealSource(false);
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId });
+            }}
             onRetryNarration={() =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: selectedNode.id })
             }

@@ -427,29 +427,33 @@ function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedR
         }
       >
         <defs>
+          {/* userSpaceOnUse, not strokeWidth: a route's stroke scales with its
+              weight, so a strokeWidth-relative head gave the thinnest -- and
+              most numerous -- routes the smallest arrows on the map. The head
+              carries direction, which every route needs equally. */}
           <marker
             id="architecture-arrow"
             className="architecture-map__arrow"
-            markerWidth="8"
+            markerWidth="9"
             markerHeight="8"
-            refX="8"
+            refX="9"
             refY="4"
             orient="auto"
-            markerUnits="strokeWidth"
+            markerUnits="userSpaceOnUse"
           >
-            <path d="M 0 0 L 8 4 L 0 8 Z" fill="currentColor" />
+            <path d="M 0 0 L 9 4 L 0 8 Z" fill="currentColor" />
           </marker>
           <marker
             id="architecture-cycle-arrow"
             className="architecture-map__arrow is-cycle"
-            markerWidth="8"
+            markerWidth="9"
             markerHeight="8"
-            refX="8"
+            refX="9"
             refY="4"
             orient="auto"
-            markerUnits="strokeWidth"
+            markerUnits="userSpaceOnUse"
           >
-            <path d="M 0 0 L 8 4 L 0 8 Z" fill="currentColor" />
+            <path d="M 0 0 L 9 4 L 0 8 Z" fill="currentColor" />
           </marker>
         </defs>
         <g className="architecture-map__edges">

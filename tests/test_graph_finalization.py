@@ -21,13 +21,15 @@ def _node(
     *,
     region: str,
     rank: int | None = None,
+    file: str | None = None,
+    language: str = "python",
 ) -> Node:
     return Node(
         id=node_id,
         kind="module" if node_id == region else "function",
         name=node_id.rsplit(".", 1)[-1],
-        language="python",
-        file=f"{region}.py",
+        language=language,
+        file=file if file is not None else f"{region}.py",
         lineno=1,
         end_lineno=3,
         loc=3,
@@ -649,3 +651,82 @@ def test_layout_never_claims_a_region_is_understood() -> None:
 
     assert [region.understood for region in finalized.regions] == [False]
     assert all(node.understood is False for node in finalized.nodes)
+
+
+def test_a_test_fixture_never_ties_with_the_project_s_own_entrypoint() -> None:
+    """Home resolves itself when only test fixtures tie with the real entry.
+
+    Measured on this repository before this rule: rank 0 held SIX candidates --
+    `codemble.cli` plus a C#, Go, Java, Rust and TypeScript fixture, each an
+    ordinary unmarked `main()` under `tests/fixtures/`. No candidate was
+    uniquely best, so `selected_entrypoint` was None and a first-run learner
+    met a picker listing 26 candidates, 22 of them under `tests/`.
+
+    Every adapter already had SOME notion of a test, but each asked a question
+    only its own language could answer -- Rust `#[test]`, Java `@Test`, C#
+    `[Fact]`, Go the `_test.go` suffix -- and none of those sees a plain
+    `main()` in a file that is not named like a test. "Is this file inside the
+    project's own test tree?" is path-based and language-neutral, so it is
+    asked once, here, where every adapter already funnels.
+    """
+
+    draft = Graph(
+        nodes=(
+            _node("app", region="app", rank=0, file="src/app.py"),
+            _node(
+                "go:tests/fixtures/sample/main.go",
+                region="go:tests/fixtures/sample/main.go",
+                rank=0,
+                file="tests/fixtures/sample/main.go",
+                language="go",
+            ),
+            _node(
+                "rust:tests/fixtures/sample/main.rs::main",
+                region="rust:tests/fixtures/sample/main.rs",
+                rank=0,
+                file="tests/fixtures/sample/main.rs",
+                language="rust",
+            ),
+        ),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"src/app.py": "one"},
+    )
+
+    finalized = finalize_graph(draft)
+    ranks = {node.id: node.entrypoint_rank for node in finalized.nodes}
+
+    assert finalized.selected_entrypoint == "app", (
+        "the project's own entry is the unique best candidate, so nothing is asked"
+    )
+    assert ranks["app"] == 0
+    for fixture in ("go:tests/fixtures/sample/main.go", "rust:tests/fixtures/sample/main.rs::main"):
+        assert ranks[fixture] > 0, f"{fixture} must be demoted below the real entry"
+        assert fixture in finalized.entrypoint_candidates, (
+            "demoted, never dropped -- a project that IS a test suite still needs a Home"
+        )
+
+
+def test_an_all_fixture_project_still_resolves_a_home() -> None:
+    """Demotion is relative, so a project made only of tests still gets one."""
+
+    draft = Graph(
+        nodes=(
+            _node(
+                "go:tests/sample/main.go",
+                region="go:tests/sample/main.go",
+                rank=0,
+                file="tests/sample/main.go",
+                language="go",
+            ),
+        ),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={"tests/sample/main.go": "one"},
+    )
+
+    finalized = finalize_graph(draft)
+
+    assert finalized.selected_entrypoint == "go:tests/sample/main.go"

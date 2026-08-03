@@ -70,7 +70,7 @@ def test_possible_relationships_stay_labelled_possible_in_both_voices():
 
 def test_zero_neighbours_is_stated_not_omitted():
     summary = structural_summary(_node(), [], [])
-    assert "Nothing else in your code uses it yet." in summary["easy"]
+    assert "Nothing else in your code brings it in yet." in summary["easy"]
     assert "0 inbound" in summary["expert"]
 
 
@@ -103,8 +103,27 @@ def test_both_voices_state_the_structures_length():
 def test_more_than_ten_neighbours_render_as_digits_not_words():
     neighbors = [_neighbor("inbound") for _ in range(11)]
     summary = structural_summary(_node(), neighbors, [])
-    assert "11 other parts of your code use it." in summary["easy"]
+    assert "11 other parts call it." in summary["easy"]
     assert "11 inbound" in summary["expert"]
+
+
+def test_the_easy_summary_names_the_relation_that_reaches_this_structure():
+    """"Called by 0" sits directly above this sentence, counting call edges only.
+
+    A module's inbound edges are usually imports, so phrasing them as "parts of
+    your code use it" put two different questions side by side wearing one word
+    — measured on this project's own Home module: `centrality` 0 against two
+    inbound imports. Both numbers were right; the pair could not be read.
+    """
+
+    imports = [dict(_neighbor("inbound"), relationship="import") for _ in range(2)]
+    summary = structural_summary(_node(), imports, [])
+    assert "Two other files bring it in." in summary["easy"]
+    assert "use it" not in summary["easy"], "import edges must not be voiced as calls"
+
+    mixed = imports + [_neighbor("inbound")]
+    both = structural_summary(_node(), mixed, [])
+    assert "Two other files bring it in and one other part calls it." in both["easy"]
 
 
 def test_two_or_more_lens_concepts_join_with_a_comma_and_and():

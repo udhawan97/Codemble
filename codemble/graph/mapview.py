@@ -16,6 +16,10 @@ MAP_SCHEMA_VERSION = 4
 
 _MAP_WIDTH = 960.0
 _ROW_HEIGHT = 120.0
+# How far above a destination box a flank route turns down into its port. The
+# row gap is _ROW_HEIGHT - _BOX_HEIGHT = 64, so a 24 stub leaves 40 clear of
+# the row above and can never cross it.
+_APPROACH = 24.0
 _BOX_WIDTH = 160.0
 _BOX_HEIGHT = 56.0
 _COLUMN_GAP = 24.0
@@ -350,7 +354,14 @@ def _route_points(
         left_distance = start[0]
         right_distance = width - start[0]
         flank = -24.0 if left_distance <= right_distance else width + 24.0
-        return [start, (flank, start[1]), (flank, end[1]), end]
+        # Descend to a stub ABOVE the destination, then turn down into the
+        # port. Running the flank straight to `end[1]` made the last segment
+        # horizontal at the destination's own top-edge y, so the arrowhead
+        # arrived sideways lying flush along the border -- a row of little
+        # triangles that read as sawtooth decoration on the box rather than as
+        # routes arriving, with no visible stub to trace back to a source.
+        approach = _rounded(end[1] - _APPROACH)
+        return [start, (flank, start[1]), (flank, approach), (end[0], approach), end]
 
     midpoint = _rounded((start[1] + end[1]) / 2.0)
     return [start, (start[0], midpoint), (end[0], midpoint), end]

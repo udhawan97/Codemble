@@ -16,8 +16,11 @@ Open a planet and the panel builds itself from the most certain evidence
 outward:
 
 1. **What this is** — a summary written from parser facts alone: kind, file and
-   line, size, how many things use it, how many it uses, and how many of those
-   links are possible rather than certain. No key, no network, no model.
+   line, size, what reaches it and what it reaches, and how many of those links
+   are possible rather than certain. It names the *relation* — "two other files
+   bring it in" for imports, "two other parts call it" for calls — because the
+   panel's **Called by** figure counts calls only, and two counts of "who uses
+   this" wearing one word cannot be told apart. No key, no network, no model.
 2. **Impact** — what a change here would reach, and what this depends on.
 3. **The explanation** — grounded narration from your configured provider, with
    a `file:line` citation on every claim. Codemble refuses to display provider
@@ -34,6 +37,13 @@ outward:
 
 Every section except the explanation is model-free. If narration fails or is not
 configured, all of them are still there.
+
+The panel opens at the top, because the order above runs from most certain to
+least. The one exception is the Map's **Read the source** button: it names the
+source, so it takes you to the source. On a module with a long impact list the
+excerpt can sit thousands of pixels down, and a control that promises the file
+should not land you above three other sections. Reaching the same structure any
+other way — a connection row, an impact row, a planet — still opens at the top.
 
 ## Impact: what a change here reaches
 

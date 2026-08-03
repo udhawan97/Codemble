@@ -1009,6 +1009,18 @@ input:focus-visible {
 .check-primary {
   justify-self: start;
   padding-inline: var(--cm-space-lg);
+  /* The submit control stays on screen whatever the panel's scroll position.
+     Measured before this: at 1440x900 the status line painted over the lower
+     21 of its 44px -- a hit test at the button's bottom edge returned the
+     footer -- and at 1280x720 it sat 101px below the fold entirely, in a
+     container whose `overflow: auto` draws no scrollbar until you scroll. A
+     learner could pick an answer and see no way to submit it. Sticky keeps
+     the panel's own primary action inside the panel's visible box, which is
+     the rule the study panel and the map caption also want. */
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  margin-block-start: var(--cm-space-sm);
 }
 
 .check-close {
@@ -2247,6 +2259,24 @@ input:focus-visible {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-self: center;
+  }
+
+  /* The focus control renders one permanent chip per language the project
+     contains, so its width is a property of the LEARNER'S project, not of the
+     design: seven languages measure 673px, and that plus the layer switcher
+     and the audience toggle no longer fits one row below about 1280px. The
+     rail then took a third row -- header 148 -> 216px, and the map's drawing
+     collapsed from 197px to 106px at region level, which is the compact shell
+     at 1023px beating the wide shell at 1024px three times over.
+
+     `min-width: 0` and `overflow-x: auto` were already here and could not help:
+     a wrapping flex container breaks lines using each item's HYPOTHETICAL main
+     size, and only shrinks within a line afterwards -- so a max-content-sized
+     item is moved to its own row before shrinking is ever considered. A small
+     flex-basis is what keeps it on the row; the existing scroll then carries
+     however many languages the project actually has. */
+  .language-focus {
+    flex: 1 1 12rem;
   }
 }
 

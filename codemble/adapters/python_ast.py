@@ -612,30 +612,10 @@ def _region_for(module: str) -> str:
     return module
 
 
-# Ranks run 0 (best) to 3. A test-scoped candidate is pushed below every
-# non-test one rather than removed: a project that IS a test suite still needs
-# somewhere to start, and dropping them would leave it with no Home at all.
-# Same reasoning as the Easy guidance penalty (Decision Log, 2026-07-22) --
-# bias the ranking, never the reported fact.
-_TEST_ENTRYPOINT_PENALTY = 4
-
-
-def _is_test_scoped(relative_path: str) -> bool:
-    """Whether a file lives in, or is, a test.
-
-    Path-based on purpose. `tests/fixtures/sampleproj/app.py` is not named like
-    a test and is one, and that shape -- fixtures carrying their own `main()`
-    and `__main__` guards -- is exactly what buried this project's real
-    entrypoint among five fixture candidates.
-    """
-
-    parts = Path(relative_path).parts
-    if any(part in {"tests", "test", "testing", "__tests__"} for part in parts[:-1]):
-        return True
-    stem = Path(relative_path).stem
-    return stem.startswith("test_") or stem.endswith("_test") or stem == "conftest"
-
-
+# Ranks run 0 (best) to 3. Demoting a test-scoped candidate is NOT done here:
+# it is path-based, needs no Python evidence, and every language has the same
+# problem, so it lives once in `codemble.graph.finalize`, which every adapter
+# already funnels through.
 def _entrypoint_ranks(
     parsed_files: tuple[_ParsedFile, ...], node_by_id: dict[str, Node]
 ) -> dict[str, int]:
@@ -657,15 +637,6 @@ def _entrypoint_ranks(
             module_rank = min(module_rank if module_rank is not None else 3, 3)
         if module_rank is not None:
             ranks[parsed.module] = module_rank
-        if _is_test_scoped(parsed.relative_path):
-            # Applied to every candidate this file produced, module and
-            # function alike, so a fixture's `main()` cannot outrank the
-            # project's own module-level entry.
-            for candidate_id in list(ranks):
-                if candidate_id == parsed.module or candidate_id.startswith(
-                    f"{parsed.module}."
-                ):
-                    ranks[candidate_id] += _TEST_ENTRYPOINT_PENALTY
     return ranks
 
 

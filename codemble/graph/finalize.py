@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import PurePosixPath
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph
 from codemble.graph.layout import layout_graph
@@ -10,6 +11,40 @@ from codemble.graph.layout import layout_graph
 
 class GraphFinalizationError(ValueError):
     """Parser evidence cannot be finalized into one honest graph."""
+
+
+# Ranks run 0 (best) upward. A test-scoped candidate is pushed below every
+# non-test one rather than removed: a project that IS a test suite still needs
+# somewhere to start, and dropping them would leave it with no Home at all.
+# Same reasoning as the Easy guidance penalty (Decision Log, 2026-07-22) --
+# bias the ranking, never the reported fact.
+_TEST_ENTRYPOINT_PENALTY = 4
+
+_TEST_DIRECTORIES = frozenset({"tests", "test", "testing", "__tests__", "spec", "__specs__"})
+
+
+def _is_test_scoped(file: str) -> bool:
+    """Whether a file lives in, or is, a test.
+
+    Path-based on purpose, and language-neutral on purpose. Every adapter has
+    some notion of a test, but each asks a question only its own language can
+    answer: Rust reads `#[test]`, Java `@Test`, C# `[Fact]`/`[TestMethod]`, Go
+    the `_test.go` suffix. None of those sees a fixture carrying an ordinary,
+    unmarked `main()` in a file that is not named like a test -- which is
+    exactly the shape of `tests/fixtures/<lang>_sample/...` and exactly what
+    tied six candidates at rank 0 on this project, leaving Home unresolved.
+
+    "Is this file inside the project's own test tree?" needs no parser
+    evidence, so it belongs here, once, where every adapter already funnels --
+    not copied into each of them, and not left to whichever language happens
+    to have thought of it.
+    """
+
+    path = PurePosixPath(file)
+    if any(part in _TEST_DIRECTORIES for part in path.parts[:-1]):
+        return True
+    stem = path.stem
+    return stem.startswith("test_") or stem.endswith("_test") or stem == "conftest"
 
 
 def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
@@ -24,7 +59,11 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
     nodes = tuple(
         sorted(
             (
-                replace(node, centrality=len(callers_by_target.get(node.id, ())))
+                replace(
+                    node,
+                    centrality=len(callers_by_target.get(node.id, ())),
+                    entrypoint_rank=_ranked_below_tests(node.entrypoint_rank, node.file),
+                )
                 for node in graph.nodes
             ),
             key=lambda node: node.id,
@@ -75,6 +114,14 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
         partial_files=tuple(sorted(set(graph.partial_files))),
     )
     return layout_graph(finalized)
+
+
+def _ranked_below_tests(rank: int | None, file: str) -> int | None:
+    """Demote a test-scoped candidate; leave every other rank untouched."""
+
+    if rank is None or not _is_test_scoped(file):
+        return rank
+    return rank + _TEST_ENTRYPOINT_PENALTY
 
 
 def _edge_key(edge: Edge) -> tuple[str, str, str, int, bool, bool]:

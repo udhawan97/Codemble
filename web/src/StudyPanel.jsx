@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import { conceptTitle } from "./graphData.js";
 
 export function StudyPanel({
@@ -11,7 +13,23 @@ export function StudyPanel({
   llmStatus,
   onSelectNode,
   onRetryNarration,
+  revealSource = false,
 }) {
+  const sourceRef = useRef(null);
+  const revealedFor = useRef(null);
+  const sourceReady = Boolean(study?.source);
+  // A control named "Read the source" has to land on the source. The panel
+  // opens at the top, and above the source sit the summary, the impact widget
+  // and the connections list -- measured at 4144px on this project's own Home
+  // module, which is 6.6 viewports down. Every other route to a node still
+  // opens at the top; only this one control made that promise.
+  useEffect(() => {
+    if (!revealSource || !sourceReady) return;
+    if (revealedFor.current === node.id) return;
+    revealedFor.current = node.id;
+    sourceRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [revealSource, sourceReady, node.id]);
+
   return (
     <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
       <header className="study-preview__header">
@@ -91,7 +109,7 @@ export function StudyPanel({
               mode={mode}
               onSelectNode={onSelectNode}
             />
-            <SourceExcerpt source={study.source} />
+            <SourceExcerpt source={study.source} anchorRef={sourceRef} />
             <LensNotes lens={study.lens} language={node.language} mode={mode} />
           </>
         ) : null}
@@ -393,9 +411,9 @@ function LensNotes({ lens, language, mode }) {
   );
 }
 
-function SourceExcerpt({ source }) {
+function SourceExcerpt({ source, anchorRef }) {
   return (
-    <section className="source-study" aria-labelledby="source-heading">
+    <section className="source-study" aria-labelledby="source-heading" ref={anchorRef}>
       <div className="study-section-heading">
         <h2 id="source-heading">Real source</h2>
         <span>{source.file}:{source.start_line}–{source.end_line}</span>
