@@ -5,6 +5,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-08-02
+
+Two defects in v0.14.0's own fixes, found by verifying the shipped commit
+rather than trusting it.
+
+### Fixed
+- **The entrypoint test-bias was applied twice and edited a number the picker
+  promises is the parser's own.** `finalize_graph` runs twice on the normal
+  path — once inside an adapter's `parse_files`, again when `ProjectParser`
+  composes — and v0.14.0 *added* a penalty to `entrypoint_rank`, so a
+  test-scoped candidate measured rank 8 where the code documented 4. It changed
+  no outcome on the projects to hand, which is exactly why it needed a test at
+  the real seam. The bias now lives in the candidate **sort key**, which is
+  idempotent by construction and leaves the stored rank untouched — so the
+  number the picker shows is the parser's own, as the docs already claimed.
+- **"Read the source" could scroll a module the learner never asked about.**
+  The flag was cleared on the study panel's own navigation but not on the Map's
+  Workflow-tree rows, which dispatch node selection directly. Using the button
+  once, retreating, then clicking a different row auto-scrolled that module to
+  its source. Both routes now clear it.
+
 ## [0.14.0] - 2026-08-02
 
 An evidence-led user-flow audit of the served v0.13.0 build, run as a first-run

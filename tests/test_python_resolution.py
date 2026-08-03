@@ -248,15 +248,22 @@ def test_a_projects_own_entrypoint_outranks_its_test_suite(tmp_path: Path) -> No
 
     graph = PythonAstAdapter().parse(root)
 
+    order = graph.entrypoint_candidates
+    assert order.index("cli") < order.index("tests.harness"), (
+        "the project's own entry must win"
+    )
+    assert graph.selected_entrypoint == "cli", (
+        "one unambiguous best candidate means the learner is never asked"
+    )
+    # The bias lives in the ordering, never in the stored rank -- the picker
+    # promises the number it shows is the parser's own, and finalization runs
+    # twice on the composed path, so a rank it edits would compound.
     ranks = {
         node.id: node.entrypoint_rank
         for node in graph.nodes
         if node.entrypoint_rank is not None
     }
-    assert ranks["cli"] < ranks["tests.harness"], "the project's own entry must win"
-    assert graph.selected_entrypoint == "cli", (
-        "one unambiguous best candidate means the learner is never asked"
-    )
+    assert ranks["cli"] == ranks["tests.harness"] == 0
 
 
 def test_an_all_tests_project_still_gets_a_home(tmp_path: Path) -> None:

@@ -279,7 +279,23 @@ layer-specific and correct. And the ambient `codemble` install resolves to a
 different worktree at v0.9.0, so the whole audit ran from a throwaway venv built
 from this tree; testing the ambient one would have audited the wrong code.
 
-426 pytest, Ruff clean, 17 frontend contract checks, the space budget green at
+**v0.14.1 exists because the release was verified rather than trusted, and both
+defects it fixes are worth recording.** The test-bias was applied **twice**:
+`finalize_graph` runs once inside an adapter's `parse_files` and again when
+`ProjectParser` composes, and a rule that *adds* to `entrypoint_rank` is not
+idempotent — measured, rank 4 became rank 8. It changed no outcome on the
+projects to hand, which is precisely why it survived a green suite: every new
+test called `finalize_graph` directly, once, and the composed path is the one
+every real run takes. It also quietly broke a promise the picker makes and the
+docs repeat — that the rank shown is the parser's own. Biasing the **sort key**
+instead of the field fixes both at once and cannot compound however many times
+finalization runs. The second defect is the same half-wiring shape as the 2026-08-02
+`recordVisit` note: `revealSource` was cleared on the study panel's own
+navigation but not on the Map's Workflow rows, which dispatch selection
+directly, so the button's effect leaked onto a module the learner never asked
+about.
+
+428 pytest, Ruff clean, 17 frontend contract checks, the space budget green at
 every width and level it asserts, 84 escape assertions, reproducible bundle
 (two builds, identical content hashes). The milestone does not advance: issue
 #13 still requires human tester evidence.
@@ -1461,6 +1477,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | The Easy structural summary names the **relation** ("Two other files bring it in") instead of counting undifferentiated "parts"; the "Called by" label is left exactly as it was | The panel printed "Called by 0" — `centrality`, call edges only — directly above "Two other parts of your code use it", which counted two *imports*. Both numbers were right and the pair was unreadable, which for this audience spends the same trust as being wrong. The naive fix is the trap: `StudyPanel.jsx` carries a comment recording that "Called by" was chosen over "Used by" precisely to avoid this collision, so **renaming the label would have recreated the very contradiction the comment exists to prevent**. Naming the relation separates the two questions without moving either count, and it keeps import vocabulary where the evidence is an import. Neither number changed |
 | 2026-08-02 | The check panel's primary action is `position: sticky`; the study panel's "Read the source" scrolls to the source | One shape, two surfaces: a panel putting its own primary content or control out of reach with no affordance — the class already fixed once on the Map's region caption. Measured: the submit button was 47% covered by the status line at 1440x900 (a hit test at its bottom edge returned the footer) and sat 101px below the fold at 1280x720; the source sat 4144px — 6.6 viewports — below a control literally named "Read the source". Severity is stated precisely because it was not what it looked like: **keyboard users were never blocked**, since focusing the submit button scrolls it into view (`scrollTop` 0 → 241, measured), so this failed silently for pointer users only, which is why neither the space budget (header overlaps only) nor the escape sweep could see it. Only the named control scrolls; every other route to a node still opens at the top of the panel |
 | 2026-08-02 | A structure occluded by the System view's orientation panel is **deferred**, not fixed | Sampling six points across that panel's button returns the button at every one, so any body the camera projects into its rectangle is unclickable — the mechanism is general, the occurrence depends on the system's layout (reproduced on `codemble.cli`, absent on `codemble.adapters.base`). The correct fix is to frame the camera into the *unobstructed* canvas region, which is exactly the module that has produced three shipped regressions in this project, and the defect is P2 with three working routes to the same structure (Find, the module index, the connections list). Recorded here rather than left in a report, because the next session should not rediscover it and should not reach for a quick z-index patch either |
+| 2026-08-02 | The entrypoint test-bias is a **sort key**, not an edit to `entrypoint_rank` | v0.14.0 added a penalty to the field, and `finalize_graph` runs **twice** on the normal path -- once inside an adapter's `parse_files`, again when `ProjectParser` composes -- so a rule that *adds* is not idempotent: measured, rank 4 became rank 8. It changed no outcome on the projects to hand, which is exactly why a green suite kept it: every new test called `finalize_graph` directly, once, while the composed path is the one every real run takes. It also broke a promise the picker makes and the quickstart repeats -- that the rank shown is the parser's own. A sort key fixes both at once, is idempotent by construction however many times finalization runs, and is the literal reading of the standing rule "bias the ranking, never the reported fact". The regression test goes through `ProjectParser().parse()`, at the seam where it actually happened |
 
 ## Non-Goals — do NOT build (point here when asked)
 

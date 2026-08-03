@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node, UnsupportedSource
+from codemble.adapters.project import ProjectParser
+from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.graph import GraphFinalizationError, finalize_graph
 from codemble.graph.layout import (
     _CONSTELLATION_SPACING,
@@ -700,12 +703,17 @@ def test_a_test_fixture_never_ties_with_the_project_s_own_entrypoint() -> None:
     assert finalized.selected_entrypoint == "app", (
         "the project's own entry is the unique best candidate, so nothing is asked"
     )
-    assert ranks["app"] == 0
+    order = finalized.entrypoint_candidates
+    assert order[0] == "app"
     for fixture in ("go:tests/fixtures/sample/main.go", "rust:tests/fixtures/sample/main.rs::main"):
-        assert ranks[fixture] > 0, f"{fixture} must be demoted below the real entry"
-        assert fixture in finalized.entrypoint_candidates, (
+        assert order.index("app") < order.index(fixture), (
+            f"{fixture} must sort below the project's own entry"
+        )
+        assert fixture in order, (
             "demoted, never dropped -- a project that IS a test suite still needs a Home"
         )
+        # The bias is in the ordering; the number the picker shows is untouched.
+        assert ranks[fixture] == ranks["app"] == 0
 
 
 def test_an_all_fixture_project_still_resolves_a_home() -> None:
@@ -730,3 +738,41 @@ def test_an_all_fixture_project_still_resolves_a_home() -> None:
     finalized = finalize_graph(draft)
 
     assert finalized.selected_entrypoint == "go:tests/sample/main.go"
+
+
+def test_the_test_bias_survives_being_finalized_twice(tmp_path: Path) -> None:
+    """The normal path finalizes twice, so the rule has to be idempotent.
+
+    `parse_files` finalizes inside the adapter, and `ProjectParser` finalizes
+    again when it composes. A first version of this rule *added* a penalty to
+    `entrypoint_rank`, so the composed path applied it twice -- measured, rank
+    4 became rank 8. It changed no outcome on the fixtures at hand, which is
+    exactly why it needed a test at the real seam rather than at
+    `finalize_graph` alone.
+
+    Biasing the sort key instead of the field is idempotent by construction,
+    and it keeps the promise the picker makes: the rank shown is the parser's
+    own, not one Codemble has quietly moved.
+    """
+
+    root = tmp_path / "app"
+    (root / "tests").mkdir(parents=True)
+    entry = "def main():\n    return 1\n\nif __name__ == '__main__':\n    main()\n"
+    (root / "main.py").write_text(entry, encoding="utf-8")
+    (root / "tests" / "test_thing.py").write_text(entry, encoding="utf-8")
+
+    once = PythonAstAdapter().parse(root)
+    twice = ProjectParser().parse(root)
+
+    ranks_once = {n.id: n.entrypoint_rank for n in once.nodes if n.entrypoint_rank is not None}
+    ranks_twice = {n.id: n.entrypoint_rank for n in twice.nodes if n.entrypoint_rank is not None}
+
+    assert ranks_once == ranks_twice, "finalizing twice must not compound the bias"
+    assert ranks_twice["tests.test_thing"] == ranks_twice["main"] == 0, (
+        "the stored rank stays the parser's own; only the ordering is biased"
+    )
+    assert twice.entrypoint_candidates[0] == "main"
+    assert twice.entrypoint_candidates.index("main") < twice.entrypoint_candidates.index(
+        "tests.test_thing"
+    ), "the project's own entry must sort above the fixture"
+    assert twice.selected_entrypoint == "main"

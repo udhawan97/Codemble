@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import PurePosixPath
 
-from codemble.adapters.base import ConceptAnnotation, Edge, Graph
+from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
 from codemble.graph.layout import layout_graph
 
 
@@ -13,12 +13,13 @@ class GraphFinalizationError(ValueError):
     """Parser evidence cannot be finalized into one honest graph."""
 
 
-# Ranks run 0 (best) upward. A test-scoped candidate is pushed below every
-# non-test one rather than removed: a project that IS a test suite still needs
-# somewhere to start, and dropping them would leave it with no Home at all.
-# Same reasoning as the Easy guidance penalty (Decision Log, 2026-07-22) --
-# bias the ranking, never the reported fact.
-_TEST_ENTRYPOINT_PENALTY = 4
+# A test-scoped candidate sorts below every non-test one rather than being
+# removed: a project that IS a test suite still needs somewhere to start, and
+# dropping them would leave it with no Home at all. Same reasoning as the Easy
+# guidance penalty (Decision Log, 2026-07-22) -- bias the ranking, never the
+# reported fact. Here that is literal: the stored `entrypoint_rank` is never
+# touched, so the number the picker shows is the parser's own.
+_UNRANKED = 1 << 30
 
 _TEST_DIRECTORIES = frozenset({"tests", "test", "testing", "__tests__", "spec", "__specs__"})
 
@@ -59,22 +60,24 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
     nodes = tuple(
         sorted(
             (
-                replace(
-                    node,
-                    centrality=len(callers_by_target.get(node.id, ())),
-                    entrypoint_rank=_ranked_below_tests(node.entrypoint_rank, node.file),
-                )
+                replace(node, centrality=len(callers_by_target.get(node.id, ())))
                 for node in graph.nodes
             ),
             key=lambda node: node.id,
         )
     )
     node_by_id = {node.id: node for node in nodes}
+    # Test-scoping biases the ORDER, and never the stored rank. Two reasons,
+    # both of which a rank-mutating version got wrong: `finalize_graph` runs
+    # twice on the normal path -- once inside an adapter's `parse_files`, again
+    # inside `ProjectParser` composition -- so adding a penalty to the field
+    # applied it twice (measured: rank 4 became rank 8); and the rank is shown
+    # to the learner, who is promised it is the parser's real one.
     candidates = tuple(
         node.id
         for node in sorted(
             (node for node in nodes if node.entrypoint_rank is not None),
-            key=lambda node: (node.entrypoint_rank, node.id),  # type: ignore[arg-type]
+            key=_candidate_order,
         )
     )
     if entrypoint is not None and entrypoint not in candidates:
@@ -88,15 +91,15 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
     # picker holding a single option and was asked a question with one answer.
     # When exactly one candidate is the best available there is nothing to ask;
     # when several tie, that is a genuine decision and the picker still opens.
-    ranks = [
-        node_by_id[candidate].entrypoint_rank
-        for candidate in candidates
-        if node_by_id[candidate].entrypoint_rank is not None
-    ]
+    # Compared on the same key the candidate list is ordered by, so "best"
+    # means what the learner sees at the top: a test-scoped candidate only wins
+    # when nothing outside the test tree is ranked at all, which keeps a project
+    # that IS a test suite explorable.
+    keys = [_candidate_order(node_by_id[candidate]) for candidate in candidates]
     best = [
         candidate
         for candidate in candidates
-        if ranks and node_by_id[candidate].entrypoint_rank == min(ranks)
+        if keys and _candidate_order(node_by_id[candidate])[:2] == min(keys)[:2]
     ]
     selected_entrypoint = entrypoint or (best[0] if len(best) == 1 else None)
     finalized = replace(
@@ -116,12 +119,19 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
     return layout_graph(finalized)
 
 
-def _ranked_below_tests(rank: int | None, file: str) -> int | None:
-    """Demote a test-scoped candidate; leave every other rank untouched."""
+def _candidate_order(node: Node) -> tuple[int, int, str]:
+    """Order entrypoint candidates: real code first, then rank, then id.
 
-    if rank is None or not _is_test_scoped(file):
-        return rank
-    return rank + _TEST_ENTRYPOINT_PENALTY
+    Idempotent by construction — it reads the node and returns a sort key
+    rather than editing a field, so running finalization twice (which the
+    normal path does) cannot compound it.
+    """
+
+    return (
+        1 if _is_test_scoped(node.file) else 0,
+        node.entrypoint_rank if node.entrypoint_rank is not None else _UNRANKED,
+        node.id,
+    )
 
 
 def _edge_key(edge: Edge) -> tuple[str, str, str, int, bool, bool]:

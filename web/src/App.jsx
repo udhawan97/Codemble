@@ -696,9 +696,15 @@ export function App() {
             onSelectRegion={(regionId) =>
               session.dispatch({ type: "ADVANCE_REGION", regionId })
             }
-            onSelectNode={(nodeId) =>
-              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId })
-            }
+            onSelectNode={(nodeId) => {
+              // A Workflow-tree row is ordinary navigation, so it must clear
+              // the Read-the-source flag like every other route does --
+              // otherwise a learner who used that button once, retreated, and
+              // then clicked a different row would be scrolled to source they
+              // never asked for.
+              setRevealSource(false);
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId });
+            }}
             onRetry={() => session.dispatch({ type: "SET_LAYER", layer: "map" })}
             viewportStore={mapViewportStore}
           >
