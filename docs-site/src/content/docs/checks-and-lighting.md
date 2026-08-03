@@ -3,6 +3,10 @@ title: Checks & lighting
 description: The game loop — prove you understand a region, light it up forever.
 ---
 
+:::note[Version]
+The check-and-light loop, explorer trail, and capture below match v0.15.0.
+:::
+
 ## Why checks exist
 
 Reading an explanation is the weakest form of learning. Codemble makes you
@@ -42,8 +46,8 @@ that cannot be derived with certainty is not offered.
 ## Lighting rules
 
 <figure class="cm-product-shot">
-  <div class="cm-product-shot__viewport" tabindex="0" aria-label="Lit galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy-lit.png" alt="The galaxy just after a region was proved: codemble/cli.py burns amber as the one understood system while every other star stays dim but named and coloured, and the guidance chip has moved on to &quot;Study codemble.adapters.project next · 1 route from Home&quot;.">
+  <div class="cm-product-shot__viewport" tabindex="0" aria-label="Proved Home system product screen. Scroll sideways to inspect it at a readable size.">
+    <img src="/Codemble/shots/home-proved.png" alt="The Home system after its checks were passed: all four parser-proven structures glow amber, the action now reads &quot;Review understanding&quot;, and the guidance chip has moved on to &quot;Study codemble.adapters.project next · 1 route from Home&quot;.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>

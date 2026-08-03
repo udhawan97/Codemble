@@ -1,9 +1,11 @@
 {
-  "date": "2026-07-19",
+  "date": "2026-08-02",
   "design_system": "docs-site/design.md",
-  "font_stack": ["Sora", "Inter", "JetBrains Mono"],
-  "framework": "Vite + React",
-  "motion": "custom house easing; no motion library",
-  "palette": "locked Observatory Instrument tokens",
-  "spacing": "4-point scale"
+  "font_stack": ["Shippori Mincho", "Zen Kaku Gothic New", "JetBrains Mono"],
+  "framework": "Astro 7 + Starlight 0.41",
+  "motion": "Workbench screenshot crossfade via IntersectionObserver; 150ms reduced-motion ceiling",
+  "palette": "Formal Edo public tokens; current app palette remains forked",
+  "spacing": "4-point named token scale",
+  "product_evidence": "reproducible 1440x720 current-source captures",
+  "release_boundary": "packaged stable and current source v0.15.0; PyPI owns binary artifacts"
 }

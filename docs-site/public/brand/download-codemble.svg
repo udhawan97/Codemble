@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 92" width="760" height="92" role="img" aria-label="Download Codemble — wheel, source archive, and SHA256 digests">
+  <rect width="760" height="92" rx="6" fill="#070b1c"/>
+  <rect x="1" y="1" width="758" height="90" rx="5" fill="none" stroke="#2b4d96"/>
+  <circle cx="48" cy="46" r="21" fill="none" stroke="#82abec" stroke-width="2"/>
+  <path d="M48 31v23m-8-8 8 8 8-8M37 63h22" fill="none" stroke="#82abec" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="86" y="39" fill="#faf7f0" font-family="system-ui,sans-serif" font-size="21" font-weight="700">Download Codemble</text>
+  <text x="86" y="64" fill="#82abec" font-family="ui-monospace,monospace" font-size="13">wheel · source archive · SHA256 digests · release notes</text>
+  <path d="M680 46h36m-10-10 10 10-10 10" fill="none" stroke="#82abec" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

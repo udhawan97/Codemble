@@ -1,57 +1,66 @@
 ---
 /**
- * Atlas Journey — the shipped Codemble learning passage in four real frames.
+ * Workbench journey through the current product.
  *
- * Desktop keeps one atlas plate in view while the reader moves through the
- * semantic zoom. Compact and reduced-motion layouts pair each frame directly
- * with its copy instead; the choreography is never required for meaning.
+ * A sticky desktop proof frame follows normal-flow copy. Compact and
+ * reduced-motion layouts pair every step with its own full-size capture, so
+ * the choreography is never required for meaning.
  */
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const shot = (file: string) => `${base}/shots/${file}`;
 
 const scenes = [
   {
-    id: "galaxy",
-    mode: "Galaxy",
-    title: "Begin with the whole sky.",
-    body: "Every supported module becomes a star system. Imports become routes, Home stays marked, and unreadable files remain visible instead of disappearing from the story.",
+    id: "explore",
+    label: "Explore",
+    title: "Begin with a sky that is already readable.",
+    body: "All 171 modules in this repository are represented and coloured on the first frame. Labels rank and declutter; hover reveals every parser-owned name. The thinner route mesh expands around systems you visit.",
     image: "galaxy.png",
     focus: "center",
-    alt: "Codemble’s galaxy view showing 123 parser-proven star systems, named modules, language focus controls, and a visible partial-parse notice.",
+    alt: "Codemble v0.15.0 galaxy with 171 represented systems across seven languages, ranked labels, selective import routes, 30 charted systems, and an unlit Home.",
   },
   {
     id: "map",
-    mode: "Map",
-    title: "Flatten it when shape matters more than wonder.",
-    body: "The Architecture layer reads the same graph as the galaxy. It turns proven imports into a directional map without inventing placement or hiding modules that have no route from Home.",
+    label: "Map",
+    title: "Flatten the same evidence into a reading path.",
+    body: "Architecture lays modules out by proven imports from Home. Workflow follows certain calls from the entrypoint. Modules with no proven route are counted and folded—not erased.",
     image: "map-architecture.png",
     focus: "center",
-    alt: "Codemble’s Architecture map showing directional module routes from Home and an honest note counting the 93 modules with no proven import route.",
+    alt: "Codemble’s Expert Architecture map showing Home, connected server modules, real lines of code, and a counted shelf for 135 modules with no proven import route.",
   },
   {
     id: "system",
-    mode: "System",
-    title: "Move from a module to the structures inside it.",
-    body: "Functions and classes become planets in deterministic call-depth orbits. Proven calls and possible calls remain different, so the scene never upgrades a guess into a fact.",
+    label: "Land",
+    title: "Open one module and see the structures inside it.",
+    body: "Functions and classes become procedural worlds in parser-owned call layers. Solid routes are proven. Possible routes stay visually distinct, even when the scene is beautiful.",
     image: "system.png",
     focus: "center",
-    alt: "Codemble’s system view showing 31 functions and classes as lit worlds in deterministic orbits on labelled call-layer guides, with their parser-derived call relationships.",
+    alt: "Codemble system view for codemble.server.app, showing 34 parser-proven structures as procedural worlds on labelled call layers.",
   },
   {
-    id: "study",
-    mode: "Study",
-    title: "Land on evidence, not a generated tour.",
-    body: "Study opens the real structure, its source span, callers, parser evidence, and grounded explanation. This is where looking becomes reading — before the quiz asks you to prove it.",
-    image: "study-panel.png",
+    id: "impact",
+    label: "Inspect",
+    title: "See what a change reaches before a model speaks.",
+    body: "The Expert panel leads with parser-owned Impact: what uses this structure, what it needs, how many steps away each dependency sits, and where certainty runs out.",
+    image: "study-impact.png",
     focus: "end",
-    alt: "Codemble’s study panel for create_app, showing its real file location, 257-line span, 53 callers, parser-proven resolution, and structural summary.",
+    alt: "Codemble Expert study panel for the server app module, with its structural summary and parser-owned Impact section over the Architecture map.",
+  },
+  {
+    id: "prove",
+    label: "Prove",
+    title: "Earn the one colour that means understanding.",
+    body: "Short checks come from the graph, never the narrator. Pass Home and its four parser-proven structures glow amber; the next useful route advances while charted systems remain a separate record of where you have been.",
+    image: "home-proved.png",
+    focus: "center",
+    alt: "Codemble’s Home system after its checks were passed: all four parser-proven structures glow amber, Review understanding is available, and the next route points to codemble.adapters.project.",
   },
 ];
 ---
 
-<div class="atlas-journey" data-atlas-journey data-scene="galaxy">
+<div class="atlas-journey" data-atlas-journey data-scene="explore">
   <div class="journey-stage" aria-hidden="true">
-    <div class="journey-plate">
+    <div class="journey-frames">
       {
         scenes.map((scene, index) => (
           <figure
@@ -71,10 +80,7 @@ const scenes = [
         ))
       }
     </div>
-    <p class="journey-caption">
-      <span lang="ja">実景</span>
-      <span>real product · one parser-proven graph</span>
-    </p>
+    <p class="journey-caption"><span>Codemble v0.15</span><span>same project · same Home</span></p>
   </div>
 
   <ol class="journey-steps">
@@ -86,12 +92,12 @@ const scenes = [
           data-current={index === 0 ? "" : undefined}
           aria-current={index === 0 ? "step" : undefined}
         >
-          <figure class="journey-mobile-media">
+          <figure class="journey-inline-media">
             <div
               class="journey-media-scroll"
               tabindex="0"
               data-scroll-focus={scene.focus}
-              aria-label={`${scene.mode} product screen. Scroll sideways to inspect it at a readable size.`}
+              aria-label={`${scene.label} product screen. Scroll sideways to inspect it at a readable size.`}
             >
               <img
                 src={shot(scene.image)}
@@ -102,11 +108,9 @@ const scenes = [
                 decoding="async"
               />
             </div>
-            <figcaption class="journey-media-hint">
-              Swipe or use arrow keys to inspect the full-size app screen.
-            </figcaption>
+            <figcaption>Current app · {scene.label}</figcaption>
           </figure>
-          <p class="journey-mode">{scene.mode}</p>
+          <p class="journey-label">{String(index + 1).padStart(2, "0")} · {scene.label}</p>
           <h3>{scene.title}</h3>
           <p>{scene.body}</p>
         </li>
@@ -119,19 +123,18 @@ const scenes = [
   document.querySelectorAll<HTMLElement>("[data-atlas-journey]").forEach((root) => {
     const steps = [...root.querySelectorAll<HTMLElement>("[data-journey-step]")];
     const frames = [...root.querySelectorAll<HTMLElement>("[data-journey-frame]")];
-    const cinematic = matchMedia(
-      "(min-width: 120rem) and (prefers-reduced-motion: no-preference)",
+    const workbench = matchMedia(
+      "(min-width: 72rem) and (prefers-reduced-motion: no-preference)",
     );
-    const compactShots = matchMedia("(max-width: 40rem)");
+    const scrollableShots = matchMedia("(max-width: 56rem)");
     let observer: IntersectionObserver | undefined;
 
-    const positionCompactShots = () => {
-      if (!compactShots.matches) return;
+    const positionScrollableShots = () => {
+      if (!scrollableShots.matches) return;
       root.querySelectorAll<HTMLElement>("[data-scroll-focus]").forEach((viewport) => {
         if (viewport.dataset.scrollPositioned === "") return;
         const remaining = viewport.scrollWidth - viewport.clientWidth;
-        viewport.scrollLeft =
-          viewport.dataset.scrollFocus === "end" ? remaining : remaining / 2;
+        viewport.scrollLeft = viewport.dataset.scrollFocus === "end" ? remaining : remaining / 2;
         viewport.dataset.scrollPositioned = "";
       });
     };
@@ -154,7 +157,6 @@ const scenes = [
       const focusLine = innerHeight * 0.48;
       let nearest: HTMLElement | undefined;
       let distance = Number.POSITIVE_INFINITY;
-
       for (const step of steps) {
         const rect = step.getBoundingClientRect();
         if (rect.bottom <= 0 || rect.top >= innerHeight) continue;
@@ -163,21 +165,18 @@ const scenes = [
         nearest = step;
         distance = nextDistance;
       }
-
       if (nearest?.dataset.journeyStep) activate(nearest.dataset.journeyStep);
     };
 
     const connect = () => {
       observer?.disconnect();
       observer = undefined;
-
-      if (!cinematic.matches || !("IntersectionObserver" in window)) {
-        activate(steps[0]?.dataset.journeyStep || "galaxy");
+      if (!workbench.matches || !("IntersectionObserver" in window)) {
+        activate(steps[0]?.dataset.journeyStep || "explore");
         return;
       }
-
       observer = new IntersectionObserver(selectNearest, {
-        rootMargin: "-12% 0px -12% 0px",
+        rootMargin: "-15% 0px -15% 0px",
         threshold: [0, 0.25, 0.5, 0.75, 1],
       });
       steps.forEach((step) => observer?.observe(step));
@@ -185,8 +184,8 @@ const scenes = [
     };
 
     connect();
-    requestAnimationFrame(positionCompactShots);
-    cinematic.addEventListener("change", connect);
-    compactShots.addEventListener("change", positionCompactShots);
+    requestAnimationFrame(positionScrollableShots);
+    workbench.addEventListener("change", connect);
+    scrollableShots.addEventListener("change", positionScrollableShots);
   });
 </script>

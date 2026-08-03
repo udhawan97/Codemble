@@ -134,14 +134,27 @@ The audience cannot detect when the tool is wrong. Therefore:
   needs a manual `{label, slug}` entry or it won't appear.
 - **Design system:** `docs-site/design.md` is locked; `src/styles/tokens.css`
   is the value source of truth and **must load before** `custom.css`. Genre is
-  the Edo star atlas on the Formal Edo palette. Two accents, one job each:
-  kohaku amber = understanding/progress, ruri lapis = interaction — kohaku may
-  never mark a navigation state. WCAG 4.5:1 floor on both grounds.
-- **Plate artwork is generated:** `node docs-site/scripts/build-plates.mjs`
-  rewrites `public/brand/plates/` from a fixed seed. Edit the script, never the
-  SVGs; commit the output (the site never runs it at build time).
+  the Formal Edo evidence workbench. Two accents, one job each: kohaku amber =
+  understanding/progress, ruri lapis = interaction — kohaku may never mark a
+  navigation state. WCAG 4.5:1 floor on both grounds.
+- **Brand artwork is generated:** `npm run brand:build` in `docs-site/`
+  rewrites the plate reserve, icons, README download banner, and social card
+  from fixed inputs. Edit the script, never generated SVG/PNG output; commit
+  both (the site never runs the generator during its build).
+- **Product screenshots are reproducible:** `npm run capture:docs` in `web/`
+  starts its own current-source server on a random loopback port and unique
+  temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
+  real first-run UI and graph checks, then removes both server and data. It
+  refuses an external capture URL.
+- **Public release truth:** packaged stable and current source are v0.15.0.
+  GitHub carries the release notes but no uploaded binaries for this release;
+  direct wheel/source downloads and their SHA256 digests come from PyPI.
 - **Site search is Pagefind**, which only exists after `npm run build` — the
   field says so in `npm run dev` rather than failing silently.
+- **Public browser proof is a pre-push gate:** build and preview `docs-site/`,
+  then run `CODEMBLE_SITE_URL=<preview>/Codemble npm run check:site` from
+  `web/`. It covers the landing at six widths, docs at mobile/desktop, keyboard
+  inspection, themes, images, routes, and both clipboard-failure paths.
 - **Docs cadence:** a milestone that changes user-facing behavior updates the
   relevant docs page(s) + sidebar in the same PR. CHANGELOG.md gets an entry
   per meaningful change (Keep a Changelog format).
@@ -180,7 +193,7 @@ refused on the evidence.** Recorded because the measurements are reusable:
   edges on this project: zero possible, zero project modules missed. Python
   import resolution is already complete.
 - **LOD culling — not the constraint at the supported cap.** The galaxy draws
-  *regions*, not nodes: 166 stars here, and at a real 1,000-module project
+  *regions*, not nodes: 171 stars in the v0.15 self-parse, and at a real 1,000-module project
   1,000 stars with the route mesh thinned by reveal to 5 charted. It renders
   with no console error, and the existing guards (node resolution dropping
   above 900, reveal, the label budget) are aimed exactly here. **Honest limit:
@@ -202,7 +215,8 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 Session note: an evidence-led user-flow audit of the served v0.13.0 build, run
 as a first-run Easy learner on this repository at 1440/1280/1100/1024/375/320 in
 both registers, found six gaps; a seventh arrived from UD mid-audit. Six are
-fixed and re-verified live, released as **v0.14.0**.
+fixed and re-verified live, released as **v0.14.0**. The entrypoint-order repair
+and control-aware camera framing followed as **v0.14.1** and **v0.15.0**.
 
 **The most useful finding was one the project's own gate had already been
 reporting.** `check_space_budget` had failed on every `main` run since
@@ -321,6 +335,16 @@ approved four-phase redesign
 (`docs/superpowers/specs/2026-08-02-explorable-galaxy-redesign.md`); the first
 three shipped and are on `main`.
 
+**Public presentation now matches that current app.** README and website use a
+Formal Edo Workbench led by reproducible 1440×720 product captures instead of a
+decorative hero: current Galaxy → Map → System → Impact → proved Galaxy. The
+download surface follows the FolioOrb clarity pattern—icon-led artifacts,
+published digests, a one-command route, and an explicit source-build route—while
+keeping its own visual language. Packaged stable, current source, and the
+screens are all v0.15.0; PyPI owns the downloadable wheel and sdist because the
+GitHub release has no binary assets. No app, parser, graph, checks, progress, or
+release behavior changed.
+
 **The darkness was not a bug, and that is why it needed a decision.** The unlit
 ramp was capped below a *text* token so amber would always win, and progressive
 reveal drew everything uncharted faint, unnamed and edgeless — about 100 of 128
@@ -330,8 +354,9 @@ than an identity flip: every meaning rule is intact, amber still means
 understanding and is still the brightest thing in the sky, checks are still the
 only way to earn it — but none of that may make the galaxy unexplorable first.
 So reveal now gates the **route mesh and the camera's opening frame only**,
-which is what the hairball actually was, and every module is visible, coloured
-and named from the first frame. Travel earns something of its own: visiting a
+which is what the hairball actually was, and every module is represented and
+coloured from the first frame; labels are ranked and decluttered, and every
+parser-owned name is available on hover. Travel earns something of its own: visiting a
 region **charts** it, persisted, drawing its routes permanently and counting on
 the star chart as "Systems explored" — deliberately a separate row from
 understood, because been-there is not know-it. It is not signature-scoped the
@@ -1491,6 +1516,8 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | A structure occluded by the System view's orientation panel is **deferred**, not fixed | Sampling six points across that panel's button returns the button at every one, so any body the camera projects into its rectangle is unclickable — the mechanism is general, the occurrence depends on the system's layout (reproduced on `codemble.cli`, absent on `codemble.adapters.base`). The correct fix is to frame the camera into the *unobstructed* canvas region, which is exactly the module that has produced three shipped regressions in this project, and the defect is P2 with three working routes to the same structure (Find, the module index, the connections list). Recorded here rather than left in a report, because the next session should not rediscover it and should not reach for a quick z-index patch either |
 | 2026-08-02 | The entrypoint test-bias is a **sort key**, not an edit to `entrypoint_rank` | v0.14.0 added a penalty to the field, and `finalize_graph` runs **twice** on the normal path -- once inside an adapter's `parse_files`, again when `ProjectParser` composes -- so a rule that *adds* is not idempotent: measured, rank 4 became rank 8. It changed no outcome on the projects to hand, which is exactly why a green suite kept it: every new test called `finalize_graph` directly, once, while the composed path is the one every real run takes. It also broke a promise the picker makes and the quickstart repeats -- that the rank shown is the parser's own. A sort key fixes both at once, is idempotent by construction however many times finalization runs, and is the literal reading of the standing rule "bias the ranking, never the reported fact". The regression test goes through `ProjectParser().parse()`, at the seam where it actually happened |
 | 2026-08-02 | The camera frames into the largest rectangle no **control** covers (`aimIntoClearRegion`), reserving buttons but not the prose beside them | A planet the camera projected under the System panel's button could not be clicked -- the button took the click and opened the quiz. The layout is parser-owned, so the body cannot move; the camera does, which is the rule `nameAtlas` has always applied to name plates extended to what the camera aims at. Bounded in this order: offset only while the sky still fits the clear region, and push back only as far as it must when it does not. The safety property is what made this affordable in the module that has caused three shipped framing regressions -- with no chrome the clear region IS the canvas, so the scale is 1 and the offset is 0 and the result is bit-identical to the frame it was handed, which is why every existing framing contract keeps asserting the numbers it always did. Only controls are reserved: a `pointer-events: none` paragraph over a star costs nothing, since the star stays clickable and stays visible around the text, while reserving the whole panel would push every system back for a problem only its buttons have. Proven in both directions -- the fixture asserts a body lands under the control BEFORE the fix, so the gate cannot pass vacuously |
+| 2026-08-02 | The public surface is a **Formal Edo Workbench** led by current v0.15.0 product evidence; PyPI is the binary download source | UD requested a full README/website overhaul that matches the exploration-first app and makes downloads obvious. The previous decorative atlas led with an abstraction while the strongest proof was the product itself. The new signature is the evidence chain—Galaxy, Map, System, Impact, proof—beside an icon-led artifact ledger. The proof frame is a close Home-system view, not a distant Galaxy claim: all four structures visibly glow after the checks pass. Packaged stable and current source now both report v0.15.0; the GitHub release carries notes but no uploaded binaries, so direct wheel/sdist downloads and their published SHA256 digests come from PyPI. This supersedes the landing-only parts of the 2026-07-19, 2026-07-22, and 2026-07-29 site decisions; the ensō, Formal Edo palette, reading scale, narrow-screen readable captures, and semantic accent rules remain locked |
+| 2026-08-02 | Product capture **owns its disposable server** and public release truth has an executable manifest | Council review found two trust failures in tooling that otherwise looked like documentation: an externally supplied capture URL could clear real progress and inherit a narrator, while a moving package index could make a version-specific one-command claim false between reviews. `capture:docs` now starts a current-source child on a random loopback port with a unique temporary data directory, removes provider configuration, requires reset success, refuses external URLs, and tears the child down. `docs-site/release.json` is the release manifest; `check:release` verifies it against source package versions, PyPI latest metadata, GitHub latest, artifact URLs, published digests, and downloaded bytes. Exact-release commands and source clones are pinned; the short `uvx codemble` route is described honestly as intentionally moving |
 
 ## Non-Goals — do NOT build (point here when asked)
 
@@ -1533,11 +1560,11 @@ shows lower repeated-commit work without changing derived values.
   is an acceptance criterion.
 - **The learner is the invariant:** when accuracy and delight conflict,
   accuracy wins. A wrong explanation is a top-severity bug, not a nitpick.
-- **`web/src/tokens.css` imports the docs-site tokens across directories** —
-  editing `docs-site/src/styles/tokens.css` restyles the app with no signal and
-  no rebuild. `codemble/web_dist` is a committed build artifact, so a token
-  change only reaches users after `cd web && npm run build` is re-run and the
-  result committed.
+- **The app and website palettes are forked** — `web/src/tokens.css` owns the
+  dark local instrument; `docs-site/src/styles/tokens.css` owns the public
+  dark/light surfaces. Preserve the shared meaning rules, but never re-add a
+  cross-directory import. App CSS changes still require rebuilding and
+  committing `codemble/web_dist`.
 - **Canvas colours must be plain values, never `color-mix()`** — WebGL receives
   a custom property's authored text, so a computed token renders black. Add new
   canvas tokens through `readPalette`, which resolves them.
@@ -1554,7 +1581,7 @@ shows lower repeated-commit work without changing derived values.
 - Syntax errors / partial parses → parse what you can, flag the rest, never crash
 - Missing/invalid key → galaxy + structure + checks work; explanations show "add your key"
 - Unsupported-language files → outside the graph and never guessed
-- No WebGL → clear requirements message (no 2D fallback in v1)
+- No WebGL → the plain-SVG Map remains available; the 3D Galaxy does not
 
 ## Definition of done — Phase 0
 

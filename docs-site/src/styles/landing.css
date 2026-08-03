@@ -1,9 +1,9 @@
-/* Hallmark · macrostructure: Kishotenketsu plates · theme: Edo star atlas
- * nav: N9 edge-aligned · footer: Ft5 statement · signature: tatebanko hero
- * product stage: authentic semantic zoom · real screenshots · no fake chrome
- * pre-emit critique: P5 H5 E5 S5 R5 V5 · slop: pass (58/58)
- * Landing-only styles. Scoped to src/pages/index.astro; the docs never load it.
- * Every value references a token from tokens.css — no raw colours here.
+/* Hallmark · genre: atmospheric · macrostructure: Workbench · theme: Formal Edo
+ * enrichment: real current-app captures · nav: N8 terminal command · footer: Ft4 colophon
+ * signature: parser-proof workbench · no fake chrome · no stock imagery
+ * pre-emit critique: P5 H5 E4 S5 R4 V5 · contrast: pass (40–41)
+ * slop: pass (1–58) · mobile: pass (34, 49, 50–57)
+ * Landing-only styles. Every colour and face comes from tokens.css.
  * ========================================================================== */
 
 *,
@@ -14,7 +14,6 @@
 
 html,
 body {
-  /* clip, never hidden — `hidden` breaks position:sticky further down. */
   overflow-x: clip;
   margin: 0;
 }
@@ -24,16 +23,7 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-}
-
 body {
-  /* The public site is read at length, unlike the denser local app. Shadow the
-     shared instrument scale with the website aliases without restyling the
-     bundled app that imports the same token file. */
   --cm-text-xs: var(--cm-web-text-xs);
   --cm-text-sm: var(--cm-web-text-sm);
   --cm-text-base: var(--cm-web-text-base);
@@ -42,6 +32,7 @@ body {
   --cm-text-2xl: var(--cm-web-text-2xl);
   --cm-text-3xl: var(--cm-web-text-3xl);
 
+  min-width: 20rem;
   background: var(--cm-ground);
   color: var(--cm-ink);
   font-family: var(--cm-font-body);
@@ -50,59 +41,80 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Declared on :root, not per-section. Scoping it to a selector list meant any
-   section left off that list resolved `var(--gutter)` to nothing, which
-   invalidates the whole padding shorthand and silently drops the gutter. */
 :root {
-  --gutter: clamp(1.25rem, 5vw, 4rem);
-  /* The 起承転結 rail is fixed; content clears it rather than flowing under. */
-  --rail-clear: 4.5rem;
-  --measure: 82rem;
+  --page-gutter: clamp(1rem, 4vw, 4rem);
+  --page-measure: 90rem;
+  --copy-measure: 42rem;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --banner-offset: 6.5rem;
 }
 
 h1,
 h2,
 h3 {
-  font-family: var(--cm-font-display);
-  font-style: normal; /* roman always — italic headings are banned */
-  font-weight: 700;
-  line-height: 1.14;
-  letter-spacing: -0.015em;
-  overflow-wrap: anywhere;
   min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--cm-ink);
+  font-family: var(--cm-font-display);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+h1 {
+  font-size: clamp(2.55rem, 5.5vw, 5.25rem);
+}
+
+h2 {
+  font-size: clamp(2rem, 3.4vw, 3.6rem);
+}
+
+h3 {
+  font-size: clamp(1.35rem, 2vw, 2rem);
+}
+
+p,
+figure,
+ol,
+ul,
+dl,
+dd {
   margin: 0;
 }
 
-p {
-  margin: 0;
+img {
+  max-width: 100%;
 }
 
 a {
   color: var(--cm-orbit);
-  text-underline-offset: 0.22em;
+  text-decoration-color: color-mix(in srgb, var(--cm-orbit) 48%, transparent);
   text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in srgb, var(--cm-orbit) 42%, transparent);
-  transition: color var(--cm-dur-quick) var(--cm-ease);
+  text-underline-offset: 0.23em;
 }
 
 a:hover {
   text-decoration-color: currentColor;
 }
 
+code,
+pre {
+  font-family: var(--cm-font-mono);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 :focus-visible {
-  /* Never animated — a focus ring that fades in is a focus ring you miss. */
   outline: 2px solid var(--cm-orbit);
   outline-offset: 3px;
-  border-radius: var(--cm-radius);
-}
-
-code {
-  font-family: var(--cm-font-mono);
-  font-size: 0.9em;
-}
-
-img {
-  max-width: 100%;
 }
 
 .sr-only {
@@ -112,81 +124,125 @@ img {
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip-path: inset(50%);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+  border: 0;
 }
 
 .skip {
-  position: absolute;
-  left: var(--cm-space-md);
-  top: -4rem;
-  z-index: 100;
-  padding: var(--cm-space-xs) var(--cm-space-md);
-  background: var(--cm-ground-2);
-  border: var(--cm-rule) solid var(--cm-orbit);
+  position: fixed;
+  inset: var(--cm-space-sm) auto auto var(--cm-space-sm);
+  z-index: var(--z-dropdown);
+  padding: var(--cm-space-xs) var(--cm-space-sm);
+  color: var(--cm-on-fill);
+  background: var(--cm-orbit-fill);
   border-radius: var(--cm-radius);
-  text-decoration: none;
+  transform: translateY(-180%);
+  transition: transform var(--cm-dur-quick) var(--cm-ease);
 }
 
 .skip:focus {
-  top: var(--cm-space-md);
+  transform: none;
 }
 
-/* --- N9 nav: edge-aligned bezel ------------------------------------------ */
+/* --- N8 terminal-command navigation ------------------------------------- */
 
-.nav {
+.term-nav {
   position: sticky;
   top: 0;
-  z-index: var(--cm-z-nav);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cm-space-md);
-  padding: var(--cm-space-sm) var(--gutter);
-  background: color-mix(in srgb, var(--cm-ground) 94%, transparent);
-  border-bottom: var(--cm-rule) solid var(--cm-hairline);
+  z-index: var(--z-sticky);
+  color: var(--cm-ink);
+  background: var(--cm-ground);
+  border-block-end: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.nav-mark {
+.term-nav-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--cm-space-md);
+  width: min(100%, var(--page-measure));
+  min-height: 4.5rem;
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+.brand {
   display: inline-flex;
   align-items: center;
   gap: var(--cm-space-xs);
-  font-family: var(--cm-font-display);
-  font-weight: 700;
-  font-size: var(--cm-text-lg);
   color: var(--cm-ink);
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  font-weight: 700;
   text-decoration: none;
-  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.nav-mark img {
-  display: block;
+.brand img {
+  flex: none;
 }
 
-.nav-links {
+.term-line {
   display: flex;
   align-items: center;
-  gap: clamp(var(--cm-space-xs), 1.6vw, var(--cm-space-md));
-  font-size: var(--cm-text-sm);
+  gap: 0.7ch;
+  min-width: 0;
+  overflow-x: auto;
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  scrollbar-width: none;
+  white-space: nowrap;
 }
 
-.nav-links a {
+.term-line::-webkit-scrollbar {
+  display: none;
+}
+
+.term-line a {
+  flex: none;
   color: var(--cm-ink-2);
   text-decoration: none;
-  white-space: nowrap; /* nav links never wrap to two lines */
 }
 
-.nav-links a:hover {
-  color: var(--cm-ink);
+.term-line a:hover,
+.term-line a:focus-visible {
+  color: var(--cm-orbit);
 }
 
-.nav-theme {
+.term-prompt,
+.term-command {
+  color: var(--cm-orbit);
+}
+
+.term-command code {
+  color: inherit;
+}
+
+.term-caret {
+  flex: none;
+  color: var(--cm-orbit);
+  animation: caret-blink 1.05s steps(2) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.nav-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-xs);
+}
+
+.theme-toggle {
   display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  font-size: 0.95rem;
   color: var(--cm-ink-2);
   background: transparent;
   border: var(--cm-rule) solid var(--cm-hairline);
@@ -197,300 +253,121 @@ img {
     border-color var(--cm-dur-quick) var(--cm-ease);
 }
 
-.nav-theme:hover {
-  color: var(--cm-star);
-  border-color: var(--cm-star);
+.theme-toggle:hover {
+  color: var(--cm-orbit);
+  border-color: var(--cm-orbit);
 }
 
-.nav-theme:active {
-  transform: translateY(1px);
-}
+@media (max-width: 52rem) {
+  .term-nav-inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--cm-space-xs);
+  }
 
-.nav .cmsearch .cmsearch-open {
-  transition:
-    color var(--cm-dur-quick) var(--cm-ease),
-    border-color var(--cm-dur-quick) var(--cm-ease);
-}
-
-.nav .cmsearch .cmsearch-open:active,
-.nav .cmsearch .cmsearch-close:active {
-  transform: translateY(1px);
-}
-
-.nav-theme:disabled,
-.cmd-copy:disabled,
-.nav .cmsearch .cmsearch-open:disabled,
-.nav .cmsearch .cmsearch-close:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* Search and GitHub survive narrowest; section links fold away first. */
-@media (max-width: 56rem) {
-  .nav-links > a:nth-of-type(2),
-  .nav-links > a:nth-of-type(3) {
+  .nav-tools .cmsearch {
     display: none;
   }
 }
 
 @media (max-width: 34rem) {
-  .nav-links > a:nth-of-type(1) {
+  .term-line a:not(.term-command):not([href="#download"]) {
     display: none;
   }
 }
 
-/* --- 起承転結 rail ------------------------------------------------------- */
+/* --- Shared actions ------------------------------------------------------ */
 
-.rail {
-  position: fixed;
-  left: clamp(1rem, 2vw, 2rem);
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: var(--cm-z-rail);
-}
-
-.rail ol {
-  display: grid;
-  gap: var(--cm-space-md);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rail a {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  padding: var(--cm-space-2xs);
-  text-decoration: none;
-  color: var(--cm-ink-3);
-  transition: color var(--cm-dur-quick) var(--cm-ease);
-}
-
-.rail-kanji {
-  font-family: var(--cm-font-display);
-  font-size: 1.05rem;
-  line-height: 1;
-  writing-mode: vertical-rl; /* tategaki — vertical Japanese */
-}
-
-.rail-romaji {
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  opacity: 0;
-  transition: opacity var(--cm-dur-quick) var(--cm-ease);
-}
-
-.rail a:hover,
-.rail a[data-current] {
-  color: var(--cm-star);
-}
-
-.rail a:hover .rail-romaji,
-.rail a[data-current] .rail-romaji {
-  opacity: 1;
-}
-
-@media (max-width: 68.75rem) {
-  .rail {
-    display: none;
-  }
-}
-
-/* --- Buttons ------------------------------------------------------------- */
-
-.btn {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--cm-space-xs);
+  min-height: 2.75rem;
   padding: var(--cm-space-sm) var(--cm-space-lg);
-  font-family: var(--cm-font-body);
-  font-size: var(--cm-text-sm);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  white-space: nowrap; /* a CTA never wraps to two lines */
-  text-decoration: none;
   border: var(--cm-rule) solid transparent;
   border-radius: var(--cm-radius);
-  cursor: pointer;
+  font-size: var(--cm-text-sm);
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
   transition:
     background-color var(--cm-dur-quick) var(--cm-ease),
     border-color var(--cm-dur-quick) var(--cm-ease),
     color var(--cm-dur-quick) var(--cm-ease),
-    transform var(--cm-dur-quick) var(--cm-ease);
+    transform 100ms var(--cm-ease);
 }
 
-.btn-primary {
-  background: var(--cm-orbit-fill);
+.button img,
+.artifact-links img,
+.download-dock img {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.button-primary {
   color: var(--cm-on-fill);
+  background: var(--cm-orbit-fill);
 }
 
-.btn-primary:hover {
+.button-primary:hover {
+  color: var(--cm-on-fill);
   background: var(--cm-orbit-deep);
 }
 
-.btn-primary:active {
-  transform: translateY(1px);
-}
-
-.btn-quiet {
+.button-secondary {
   color: var(--cm-ink);
   border-color: var(--cm-hairline);
 }
 
-.btn-quiet:hover {
-  border-color: var(--cm-orbit);
+.button-secondary:hover {
   color: var(--cm-orbit);
+  border-color: var(--cm-orbit);
 }
 
-.btn-quiet:active {
+.button:active {
   transform: translateY(1px);
 }
 
-/* --- Command line (no fake terminal chrome) ------------------------------ */
-
-.cmd {
-  display: flex;
-  align-items: center;
-  gap: var(--cm-space-sm);
-  max-width: 100%;
-  min-width: 0; /* same reason: let the <code> inside scroll, not push */
-  margin-top: var(--cm-space-lg);
-  padding: var(--cm-space-xs) var(--cm-space-xs) var(--cm-space-xs)
-    var(--cm-space-sm);
-  background: var(--cm-ground-2);
-  border: var(--cm-rule) solid var(--cm-hairline);
-  border-left: 2px solid var(--cm-star);
-  border-radius: var(--cm-radius);
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.cmd code {
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  font-size: var(--cm-text-sm);
-  line-height: 1.7;
-  color: var(--cm-ink-2);
-  white-space: pre;
-}
-
-.cmd-block code {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.cmd-copy {
-  flex: none;
-  padding: var(--cm-space-2xs) var(--cm-space-sm);
-  font-family: var(--cm-font-body);
-  font-size: var(--cm-text-xs);
-  font-weight: 700;
-  color: var(--cm-ink-2);
-  background: transparent;
-  border: var(--cm-rule) solid var(--cm-hairline);
-  border-radius: var(--cm-radius);
-  cursor: pointer;
-  transition:
-    color var(--cm-dur-quick) var(--cm-ease),
-    border-color var(--cm-dur-quick) var(--cm-ease);
-}
-
-.cmd-copy:hover {
-  color: var(--cm-ink);
-  border-color: var(--cm-ink-3);
-}
-
-.cmd-copy:active {
-  transform: translateY(1px);
-}
-
-/* Silent success — the label says it, nothing pops. */
-.cmd-copy[data-done] {
-  color: var(--cm-star);
-  border-color: var(--cm-star);
-}
-
-/* --- Plate numbering ----------------------------------------------------- */
-/* Numbered because a real atlas is: these are plates in sequence, and the
-   sequence carries meaning the reader needs. */
-
-.plate-no,
-.act-mark {
-  display: flex;
-  align-items: center;
-  gap: var(--cm-space-xs);
-  font-size: var(--cm-text-xs);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--cm-ink-3);
-}
-
-.plate-no [lang="ja"],
-.act-mark [lang="ja"] {
-  font-family: var(--cm-font-display);
-  font-size: var(--cm-text-lg);
-  line-height: 1;
-  letter-spacing: 0.08em;
-  text-transform: none;
-  color: var(--cm-star);
-}
-
-.plate-no .sep,
-.act-mark .sep {
-  color: var(--cm-hairline);
-}
-
-/* --- 起 Hero: the tatebanko plate ---------------------------------------- */
+/* --- Hero --------------------------------------------------------------- */
 
 .hero {
-  position: relative;
-  isolation: isolate;
   display: grid;
-  align-content: center;
-  min-height: min(92svh, 50rem);
-  padding: var(--cm-space-xl) var(--gutter);
-  overflow: clip;
+  gap: var(--cm-space-xl);
+  width: min(100%, var(--page-measure));
+  margin-inline: auto;
+  padding: var(--cm-space-lg) var(--page-gutter) var(--cm-space-xl);
 }
 
-/* Left-aligned, never centred — a centred-everything hero is banned for this
-   genre, and the left column leaves the right of the plate to the chart. */
-.hero-inner {
-  position: relative;
-  z-index: var(--cm-z-content);
-  width: 100%;
-  max-width: 34rem;
-  /* Grid items default to min-width:auto, so the non-wrapping install command
-     inside would force this track wider than the viewport. With overflow-x
-     clipped on <body> the overspill is unreachable rather than scrollable,
-     which at 320px hides a CTA entirely. */
+.hero-copy {
   min-width: 0;
-  text-align: left;
 }
 
-@media (min-width: 56.25rem) {
-  .hero {
-    padding-block: var(--cm-space-xl) var(--cm-space-2xl);
-  }
-
-  .hero-inner {
-    max-width: min(34rem, 44vw);
-  }
+.release-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs);
+  margin-block-end: var(--cm-space-md);
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
 }
 
-@media (min-width: 68.8125rem) {
-  .hero-inner {
-    margin-left: var(--rail-clear);
-  }
-}
-
-.hero-title {
-  font-size: var(--cm-text-display);
-  margin: var(--cm-space-md) 0;
-  text-wrap: balance;
+.release-status span {
+  padding: var(--cm-space-2xs) var(--cm-space-xs);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
 }
 
 .hero-lede {
-  max-width: 32rem;
+  max-width: 40rem;
+  margin-block-start: var(--cm-space-lg);
   color: var(--cm-ink-2);
   font-size: var(--cm-text-lg);
   text-wrap: pretty;
@@ -500,93 +377,179 @@ img {
   display: flex;
   flex-wrap: wrap;
   gap: var(--cm-space-sm);
-  margin-top: var(--cm-space-lg);
+  margin-block-start: var(--cm-space-lg);
 }
 
-.hero .cmd {
+.command {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--cm-space-xs);
   max-width: 32rem;
+  min-width: 0;
+  margin-block-start: var(--cm-space-md);
+  padding: var(--cm-space-xs) var(--cm-space-xs) var(--cm-space-xs) var(--cm-space-sm);
+  color: var(--cm-orbit);
+  background: var(--cm-ground-2);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
 }
 
-.hero-note {
-  margin-top: var(--cm-space-sm);
-  font-size: var(--cm-text-xs);
+.command code {
+  min-width: 0;
+  overflow-x: auto;
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+  white-space: nowrap;
+}
+
+.command button {
+  min-width: 4.5rem;
+  min-height: 2.75rem;
+  color: var(--cm-ink-2);
+  background: transparent;
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  cursor: pointer;
+}
+
+.command button:hover,
+.command button[data-copied] {
+  color: var(--cm-orbit);
+  border-color: var(--cm-orbit);
+}
+
+.version-note {
+  max-width: 39rem;
+  margin-block-start: var(--cm-space-md);
   color: var(--cm-ink-3);
+  font-size: var(--cm-text-xs);
 }
 
-/* Below the split the plate sits behind the copy, so it steps back to keep
-   the headline at full contrast. */
-@media (max-width: 56.25rem) {
-  .tate {
-    opacity: 0.42;
+.hero-proof {
+  min-width: 0;
+}
+
+.product-viewport {
+  min-width: 0;
+  overflow-x: auto;
+  background: var(--cm-sky);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius-lg);
+  scrollbar-color: var(--cm-orbit) var(--cm-ground-2);
+}
+
+.product-viewport img {
+  display: block;
+  width: 60rem;
+  max-width: none;
+  height: auto;
+}
+
+.hero-proof figcaption,
+.journey-inline-media figcaption,
+.journey-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--cm-space-xs) var(--cm-space-md);
+  padding-block-start: var(--cm-space-xs);
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+@media (min-width: 56rem) {
+  .product-viewport img {
+    width: 100%;
   }
 }
 
-/* --- Kasumi rule: the divider between plates ----------------------------- */
+@media (min-width: 72rem) {
+  .hero {
+    grid-template-columns: minmax(24rem, 0.78fr) minmax(0, 1.45fr);
+    align-items: center;
+    gap: clamp(2rem, 5vw, 5rem);
+  }
 
-.rule {
-  display: block;
-  width: 100%;
-  height: 42px;
-  object-fit: cover;
-  opacity: 0.85;
+  .hero-proof {
+    margin-inline-end: calc(var(--page-gutter) * -0.45);
+  }
 }
 
-/* --- Acts ---------------------------------------------------------------- */
+/* --- Release truth band -------------------------------------------------- */
 
-.act {
-  max-width: var(--measure);
-  margin-inline: auto;
-  padding: var(--cm-space-2xl) var(--gutter);
-}
-
-.act-turn {
-  /* The turn gets its own ground — a change of light at the pivot. */
-  max-width: none;
+.release-band {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--cm-space-sm) var(--cm-space-lg);
+  padding: var(--cm-space-md) var(--page-gutter);
+  color: var(--cm-ink-2);
   background: var(--cm-ground-2);
   border-block: var(--cm-rule) solid var(--cm-hairline);
+  font-size: var(--cm-text-sm);
 }
 
-/* Full-bleed sections delegate the measure to one inner wrapper. Putting
-   max-width + margin-inline:auto on `> *` instead meant any child with its own
-   narrower max-width (.act-head, .foot-statement) got centred in the viewport
-   rather than aligned to the column. */
-.act-inner,
-.foot-inner {
-  max-width: var(--measure);
+.release-band p {
+  max-width: 66rem;
+}
+
+.release-band strong {
+  color: var(--cm-ink);
+}
+
+.release-band a {
+  white-space: nowrap;
+}
+
+/* --- Shared section rhythm ---------------------------------------------- */
+
+.workbench,
+.download,
+.capabilities,
+.trust,
+.faq {
+  width: min(100%, var(--page-measure));
   margin-inline: auto;
+  padding-inline: var(--page-gutter);
 }
 
-/* Once the rail appears it owns the left edge; sections step clear of it. */
-@media (min-width: 68.8125rem) {
-  .act,
-  .act-inner,
-  .foot-inner {
-    padding-left: var(--rail-clear);
-  }
+.workbench {
+  padding-block: var(--cm-space-2xl) var(--cm-space-3xl);
 }
 
-.act-head {
-  max-width: 44rem;
-  margin-bottom: var(--cm-space-xl);
+.download {
+  padding-block: var(--cm-space-3xl) var(--cm-space-2xl);
 }
 
-.act-mark {
-  margin-bottom: var(--cm-space-sm);
+.capabilities {
+  padding-block: var(--cm-space-2xl) var(--cm-space-3xl);
 }
 
-.act h2 {
-  font-size: var(--cm-text-3xl);
-  margin-bottom: var(--cm-space-md);
-  text-wrap: balance;
+.trust {
+  padding-block: var(--cm-space-3xl) var(--cm-space-2xl);
 }
 
-.act-lede {
+.faq {
+  padding-block: var(--cm-space-2xl) var(--cm-space-3xl);
+}
+
+.section-head {
+  display: grid;
+  gap: var(--cm-space-md);
+  max-width: 54rem;
+  margin-block-end: var(--cm-space-xl);
+}
+
+.section-head p {
+  max-width: var(--copy-measure);
   color: var(--cm-ink-2);
   font-size: var(--cm-text-lg);
   text-wrap: pretty;
 }
 
-/* --- 承 Atlas Journey ---------------------------------------------------- */
+/* --- Workbench journey --------------------------------------------------- */
 
 .atlas-journey {
   min-width: 0;
@@ -599,172 +562,98 @@ img {
 .journey-steps {
   display: grid;
   gap: var(--cm-space-xl);
-  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .journey-step {
   min-width: 0;
-  padding-block-start: var(--cm-space-lg);
-  border-block-start: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.journey-mobile-media {
+.journey-inline-media {
   min-width: 0;
-  margin: 0 0 var(--cm-space-lg);
-  overflow: hidden;
-  background: var(--cm-ground-2);
-  border: var(--cm-rule) solid var(--cm-hairline);
-  border-radius: var(--cm-radius);
+  margin-block-end: var(--cm-space-lg);
 }
 
 .journey-media-scroll {
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  background: var(--cm-sky);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius-lg);
+  scrollbar-color: var(--cm-orbit) var(--cm-ground-2);
 }
 
 .journey-media-scroll img {
   display: block;
-  width: 100%;
+  width: 60rem;
   max-width: none;
   height: auto;
 }
 
-.journey-media-hint {
-  display: none;
-}
-
-.journey-mode {
+.journey-label {
   margin-block-end: var(--cm-space-xs);
+  color: var(--cm-orbit);
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--cm-ink-3);
+  letter-spacing: 0.04em;
 }
 
 .journey-step h3 {
-  max-width: 18ch;
-  margin-block-end: var(--cm-space-xs);
-  font-size: var(--cm-text-xl);
-  text-wrap: balance;
+  max-width: 26ch;
 }
 
 .journey-step > p:last-child {
-  max-width: 38rem;
+  max-width: var(--copy-measure);
+  margin-block-start: var(--cm-space-sm);
   color: var(--cm-ink-2);
-  font-size: var(--cm-text-base);
-  text-wrap: pretty;
 }
 
-/* The dimensional stage exists only where there is enough room and the user
-   has not asked for reduced motion. Compact and reduced-motion layouts keep
-   each real screenshot directly beside its own explanation. */
-@media (max-width: 40rem) {
-  .journey-mobile-media {
-    margin-inline: calc(var(--gutter) * -1);
-    border-inline: 0;
-    border-radius: 0;
-  }
-
-  .journey-media-scroll {
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scrollbar-color: var(--cm-orbit) var(--cm-ground-3);
-  }
-
-  .journey-media-scroll:focus-visible {
-    outline-offset: -3px;
-  }
-
+@media (min-width: 56rem) {
   .journey-media-scroll img {
-    width: 60rem;
-  }
-
-  .journey-media-hint {
-    display: block;
-    padding: var(--cm-space-xs) var(--gutter);
-    font-family: var(--cm-font-mono);
-    font-size: var(--cm-text-xs);
-    color: var(--cm-ink-3);
-    border-block-start: var(--cm-rule) solid var(--cm-hairline);
+    width: 100%;
   }
 }
 
-/* The crossfade is reserved for genuinely wide canvases. At ordinary laptop
-   widths a full-width static frame is materially more readable than a 704px
-   screenshot beside a narrow copy rail. */
-@media (min-width: 120rem) {
-  :root {
-    --measure: 110rem;
-  }
-}
-
-@media (min-width: 120rem) and (prefers-reduced-motion: no-preference) {
+@media (min-width: 72rem) and (prefers-reduced-motion: no-preference) {
   .atlas-journey {
     display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.72fr);
-    gap: clamp(var(--cm-space-lg), 5vw, var(--cm-space-2xl));
+    grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.62fr);
     align-items: start;
+    gap: clamp(2rem, 5vw, 5rem);
   }
 
   .journey-stage {
     position: sticky;
-    top: 5.5rem;
+    top: var(--banner-offset);
     display: block;
-    height: min(72svh, 39rem);
-    min-height: 28rem;
-    perspective: 82rem;
+    min-width: 0;
   }
 
-  .journey-plate {
-    position: absolute;
-    inset-block-start: 50%;
-    inset-inline: -3% 0;
-    aspect-ratio: 1440 / 720;
-    transform: translateY(-50%);
-    transform-style: preserve-3d;
-  }
-
-  /* A second solid sheet peeking beneath the product capture makes the plate
-     feel physical without glass, blur, fake browser chrome, or a glow. */
-  .journey-plate::before {
-    content: "";
-    position: absolute;
-    inset: var(--cm-space-md) calc(var(--cm-space-md) * -1)
-      calc(var(--cm-space-md) * -1) var(--cm-space-md);
-    background: var(--cm-ground-3);
+  .journey-frames {
+    position: relative;
+    aspect-ratio: 2 / 1;
+    background: var(--cm-sky);
     border: var(--cm-rule) solid var(--cm-hairline);
-    border-radius: var(--cm-radius);
-    transform: translateZ(-1.5rem);
+    border-radius: var(--cm-radius-lg);
   }
 
   .journey-frame {
     position: absolute;
     inset: 0;
-    margin: 0;
     overflow: clip;
     opacity: 0;
-    background: var(--cm-ground-2);
-    border: var(--cm-rule) solid var(--cm-hairline);
-    border-radius: var(--cm-radius);
-    transform: translate3d(
-        var(--cm-space-md),
-        0,
-        calc(var(--cm-space-md) * -1)
-      )
-      scale(0.97) rotateY(2.5deg);
-    transform-origin: 70% 50%;
+    border-radius: inherit;
+    transform: translateY(8px);
     transition:
       opacity var(--cm-dur-reveal) var(--cm-ease),
-      transform var(--cm-dur-slow) var(--cm-ease);
+      transform var(--cm-dur-reveal) var(--cm-ease);
   }
 
   .journey-frame[data-active] {
-    z-index: var(--cm-z-content);
+    z-index: var(--z-raised);
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1) rotateY(0);
+    transform: none;
   }
 
   .journey-frame img {
@@ -774,409 +663,451 @@ img {
     object-fit: cover;
   }
 
-  .journey-caption {
-    position: absolute;
-    inset-inline: 0;
-    inset-block-end: var(--cm-space-xs);
-    display: flex;
-    justify-content: space-between;
-    gap: var(--cm-space-md);
-    font-family: var(--cm-font-mono);
-    font-size: var(--cm-text-xs);
-    letter-spacing: 0.08em;
-    color: var(--cm-ink-3);
-  }
-
-  .journey-caption [lang="ja"] {
-    font-family: var(--cm-font-display);
-    letter-spacing: 0.18em;
-  }
-
   .journey-steps {
     gap: 0;
-    padding-block: 12svh 18svh;
+    padding-block: 2rem 9rem;
   }
 
   .journey-step {
-    position: relative;
     display: grid;
     align-content: center;
-    min-height: 58svh;
+    min-height: min(70svh, 42rem);
     padding-block: var(--cm-space-xl);
-    transform: translateX(var(--cm-space-md));
-    transition: transform var(--cm-dur-reveal) var(--cm-ease);
-  }
-
-  .journey-step h3 {
-    color: var(--cm-ink-2);
-  }
-
-  .journey-step::before {
-    content: "";
-    width: 2.75rem;
-    height: 2px;
-    margin-block-end: var(--cm-space-md);
-    background: var(--cm-hairline);
+    opacity: 0.56;
+    transition: opacity var(--cm-dur-quick) var(--cm-ease);
   }
 
   .journey-step[data-current] {
-    transform: none;
+    opacity: 1;
   }
 
-  .journey-step[data-current] h3 {
-    color: var(--cm-ink);
-  }
-
-  .journey-step[data-current]::before {
-    background: var(--cm-orbit);
-  }
-
-  .journey-mobile-media {
+  .journey-inline-media {
     display: none;
   }
 }
 
-/* --- Languages ----------------------------------------------------------- */
+/* --- Download routes ----------------------------------------------------- */
 
-.langs {
-  margin-top: var(--cm-space-2xl);
-  padding-top: var(--cm-space-lg);
-  border-top: var(--cm-rule) solid var(--cm-hairline);
+.download {
+  width: 100%;
+  max-width: none;
+  background: var(--cm-ground-2);
+  border-block: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.langs-label {
-  font-size: var(--cm-text-xs);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--cm-ink-3);
+.download > * {
+  width: min(100%, var(--page-measure));
+  margin-inline: auto;
 }
 
-.langs ul {
+.download-layout {
+  display: grid;
+  gap: var(--cm-space-lg);
+}
+
+.stable-route,
+.source-route {
+  min-width: 0;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  background: var(--cm-ground);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius-lg);
+}
+
+.stable-route > p,
+.source-route > p {
+  margin-block-start: var(--cm-space-md);
+  color: var(--cm-ink-2);
+}
+
+.route-title {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--cm-space-xs);
-  margin: var(--cm-space-sm) 0;
+  align-items: flex-start;
+  gap: var(--cm-space-sm);
+}
+
+.route-title > img {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+}
+
+.route-title p {
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.run-steps {
+  display: grid;
+  gap: 0;
+  margin-block-start: var(--cm-space-lg);
   padding: 0;
   list-style: none;
+  border-block-start: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.langs li {
-  padding: var(--cm-space-2xs) var(--cm-space-sm);
+.run-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--cm-space-sm);
+  padding-block: var(--cm-space-sm);
+  border-block-end: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.run-steps span {
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.run-steps div {
+  display: grid;
+  gap: var(--cm-space-2xs);
+  min-width: 0;
+}
+
+.run-steps code {
+  overflow-x: auto;
+  color: var(--cm-ink-2);
   font-size: var(--cm-text-sm);
+}
+
+.artifact-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cm-space-sm) var(--cm-space-lg);
+  margin-block-start: var(--cm-space-lg);
+}
+
+.artifact-links > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cm-space-xs);
+  min-height: 2.75rem;
+  font-size: var(--cm-text-sm);
+  white-space: nowrap;
+}
+
+.source-route pre {
+  max-width: 100%;
+  margin: var(--cm-space-lg) 0 0;
+  padding: var(--cm-space-md);
+  overflow-x: auto;
+  color: var(--cm-ink-2);
+  background: var(--cm-ground-2);
+  border-block: var(--cm-rule) solid var(--cm-hairline);
+  font-size: var(--cm-text-xs);
+  line-height: 1.75;
+}
+
+.route-footnote {
+  font-size: var(--cm-text-sm);
+}
+
+@media (min-width: 64rem) {
+  .download-layout {
+    grid-template-columns: minmax(0, 1.45fr) minmax(20rem, 0.7fr);
+    align-items: start;
+  }
+}
+
+/* --- Capability ledger --------------------------------------------------- */
+
+.capability-list {
+  border-block-start: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.capability-list > div {
+  display: grid;
+  gap: var(--cm-space-sm);
+  padding-block: var(--cm-space-lg);
+  border-block-end: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.capability-list dt {
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-sm);
   color: var(--cm-ink);
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  font-weight: 700;
+}
+
+.capability-list dt img {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.capability-list dd {
+  max-width: 50rem;
+  color: var(--cm-ink-2);
+}
+
+.language-ledger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs) var(--cm-space-sm);
+  align-items: center;
+  margin-block-start: var(--cm-space-xl);
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+}
+
+.language-ledger strong {
+  color: var(--cm-ink);
+}
+
+.language-ledger span {
+  padding: var(--cm-space-2xs) var(--cm-space-xs);
   border: var(--cm-rule) solid var(--cm-hairline);
   border-radius: var(--cm-radius);
 }
 
-.langs-note {
-  font-size: var(--cm-text-sm);
+@media (min-width: 52rem) {
+  .capability-list > div {
+    grid-template-columns: minmax(16rem, 0.72fr) minmax(0, 1.28fr);
+    gap: var(--cm-space-xl);
+  }
+}
+
+/* --- Trust --------------------------------------------------------------- */
+
+.trust {
+  width: 100%;
+  max-width: none;
+  background: var(--cm-ground-2);
+  border-block: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.trust > * {
+  width: min(100%, var(--page-measure));
+  margin-inline: auto;
+}
+
+.trust-layout {
+  display: grid;
+  gap: var(--cm-space-xl);
+  align-items: start;
+}
+
+.contract-list {
+  padding: 0;
+  list-style: none;
+  border-block-start: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.contract-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--cm-space-md);
+  padding-block: var(--cm-space-md);
+  border-block-end: var(--cm-rule) solid var(--cm-hairline);
+}
+
+.contract-list span {
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.contract-list p {
   color: var(--cm-ink-2);
 }
 
-/* --- 転 The turn --------------------------------------------------------- */
-
-.turn-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
-  gap: var(--cm-space-lg);
-}
-
-.turn-card {
-  min-width: 0;
+.privacy-ledger {
   padding: var(--cm-space-lg);
   background: var(--cm-ground);
   border: var(--cm-rule) solid var(--cm-hairline);
   border-radius: var(--cm-radius-lg);
 }
 
-.turn-card h3 {
-  font-size: var(--cm-text-lg);
-  margin-bottom: var(--cm-space-xs);
-  color: var(--cm-star);
+.privacy-ledger h3 {
+  margin-block-end: var(--cm-space-md);
 }
 
-.turn-card p {
-  color: var(--cm-ink-2);
-  font-size: var(--cm-text-sm);
+.privacy-ledger dl {
+  border-block-start: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.turn-card code {
-  color: var(--cm-ink);
-}
-
-.turn-honest {
-  max-width: 44rem;
-  margin-top: var(--cm-space-lg);
-  padding-left: var(--cm-space-md);
-  border-left: 2px solid var(--cm-star);
-  color: var(--cm-ink-2);
-  font-size: var(--cm-text-sm);
-}
-
-/* --- 結 Contract --------------------------------------------------------- */
-/* The six rules read as a signed document: the kaō seal sits with them, the
-   way a real chart is stamped by the astronomer who vouches for it. */
-
-.contract-block {
+.privacy-ledger dl > div {
   display: grid;
-  gap: var(--cm-space-lg);
-  align-items: start;
+  gap: var(--cm-space-2xs);
+  padding-block: var(--cm-space-sm);
+  border-block-end: var(--cm-rule) solid var(--cm-hairline);
 }
 
-@media (min-width: 56.25rem) {
-  .contract-block {
-    grid-template-columns: 1fr auto;
+.privacy-ledger dt {
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+  font-weight: 700;
+}
+
+.privacy-ledger dd {
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.privacy-ledger > a {
+  display: inline-block;
+  margin-block-start: var(--cm-space-lg);
+  white-space: nowrap;
+}
+
+@media (min-width: 64rem) {
+  .trust-layout {
+    grid-template-columns: minmax(0, 1.2fr) minmax(19rem, 0.68fr);
   }
 }
 
-.contract {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: var(--cm-rule) solid var(--cm-hairline);
+/* --- FAQ ----------------------------------------------------------------- */
+
+.faq-list {
+  max-width: 58rem;
+  border-block-start: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.contract li {
-  display: flex;
-  gap: var(--cm-space-md);
-  min-width: 0;
-  padding: var(--cm-space-md) var(--cm-space-md) var(--cm-space-md) 0;
-  border-bottom: var(--cm-rule) solid var(--cm-hairline);
+.faq-list details {
+  border-block-end: var(--cm-rule) solid var(--cm-hairline);
 }
 
-.contract-n {
-  flex: none;
-  font-family: var(--cm-font-mono);
-  font-size: var(--cm-text-xs);
-  line-height: 1.9;
-  color: var(--cm-star);
-}
-
-.contract p {
-  color: var(--cm-ink-2);
-  font-size: var(--cm-text-sm);
-}
-
-.seal {
-  justify-self: center;
-  width: clamp(72px, 9vw, 108px);
-  height: auto;
-  opacity: 0.85;
-}
-
-.install {
-  max-width: 44rem;
-  margin-top: var(--cm-space-2xl);
-}
-
-.install h3 {
-  font-size: var(--cm-text-2xl);
-  margin-bottom: var(--cm-space-md);
-}
-
-.install .cmd {
-  margin-top: 0;
-}
-
-.install-note {
-  margin-top: var(--cm-space-md);
-  color: var(--cm-ink-2);
-  font-size: var(--cm-text-sm);
-}
-
-/* Setup is a real sequence, so it is numbered like the contract plate.
-   Ruri throughout: these are actions, never a claim of understanding. */
-
-.steps {
-  list-style: none;
-  margin: var(--cm-space-md) 0 0;
-  padding: 0;
-  counter-reset: step;
-  display: grid;
-  gap: var(--cm-space-sm);
-}
-
-.steps li {
-  counter-increment: step;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  gap: var(--cm-space-sm);
-  padding-top: var(--cm-space-sm);
-  border-top: var(--cm-rule) solid var(--cm-hairline);
-}
-
-.steps li:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.step-icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  color: var(--cm-orbit);
-}
-
-.step-body {
-  min-width: 0;
-}
-
-.step-title {
-  margin: 0;
-  font-family: var(--cm-font-display);
-  font-size: var(--cm-text-base);
+.faq-list summary {
+  padding-block: var(--cm-space-md);
   color: var(--cm-ink);
-}
-
-.step-title::before {
-  content: counter(step, decimal-leading-zero) " · ";
-  font-family: var(--cm-font-mono);
-  font-size: var(--cm-text-xs);
-  color: var(--cm-orbit);
-}
-
-.step-note {
-  margin: var(--cm-space-2xs) 0 0;
-  color: var(--cm-ink-2);
-  font-size: var(--cm-text-sm);
-}
-
-.steps .cmd-block {
-  margin-top: var(--cm-space-xs);
-}
-
-/* --- Ft5 statement footer ------------------------------------------------ */
-
-.foot {
-  padding: var(--cm-space-2xl) var(--gutter) var(--cm-space-xl);
-  border-top: var(--cm-rule) solid var(--cm-hairline);
-}
-
-.foot-statement {
-  max-width: 32rem;
   font-family: var(--cm-font-display);
-  font-size: var(--cm-text-2xl);
+  font-size: var(--cm-text-lg);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.faq-list details p {
+  max-width: var(--copy-measure);
+  padding-block-end: var(--cm-space-lg);
+  color: var(--cm-ink-2);
+}
+
+/* --- Workbench CTA dock -------------------------------------------------- */
+
+.download-dock {
+  position: fixed;
+  inset: auto max(var(--cm-space-md), env(safe-area-inset-right))
+    max(var(--cm-space-md), env(safe-area-inset-bottom)) auto;
+  z-index: var(--z-sticky);
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: var(--cm-space-md);
+  padding: var(--cm-space-sm);
+  color: var(--cm-ink);
+  background: var(--cm-ground-2);
+  border: var(--cm-rule) solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+}
+
+.download-dock[hidden] {
+  display: none;
+}
+
+.download-dock p {
+  display: grid;
+  font-size: var(--cm-text-xs);
   line-height: 1.3;
-  color: var(--cm-ink);
-  text-wrap: balance;
 }
 
-.foot-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cm-space-md);
-  margin-top: var(--cm-space-xl);
-  padding-top: var(--cm-space-md);
-  border-top: var(--cm-rule) solid var(--cm-hairline);
-}
-
-.foot-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cm-space-xs);
-  font-size: var(--cm-text-xs);
+.download-dock p span {
   color: var(--cm-ink-3);
 }
 
-.foot-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cm-space-md);
+.download-dock code {
+  color: var(--cm-ink-2);
   font-size: var(--cm-text-xs);
 }
 
-.foot-links a {
-  color: var(--cm-ink-2);
+.download-dock > a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cm-space-xs);
+  min-height: 2.75rem;
+  padding-inline: var(--cm-space-sm);
+  color: var(--cm-on-fill);
+  background: var(--cm-orbit-fill);
+  border-radius: var(--cm-radius);
+  font-size: var(--cm-text-xs);
+  font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
 }
 
-.foot-links a:hover {
-  color: var(--cm-orbit);
+@media (max-width: 50rem) {
+  .download-dock {
+    display: none;
+  }
 }
 
-/* Coarse pointers need a forgiving physical target even when the visual mark
-   stays deliberately compact. This applies to the landing controls without
-   inflating the desktop navigation. */
+/* --- Ft4 technical colophon --------------------------------------------- */
+
+.colophon {
+  display: grid;
+  gap: var(--cm-space-lg);
+  padding: var(--cm-space-xl) var(--page-gutter);
+  color: var(--cm-ink-3);
+  background: var(--cm-ground);
+  border-block-start: var(--cm-rule) solid var(--cm-hairline);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.colophon p {
+  max-width: 76rem;
+}
+
+.colophon nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-sm) var(--cm-space-lg);
+}
+
+.colophon a {
+  white-space: nowrap;
+}
+
+/* --- Interaction capabilities ------------------------------------------ */
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover {
+    transform: translateY(-1px);
+  }
+}
+
 @media (pointer: coarse) {
-  .nav-mark,
-  .nav-links a,
-  .rail a,
-  .foot-links a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2.75rem;
+  .term-line a,
+  .brand,
+  .artifact-links > a,
+  .privacy-ledger > a,
+  .colophon a {
     min-height: 2.75rem;
   }
-
-  .nav-theme {
-    width: 2.75rem;
-    height: 2.75rem;
-  }
-
-  .btn,
-  .cmd-copy {
-    min-height: 2.75rem;
-  }
-
-  .nav .cmsearch .cmsearch-open,
-  .nav .cmsearch .cmsearch-close {
-    justify-content: center;
-    min-width: 2.75rem;
-    min-height: 2.75rem;
-  }
-
-  .nav .cmsearch .cmsearch-field {
-    min-height: 2.75rem;
-    padding-block: 0;
-  }
-
-  .nav .cmsearch .cmsearch-field input {
-    min-height: 2.75rem;
-  }
-}
-
-/* --- Reveal -------------------------------------------------------------- */
-
-[data-reveal] {
-  opacity: 0;
-  transform: translateY(14px);
-  transition:
-    opacity var(--cm-dur-reveal) var(--cm-ease),
-    transform var(--cm-dur-reveal) var(--cm-ease);
-  transition-delay: var(--d, 0ms);
-}
-
-[data-reveal].shown {
-  opacity: 1;
-  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 150ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 150ms !important;
   }
 
-  [data-reveal] {
+  .term-caret {
+    animation: none;
     opacity: 1;
-    transform: none;
-  }
-
-  .btn:active,
-  .cmd-copy:active,
-  .nav-theme:active,
-  .nav .cmsearch .cmsearch-open:active,
-  .nav .cmsearch .cmsearch-close:active {
-    transform: none;
   }
 }

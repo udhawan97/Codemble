@@ -178,18 +178,17 @@ pre {
   border-inline-start: 2px solid var(--cm-orbit);
 }
 
-/* --- Cards: the seam ignites --------------------------------------------- */
-/* Codemble's loop in one hover: a ruri edge (unlit) that turns kohaku (lit).
-   Deliberately a left seam, not a top-corner rule — Golavo owns that gesture. */
+/* --- Cards: the plate rule ignites --------------------------------------- */
+/* Codemble's loop in one hover: a ruri rule (unlit) turns kohaku (lit). */
 
 .card {
-  border-left: 2px solid var(--cm-orbit-fill);
+  border-top: 2px solid var(--cm-orbit-fill);
   border-radius: var(--cm-radius);
   transition: border-color var(--cm-dur-reveal) var(--cm-ease);
 }
 
 .card:hover {
-  border-left-color: var(--cm-star);
+  border-top-color: var(--cm-star);
 }
 
 .card .icon {
@@ -324,4 +323,144 @@ pre {
   border: 0;
   padding: 0;
   white-space: pre;
+}
+
+/* --- Stable/current download ledger ------------------------------------- */
+
+.cm-version-ledger {
+  display: grid;
+  gap: var(--cm-space-md);
+  margin-block: var(--cm-space-lg);
+}
+
+.cm-version-route {
+  min-width: 0;
+  padding: clamp(var(--cm-space-sm), 3vw, var(--cm-space-lg));
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-block-start: 2px solid var(--cm-orbit-fill);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+}
+
+.cm-version-route--recommended {
+  border-block-start-color: var(--cm-orbit);
+}
+
+.cm-version-route__title {
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-sm);
+}
+
+.cm-version-route__title > img {
+  flex: none;
+}
+
+.cm-version-route__title p,
+.cm-version-route__title h2 {
+  margin: 0;
+}
+
+.cm-version-route__title p {
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-web-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cm-version-route pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cm-version-route pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cm-artifact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs) var(--cm-space-sm);
+  margin-block-start: var(--cm-space-md);
+}
+
+.cm-artifact-links a {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cm-space-xs);
+  padding: var(--cm-space-xs) var(--cm-space-sm);
+  border: var(--cm-rule) solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  text-decoration: none;
+}
+
+.cm-artifact-links a:hover {
+  border-color: var(--cm-orbit);
+}
+
+.cm-artifact-links .cm-artifact-primary {
+  color: var(--cm-on-fill);
+  background: var(--cm-orbit-fill);
+  border-color: var(--cm-orbit-fill);
+}
+
+.cm-version-route__note {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-web-text-sm);
+}
+
+.cm-choice-list {
+  display: grid;
+  gap: var(--cm-space-sm);
+  margin-block: var(--cm-space-lg);
+}
+
+.cm-choice-list > div {
+  min-width: 0;
+  padding: var(--cm-space-md);
+  border-block-start: 2px solid var(--cm-orbit-deep);
+  background: var(--cm-ground-2);
+}
+
+.cm-choice-list dt {
+  margin: 0 0 var(--cm-space-xs);
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-web-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cm-choice-list dd {
+  display: grid;
+  gap: var(--cm-space-xs);
+  margin: 0;
+}
+
+.cm-choice-list dd > code,
+.cm-choice-list dd > strong {
+  color: var(--cm-ink);
+  overflow-wrap: anywhere;
+}
+
+.cm-choice-list dd > span {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-web-text-sm);
+}
+
+@media (min-width: 50rem) {
+  .cm-choice-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .cm-version-ledger {
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+    align-items: start;
+  }
 }

@@ -7,13 +7,12 @@
 
 ## Genre
 
-**Edo star atlas (天文図).** Edo astronomers published the sky as numbered
-plates: gold stars and constellation lines on deep indigo, each plate framed,
-annotated, and signed by the astronomer who vouched for it. Codemble makes
-exactly that of a codebase, so the site *is* one of those atlases rather than a
-page about one. The instrument voice from the previous system is preserved —
-precise, quiet, made for looking at something vast — but it now has a material:
-paper, ink, and gold.
+**Formal Edo evidence workbench.** The app already turns source into a named,
+coloured sky, so the public site behaves like the work table beside that
+instrument: a real app frame, a compact release ledger, annotated evidence,
+direct artifacts, and a signed correctness contract. Edo astronomical books
+supply the indigo, shell-white, ruled plates, mincho typography, and ensō mark.
+They do not supply decorative theatre that competes with the current product.
 
 Wonder comes from the *subject* (your code as a sky), never from decoration.
 
@@ -70,10 +69,10 @@ as washi.
 - House easing `--cm-ease: cubic-bezier(0.16, 0.7, 0.3, 1)` everywhere —
   never default `ease`, never bounce. (The app's camera rails share it.)
 - Reveal = opacity + rise ≤ 16px, once, on enter. No scroll-snap.
-- Parallax is allowed **only** for the tatebanko hero, where it is the medium
-  rather than an effect.
-- The landing page's Atlas Journey may crossfade and scale real product frames
-  only on very wide canvases (≥ 120rem), where the capture remains readable.
+- The public site uses no decorative parallax. Product evidence may crossfade
+  in the Workbench Journey; the page must remain complete without it.
+- The landing page's Workbench Journey may crossfade real product frames only
+  on wide canvases (≥ 72rem), where the sticky capture remains readable.
   It uses `IntersectionObserver`, never a scroll listener. Ordinary desktop,
   compact, and reduced-motion layouts render paired full-width frames; narrow
   screens keep each frame at a readable size inside an explicitly labelled,
@@ -87,31 +86,33 @@ as washi.
 ## Macrostructure
 
 - Docs pages: Starlight long-document layout, reached through tokens only.
-- Landing: **numbered plates in 起承転結 (kishōtenketsu)** order — 起 the chart,
-  承 the instrument, 転 the turn, 結 the contract. The four-act form is used
-  because it is true of the content: the third plate is a genuine turn, where a
-  visualisation reveals a pass/fail gate. A vertical tategaki rail marks reading
-  position. Left-aligned hero, one primary CTA.
+- Landing: Hallmark **Workbench**. A left-aligned promise sits beside an
+  unaltered current-app capture; the release band separates packaged stable
+  from current source; a five-step proof journey follows Explore → Map → Land →
+  Inspect → Prove; the asymmetric download ledger, capability ledger,
+  correctness contract, FAQ, and technical colophon close the page.
+- Navigation: Hallmark **N8 Command Prompt**. The real `uvx codemble` command is
+  the first useful object, followed by plain anchor routes. It is navigation,
+  not fake terminal chrome.
 - CTAs: flat fill, 3px radius, active verb naming what happens ("Chart your
   project", "Read the contract"). One primary CTA per view.
 
 ## Signature
 
-**The tatebanko hero** (立版古 — the Edo paper diorama): three printed sheets —
-field, chart, gold — drifting at different rates against pointer and scroll.
-Depth comes from parallax between flat prints, not from perspective maths, so
-the artwork stays a print you could hold. One signature per site; a future page
-wanting a different one *replaces* this, it does not join it.
+**The parser-proof workbench.** The hero and journey use full, unaltered current
+product captures with no fake browser frame. The nearby version ledger states
+which pictured features are current source and which artifact a download action
+actually returns. The signature is the combination of evidence, version truth,
+and direct action—not an ornamental effect.
 
-The Atlas Journey below it is a product demonstration, not a second signature:
-its media is the real shipped interface, its perspective settles to a flat
-undistorted frame, and removing the choreography leaves the complete reading
-sequence intact.
+The journey choreography is progressive enhancement. Removing it leaves five
+complete, paired screenshot-and-copy steps in normal flow.
 
 ## Motifs
 
 - **Enso 円相** — the open circle is the brand mark and the hero's chart.
-- **Kasumi 霞** — lobed heraldic mist, used *only* as the rule between plates.
+- **Kasumi 霞** — lobed heraldic mist, reserved for generated brand plates and
+  not layered over product evidence.
   (Golavo owns seigaiha waves; the family stays legible by not repeating them.)
 - **Asanoha 麻の葉** — the triangular hemp-leaf lattice, docs ground only, at a
   whisper.
@@ -121,11 +122,18 @@ One motif, one job — the same discipline as the accents.
 
 ## Artwork
 
-Plate art is **generated, not hand-drawn**: `scripts/build-plates.mjs` emits
-`public/brand/plates/*.svg` from a fixed seed. Geometric art (tapered brush
-arcs, star fields, lobed mist) gets exact coordinates and a readable diff this
-way, and "same seed → same sky" mirrors the app's determinism rule. Output is
-committed; the site never runs the script at build time.
+Brand art is **generated, not hand-drawn**: `scripts/build-plates.mjs` emits the
+plate reserve, the shared outline icon family, the README download banner, and
+the social card from fixed inputs. Geometric art gets exact coordinates and a
+readable diff this way, and "same seed → same sky" mirrors the app's
+determinism rule. Output is committed; the site never runs this script at build
+time.
+
+Product captures come from `web/scripts/capture_product_shots.mjs`, which owns
+its throwaway current-source server, random loopback port, and unique temporary
+data directory. It strips provider configuration, verifies its isolated reset,
+and refuses an external server URL. The 1440×720 outputs preserve the real UI
+and cover Galaxy, both Map registers, System, Study, Impact, and the lit result.
 
 ## Every page MUST share
 
