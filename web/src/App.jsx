@@ -20,6 +20,8 @@ import {
   groupByCommunity,
   languageLabel,
   nebulaTintPaint,
+  pathTail,
+  projectOverview,
   sharedTopSegment,
   unsupportedSummary,
 } from "./graphData.js";
@@ -677,6 +679,11 @@ export function App() {
             studiedCount={focusedStudiedCount}
             exploredCount={visitedRegionIds.size}
             projectName={projectName}
+            mode={mode}
+            // The one screen reachable from every level, and until now it said
+            // nothing at all about the project it belongs to. Every figure here
+            // is read off the graph the parser produced.
+            overview={projectOverview(graph)}
             onClearProgress={() => session.dispatch({ type: "CLEAR_PROGRESS" })}
           />
         </section>
@@ -2032,7 +2039,87 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
   );
 }
 
-function StarChart({ chart, studiedCount, exploredCount, projectName, onClearProgress }) {
+/**
+ * The project, described from the graph. No provider is involved: every number
+ * and every name here is the parser's, which is why this works with no API key
+ * and cannot disagree with the galaxy or the map.
+ */
+function ProjectSummary({ overview, mode }) {
+  const easy = mode === "easy";
+  const languageLine = overview.languages
+    .map((row) => `${row.label} ${row.count}`)
+    .join(" · ");
+  return (
+    <section className="project-summary" aria-label="Project summary">
+      <p className="project-summary__lead">
+        {easy
+          ? `${overview.modules} files of code, holding ${overview.structures} functions and classes between them.`
+          : `${overview.modules} modules · ${overview.structures} structures · ${overview.lines} lines.`}{" "}
+        {overview.home
+          ? easy
+            ? `It starts at ${overview.home.id}.`
+            : `Entrypoint ${overview.home.id}.`
+          : easy
+            ? "Codemble could not tell which file starts it."
+            : "No entrypoint resolved."}
+      </p>
+      <dl className="project-summary__facts">
+        <div>
+          <dt>{easy ? "Written in" : "Languages"}</dt>
+          <dd>{languageLine || "—"}</dd>
+        </div>
+        <div>
+          <dt>{easy ? "Biggest files" : "Largest by LOC"}</dt>
+          <dd>
+            {overview.biggest.length
+              ? overview.biggest
+                  .map((row) => `${pathTail(row.id)} (${row.value})`)
+                  .join(", ")
+              : "—"}
+          </dd>
+        </div>
+        <div>
+          {/* "Most called", not "most important": centrality counts the distinct
+              structures that call into a module, and that is all it can claim. */}
+          <dt>{easy ? "Called from the most places" : "Highest centrality"}</dt>
+          <dd>
+            {overview.busiest.length
+              ? overview.busiest
+                  .map((row) => `${pathTail(row.id)} (${row.value})`)
+                  .join(", ")
+              : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt>{easy ? "You have proved" : "Understood"}</dt>
+          <dd>
+            {overview.understood} of {overview.modules}{" "}
+            {easy ? (overview.modules === 1 ? "file" : "files") : "modules"}
+          </dd>
+        </div>
+        {overview.unreadable || overview.unsupported ? (
+          <div>
+            <dt>{easy ? "Not included" : "Outside the graph"}</dt>
+            <dd>
+              {[
+                overview.unreadable
+                  ? `${overview.unreadable} ${overview.unreadable === 1 ? "file" : "files"} could not be read`
+                  : "",
+                overview.unsupported
+                  ? `${overview.unsupported} in a language Codemble does not parse`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+    </section>
+  );
+}
+
+function StarChart({ chart, studiedCount, exploredCount, projectName, mode, overview, onClearProgress }) {
   const understood = chart.filter((item) => item.understood_nodes > 0).length;
   const headingRef = useRef(null);
   useLayoutEffect(() => {
@@ -2041,10 +2128,19 @@ function StarChart({ chart, studiedCount, exploredCount, projectName, onClearPro
   return (
     <section className="star-chart-screen" aria-labelledby="star-chart-heading">
       <header className="star-chart-intro">
-        <p>Parser-detected concepts</p>
+        <p>{projectName}</p>
         <h1 ref={headingRef} id="star-chart-heading" tabIndex={-1}>
-          Your language star chart.
+          What this project is.
         </h1>
+        {/* This screen opened straight onto a 130-row concept inventory and
+            said nothing about the project it belongs to -- reported as "there's
+            no summary or anything about the project", and it is also the first
+            question a learner has. Everything below is read off the parser's
+            own graph. */}
+        {overview ? <ProjectSummary overview={overview} mode={mode} /> : null}
+        <h2 className="star-chart-section">
+          {mode === "easy" ? "Ideas your code uses" : "Parser-detected concepts"}
+        </h2>
         <p>
           Explored counts the systems you have flown to. Encountered comes from real syntax. Studied tracks this session. Understood lights only after graph-derived checks pass.
         </p>

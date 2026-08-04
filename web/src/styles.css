@@ -3551,3 +3551,55 @@ input:focus-visible {
   outline: 2px solid var(--cm-orbit);
   outline-offset: 2px;
 }
+
+/* The project summary at the top of the star chart. Facts about the codebase,
+   read off the parser's graph -- the screen used to open on a 130-row concept
+   inventory and say nothing about the project it belonged to. */
+.project-summary {
+  margin-block: var(--cm-space-lg);
+  padding: var(--cm-space-lg);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground-2);
+}
+
+.project-summary__lead {
+  max-width: 60ch;
+  margin: 0 0 var(--cm-space-lg);
+  color: var(--cm-ink);
+  font-size: var(--cm-text-lg);
+  line-height: 1.4;
+}
+
+.project-summary__facts {
+  display: grid;
+  gap: var(--cm-space-md) var(--cm-space-xl);
+  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.project-summary__facts > div {
+  min-width: 0;
+}
+
+.project-summary__facts dt {
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.project-summary__facts dd {
+  margin: var(--cm-space-2xs) 0 0;
+  /* `break-word`, not `anywhere`: both break a too-long identifier as a last
+     resort, but only `anywhere` also shrinks the element's intrinsic minimum
+     width, which made a column force breaks inside `python_ast` that the
+     available space never required. Same trap as the check legend. */
+  overflow-wrap: break-word;
+  color: var(--cm-ink);
+}
+
+.star-chart-section {
+  margin-block: var(--cm-space-xl) 0;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+}

@@ -25,6 +25,7 @@ import {
   sharedTopSegment,
   systemData,
   unsupportedSummary,
+  projectOverview,
 } from "../src/graphData.js";
 
 const graph = {
@@ -718,3 +719,52 @@ console.log("transient colour and reveal predicates passed");
     assert.equal(node.uses, same.uses, `${node.id}: reveal must not change degree`);
   }
 }
+
+// --- project overview -----------------------------------------------------
+// The first question a learner has about a codebase they did not write, and
+// nothing in the app answered it. Every figure is read off the parser's graph;
+// anything the graph cannot answer is absent rather than guessed.
+{
+  const overview = projectOverview(sky);
+  assert.equal(overview.modules, sky.regions.length, "modules counts regions");
+  assert.equal(overview.structures, sky.nodes.length, "structures counts nodes");
+  assert.ok(
+    overview.languages.length > 0 && overview.languages.every((row) => row.count > 0),
+    "every language listed has at least one module",
+  );
+  assert.equal(
+    overview.languages.reduce((total, row) => total + row.count, 0),
+    sky.regions.length,
+    "the language breakdown accounts for every module exactly once",
+  );
+  for (let i = 1; i < overview.languages.length; i += 1) {
+    assert.ok(
+      overview.languages[i - 1].count >= overview.languages[i].count,
+      "languages are listed biggest first",
+    );
+  }
+  assert.ok(overview.biggest.length <= 5 && overview.busiest.length <= 5, "both lists are capped");
+  for (let i = 1; i < overview.busiest.length; i += 1) {
+    assert.ok(
+      overview.busiest[i - 1].value >= overview.busiest[i].value,
+      "busiest is ranked by centrality, descending",
+    );
+  }
+  // Determinism: the same graph must always describe itself the same way.
+  assert.deepEqual(projectOverview(sky), overview, "same graph -> same overview");
+
+  // A graph with no Home reports none rather than inventing one. This is the
+  // shape the Map's own empty states exist for, and the summary must not be the
+  // one surface that fills the gap with a guess.
+  const homeless = { ...sky, selected_entrypoint: null };
+  assert.equal(projectOverview(homeless).home, null, "no Home is reported as none");
+
+  // An empty project must not throw on the screen that describes it.
+  const empty = projectOverview({ regions: [], nodes: [], edges: [] });
+  assert.equal(empty.modules, 0);
+  assert.deepEqual(empty.languages, []);
+  assert.deepEqual(empty.biggest, []);
+  assert.equal(empty.home, null);
+}
+
+console.log("project overview contracts passed");

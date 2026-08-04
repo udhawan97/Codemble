@@ -656,6 +656,59 @@ export function defaultRegion(graph) {
 }
 
 /**
+ * What is this project? Answered from the graph, for a learner who has just
+ * opened a codebase they did not write.
+ *
+ * Every surface in this app answered a question ABOUT something the learner had
+ * already found -- a module, a structure, a concept -- and nothing anywhere
+ * answered the first question they actually have. Reported as "there's no
+ * summary or anything about the project".
+ *
+ * Every figure is read straight off the parser's own graph, and the shapes it
+ * cannot answer are absent rather than guessed: no Home means no `home` field,
+ * not a fabricated one, and `biggest`/`busiest` are empty on an empty project.
+ * `busiest` ranks by centrality, which counts the distinct structures that call
+ * a module -- the honest reading is "most called", not "most important", and
+ * the caller words it that way.
+ */
+export function projectOverview(graph) {
+  const regions = graph?.regions ?? [];
+  const nodes = graph?.nodes ?? [];
+  const byLanguage = new Map();
+  for (const region of regions) {
+    byLanguage.set(region.language, (byLanguage.get(region.language) ?? 0) + 1);
+  }
+  const languages = [...byLanguage.entries()]
+    // Size first, then name, so the same project always lists them the same way.
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+    .map(([language, count]) => ({ language, label: languageLabel(language), count }));
+
+  const ranked = (key) =>
+    regions
+      .filter((region) => Number.isFinite(region[key]))
+      .sort((a, b) => b[key] - a[key] || String(a.id).localeCompare(String(b.id)))
+      .slice(0, 5)
+      .map((region) => ({ id: region.id, value: region[key] }));
+
+  const home = defaultRegion(graph);
+  return {
+    modules: regions.length,
+    structures: nodes.length,
+    lines: regions.reduce((total, region) => total + (region.loc ?? 0), 0),
+    languages,
+    home: graph?.selected_entrypoint && home ? { id: home.id, language: home.language } : null,
+    biggest: ranked("loc"),
+    busiest: ranked("centrality"),
+    unreadable: (graph?.partial_files ?? []).length,
+    unsupported: (graph?.unsupported_sources ?? []).reduce(
+      (total, entry) => total + (entry.count ?? 0),
+      0,
+    ),
+    understood: regions.filter((region) => region.understood).length,
+  };
+}
+
+/**
  * Direct in/out degree for every id in one pass.
  *
  * This is the hover-peek: the impact question ("what uses this, what does it
