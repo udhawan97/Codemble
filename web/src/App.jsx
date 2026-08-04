@@ -437,9 +437,28 @@ export function App() {
               {level === LEVELS.GALAXY ? (
                 <small>
                   {" · Home "}
-                  {graph.selected_entrypoint
-                    ? (defaultRegion(graph)?.id ?? "unresolved")
-                    : "unselected"}
+                  {/* Home was named here and nowhere clickable. The only control
+                      carrying the word was "Change Home", which redefines which
+                      module Home IS -- so a learner who had wandered had no way
+                      to go back to it, and the one thing that looked like the
+                      way back would have changed their project's starting point
+                      instead. The name is the link. */}
+                  {graph.selected_entrypoint && defaultRegion(graph) ? (
+                    <button
+                      type="button"
+                      className="breadcrumb-home"
+                      onClick={() =>
+                        session.dispatch({
+                          type: "ADVANCE_REGION",
+                          regionId: defaultRegion(graph).id,
+                        })
+                      }
+                    >
+                      {defaultRegion(graph).id}
+                    </button>
+                  ) : (
+                    (graph.selected_entrypoint ? "unresolved" : "unselected")
+                  )}
                 </small>
               ) : (
                 <>
@@ -692,6 +711,14 @@ export function App() {
             hasEntrypointCandidates={graph.entrypoint_candidates.length > 0}
             unsupportedSources={focusedGraph.unsupported_sources}
             error={mapError}
+            // A focus can empty either tab -- every module of one language can
+            // be unreachable from a Home written in another. The empty states
+            // have to be able to name that as the cause and offer the way out.
+            languageFocus={languageFocus}
+            languageFocusLabel={languageFocus === "all" ? "" : languageLabel(languageFocus)}
+            onClearLanguageFocus={() =>
+              session.dispatch({ type: "SET_LANGUAGE_FOCUS", language: "all" })
+            }
             onSelectTab={(tab) => session.dispatch({ type: "SET_MAP_TAB", tab })}
             onSelectRegion={(regionId) =>
               session.dispatch({ type: "ADVANCE_REGION", regionId })
@@ -918,6 +945,13 @@ export function App() {
             onRetryNarration={() =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: selectedNode.id })
             }
+            // The same retreat the header's "Back to the module" performs and
+            // that Escape already reaches -- given an affordance inside the
+            // panel, where a learner looks for it.
+            onClose={() => {
+              setRevealSource(false);
+              session.dispatch({ type: "RETREAT" });
+            }}
           />
         ) : null}
         {/* First-run work is one ordered sequence: audience, then the

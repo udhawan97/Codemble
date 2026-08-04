@@ -13,6 +13,7 @@ export function StudyPanel({
   llmStatus,
   onSelectNode,
   onRetryNarration,
+  onClose,
   revealSource = false,
 }) {
   const sourceRef = useRef(null);
@@ -33,6 +34,17 @@ export function StudyPanel({
   return (
     <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
       <header className="study-preview__header">
+        {/* The panel's own dismissal. It had none: its only exit was "Back to
+            the module" in the header rail, a different region of the screen
+            that reads as navigation rather than as closing what is in front of
+            you -- while the checks panel, which opens in the same slot, has
+            carried a Close since it shipped. Escape already worked and still
+            does; this is the affordance that says so. */}
+        {onClose ? (
+          <button className="check-close study-preview__close" type="button" onClick={onClose}>
+            Close
+          </button>
+        ) : null}
         <p className="study-preview__path">{node.file}:{node.lineno}</p>
         <h1>{node.name}</h1>
         <dl>
@@ -199,7 +211,19 @@ function ImpactColumn({ title, empty, items, mode, onSelectNode }) {
         <ul className="impact-list">
           {items.map((item) => (
             <li key={item.node_id}>
-              <button type="button" onClick={() => onSelectNode(item.node_id)}>
+              {/* The three spans stack visually, but their text nodes are
+                  adjacent, so the button's accessible name ran them together as
+                  `test_python_astdirectlytests/test_python_ast.py:1` -- which is
+                  what a screen reader announces and what copying the row yields.
+                  An explicit label puts the separators back without adding
+                  stray grid items between the spans. */}
+              <button
+                type="button"
+                aria-label={`${item.name} — ${
+                  item.depth === 1 ? "direct" : `${item.depth} steps away`
+                }${item.certain ? "" : ", possible"} — ${item.citation}`}
+                onClick={() => onSelectNode(item.node_id)}
+              >
                 <span className="impact-name">{item.name}</span>
                 <span className="impact-meta">
                   {/* Depth 1 is "directly"; anything further is reach, and a
@@ -272,7 +296,14 @@ function ConnectionGroup({ title, items, mode, onSelectNode }) {
       <ul className="connection-list">
         {items.map((item) => (
           <li key={`${item.direction}-${item.node_id}`}>
-            <button type="button" onClick={() => onSelectNode(item.node_id)}>
+            {/* Same run-on as the impact rows: the name, the relation and the
+                citation are adjacent text nodes, so the accessible name read
+                `test_python_astbrings this in · certaintests/...`. */}
+            <button
+              type="button"
+              aria-label={`${item.name} — ${relationWords(item, mode)}, ${certaintyWords(item, mode)} — ${item.citation}`}
+              onClick={() => onSelectNode(item.node_id)}
+            >
               <span className="connection-name">{item.name}</span>
               <span className="connection-meta">
                 {relationWords(item, mode)} · {certaintyWords(item, mode)}

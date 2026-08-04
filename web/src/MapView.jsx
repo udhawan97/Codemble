@@ -294,6 +294,8 @@ export function MapView({
   onSelectNode,
   onRetry,
   viewportStore,
+  languageFocusLabel = "",
+  onClearLanguageFocus,
   // The drill-down copy for the selected module, given a row of its own in
   // this column. The galaxy can float the same element over its canvas; the
   // drawing below starts at this component's top-left corner, so here it must
@@ -338,6 +340,8 @@ export function MapView({
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectRegion={onSelectRegion}
           viewportStore={viewportStore}
+          languageFocusLabel={languageFocusLabel}
+          onClearLanguageFocus={onClearLanguageFocus}
         />
       ) : (
         <WorkflowTree
@@ -347,6 +351,8 @@ export function MapView({
           hasEntrypointCandidates={hasEntrypointCandidates}
           onSelectNode={onSelectNode}
           viewportStore={viewportStore}
+          languageFocusLabel={languageFocusLabel}
+          onClearLanguageFocus={onClearLanguageFocus}
         />
       )}
       {/* Easy mode lands here, not on the galaxy, so the layer this audience
@@ -369,7 +375,7 @@ export function MapView({
 // 1:3.2 tall, so the connected core the tab exists to show fit at 7%.
 const SHELF_AUTO_COLLAPSE = 8;
 
-function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore }) {
+function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore, languageFocusLabel, onClearLanguageFocus }) {
   const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
   // View state, like zoom -- never graph truth. Collapsed, the unrouted block
   // is REPRESENTED by its count in the note below (with the control to expand),
@@ -378,12 +384,28 @@ function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedR
     architecture.unreachable.length <= SHELF_AUTO_COLLAPSE,
   );
   const unreachableSet = new Set(architecture.unreachable);
-  const visibleBoxes = showUnreached
+  // Folding is only ever a readability trade made FOR the connected core. When
+  // every box in view is unreachable there is no core to protect and folding
+  // empties the drawing outright -- which is exactly what a language focus
+  // produces on a polyglot project, because Home is written in one language and
+  // nothing in another language has an import route to it. Measured: focusing
+  // Rust here drew 0 of 5 boxes on a 1396x509 canvas.
+  //
+  // The state above cannot catch it on its own, because `useState` runs its
+  // initialiser once: the component mounts unfocused (132 unreachable, so
+  // collapsed) and the focus then changes the set to 5 while the collapse
+  // sticks. This is a derived guard rather than a second piece of state, so it
+  // cannot go stale the same way.
+  const everyBoxUnreachable =
+    architecture.boxes.length > 0 &&
+    architecture.boxes.every((box) => unreachableSet.has(box.id));
+  const unfolded = showUnreached || everyBoxUnreachable;
+  const visibleBoxes = unfolded
     ? architecture.boxes
     : architecture.boxes.filter((box) => !unreachableSet.has(box.id));
   // Cropping the empty band the folded shelf leaves behind is presentation of
   // backend geometry, not layout: every visible coordinate is untouched.
-  const contentHeight = showUnreached
+  const contentHeight = unfolded
     ? architecture.height
     : visibleBoxes.reduce((max, box) => Math.max(max, box.y + box.height), 0);
   const padding = 32;
@@ -463,7 +485,7 @@ function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedR
             if (!from || !to) return null;
             // A folded box takes its edges with it (fixtures import each
             // other); an edge to a hidden anchor would point at nothing.
-            if (!showUnreached && (unreachableSet.has(edge.src) || unreachableSet.has(edge.dst))) {
+            if (!unfolded && (unreachableSet.has(edge.src) || unreachableSet.has(edge.dst))) {
               return null;
             }
             return (
@@ -574,7 +596,21 @@ function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedR
               "This project has no parser-recognisable entrypoint, so there is no “runs first” order to layer by instead."}
         </p>
       )}
-      {architecture.unreachable.length ? (
+      {everyBoxUnreachable ? (
+        // Nothing here connects to Home, so there is no folded/unfolded choice
+        // to offer -- the shelf IS the drawing. Say why rather than showing a
+        // note about hiding boxes that are all on screen.
+        <p className="map-note">
+          {languageFocusLabel
+            ? `Home is not written in ${languageFocusLabel}, so none of these ${architecture.boxes.length} ${architecture.boxes.length === 1 ? "module" : "modules"} has an import route to it. They are drawn in file order rather than layered by guesswork.`
+            : `None of these ${architecture.boxes.length} ${architecture.boxes.length === 1 ? "module" : "modules"} has an import route from Home, so they are drawn in file order rather than layered by guesswork.`}{" "}
+          {languageFocusLabel && onClearLanguageFocus ? (
+            <button type="button" className="map-note__toggle" onClick={onClearLanguageFocus}>
+              Show all languages
+            </button>
+          ) : null}
+        </p>
+      ) : architecture.unreachable.length ? (
         <p className="map-note">
           {architecture.unreachable.length}{" "}
           {architecture.unreachable.length === 1 ? "module has" : "modules have"} no import
@@ -596,7 +632,33 @@ function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedR
   );
 }
 
-function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidates, onSelectNode, viewportStore }) {
+function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidates, onSelectNode, viewportStore, languageFocusLabel, onClearLanguageFocus }) {
+  // A root with no rows. The guard below only catches a MISSING root, so a
+  // language focus that filters out every row of a tree whose root still exists
+  // fell straight through it and drew an empty canvas with no message and no
+  // way back -- measured on this project: focusing Rust left a 1396x509 void
+  // whose only text was a note about structures it was not showing.
+  if (workflow.root && workflow.nodes.length === 0) {
+    return (
+      <div className="map-state">
+        <h2>
+          {languageFocusLabel
+            ? `Nothing in ${languageFocusLabel} runs from Home.`
+            : "Nothing runs from Home yet."}
+        </h2>
+        <p>
+          {languageFocusLabel
+            ? `This tab follows what Home calls, and Home is not written in ${languageFocusLabel} — so no ${languageFocusLabel} structure appears on a parser-proven call route. The other tab still maps how these modules import each other.`
+            : "This tab follows what Home calls, and the parser proved no call route out of it yet."}
+        </p>
+        {languageFocusLabel && onClearLanguageFocus ? (
+          <button className="check-primary" type="button" onClick={onClearLanguageFocus}>
+            Show all languages
+          </button>
+        ) : null}
+      </div>
+    );
+  }
   if (!workflow.root) {
     // Two ways to reach an empty workflow. With candidates, a Home just hasn't
     // been chosen and the "Change Home" control exists to fix it -- keep the
@@ -691,19 +753,31 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
             }}
           >
             <circle cx="8" cy="16" r="4" />
-            <text x="20" y="20">{row.label}</text>
-            <text className="row-meta" x="20" y="20" dx={`${row.label.length * 0.62}em`}>
-              {row.relation === "defines"
-                ? mode === "easy" ? " — lives here" : " — defined in this module"
-                : row.certain
-                  ? ""
-                  : " — possible call"}
-              {row.cut === "cycle" ? " — loops back" : ""}
-              {row.cut === "repeat" ? " — shown above" : ""}
-              {/* Unlike the fixed-width architecture box, a tree row has room
-                  for the word, so partial says so in the same slot that
-                  already carries "possible call". */}
-              {row.partial ? (mode === "easy" ? " — could not be read" : " — unchartable") : ""}
+            {/* One <text> with two <tspan>s, so the meta flows after the label
+                at whatever width the label actually renders.
+
+                It used to be a SECOND <text> pinned to the same x/y and pushed
+                clear with `dx={row.label.length * 0.62}em` -- a guess at the
+                label's width from its character count. That is only ever right
+                for a monospace face at one size: every proportional label, and
+                every label of unusual letter widths, printed "— possible call"
+                or "— shown above" straight through its own name. Reported from
+                the served build as text merging into text on this tab. */}
+            <text x="20" y="20">
+              <tspan>{row.label}</tspan>
+              <tspan className="row-meta">
+                {row.relation === "defines"
+                  ? mode === "easy" ? " — lives here" : " — defined in this module"
+                  : row.certain
+                    ? ""
+                    : " — possible call"}
+                {row.cut === "cycle" ? " — loops back" : ""}
+                {row.cut === "repeat" ? " — shown above" : ""}
+                {/* Unlike the fixed-width architecture box, a tree row has room
+                    for the word, so partial says so in the same slot that
+                    already carries "possible call". */}
+                {row.partial ? (mode === "easy" ? " — could not be read" : " — unchartable") : ""}
+              </tspan>
             </text>
           </g>
         ))}
