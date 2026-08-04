@@ -1502,8 +1502,13 @@ input:focus-visible {
      checks panel  0 of 4 answer options visible at 1280x720, 375x720 and
                    320x640; the learner met a question and a disabled button
 
-   The star chart is the third address of the same bug: 130 concept rows,
-   14.6 viewports at 1440x900, and nothing to say the list continued.
+   Swept, rather than found one at a time. Five surfaces scroll their own box
+   on this project, and all five were silent: the study panel (7.8 viewports at
+   1440x900, 19.9 at 320x640), the checks panel, the star chart (130 concept
+   rows, 14.6 viewports), the Find palette's results (4.8) and the Modules
+   sidebar (11.4). The last two are how a learner reaches a module they cannot
+   see in a thinned sky, which is the one job progressive reveal makes
+   mandatory.
 
    This is the same failure the Map's region caption had (55147ac) and the same
    fix the Map's own drawing already carries -- the `local` covers hide the
@@ -1516,7 +1521,9 @@ input:focus-visible {
    value rather than by copying eight lines. */
 .study-preview,
 .check-panel,
-.star-chart-screen {
+.star-chart-screen,
+.module-finder ul,
+.index-sidebar__scroll {
   --cm-scroll-cover: var(--cm-ground-2);
   background-image:
     linear-gradient(var(--cm-scroll-cover) 30%, transparent),

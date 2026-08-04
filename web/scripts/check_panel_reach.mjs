@@ -184,6 +184,89 @@ try {
     }
   }
 
+  // The enumeration above finds the surfaces someone thought of. This finds the
+  // rest: open everything a learner can open, then assert that *nothing* on
+  // screen scrolls its own box without saying so. Written as a sweep because
+  // the same bug turned up at five separate addresses -- fixing them one at a
+  // time is how the sixth ships.
+  {
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+      deviceScaleFactor: 1,
+    });
+    page.setDefaultTimeout(12_000);
+    try {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await settleFirstRun(page, "easy");
+      const surfaces = [
+        { name: "module index", open: /^Modules$/ },
+        { name: "find palette", open: /^Find/ },
+        { name: "star chart", open: /star chart/i },
+      ];
+      for (const surface of surfaces) {
+        const more = page.getByRole("button", { name: /^(More|Menu)$/ });
+        if ((await more.count()) > 0 && (await more.first().isVisible())) {
+          await more.first().click();
+          await page.waitForTimeout(120);
+        }
+        const control = page.getByRole("button", { name: surface.open }).first();
+        if ((await control.count()) === 0) {
+          failures += 1;
+          console.error(`  FAIL sweep: could not reach the ${surface.name}`);
+          continue;
+        }
+        await control.click({ timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(700);
+        const silent = await page.evaluate(() => {
+          const cued = (element) => {
+            const style = getComputedStyle(element);
+            return (
+              /gradient/.test(style.backgroundImage) ||
+              (style.maskImage !== "none" && style.maskImage !== "") ||
+              ["::before", "::after"].some(
+                (part) => getComputedStyle(element, part).content !== "none",
+              ) ||
+              element.offsetWidth - element.clientWidth > 2
+            );
+          };
+          return [...document.querySelectorAll("*")]
+            .filter((element) => {
+              const style = getComputedStyle(element);
+              // A scroll container tall enough that a whole row can hide in it.
+              // The 48px floor keeps a one-line rounding overflow out of this.
+              return (
+                element.scrollHeight > element.clientHeight + 48 &&
+                /auto|scroll/.test(style.overflowY) &&
+                element.clientHeight > 0
+              );
+            })
+            .filter((element) => !cued(element))
+            .map((element) => {
+              const name =
+                (typeof element.className === "string" && element.className) ||
+                element.tagName.toLowerCase();
+              return `${name} (${(element.scrollHeight / element.clientHeight).toFixed(1)} viewports)`;
+            });
+        });
+        try {
+          assert.deepEqual(
+            silent,
+            [],
+            `sweep (${surface.name}): ${silent.length} surface(s) scroll their own box ` +
+              `with nothing on screen to say so -- ${silent.join("; ")}`,
+          );
+        } catch (error) {
+          failures += 1;
+          console.error(`  FAIL ${error.message}`);
+        }
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(300);
+      }
+    } finally {
+      await page.close();
+    }
+  }
+
   // `position: sticky` was applied to `.check-primary`, which is the app's
   // shared primary-button class on ten buttons across six components. Only the
   // quiz submit is inside a scrolling panel that needs it; the other nine
