@@ -138,6 +138,52 @@ try {
     }
   }
 
+  // The star chart is the same bug at a third address: 130 concept rows and
+  // 14.6 viewports at 1440x900, in a surface reachable from every level, with
+  // nothing on screen to say the list continued past the fold.
+  {
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+      deviceScaleFactor: 1,
+    });
+    page.setDefaultTimeout(12_000);
+    try {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await settleFirstRun(page, "easy");
+      const more = page.getByRole("button", { name: /^(More|Menu)$/ });
+      if ((await more.count()) > 0 && (await more.first().isVisible())) {
+        await more.first().click();
+        await page.waitForTimeout(120);
+      }
+      const chart = page.getByRole("button", { name: /star chart/i }).first();
+      if ((await chart.count()) === 0) {
+        failures += 1;
+        console.error("  FAIL 1440x900 easy: could not reach the star chart");
+      } else {
+        await chart.click({ timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(900);
+        const measured = await measurePanel(page, ".star-chart-screen");
+        report.push({ label: "1440x900 easy", panel: "star chart", ...measured });
+        try {
+          assert.ok(
+            !measured.missing,
+            "1440x900 easy: the star chart did not open, so its overflow was never measured",
+          );
+          assert.ok(
+            measured.missing || !measured.overflows || measured.hasOverflowCue,
+            `1440x900 easy: the star chart holds ${measured.viewports} viewports of ` +
+              `concepts and draws nothing to say so`,
+          );
+        } catch (error) {
+          failures += 1;
+          console.error(`  FAIL ${error.message}`);
+        }
+      }
+    } finally {
+      await page.close();
+    }
+  }
+
   // `position: sticky` was applied to `.check-primary`, which is the app's
   // shared primary-button class on ten buttons across six components. Only the
   // quiz submit is inside a scrolling panel that needs it; the other nine

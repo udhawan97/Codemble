@@ -1502,22 +1502,35 @@ input:focus-visible {
      checks panel  0 of 4 answer options visible at 1280x720, 375x720 and
                    320x640; the learner met a question and a disabled button
 
+   The star chart is the third address of the same bug: 130 concept rows,
+   14.6 viewports at 1440x900, and nothing to say the list continued.
+
    This is the same failure the Map's region caption had (55147ac) and the same
    fix the Map's own drawing already carries -- the `local` covers hide the
    `scroll` shadows at each extreme, so the cue appears and disappears on its
    own, it costs the content no height, and it needs no JS to know when the
-   content overflows. Vertical only: neither panel scrolls sideways. */
+   content overflows. Vertical only: none of these scroll sideways.
+
+   `--cm-scroll-cover` is the surface's own ground, because the covers only
+   work by matching it -- a new scrolling surface joins by setting that one
+   value rather than by copying eight lines. */
 .study-preview,
-.check-panel {
+.check-panel,
+.star-chart-screen {
+  --cm-scroll-cover: var(--cm-ground-2);
   background-image:
-    linear-gradient(var(--cm-ground-2) 30%, transparent),
-    linear-gradient(transparent, var(--cm-ground-2) 70%),
+    linear-gradient(var(--cm-scroll-cover) 30%, transparent),
+    linear-gradient(transparent, var(--cm-scroll-cover) 70%),
     radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 55%), transparent),
     radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 55%), transparent);
   background-repeat: no-repeat;
   background-position: 0 0, 0 100%, 0 0, 0 100%;
   background-size: 100% 2.5rem, 100% 2.5rem, 100% 0.85rem, 100% 0.85rem;
   background-attachment: local, local, scroll, scroll;
+}
+
+.star-chart-screen {
+  --cm-scroll-cover: var(--cm-ground);
 }
 
 .check-panel__header {
@@ -1958,7 +1971,10 @@ input:focus-visible {
   overflow: auto;
   padding: var(--cm-space-lg) max(var(--cm-space-md), env(safe-area-inset-right))
     var(--cm-space-xl) max(var(--cm-space-md), env(safe-area-inset-left));
-  background: var(--cm-ground);
+  /* `background-color`, not the `background` shorthand: this rule sits after
+     the scroll-shadow block above, and the shorthand would reset the
+     `background-image` that draws the cue back to `none`. */
+  background-color: var(--cm-ground);
 }
 
 .star-chart-intro {

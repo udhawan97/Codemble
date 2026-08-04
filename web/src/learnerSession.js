@@ -259,7 +259,20 @@ export function createLearnerSession({
     const nextLifecycle = lifecycle;
     abortController(graphController);
     graphController = new AbortController();
-    return loadProjectGraph(graphController, nextLifecycle);
+    // The Map's understood flags come from this same graph, so a clear
+    // invalidates the cached map exactly as a light-up and a new Home already
+    // do -- and this was the one caller of that rule that never applied it.
+    // Reloading the graph alone dimmed the galaxy and left the diagram drawing
+    // every box it had before: measured against a running server, `/api/map`
+    // and `/api/graph` both reported zero understood regions while the Map
+    // still showed `codemble.cli` as understood, in its accessible name as well
+    // as its colour. Cleared always, refetched only when Map is on screen.
+    abortController(mapController);
+    mapController = null;
+    commit({ mapData: null, mapError: "" });
+    const reloaded = await loadProjectGraph(graphController, nextLifecycle);
+    if (nextLifecycle === lifecycle && snapshot.layer === "map") await ensureMapLoaded();
+    return reloaded;
   }
 
   async function resetProject() {

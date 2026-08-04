@@ -2311,6 +2311,104 @@ assert.equal(clearSession.getSnapshot().graph, graph);
 assert.equal(clearSession.getSnapshot().region.understood, false);
 clearSession.dispose();
 
+// ...and it has to dim them on the Map too. The Map's understood flags are
+// computed from the same graph, so clearing invalidates the cached map exactly
+// as a light-up and a new Home already do -- and this is the one caller of that
+// rule that never applied it. Measured against a running server: after the
+// clear, `/api/map` and `/api/graph` both reported zero understood regions
+// while the diagram on screen still drew `codemble.cli` as understood, labelled
+// "understood" in its own accessible name. The learner cleared their progress
+// and was shown a module still claiming they had proved it, which is the one
+// kind of wrong they cannot detect. The test above passed throughout, because
+// it only ever checked the graph half of the same invalidation.
+const clearMapFetches = [];
+let clearMapCleared = 0;
+const clearMapSession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph: understoodGraph }),
+    async clearProgress() {
+      clearMapCleared += 1;
+      return { understood_regions: 0 };
+    },
+    async loadGraph() {
+      return clearMapCleared ? graph : understoodGraph;
+    },
+    async fetchMap() {
+      clearMapFetches.push(true);
+      return clearMapFetches.length === 1 ? mapPayload : newHomeMapPayload;
+    },
+  },
+  clock,
+});
+await clearMapSession.start();
+await clearMapSession.dispatch({ type: "SET_LAYER", layer: "map" });
+assert.equal(
+  clearMapSession.getSnapshot().mapData,
+  mapPayload,
+  "setup: the lit diagram really is on screen before the clear",
+);
+await clearMapSession.dispatch({ type: "CLEAR_PROGRESS" });
+const clearMapSnapshot = clearMapSession.getSnapshot();
+assert.notEqual(
+  clearMapSnapshot.mapData,
+  mapPayload,
+  "clearing progress must not leave the pre-clear diagram, with its understood " +
+    "flags, on the Map",
+);
+assert.equal(
+  clearMapSnapshot.mapData,
+  newHomeMapPayload,
+  "a learner already looking at the Map is refetched into the cleared diagram " +
+    "rather than stranded on an empty one",
+);
+// Exactly one refetch. The clear reloads the graph, and that reload rehydrates
+// preferences, which is another route into ensureMapLoaded() -- so "it works"
+// and "it asks once" are different claims and only the second one catches a
+// duplicate request.
+assert.equal(
+  clearMapFetches.length,
+  2,
+  `the clear refetched the map ${clearMapFetches.length - 1} times, not once`,
+);
+clearMapSession.dispose();
+
+// A learner on the galaxy pays for no map fetch they cannot see: the clear
+// still drops the stale document, but nothing refetches until they switch.
+const clearGalaxyFetches = [];
+let clearGalaxyCleared = 0;
+const clearGalaxySession = createLearnerSession({
+  adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph: understoodGraph }),
+    async clearProgress() {
+      clearGalaxyCleared += 1;
+      return { understood_regions: 0 };
+    },
+    async loadGraph() {
+      return clearGalaxyCleared ? graph : understoodGraph;
+    },
+    async fetchMap() {
+      clearGalaxyFetches.push(true);
+      return mapPayload;
+    },
+  },
+  clock,
+});
+await clearGalaxySession.start();
+// Explicit: Easy mode lands on the Map, so "on the galaxy" has to be asked for
+// rather than assumed to be the default.
+await clearGalaxySession.dispatch({ type: "SET_LAYER", layer: "galaxy" });
+// Easy mode already landed on the Map once during start(), so the baseline is
+// whatever that cost -- what must not grow is the count across the clear.
+const fetchesBeforeClear = clearGalaxyFetches.length;
+await clearGalaxySession.dispatch({ type: "CLEAR_PROGRESS" });
+assert.equal(clearGalaxySession.getSnapshot().mapData, null);
+assert.equal(
+  clearGalaxyFetches.length,
+  fetchesBeforeClear,
+  "clearing from the galaxy must not fetch a map the learner is not looking at",
+);
+clearGalaxySession.dispose();
+
 // The same stale-generation guard on the clear path: the reload that follows
 // the DELETE belongs to the project that asked for it. Left unguarded it fires
 // into whatever session replaced it -- and against an unbound one that is a
