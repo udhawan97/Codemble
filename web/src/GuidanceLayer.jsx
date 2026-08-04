@@ -72,6 +72,7 @@ const MAP_STEPS = [
 export function CoachMarks({ layer, onDismiss }) {
   const [step, setStep] = useState(0);
   const dialogRef = useRef(null);
+  const advanceRef = useRef(null);
   // Keyed on the layer the learner is actually on. The dialog is modal
   // (showModal traps focus and inerts the header), so the layer cannot change
   // mid-onboarding; both arrays hold the same number of steps regardless.
@@ -82,6 +83,13 @@ export function CoachMarks({ layer, onDismiss }) {
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
+    // showModal() focuses the first focusable descendant, and "Skip" is first in
+    // source order because it belongs on the left. So the opening keystroke of
+    // the product's own tutorial -- Enter, on a dialog a keyboard learner has
+    // just been handed -- destroyed it. Escape still skips, which is the
+    // deliberate dismissal; the default action is now the one the design
+    // already marks as primary.
+    advanceRef.current?.focus();
   }, []);
 
   function finish() {
@@ -107,6 +115,7 @@ export function CoachMarks({ layer, onDismiss }) {
       <div className="coach-marks__actions">
         <button type="button" className="coach-skip" onClick={finish}>Skip</button>
         <button
+          ref={advanceRef}
           type="button"
           className="check-primary"
           onClick={() => (step + 1 < STEPS.length ? setStep(step + 1) : finish())}

@@ -1779,6 +1779,8 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
   const affirmationRef = useRef(null);
   const completeRef = useRef(null);
   const submitRef = useRef(null);
+  const panelRef = useRef(null);
+  const questionRef = useRef(null);
 
   useEffect(() => {
     setSelected(new Set());
@@ -1812,6 +1814,22 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
     if (!feedback) return;
     submitRef.current?.scrollIntoView({ block: "nearest" });
   }, [feedback]);
+
+  // Open the quiz at the question rather than at the panel's own masthead. The
+  // preamble -- caption, region name, "Check n of m" -- cost 141px of a 437px
+  // panel at 320x640, and the answer options paid for it: zero of four were
+  // reachable without scrolling at 1280x720, 375x720 and 320x640 alike. Only
+  // when the panel actually overflows, so a window with room to spare keeps
+  // showing the whole panel from the top, and only on a change of question, so
+  // it never fights the learner's own scrolling mid-answer.
+  useLayoutEffect(() => {
+    if (!current) return;
+    const panel = panelRef.current;
+    const question = questionRef.current;
+    if (!panel || !question) return;
+    if (panel.scrollHeight <= panel.clientHeight + 1) return;
+    question.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [current?.id]);
 
   function choose(optionId, multiple) {
     setAffirmation("");
@@ -1849,6 +1867,7 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
 
   return (
     <aside
+      ref={panelRef}
       className="check-panel"
       aria-label="Graph-derived understanding checks"
     >
@@ -1938,7 +1957,7 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
               <span aria-hidden="true">✦</span> {affirmation}
             </p>
           ) : null}
-          <fieldset>
+          <fieldset ref={questionRef}>
             <legend>{current.prompt_voices[mode]}</legend>
             {current.multiple ? <p>Select every answer supported by the graph.</p> : null}
             <div className="check-options">
@@ -1965,9 +1984,14 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
               <strong>{feedback.message}</strong>
             </div>
           ) : null}
-          <button ref={submitRef} className="check-primary" type="submit" disabled={!selected.size || submitting}>
-            {submitting ? "Checking parser evidence…" : "Check answer"}
-          </button>
+          {/* The bar, not the button, is what sticks: a 191px button floating
+              over a 627px option row sliced whatever it passed, including the
+              question itself at narrow widths. */}
+          <div className="check-submit-bar">
+            <button ref={submitRef} className="check-primary" type="submit" disabled={!selected.size || submitting}>
+              {submitting ? "Checking parser evidence…" : "Check answer"}
+            </button>
+          </div>
         </form>
       ) : null}
     </aside>

@@ -499,31 +499,43 @@ input:focus-visible {
 
 .mode-gate__options {
   display: grid;
+  gap: var(--cm-space-sm);
   margin-block-start: var(--cm-space-lg);
-  border-block-start: 1px solid var(--cm-hairline);
 }
 
+/* These two are the first thing the product ever asks, and they used to render
+   as `border: 0; background: transparent` -- two lines of bold text separated
+   by hairlines. The only frame on screen was the browser's focus ring on the
+   autofocused option, so the *other* choice carried no affordance at all, and
+   on a touch device (`hover: none`) not even the hover colour applied. The
+   coach marks two dialogs later already frame their actions, so this was the
+   outlier rather than a house style. Same border, ground and ruri ink as
+   `.check-primary`: ruri is the interaction accent, and nothing in this app is
+   more of an interaction than this. */
 .mode-gate__options button {
   min-height: 52px;
-  padding: var(--cm-space-sm) 0;
-  border: 0;
-  border-block-end: 1px solid var(--cm-hairline);
-  background: transparent;
-  color: var(--cm-ink);
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground);
+  color: var(--cm-orbit);
   cursor: pointer;
   font: inherit;
   font-weight: 600;
   text-align: start;
-}
-
-.mode-gate__options button:last-child {
-  border-block-end: 0;
+  transition: background-color var(--cm-dur-quick) var(--cm-ease),
+    color var(--cm-dur-quick) var(--cm-ease);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .mode-gate__options button:hover {
-    color: var(--cm-orbit);
+    background: var(--cm-orbit-low);
+    color: var(--cm-ink);
   }
+}
+
+.mode-gate__options button:active {
+  transform: translateY(1px);
 }
 
 .map-stage {
@@ -1009,18 +1021,47 @@ input:focus-visible {
 .check-primary {
   justify-self: start;
   padding-inline: var(--cm-space-lg);
-  /* The submit control stays on screen whatever the panel's scroll position.
-     Measured before this: at 1440x900 the status line painted over the lower
-     21 of its 44px -- a hit test at the button's bottom edge returned the
-     footer -- and at 1280x720 it sat 101px below the fold entirely, in a
-     container whose `overflow: auto` draws no scrollbar until you scroll. A
-     learner could pick an answer and see no way to submit it. Sticky keeps
-     the panel's own primary action inside the panel's visible box, which is
-     the rule the study panel and the map caption also want. */
-  position: sticky;
-  inset-block-end: 0;
-  z-index: 1;
   margin-block-start: var(--cm-space-sm);
+}
+
+/* The quiz submit stays on screen whatever the panel's scroll position.
+   Measured before that was true: at 1440x900 the status line painted over the
+   lower 21 of its 44px, and at 1280x720 it sat 101px below the fold entirely,
+   so a learner could pick an answer and see no way to submit it.
+
+   Two corrections to how that was first done, both measured here:
+
+   `position: sticky` was set on `.check-primary` itself, which is this app's
+   shared primary-button class -- ten buttons across six components, only one
+   of which is inside a scrolling panel. The other nine inherited it silently.
+
+   And a sticky *button* is 191px wide inside a 627px option row, so it floated
+   across the middle of whatever it covered rather than covering it: at 320x640
+   it was drawn over 64% of the question the quiz was asking. A bar spans the
+   panel and carries the panel's own ground, so content passes cleanly behind
+   it -- and `scroll-margin-block-end` keeps anything scrolled into view (the
+   submit button on focus, the feedback line) clear of the bar itself. */
+.check-submit-bar {
+  position: sticky;
+  /* Bleed into the panel's own bottom padding so the bar reaches the edge and
+     nothing shows in the gap beneath it. The bar's height is its whole cost to
+     the option list, so it buys exactly the button and no more: an earlier
+     draft carried the panel's `lg` padding twice and measured 100px, which at
+     320x640 is 23% of the panel it was meant to make usable. */
+  inset-block-end: calc(-1 * var(--cm-space-lg));
+  z-index: 1;
+  display: grid;
+  margin-block-end: calc(-1 * var(--cm-space-lg));
+  padding-block: var(--cm-space-xs) var(--cm-space-md);
+  background: var(--cm-ground-2);
+}
+
+.check-submit-bar .check-primary {
+  margin-block-start: 0;
+}
+
+.active-check :is(fieldset, .check-feedback) {
+  scroll-margin-block-end: 5rem;
 }
 
 .check-close {
@@ -1426,7 +1467,7 @@ input:focus-visible {
     max(var(--cm-space-lg), env(safe-area-inset-bottom))
     max(var(--cm-space-md), env(safe-area-inset-left));
   border-block-start: 1px solid var(--cm-hairline);
-  background: var(--cm-ground-2);
+  background-color: var(--cm-ground-2);
   color: var(--cm-ink);
   animation: panel-enter var(--cm-dur-reveal) var(--cm-ease) both;
 }
@@ -1445,9 +1486,38 @@ input:focus-visible {
     max(var(--cm-space-lg), env(safe-area-inset-bottom))
     max(var(--cm-space-md), env(safe-area-inset-left));
   border-block-start: 1px solid var(--cm-hairline);
-  background: var(--cm-ground-2);
+  background-color: var(--cm-ground-2);
   color: var(--cm-ink);
   animation: panel-enter var(--cm-dur-reveal) var(--cm-ease) both;
+}
+
+/* Both panels scroll their own box, and macOS draws no scrollbar until you do,
+   so a panel that continues past its edge looks exactly like a panel that has
+   ended. Measured at v0.15.0, at rest, before this rule:
+
+     study panel   7.8 viewports at 1440x900 and 19.9 at 320x640, with 9-10
+                   headings below the fold -- the impact widget, the
+                   connections, the real source and the lens notes, none of
+                   them announced by anything on screen
+     checks panel  0 of 4 answer options visible at 1280x720, 375x720 and
+                   320x640; the learner met a question and a disabled button
+
+   This is the same failure the Map's region caption had (55147ac) and the same
+   fix the Map's own drawing already carries -- the `local` covers hide the
+   `scroll` shadows at each extreme, so the cue appears and disappears on its
+   own, it costs the content no height, and it needs no JS to know when the
+   content overflows. Vertical only: neither panel scrolls sideways. */
+.study-preview,
+.check-panel {
+  background-image:
+    linear-gradient(var(--cm-ground-2) 30%, transparent),
+    linear-gradient(transparent, var(--cm-ground-2) 70%),
+    radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 55%), transparent),
+    radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 55%), transparent);
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 100%, 0 0, 0 100%;
+  background-size: 100% 2.5rem, 100% 2.5rem, 100% 0.85rem, 100% 0.85rem;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .check-panel__header {
@@ -2287,6 +2357,30 @@ input:focus-visible {
     inset: 0;
     max-height: none;
     border-block-start: 0;
+  }
+
+  /* The quiz's preamble cost 159px of a 437px panel at 320x640 -- 36% spent on
+     saying what the panel is before it asks anything -- and the answer options
+     were what paid for it: zero of four were visible when it opened. The
+     caption is a Correctness Contract claim and stays in full; only the space
+     around it yields. */
+  .check-panel__header {
+    padding-block-end: var(--cm-space-md);
+  }
+
+  .check-loading,
+  .check-state,
+  .check-complete,
+  .active-check {
+    margin-block-start: var(--cm-space-md);
+  }
+
+  .active-check {
+    gap: var(--cm-space-md);
+  }
+
+  .check-options {
+    margin-block-start: var(--cm-space-md);
   }
 }
 
