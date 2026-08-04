@@ -198,7 +198,92 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: the explorable galaxy** · Last updated: 2026-08-02 ·
+**Current milestone: the explorable galaxy** · Last updated: 2026-08-04 ·
+Session note: three evidence-led audit loops against the served v0.15.0 build
+found eight gaps; UD then reported six more from the running app, and **the ones
+UD found were the more serious**, which is the finding worth keeping. Released
+as **v0.16.0**.
+
+**A language focus emptied the Map, and that broke 5 of the 7 languages this
+project ships.** Home is written in one language and nothing in another has an
+import route to it, so focusing Rust drew **0 of 5** boxes on a 1396x509 canvas
+while the guidance chip said "No Home is chosen" two rows under a header saying
+"Home codemble.cli". Two independent causes behind one symptom. The Architecture
+tab folds unrouted boxes away to keep the connected core readable, but
+`useState` runs its initialiser **once**: the component mounts unfocused (132
+unreachable, collapsed), the focus then cuts the set to 5, and the collapse
+sticks. The principle the fix restores is the useful part — folding is only ever
+a trade made *for* a connected core, so with no core to protect it is never
+right, and that is now a derived guard rather than a second piece of state that
+can go stale. The Workflow tab was worse: its empty-state guard only caught a
+*missing* root, so a focus that filters out every row of a tree whose root still
+exists fell straight through and rendered a void with no message and no way
+back. Three audit loops never found this because every one of them audited a
+single-language path.
+
+**Nothing in the app said what the project was.** Every surface answered a
+question *about* something the learner had already found — a module, a
+structure, a concept — and the one screen reachable from every level opened onto
+a 130-row concept inventory. `projectOverview` in `graphData.js` answers the
+first question instead, from the graph: files, structures, languages by size,
+where it starts, biggest, most-called, how much is proved, what fell outside.
+Parser truth end to end, so it works with no API key and cannot disagree with
+the galaxy or the map. Held to the app's own rules — no Home reports none rather
+than inventing one, and it says "called from the most places" rather than "most
+important", because centrality counts the distinct structures that call in and
+that is all it can claim.
+
+**Five surfaces scrolled in silence, and the fix is one the Map already
+carried.** macOS draws no scrollbar until you scroll one, so an overflowing
+panel is pixel-identical to a finished one: study panel 7.8 viewports at
+1440x900 and **19.9** at 320x640 with 9-10 headings below the fold, checks panel
+**0 of 4** answer options at three widths, star chart 14.6 across 130 rows, Find
+4.8, Modules sidebar 11.4. The Map's drawing has carried scroll shadows for this
+exact failure, with a comment describing it. The lesson is the sweep rather than
+the fix: five addresses for one defect means fixing them one at a time is how
+the sixth ships, so `check_panel_reach.mjs` opens every surface a learner can
+open and asserts nothing scrolls without a cue, naming the offender and its
+depth. Proven in both directions.
+
+**Two shipped fixes had made things worse in ways only measurement showed.**
+v0.14.0 made the quiz submit reachable by putting `position: sticky` on
+`.check-primary` — which is the app's *shared* primary-button class, ten buttons
+across six components, only one of them inside a scrolling panel. And a 191px
+sticky button inside a 627px option row floats *across* content rather than
+covering it: at 320x640 it was drawn over **64% of the question** with zero
+answers visible. The bar sticks now, not the button. Separately, a Workflow row
+drew its meta as a second `<text>` offset by `dx={label.length * 0.62}em`, and
+`em` resolves against the meta's own 11px while the mono label advances at 13px
+— a systematic ~15% undershoot, so every row printed "— possible call" through
+the tail of the name it described.
+
+**Two exits simply did not exist.** The study panel had no Close at all — only
+"Back to the module" in the header rail, while the checks panel in the same slot
+has carried one since it shipped. And Home was named in the breadcrumb and
+clickable nowhere: the only control carrying the word was **Change Home**, which
+*redefines* which module Home is, so the one thing that looked like the way back
+would have changed the learner's starting point instead.
+
+**Measurement withdrew three candidate findings, one of which was my own bad
+instrument.** The galaxy sky looked washed out, and a `readPixels` sample
+seemed to confirm it — but it returned all zeros because the drawing buffer is
+not preserved after compositing, so the reading was invalid rather than
+contradictory. `--cm-sky` is `#131f4b` by design since the 2026-08-02 decision
+and the glow is the approved nebula. Focus after the coach marks lands on
+`.map-stage[tabindex="-1"]`, deliberately. And "Called by 0" beside "Two other
+files bring it in" are both correct about different relations.
+
+**Stated rather than implied:** this release adds the project summary that was
+missing and heads the concept inventory after it, but it is **not** the star
+chart redesign, and "Easy mode is still hard" is only partly served by it. Both
+want their own pass.
+
+428 pytest, Ruff clean, 17 frontend contract checks, space budget green, 84
+escape assertions, panel-reach green including its sweep, zero console errors
+across the journey. The milestone does not advance: issue #13 still requires
+human tester evidence.
+
+Previously (2026-08-02):
 Session note: an evidence-led user-flow audit of the served v0.13.0 build, run
 as a first-run Easy learner on this repository at 1440/1280/1100/1024/375/320 in
 both registers, found six gaps; a seventh arrived from UD mid-audit. Six are
@@ -1491,6 +1576,12 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-02 | A structure occluded by the System view's orientation panel is **deferred**, not fixed | Sampling six points across that panel's button returns the button at every one, so any body the camera projects into its rectangle is unclickable — the mechanism is general, the occurrence depends on the system's layout (reproduced on `codemble.cli`, absent on `codemble.adapters.base`). The correct fix is to frame the camera into the *unobstructed* canvas region, which is exactly the module that has produced three shipped regressions in this project, and the defect is P2 with three working routes to the same structure (Find, the module index, the connections list). Recorded here rather than left in a report, because the next session should not rediscover it and should not reach for a quick z-index patch either |
 | 2026-08-02 | The entrypoint test-bias is a **sort key**, not an edit to `entrypoint_rank` | v0.14.0 added a penalty to the field, and `finalize_graph` runs **twice** on the normal path -- once inside an adapter's `parse_files`, again when `ProjectParser` composes -- so a rule that *adds* is not idempotent: measured, rank 4 became rank 8. It changed no outcome on the projects to hand, which is exactly why a green suite kept it: every new test called `finalize_graph` directly, once, while the composed path is the one every real run takes. It also broke a promise the picker makes and the quickstart repeats -- that the rank shown is the parser's own. A sort key fixes both at once, is idempotent by construction however many times finalization runs, and is the literal reading of the standing rule "bias the ranking, never the reported fact". The regression test goes through `ProjectParser().parse()`, at the seam where it actually happened |
 | 2026-08-02 | The camera frames into the largest rectangle no **control** covers (`aimIntoClearRegion`), reserving buttons but not the prose beside them | A planet the camera projected under the System panel's button could not be clicked -- the button took the click and opened the quiz. The layout is parser-owned, so the body cannot move; the camera does, which is the rule `nameAtlas` has always applied to name plates extended to what the camera aims at. Bounded in this order: offset only while the sky still fits the clear region, and push back only as far as it must when it does not. The safety property is what made this affordable in the module that has caused three shipped framing regressions -- with no chrome the clear region IS the canvas, so the scale is 1 and the offset is 0 and the result is bit-identical to the frame it was handed, which is why every existing framing contract keeps asserting the numbers it always did. Only controls are reserved: a `pointer-events: none` paragraph over a star costs nothing, since the star stays clickable and stays visible around the text, while reserving the whole panel would push every system back for a problem only its buttons have. Proven in both directions -- the fixture asserts a body lands under the control BEFORE the fix, so the gate cannot pass vacuously |
+| 2026-08-04 | A language focus may never empty a Map tab. The Architecture shelf's fold is a **derived** guard (`unfolded = showUnreached \|\| everyBoxUnreachable`), and the Workflow tab gains an empty state for a root whose rows the focus removed | Folding unrouted boxes is only ever a readability trade made FOR a connected core, so with no core to protect it is never right -- and that is exactly what a focus produces on a polyglot project, because Home is written in one language and nothing in another has an import route to it. Measured: focusing Rust drew **0 of 5** boxes on a 1396x509 canvas, and the guidance chip read "No Home is chosen" two rows below a header reading "Home codemble.cli". `useState` could not catch it alone, and that is the transferable part: its initialiser runs **once**, so the component mounted unfocused (132 unreachable, collapsed) and the focus then cut the set to 5 while the collapse stuck. The Workflow tab failed differently for the same reason -- its guard tested for a MISSING root, and a focus leaves the root and removes its rows, so it fell through to an empty canvas with no message and no way back. This affected 5 of the 7 languages shipped here and every polyglot project. Three audit loops missed it because each audited a single-language path |
+| 2026-08-04 | `projectOverview(graph)` describes the project itself, and the star chart opens with it | Every surface answered a question ABOUT something the learner had already found; nothing answered "what is this project?", which is the first question somebody opening a codebase they did not write actually has. It lives in `graphData.js` because it is a derivation from the graph and belongs with the other pure ones, which also gives it the existing contract check. Parser truth end to end, so it needs no API key and cannot disagree with the galaxy or the map -- the same reason the impact widget is graph-layer. Two rules it inherits rather than invents: a project with no Home reports `null` instead of a fabricated one (the Map already carries two empty states for exactly that shape, and the summary must not be the one surface that fills the gap with a guess), and the ranking says "called from the most places" rather than "most important" because centrality counts the distinct structures that call in and that is all it can claim |
+| 2026-08-04 | Every scrolling surface draws a scroll shadow, from one rule keyed by `--cm-scroll-cover`; `check_panel_reach.mjs` **sweeps** for uncued scrollers rather than listing them | macOS draws no scrollbar until you scroll one, so an overflowing panel is pixel-identical to a finished one. Five addresses, all silent: study panel 7.8 viewports at 1440x900 and **19.9** at 320x640 with 9-10 headings below the fold, checks panel **0 of 4** answer options at 1280x720/375x720/320x640, star chart 14.6 across 130 rows, Find 4.8, Modules sidebar 11.4 -- the last two being how a learner reaches a module the thinned galaxy does not show, which is the job progressive reveal makes mandatory. The Map's own drawing has carried this fix since 55147ac with a comment describing this exact failure, so nothing here is new; it was simply never generalised. The sweep is the real decision: five addresses for one defect means fixing them one at a time is how the sixth ships, so the gate opens every surface a learner can open and asserts none scrolls without a cue, naming the offender and its depth. The star chart also had to move from the `background` shorthand to `background-color`, since the shorthand reset the cue to `none` -- which is how it failed the first time |
+| 2026-08-04 | `position: sticky` is scoped to the quiz's own submit **bar**, never to `.check-primary`; the quiz opens scrolled to its question | Two corrections to v0.14.0, both measured. `.check-primary` is this app's shared primary-button class -- ten buttons across six components, exactly one of them inside a scrolling panel -- so nine inherited stickiness silently. And a sticky *button* is 191px wide inside a 627px option row, so it floated across whatever it passed rather than covering it: at 320x640 it was drawn over **64% of the question the quiz was asking**, with 0 of 4 answers visible. A bar spans the panel and carries the panel's own ground. Opening at the question rather than at the panel's masthead is the other half: the preamble cost 141px of a 437px box at 320 and the answers paid for it. Only when the panel actually overflows, and only on a change of question, so it never fights the learner's own scrolling. After: 4/4 options at 1440, 1280 and 375, 3/4 at 320, question covered 0% everywhere |
+| 2026-08-04 | The study panel carries its own **Close**, and the breadcrumb's Home name is a **link** | Both were missing outright rather than misplaced. The study panel's only exit was "Back to the module" in the header rail -- a different region of the screen, reading as navigation rather than as dismissing what is in front of you -- while the checks panel, which opens in the same slot, has carried a Close since it shipped. And Home was named in the breadcrumb and clickable nowhere: the only control carrying the word was **Change Home**, which redefines which module Home *is*, so a learner who had wandered had no route back and the one thing that looked like the way back would have changed their project's starting point instead |
+| 2026-08-04 | A Workflow row is one `<text>` with two `<tspan>`s, never a second `<text>` positioned by an estimate of the first one's width | It was `dx={row.label.length * 0.62}em`, and `em` resolves against the meta's **own 11px** while the mono label advances at **13px** -- a systematic ~15% undershoot on every row, so "— possible call" and "— shown above" printed through the tail of the name they described. Reported from the served build as text merging into text. A guess at rendered text width is wrong by construction; tspans flow at whatever width the label actually renders, which is the same reason `nameAtlas` measures plates rather than estimating them |
 
 ## Non-Goals — do NOT build (point here when asked)
 

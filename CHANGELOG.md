@@ -5,6 +5,108 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-04
+
+### Added
+- **The star chart opens with what the project actually is.** Every surface in
+  the app answered a question *about* something the learner had already found —
+  a module, a structure, a concept — and the one screen reachable from every
+  level opened straight onto a 130-row concept inventory. Nothing anywhere
+  answered the first question somebody opening a codebase they did not write
+  actually has.
+
+  `projectOverview` derives it from the graph: how many files and structures,
+  which languages and how much of each, where it starts, the biggest files, the
+  ones called from the most places, how much is proved, and what fell outside
+  the graph. Parser truth end to end, so it needs no API key and cannot disagree
+  with the galaxy or the map.
+
+  Held to the app's own rules. A project with no Home reports none rather than
+  inventing one. "Called from the most places", not "most important", because
+  centrality counts the distinct structures that call in and that is all it can
+  claim. Ordering is size-then-name, so the same project always describes itself
+  the same way.
+
+### Fixed
+- **Focusing a language no longer empties the Map.** Home is written in one
+  language and nothing in another has an import route to it, so on this
+  repository focusing Rust drew **0 of 5** boxes on a 1396×509 canvas — and the
+  guidance chip said "No Home is chosen" while the header said "Home
+  codemble.cli". Two separate causes. The Architecture tab folds unrouted boxes
+  away to keep the connected core readable, but `useState` runs its initialiser
+  once: the component mounted unfocused (132 unreachable → collapsed) and the
+  focus then cut the set to 5 while the collapse stuck. Folding is only ever a
+  trade made *for* a connected core; with no core to protect it just blanks the
+  drawing, so it is now a derived guard that cannot go stale. The Workflow tab's
+  empty-state guard only caught a *missing* root, so a focus that filtered out
+  every row of a tree whose root still existed fell through it and rendered an
+  empty canvas with no message and no way back. Both tabs now name the cause and
+  offer **Show all languages**. This affected 5 of the 7 languages here and every
+  polyglot project.
+
+- **Text no longer merges into text on the Workflow tab.** A row drew its meta
+  as a second `<text>` pinned to the same x/y and pushed clear with
+  `dx={label.length * 0.62}em`. `em` resolves against the meta's own 11px while
+  the mono label advances at 13px, so the offset undershot by ~15% on every row
+  and printed "— possible call" through the tail of the name it described. One
+  `<text>` with two `<tspan>`s flows at whatever width the label actually
+  renders; every row carrying meta now abuts at 0px.
+
+- **The study panel can be closed.** Its only exit was "Back to the module" in
+  the header rail — a different region of the screen, reading as navigation
+  rather than as dismissing what is in front of you — while the checks panel,
+  which opens in the same slot, has carried a Close since it shipped.
+
+- **There is a way back to Home.** Home was named in the breadcrumb and
+  clickable nowhere; the only control carrying the word was **Change Home**,
+  which redefines which module Home *is*. A learner who had wandered had no
+  route back, and the one thing that looked like it would have changed their
+  starting point instead. The name is now the link.
+
+- **The quiz opens showing its question and its answers.** At 320×640 the
+  sticky submit was drawn across **64%** of the question and **0 of 4** options
+  were visible; at 1280×720 and 375×720 the question was clear but still 0 of 4
+  options were reachable. `position: sticky` had been set on `.check-primary`,
+  this app's shared primary-button class — ten buttons across six components,
+  only one of them inside a scrolling panel — and a 191px sticky button inside a
+  627px option row floats across content rather than covering it. The bar sticks
+  now, not the button, and the quiz opens at the question rather than at its own
+  masthead. Measured after: 4/4 options at 1440, 1280 and 375, 3/4 at 320,
+  question covered 0% everywhere.
+
+- **Five panels that scrolled in silence now say so.** macOS draws no scrollbar
+  until you scroll one, so an overflowing panel was pixel-identical to a
+  finished one: the study panel held **7.8 viewports** at 1440×900 and **19.9**
+  at 320×640 with 9–10 headings below the fold, the star chart 14.6 across 130
+  rows, the Find palette 4.8, the Modules sidebar 11.4. All five take the Map's
+  own scroll-shadow treatment, which appears and disappears on its own and costs
+  the content no height. `check_panel_reach.mjs` now also *sweeps* every surface
+  a learner can open, so a sixth address fails the gate instead of shipping.
+
+- **Clearing your progress dims the Map.** `DELETE /api/progress` succeeded,
+  `/api/graph` and `/api/map` both reported zero understood regions, the star
+  chart read "Systems explored 0", and the diagram still drew `codemble.cli` as
+  lit — labelled "understood" in its own accessible name. The invalidation rule
+  was already written down and applied by light-up, `selectEntrypoint` and
+  `resetProject`; `clearProgress` reloaded the graph and left the pre-clear map
+  document in place. The existing test passed throughout because it only checked
+  the graph half of the same invalidation.
+
+- **The first-run choice looks answerable.** Both audience-gate options computed
+  to `border-width: 0` and `background: transparent`, so the only frame on
+  screen was the browser's focus ring on the autofocused one and the other
+  carried no affordance at all — with no hover colour on touch. The coach marks
+  two dialogs later already frame their actions.
+
+- **Enter no longer destroys the tutorial.** `showModal()` focuses the first
+  focusable descendant and **Skip** is first in source order, so the opening
+  keystroke on the product's own coach marks dismissed them. Escape still skips.
+
+- **Connection and impact rows read as three facts, not one string.** Three
+  adjacent text nodes gave each button an accessible name of
+  `test_python_astdirectlytests/test_python_ast.py:1` — what a screen reader
+  announces and what copying the row yields.
+
 ## [0.15.0] - 2026-08-02
 
 ### Fixed
