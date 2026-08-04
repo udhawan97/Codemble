@@ -10,11 +10,34 @@ other. As you study, Codemble's **language lens** spots real idioms in your code
 — decorators, comprehensions, generators, context managers, async/await — and
 teaches them right there, anchored to the line where they live.
 
+## What this project is
+
+The star chart opens with a summary of the project itself — the first question
+anyone has about a codebase they did not write, and the one screen you can reach
+from every level:
+
+- how many files it holds, and how many functions and classes between them;
+- which languages it is written in, and how much of each;
+- where it starts;
+- the biggest files, and the ones called from the most places;
+- how much of it you have proved;
+- anything that fell outside the graph — files the parser could not read, and
+  files in a language Codemble does not parse.
+
+Every figure is read straight off the parsed graph. It needs no API key, and it
+cannot disagree with the galaxy or the map, because all three read the same
+graph.
+
+Two details are deliberate. A project whose entrypoint Codemble cannot resolve
+says so rather than naming a guess. And the ranking is labelled **called from
+the most places**, not "most important": it counts the distinct structures that
+call into a module, which is all the parser can honestly claim.
+
 ## The chart
 
-The star chart is your second progress screen. Its four measures deliberately
-mean different things, and they are ordered from the weakest claim to the
-strongest:
+Below the summary, the star chart is your second progress screen. Its four
+measures deliberately mean different things, and they are ordered from the
+weakest claim to the strongest:
 
 - **Systems explored** counts the systems you have flown to. It is earned by
   travel and says nothing at all about comprehension.

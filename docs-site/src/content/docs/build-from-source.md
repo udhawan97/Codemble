@@ -39,7 +39,7 @@ Build the Python wheel and verify the packaged SPA without Node at runtime:
 ```bash
 python -m pip wheel . --no-deps --wheel-dir /tmp/codemble-wheel
 python -m venv /tmp/codemble-install
-/tmp/codemble-install/bin/pip install /tmp/codemble-wheel/codemble-0.2.0-*.whl
+/tmp/codemble-install/bin/pip install /tmp/codemble-wheel/codemble-*.whl
 cd /tmp
 /tmp/codemble-install/bin/codemble --version
 ```

@@ -54,6 +54,13 @@ It retains the original node and region records, coordinates, metadata,
 uncertainty, progress, and outward external/unresolved edges. No filtered view
 is written back to the parser or persistence layer.
 
+Because it is a projection, a focus can legitimately leave a view with nothing
+to draw: Home is written in one language, and on a polyglot project nothing in
+another language necessarily has an import route to it. Both Map tabs treat that
+as a state to explain rather than an empty canvas — they say that Home is not
+written in the focused language, and offer a control to show all languages
+again.
+
 ### 3. The LLM narrates; it never decides
 
 Structure comes from parsers. Check answers come from the graph. The model's
