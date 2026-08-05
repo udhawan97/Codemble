@@ -3,6 +3,10 @@ title: The star chart
 description: Language concepts you've met and mastered, tracked across your galaxy.
 ---
 
+:::note[Version]
+The star chart and its separate **Systems explored** row match v0.16.0.
+:::
+
 ## Concepts, not just code
 
 Understanding *your* project and understanding *the language* compound each

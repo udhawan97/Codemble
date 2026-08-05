@@ -11,7 +11,7 @@ export default defineConfig({
     starlight({
       title: "Codemble",
       description:
-        "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it. Local-first, bring your own key, zero invented facts.",
+        "Explore the code AI left behind with a local, parser-proven galaxy and architecture map.",
       // The Enso mark carries its own kachi-indigo ground, so one file serves
       // both themes.
       logo: {
@@ -72,6 +72,7 @@ export default defineConfig({
           label: "Start here",
           items: [
             { label: "Introduction", slug: "introduction" },
+            { label: "Download", slug: "download" },
             { label: "Installation", slug: "installation" },
             { label: "Quickstart", slug: "quickstart" },
             { label: "Early testing", slug: "early-testing" },

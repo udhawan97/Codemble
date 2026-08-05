@@ -1,0 +1,16 @@
+{
+  "version": "0.16.0",
+  "tag": "v0.16.0",
+  "releaseUrl": "https://github.com/udhawan97/Codemble/releases/tag/v0.16.0",
+  "pypiFilesUrl": "https://pypi.org/project/codemble/0.16.0/#files",
+  "wheel": {
+    "filename": "codemble-0.16.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/de/da/4d075717ef02d371bf5598c8845446a4e16479c15150c6acbd7089152137/codemble-0.16.0-py3-none-any.whl",
+    "sha256": "6df07d373db223a0ca0ffa134c6f3777ad7dabbb6ff1d5d71d9277152cbc9dd9"
+  },
+  "sdist": {
+    "filename": "codemble-0.16.0.tar.gz",
+    "url": "https://files.pythonhosted.org/packages/8f/7b/efde0d4188a4bfa2f59a87b704eb651077384791a156a629cf4c7e7fba8c/codemble-0.16.0.tar.gz",
+    "sha256": "2802dc23ab962c874bb61632ee33b766a880db1dafede1b163e0ff379b5ef987"
+  }
+}

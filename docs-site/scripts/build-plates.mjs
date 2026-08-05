@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Generates the Edo star-atlas plate artwork into public/brand/plates/.
+ * Generates Codemble's committed brand system: Edo plates, interface icons,
+ * README download banner, and SVG/PNG social card.
  *
  * The plates are geometric — tapered brush arcs, seeded star fields, lobed
  * kasumi mist — so they are generated rather than hand-drawn: a script gives
@@ -9,12 +10,17 @@
  *
  *   node scripts/build-plates.mjs
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), "../public/brand/plates");
+import sharp from "sharp";
+
+const BRAND = join(dirname(fileURLToPath(import.meta.url)), "../public/brand");
+const OUT = join(BRAND, "plates");
+const ICONS = join(BRAND, "icons");
 mkdirSync(OUT, { recursive: true });
+mkdirSync(ICONS, { recursive: true });
 
 /* ---- palette (mirrors tokens.css; plates are art, not themed surfaces) --- */
 const NIGHT = "#070b1c";
@@ -25,6 +31,39 @@ const RURI_DIM = "#2b4d96";
 const KOHAKU = "#e89b2e";
 const KOHAKU_HI = "#f4c46a";
 const GOFUN = "#faf7f0";
+const APP_SKY = "#131f4b";
+const APP_GLOW = "#2a4b91";
+const APP_FAMILIES = [
+  "#7ebd9e",
+  "#b39ac9",
+  "#80afc9",
+  "#c79383",
+  "#a9b77a",
+  "#a69cce",
+  "#72b6b7",
+  "#c28eb0",
+];
+
+const tokenSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../src/styles/tokens.css"),
+  "utf8",
+);
+for (const colour of [
+  NIGHT,
+  KACHI,
+  RURI,
+  RURI_HI,
+  RURI_DIM,
+  KOHAKU,
+  KOHAKU_HI,
+  GOFUN,
+  APP_SKY,
+  APP_GLOW,
+]) {
+  if (!tokenSource.includes(colour)) {
+    throw new Error(`Generated-brand palette drift: ${colour} is absent from tokens.css.`);
+  }
+}
 
 /** Deterministic PRNG — same seed, same plate, forever. */
 const rng = (seed) => () => {
@@ -125,6 +164,21 @@ function kasumiBand(y, w, lobes, amp, seed) {
 const write = (name, svg) => {
   writeFileSync(join(OUT, name), svg.replace(/\n\s*\n/g, "\n").trim() + "\n");
   console.log("  ✓", name);
+};
+
+const writeBrand = (name, content) => {
+  writeFileSync(join(BRAND, name), content.replace(/\n\s*\n/g, "\n").trim() + "\n");
+  console.log("  ✓", name);
+};
+
+const writeIcon = (name, label, body, stroke = RURI) => {
+  writeFileSync(
+    join(ICONS, `${name}.svg`),
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="${label}">
+${body}
+</svg>\n`,
+  );
+  console.log("  ✓", `icons/${name}.svg`);
 };
 
 /* ===== HERO — a tatebanko (立版古) paper diorama in four sheets ========== */
@@ -242,7 +296,8 @@ const PH = 300;
 const plate = (body) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PW} ${PH}" width="${PW}" height="${PH}">
 ${defs("p")}
-<rect width="${PW}" height="${PH}" fill="${NIGHT}"/>
+<rect width="${PW}" height="${PH}" fill="${APP_SKY}"/>
+<path d="M-30 250 Q160 105 450 76" fill="none" stroke="${APP_GLOW}" stroke-width="80" opacity="0.12"/>
 <rect x="8" y="8" width="${PW - 16}" height="${PH - 16}" fill="none" stroke="${RURI_DIM}" stroke-width="1" opacity="0.55"/>
 ${body}
 ${washiWash("p", PW, PH, 0.05)}
@@ -264,11 +319,13 @@ ${washiWash("p", PW, PH, 0.05)}
   }
   edges += `<line x1="${n(pts[0][0])}" y1="${n(pts[0][1])}" x2="${n(pts[4][0])}" y2="${n(pts[4][1])}" stroke="${RURI}" stroke-width="1" opacity="0.28"/>`;
   const dots = pts
-    .map(([x, y], i) =>
-      i === 0
-        ? `<circle cx="${n(x)}" cy="${n(y)}" r="7" fill="${KOHAKU_HI}"/><circle cx="${n(x)}" cy="${n(y)}" r="14" fill="none" stroke="${KOHAKU}" stroke-width="1" opacity="0.5"/>`
-        : `<circle cx="${n(x)}" cy="${n(y)}" r="${n(3 + (i % 3) * 1.4)}" fill="${RURI_HI}" opacity="0.9"/>`,
-    )
+    .map(([x, y], i) => {
+      const color = APP_FAMILIES[i % APP_FAMILIES.length];
+      const label = i < 5
+        ? `<rect x="${n(x + 7)}" y="${n(y - 10)}" width="${38 + i * 4}" height="10" fill="${NIGHT}" opacity="0.9"/><line x1="${n(x + 11)}" y1="${n(y - 5)}" x2="${n(x + 35 + i * 4)}" y2="${n(y - 5)}" stroke="${GOFUN}" stroke-width="1" opacity="0.72"/>`
+        : "";
+      return `<circle cx="${n(x)}" cy="${n(y)}" r="${n(4 + (i % 3) * 1.5)}" fill="${color}"/>${label}`;
+    })
     .join("");
   write("plate-galaxy.svg", plate(edges + dots));
 }
@@ -281,25 +338,22 @@ ${washiWash("p", PW, PH, 0.05)}
   for (const [i, rr] of [46, 74, 104].entries()) {
     body += `<ellipse cx="${cx}" cy="${cy}" rx="${rr}" ry="${n(rr * 0.42)}" fill="none" stroke="${RURI}" stroke-width="1" opacity="0.4"/>`;
     const a = 0.7 + i * 1.9;
-    body += `<circle cx="${n(cx + Math.cos(a) * rr)}" cy="${n(cy + Math.sin(a) * rr * 0.42)}" r="${n(4 - i * 0.6)}" fill="${RURI_HI}"/>`;
+    body += `<circle cx="${n(cx + Math.cos(a) * rr)}" cy="${n(cy + Math.sin(a) * rr * 0.42)}" r="${n(7 - i * 0.6)}" fill="${APP_FAMILIES[(i + 2) % APP_FAMILIES.length]}"/>`;
   }
-  body += `<circle cx="${cx}" cy="${cy}" r="9" fill="${KOHAKU_HI}"/>`;
+  body += `<circle cx="${cx}" cy="${cy}" r="11" fill="${APP_FAMILIES[0]}"/><path d="M204 137 Q210 126 216 137 Q210 146 204 137Z" fill="${RURI_HI}" opacity="0.7"/>`;
   write("plate-system.svg", plate(body));
 }
 
-/* Study — a source panel with the read line marked. */
+/* Study — current parser-owned Impact, not generated prose. */
 {
-  const rand = rng(0xc0de);
-  let body = `<rect x="34" y="40" width="${PW - 68}" height="${PH - 80}" fill="${KACHI}" stroke="${RURI_DIM}" stroke-width="1"/>`;
-  for (let i = 0; i < 9; i++) {
-    const y = 62 + i * 20;
-    const w = 60 + rand() * 200;
-    const lit = i === 4;
-    body += `<text x="48" y="${y + 4}" font-family="monospace" font-size="9" fill="${RURI_DIM}">${String(i + 1).padStart(2, "0")}</text>`;
-    body += `<rect x="72" y="${y - 4}" width="${n(w)}" height="4" rx="2" fill="${lit ? KOHAKU : RURI_HI}" opacity="${lit ? 0.95 : 0.34}"/>`;
-    if (lit)
-      body += `<rect x="34" y="${y - 10}" width="${PW - 68}" height="16" fill="${KOHAKU}" opacity="0.09"/>`;
+  let body = `<rect x="28" y="34" width="${PW - 56}" height="${PH - 68}" fill="${KACHI}" stroke="${RURI_DIM}" stroke-width="1"/>`;
+  body += `<text x="48" y="64" font-family="monospace" font-size="10" fill="${RURI_HI}" letter-spacing="1">IMPACT · NO MODEL NEEDED</text>`;
+  body += `<line x1="48" y1="78" x2="372" y2="78" stroke="${RURI_DIM}"/>`;
+  for (let i = 0; i < 5; i++) {
+    const y = 104 + i * 28;
+    body += `<circle cx="58" cy="${y}" r="3" fill="${APP_FAMILIES[i]}"/><path d="M68 ${y} H${154 + i * 8}" stroke="${RURI_HI}" stroke-width="3" opacity="0.55"/><text x="320" y="${y + 3}" font-family="monospace" font-size="8" fill="${RURI_HI}">${i + 1} STEP${i ? "S" : ""}</text>`;
   }
+  body += `<path d="M210 96 V228" stroke="${RURI_DIM}"/><path d="M232 110 H354 M232 138 H330 M232 166 H366 M232 194 H344 M232 222 H318" stroke="${GOFUN}" stroke-width="3" opacity="0.32"/>`;
   write("plate-study.svg", plate(body));
 }
 
@@ -314,4 +368,61 @@ write(
 </svg>`,
 );
 
-console.log(`\nPlates written to ${OUT}`);
+/* ===== supporting icon family =========================================== */
+writeIcon("install", "Install", `<path d="M12 3.5v9.5"/><path d="M8.25 9.5 12 13.25 15.75 9.5"/><path d="M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>`);
+writeIcon("asterism", "Chart", `<path d="M5 17.25 11 8.25l7.5 2.75"/><circle cx="5" cy="17.25" r="1.6"/><circle cx="11" cy="8.25" r="1.6"/><circle cx="18.5" cy="11" r="1.6"/>`);
+writeIcon("download", "Download", `<path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 19.5h15"/>`);
+writeIcon("download-on-fill", "Download", `<path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 19.5h15"/>`, GOFUN);
+writeIcon("run", "Run", `<path d="m9 6 9 6-9 6Z"/><circle cx="12" cy="12" r="9"/>`);
+writeIcon("package", "Package", `<path d="m4 7 8-4 8 4-8 4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/>`);
+writeIcon("code", "Source", `<path d="m8 8-4 4 4 4"/><path d="m16 8 4 4-4 4"/><path d="m14 5-4 14"/>`);
+writeIcon("release", "Release notes", `<path d="M7 3.5h7l4 4V20H7Z"/><path d="M14 3.5V8h4"/><path d="M10 12h5M10 15.5h5"/>`);
+writeIcon("compass", "Explore", `<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/>`);
+writeIcon("map", "Map", `<path d="m3.5 6 5-2 7 2 5-2v14l-5 2-7-2-5 2Z"/><path d="M8.5 4v14M15.5 6v14"/>`);
+writeIcon("impact", "Impact", `<circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 12h4M11 12l6-5M11 12l6 5"/>`);
+writeIcon("check", "Checks", `<path d="m5 12 4 4 10-10"/><path d="M19 12a7 7 0 1 1-4-6.3"/>`);
+writeIcon("shield", "Local and verified", `<path d="M12 3 19 6v5c0 4.5-2.8 8-7 10-4.2-2-7-5.5-7-10V6Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>`);
+writeIcon("languages", "Languages", `<circle cx="12" cy="12" r="9"/><path d="M3.5 12h17M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>`);
+
+/* ===== README download banner =========================================== */
+writeBrand(
+  "download-codemble.svg",
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 92" width="760" height="92" role="img" aria-label="Download Codemble — wheel, source archive, and SHA256 digests">
+  <rect width="760" height="92" rx="6" fill="${NIGHT}"/>
+  <rect x="1" y="1" width="758" height="90" rx="5" fill="none" stroke="${RURI_DIM}"/>
+  <circle cx="48" cy="46" r="21" fill="none" stroke="${RURI_HI}" stroke-width="2"/>
+  <path d="M48 31v23m-8-8 8 8 8-8M37 63h22" fill="none" stroke="${RURI_HI}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="86" y="39" fill="${GOFUN}" font-family="system-ui,sans-serif" font-size="21" font-weight="700">Download Codemble</text>
+  <text x="86" y="64" fill="${RURI_HI}" font-family="ui-monospace,monospace" font-size="13">wheel · source archive · SHA256 digests · release notes</text>
+  <path d="M680 46h36m-10-10 10 10-10 10" fill="none" stroke="${RURI_HI}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`,
+);
+
+/* ===== social card ======================================================= */
+const socialRand = rng(0xc0de2026);
+let socialStars = "";
+for (let i = 0; i < 90; i++) {
+  const x = 540 + socialRand() * 610;
+  const y = 70 + socialRand() * 480;
+  const color = APP_FAMILIES[i % APP_FAMILIES.length];
+  const radius = 2 + socialRand() * 6;
+  socialStars += `<circle cx="${n(x)}" cy="${n(y)}" r="${n(radius)}" fill="${color}" opacity="${n(0.55 + socialRand() * 0.4)}"/>`;
+}
+const socialSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="${NIGHT}"/>
+  <path d="M420 610 Q760 40 1250 120" fill="none" stroke="${APP_GLOW}" stroke-width="190" opacity="0.22"/>
+  ${socialStars}
+  <rect x="58" y="54" width="1084" height="522" fill="none" stroke="${RURI_DIM}"/>
+  <circle cx="110" cy="112" r="24" fill="none" stroke="${RURI_HI}" stroke-width="3" stroke-dasharray="135 20"/>
+  <circle cx="118" cy="104" r="5" fill="${KOHAKU_HI}"/>
+  <text x="154" y="121" fill="${GOFUN}" font-family="serif" font-size="34" font-weight="700">Codemble</text>
+  <text x="90" y="282" fill="${GOFUN}" font-family="serif" font-size="62" font-weight="700">Explore the code</text>
+  <text x="90" y="354" fill="${GOFUN}" font-family="serif" font-size="62" font-weight="700">AI left behind.</text>
+  <text x="94" y="430" fill="${RURI_HI}" font-family="ui-monospace,monospace" font-size="22">local · parser-proven · seven languages</text>
+  <text x="94" y="516" fill="${GOFUN}" font-family="system-ui,sans-serif" font-size="23">Your code, mapped. Understanding stays earned.</text>
+</svg>`;
+writeBrand("social-card.svg", socialSvg);
+await sharp(Buffer.from(socialSvg)).png().toFile(join(BRAND, "social-card.png"));
+console.log("  ✓", "social-card.png");
+
+console.log(`\nBrand plates, icons, banner, and social card written to ${BRAND}`);

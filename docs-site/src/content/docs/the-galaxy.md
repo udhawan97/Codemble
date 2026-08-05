@@ -3,11 +3,16 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
+:::note[v0.16.0 product guide]
+This page matches the packaged app, current source, and fresh product captures.
+[Choose a run or download route](/Codemble/download/).
+:::
+
 ## Your code, mapped honestly
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble at galaxy level on a first run: star systems parsed from real source, each named by its file path and wearing its import-community colour family in traditional Japanese hues, with import routes drawn around the systems charted so far and an as-yet unlit Home, plus the language focus buttons, a Key disclosure, a notice that two files could not be read — all under tests/ — and a prompt to study codemble.cli next.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.16.0 at galaxy level: 171 star systems across seven languages, each carrying its parser-owned file-path name and community colour, with ranked labels visible, routes drawn around 30 charted systems, an unlit Home, and six unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -202,7 +207,7 @@ The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="System product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/system.png" alt="One star system, codemble.server.app, its 31 parser-proven structures as lit worlds in the system's own colour family, each with a procedural surface and a rim atmosphere, laid out on labelled Layer 1 and Layer 2 call guides with the call edges and drifting particles between them, and a keyboard focus reticle around the focused structure.">
+    <img src="/Codemble/shots/system.png" alt="One star system, codemble.server.app, its 34 parser-proven structures as worlds in the system's own colour family, laid out on labelled call guides with proven and possible edges between them.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>

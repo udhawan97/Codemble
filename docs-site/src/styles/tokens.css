@@ -1,13 +1,13 @@
-/* Hallmark · genre: atmospheric · macrostructure: Kishotenketsu (four-act narrative)
- * theme: Formal Edo (custom) · nav: N9 edge-aligned · footer: Ft5 statement
- * signature: tatebanko hero · product stage: authentic semantic zoom
- * enrichment: generated SVG sheets + real shipped screenshots, zero dependencies
+/* Hallmark · genre: atmospheric · macrostructure: Workbench
+ * theme: Formal Edo (custom) · nav: N8 terminal command · footer: Ft4 colophon
+ * signature: parser-proof workbench · product stage: authentic semantic zoom
+ * enrichment: deterministic SVG support + real current-app screenshots
  * paper: #070b1c kachi-night · accent: #e89b2e kohaku warm + #82abec ruri cool
  * display: Shippori Mincho · body: Zen Kaku Gothic New · data: JetBrains Mono
- * contrast: pass (40–41) · nav: N9 · footer: Ft5 · slop: pass (42–45)
+ * contrast: pass (40–41) · nav: N8 · footer: Ft4 · slop: pass (1–58)
  * honest: pass (46) · chrome: pass (47) · tokens: pass (48)
  * responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57)
- * pre-emit critique: P5 H5 E5 S5 R5 V5
+ * pre-emit critique: P5 H5 E4 S5 R4 V5
  * ============================================================================
  * Codemble design tokens — single source of truth.
  * docs-site/design.md mirrors and explains these values; change them together.
@@ -114,10 +114,10 @@
 
   --cm-on-fill: #f7faff;     /* ink that sits on a ruri fill */
 
-  /* Canvas-only values. The galaxy reads these so the sky and the page can
-     never drift apart. Not for use in layout CSS. */
-  --cm-sky-far: #070b1c;
-  --cm-sky-near: #16224a;
+  /* Public proof-frame values mirror the current app's lifted sky without
+     coupling the two stylesheets again. The app owns its tokens independently. */
+  --cm-sky: #131f4b;
+  --cm-sky-glow: #2a4b91;
 }
 
 /* --- Light ground (docs reading mode) -------------------------------------
@@ -148,6 +148,6 @@
 
   --cm-on-fill: #faf7f0;
 
-  --cm-sky-far: #e9edf7;
-  --cm-sky-near: #ffffff;
+  --cm-sky: #e9edf7;
+  --cm-sky-glow: #ffffff;
 }

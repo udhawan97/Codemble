@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- A reproducible current-app screenshot pipeline covering Galaxy, both Map
+  registers, System, Study, parser-owned Impact, and the lit result.
+- An icon-led download surface with direct PyPI wheel and source artifacts,
+  published SHA256 digests, release notes, and a verified source-build route.
+- A release-fact gate that checks the declared version against source, PyPI,
+  GitHub, direct artifact URLs, and the downloaded artifact bytes.
+
+### Changed
+- The README and public website now use a Formal Edo Workbench built around
+  real v0.16.0 product captures, plain-language capability and trust sections,
+  and a responsive five-step Explore → Map → Land → Inspect → Prove journey.
+- Public docs now point every install and download path at packaged stable
+  v0.16.0 and keep the exact source-build route visible for contributors.
+- Product capture now launches and removes its own provider-free disposable
+  server; it cannot reset progress on a normal Codemble session.
+
 ## [0.16.0] - 2026-08-04
 
 ### Added
@@ -106,7 +123,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   adjacent text nodes gave each button an accessible name of
   `test_python_astdirectlytests/test_python_ast.py:1` — what a screen reader
   announces and what copying the row yields.
-
 ## [0.15.0] - 2026-08-02
 
 ### Fixed

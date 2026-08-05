@@ -3,11 +3,16 @@ title: The study panel
 description: What the parser knows, what a model adds, and what happens when you have no key.
 ---
 
+:::note[v0.16.0 product guide]
+Parser-owned Impact and the captures below match the packaged app and current
+source. [Choose a run or download route](/Codemble/download/).
+:::
+
 ## Six sections, in order of certainty
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Study panel product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/study-panel.png" alt="The study panel for create_app: kind, span, fifty-three callers, parser-proven resolution, and a structural summary marked &quot;No model needed&quot; listing its real span, inbound and outbound counts, and detected concepts.">
+    <img src="/Codemble/shots/study-panel.png" alt="The current source study panel for the codemble.server.app module: kind, 423-line span, parser-proven resolution, and a structural summary marked &quot;No model needed&quot; with its inbound and outbound edge counts.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -46,6 +51,13 @@ should not land you above three other sections. Reaching the same structure any
 other way — a connection row, an impact row, a planet — still opens at the top.
 
 ## Impact: what a change here reaches
+
+<figure class="cm-product-shot">
+  <div class="cm-product-shot__viewport" tabindex="0" aria-label="Impact product screen. Scroll sideways to inspect it at a readable size.">
+    <img src="/Codemble/shots/study-impact.png" alt="The current Expert study panel scrolled to Impact, listing structures affected by a change and dependencies that could break it, with direct depth and real file locations.">
+  </div>
+  <figcaption>Codemble v0.16.0 · parser-owned Impact works without a model.</figcaption>
+</figure>
 
 Two lists, side by side. One answers *change this and what else feels it*; the
 other answers *what does this need in order to work*. Each row is a real

@@ -33,5 +33,15 @@
     "brief": "Codemble ambiguous Home and Unchartable states",
     "variation": "ranked evidence rows, raw-source failure state, one 420ms glow pulse",
     "slop_test": "pass (desktop and 320 px, reduced motion, no new visual language)"
+  },
+  {
+    "date": "2026-08-02",
+    "macrostructure": "Workbench",
+    "theme": "Formal Edo",
+    "enrichment": "reproducible current-app captures",
+    "brief": "README and public-site overhaul matching the exploration-first app",
+    "variation": "N8 command navigation, real proof stage, asymmetric stable/current artifact ledger, Ft4 technical colophon",
+    "critique": "P5 H5 E4 S5 R4 V5",
+    "slop_test": "pass (1-58; 320, 375, 414, 768, 1280, and 1440 px verified)"
   }
 ]

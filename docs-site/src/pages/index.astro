@@ -1,72 +1,70 @@
 ---
 /**
- * Codemble landing — an Edo star atlas (天文図).
+ * Codemble landing — the current app is the design proof.
  *
- * Edo astronomers published sky charts as numbered plates: gold stars and
- * constellation lines on indigo, each plate framed, annotated and captioned.
- * That is exactly what Codemble makes of a codebase, so the site is built as
- * one of those atlases rather than as a page about one.
- *
- * Plate order follows 起承転結 (kishōtenketsu) because it is true of the
- * content: the third plate is a real turn — Codemble looks like a viewer and
- * then reveals a pass/fail gate. Western three-act would flatten that.
- *
- * Zero JS dependencies (family convention). Every claim is drawn from the
- * shipped docs — no invented metrics, no invented capabilities.
+ * Macrostructure: Hallmark Workbench. Real product captures lead; the Formal
+ * Edo system supplies material and typography without turning the site into a
+ * decorative atlas. The current product and packaged release are both v0.16.0.
  */
-import Tatebanko from "../components/Tatebanko.astro";
 import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
+import release from "../../release.json";
 import "../styles/tokens.css";
 import "../styles/landing.css";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const doc = (slug: string) => `${base}/${slug}/`;
-const plate = (f: string) => `${base}/brand/plates/${f}`;
-const REPO = "https://github.com/udhawan97/Codemble";
+const icon = (name: string) => `${base}/brand/icons/${name}.svg`;
+const shot = (name: string) => `${base}/shots/${name}`;
 
-const acts = [
-  { kanji: "起", romaji: "ki", id: "chart", label: "The chart" },
-  { kanji: "承", romaji: "shō", id: "instrument", label: "The instrument" },
-  { kanji: "転", romaji: "ten", id: "turn", label: "The turn" },
-  { kanji: "結", romaji: "ketsu", id: "contract", label: "The contract" },
+const REPO = "https://github.com/udhawan97/Codemble";
+const VERSION = release.version;
+const RELEASE = release.releaseUrl;
+const WHEEL = release.wheel.url;
+const SOURCE_ARCHIVE = release.sdist.url;
+const DIGESTS = release.pypiFilesUrl;
+const INSTALL = `uvx --from codemble==${VERSION} codemble`;
+
+const capabilities = [
+  {
+    icon: "compass",
+    title: "Explore before you study",
+    body: "Every module is represented and coloured on the first frame. Labels rank and declutter; hover reveals every parser-owned name. Flying there leaves a local trail without claiming understanding.",
+  },
+  {
+    icon: "map",
+    title: "See architecture and workflow",
+    body: "Switch from the galaxy to a flat diagram of imports or the call tree from Home. Both views read the same parser-owned graph.",
+  },
+  {
+    icon: "impact",
+    title: "Know what a change touches",
+    body: "Impact traces what depends on a structure and what it depends on, with real file locations and certainty labels—no model required.",
+  },
+  {
+    icon: "check",
+    title: "Prove what you understand",
+    body: "Graph-derived checks are the only way to light a system amber. Visiting and understanding remain two different claims.",
+  },
+  {
+    icon: "shield",
+    title: "Keep the project local",
+    body: "Parsing, maps, source, Impact, checks, and progress stay on your machine. Optional narration goes only to the provider you configure.",
+  },
+  {
+    icon: "languages",
+    title: "Read seven languages together",
+    body: "Python, JavaScript, TypeScript, Go, Java, Rust, and C# share one honest graph contract, including mixed projects.",
+  },
 ];
 
 const contract = [
-  "Structure is never invented — nodes, edges and entrypoints come only from the parser.",
-  "Explanations are grounded, and say “unclear from the code” rather than guess.",
-  "Lens claims attach only to parser-detected constructs.",
-  "Every explanation links to a real file:line, so you can check it.",
-  "Check answers come from the graph, never the model.",
-  "Approximate call edges are labelled “possible call” — never stated as fact.",
-];
-
-const langs = [
-  "Python",
-  "JavaScript",
-  "TypeScript",
-  "Go",
-  "Java",
-  "Rust",
-  "C#",
-  "Mixed projects",
-];
-const install = "uvx codemble";
-
-// A real sequence: uv comes first, and the atlas follows.
-const steps = [
-  {
-    title: "Install uv",
-    note: "Once per machine. It fetches Codemble on demand.",
-    cmd: "brew install uv",
-    icon: `<path d="M12 3.5v9.5"/><path d="M8.25 9.5 12 13.25 15.75 9.5"/><path d="M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/>`,
-  },
-  {
-    title: "Chart your project",
-    note: "Every time. Nothing is left behind.",
-    cmd: install,
-    icon: `<path d="M5 17.25 11 8.25l7.5 2.75"/><circle cx="5" cy="17.25" r="1.6"/><circle cx="11" cy="8.25" r="1.6"/><circle cx="18.5" cy="11" r="1.6"/>`,
-  },
+  "Nodes, routes, concepts, and Home candidates come from parsers—not generated prose.",
+  "A relationship the parser cannot prove stays visibly possible on every layer.",
+  "Impact and checks are graph-derived and work without any API key.",
+  "Narration may name only supplied identifiers and cite real source lines.",
+  "Changing a file re-dims only the proof attached to that file.",
+  "Unsupported or broken source is counted and named instead of silently omitted.",
 ];
 ---
 
@@ -74,21 +72,24 @@ const steps = [
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Codemble — chart the code you didn’t write</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Codemble — explore the code AI left behind</title>
     <meta
       name="description"
-      content="A learning game that charts the code AI wrote for you as a star atlas you light up by understanding it. Local-first, bring your own key, zero invented facts."
+      content="Codemble maps a local codebase into a parser-proven galaxy and architecture diagram, then lights only what you prove you understand."
     />
     <link rel="icon" href={`${base}/favicon.svg`} />
     <link rel="apple-touch-icon" href={`${base}/brand/icon-180.png`} />
     <meta name="theme-color" content="#070b1c" />
-    <meta property="og:title" content="Codemble" />
+    <meta property="og:title" content="Codemble — your code, mapped" />
     <meta
       property="og:description"
-      content="Chart the code AI wrote for you as a star atlas you light up by understanding it."
+      content="Explore the code AI left behind. Local-first, parser-proven, and honest about what it cannot know."
     />
-    <meta property="og:image" content={`${base}/brand/icon-512.png`} />
+    <meta
+      property="og:image"
+      content="https://udhawan97.github.io/Codemble/brand/social-card.png"
+    />
     <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -98,8 +99,6 @@ const steps = [
       href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
 
-    <!-- Theme resolved before paint, sharing Starlight's storage key so the
-         landing and the docs never disagree. -->
     <script is:inline>
       (() => {
         const stored = localStorage.getItem("starlight-theme");
@@ -114,349 +113,383 @@ const steps = [
   </head>
 
   <body>
-    <a class="skip" href="#chart">Skip to content</a>
+    <a class="skip" href="#main">Skip to content</a>
 
-    <!-- N9 edge-aligned nav: an instrument bezel, not a floating pill. -->
-    <header class="nav">
-      <a class="nav-mark" href={`${base}/`}>
-        <img src={`${base}/brand/mark.svg`} alt="" width="30" height="30" />
-        <span>Codemble</span>
-      </a>
-      <nav class="nav-links" aria-label="Main">
-        <a href={doc("introduction")}>Docs</a>
-        <a href={doc("the-galaxy")}>The galaxy</a>
-        <a href={doc("correctness")}>Contract</a>
-        <a href={REPO} rel="noopener">GitHub</a>
-        <Search />
-        <button
-          type="button"
-          class="nav-theme"
-          data-theme-toggle
-          aria-label="Switch to light theme"
-        >
-          <span data-theme-icon aria-hidden="true">☾</span>
-        </button>
-      </nav>
+    <!-- Previous nav: N9. This build: N8, because the real one-command CLI is
+         the product's shortest path—not decorative terminal theatre. -->
+    <header class="term-nav">
+      <div class="term-nav-inner">
+        <a class="brand" href={`${base}/`} aria-label="Codemble home">
+          <img src={`${base}/brand/mark.svg`} alt="" width="32" height="32" />
+          <span>Codemble</span>
+        </a>
+        <nav class="term-line" aria-label="Main navigation">
+          <span class="term-prompt" aria-hidden="true">›</span>
+          <a class="term-command" href="#start"><code>{INSTALL}</code></a>
+          <a href="#tour">/tour</a>
+          <a href="#download">/download</a>
+          <a href={doc("introduction")}>/docs</a>
+          <a href={REPO} rel="noopener">/source</a>
+          <span class="term-caret" aria-hidden="true">▮</span>
+        </nav>
+        <div class="nav-tools">
+          <Search />
+          <button
+            type="button"
+            class="theme-toggle"
+            data-theme-toggle
+            aria-label="Switch to light theme"
+          >
+            <span data-theme-icon aria-hidden="true">☾</span>
+          </button>
+        </div>
+      </div>
     </header>
 
-    <!-- 起承転結 rail. Tategaki used as a real scroll indicator, not ornament. -->
-    <nav class="rail" aria-label="Plates">
-      <ol>
-        {
-          acts.map((a) => (
-            <li>
-              <a href={`#${a.id}`} data-rail={a.id}>
-                <span class="rail-kanji">{a.kanji}</span>
-                <span class="rail-romaji">{a.romaji}</span>
-                <span class="sr-only">{a.label}</span>
-              </a>
-            </li>
-          ))
-        }
-      </ol>
-    </nav>
-
-    <main>
-      <!-- ===== 起 KI — plate one: the chart ========================== -->
-      <section class="hero" id="chart">
-        <Tatebanko />
-        <div class="hero-inner">
-          <p class="plate-no">
-            <span lang="ja">第一図</span><span class="sep">·</span>plate one
+    <main id="main">
+      <section class="hero" id="start">
+        <div class="hero-copy">
+          <p class="release-status">
+            <span>Stable v{VERSION}</span>
+            <span>Seven languages · PyPI published</span>
           </p>
-          <h1 class="hero-title">Chart the code you didn’t write.</h1>
+          <h1>Explore the code AI left behind.</h1>
           <p class="hero-lede">
-            You built it with AI. Codemble reads your project on your own
-            machine and draws it the way an Edo astronomer drew the sky —
-            modules as star systems, functions as planets, your entrypoint as
-            Home. Every star is named from the first frame, and every one of
-            them starts dark. You light it by proving you understand it.
+            Codemble reads a project on your machine and turns its real structure
+            into a galaxy you can fly through or a diagram you can follow. Study
+            any file, see what a change reaches, and light only what you prove you
+            understand.
           </p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href={doc("quickstart")}>
-              Chart your project
+            <a class="button button-primary" href="#download">
+              <img src={icon("download-on-fill")} alt="" width="20" height="20" />
+              Download Codemble
             </a>
-            <a class="btn btn-quiet" href={doc("correctness")}>
-              Read the contract
+            <a class="button button-secondary" href={doc("quickstart")}>
+              <img src={icon("run")} alt="" width="20" height="20" />
+              Run in one command
             </a>
           </div>
-          <div class="cmd">
-            <code>{install}</code>
-            <button type="button" data-copy={install} class="cmd-copy">
+          <div class="command" aria-label={`Command: ${INSTALL}`}>
+            <span aria-hidden="true">›</span>
+            <code>{INSTALL}</code>
+            <button type="button" data-copy={INSTALL}>
               <span data-copy-label>Copy</span>
             </button>
           </div>
-          <p class="hero-note">
-            Needs <a href="https://docs.astral.sh/uv/">uv</a> — <code
-              >brew install uv</code
-            > · Python 3.11+ · opens your browser to pick a project
+          <p class="version-note">
+            The screen, one-command route, and downloads are all v{VERSION}.
+            PyPI hosts the artifacts; GitHub carries the release notes.
           </p>
         </div>
+
+        <figure class="hero-proof">
+          <div
+            class="product-viewport"
+            tabindex="0"
+            aria-label="Current Codemble galaxy. Scroll sideways to inspect the full-size app screen."
+          >
+            <img
+              src={shot("galaxy.png")}
+              alt="Codemble v0.16.0 showing 171 represented systems across Python, JavaScript, TypeScript, Go, Java, Rust, and C#, with ranked labels, 30 systems charted, six unreadable test fixtures called out, and Home still unlit."
+              width="1440"
+              height="720"
+              fetchpriority="high"
+              decoding="async"
+            />
+          </div>
+          <figcaption>
+            <span>Current app · Easy galaxy</span>
+            <span>171 systems · seven languages · local only</span>
+          </figcaption>
+        </figure>
       </section>
 
-      <img class="rule" src={plate("kasumi-rule.svg")} alt="" aria-hidden="true" />
+      <section class="release-band" aria-label="Release status">
+        <p>
+          <strong>Everything pictured ships in v{VERSION}.</strong> Run it in one
+          command, download the PyPI artifacts, or build the same release from source.
+        </p>
+        <a href="#download">Choose a route →</a>
+      </section>
 
-      <!-- ===== 承 SHŌ — plate two: the instrument ==================== -->
-      <section class="act" id="instrument">
-        <div class="act-head">
-          <p class="act-mark">
-            <span lang="ja">承</span> shō<span class="sep">·</span>plate two
+      <section class="workbench" id="tour">
+        <header class="section-head">
+          <h2>See the whole project. Then follow one fact.</h2>
+          <p>
+            These are not mockups. Each frame is a fresh capture of this repository
+            running through the current Codemble source, with the same Home and the
+            same parser-owned graph.
           </p>
-          <h2>One graph. Four ways to understand it.</h2>
-          <p class="act-lede">
-            The camera runs on rails because wandering a 3D scene is not
-            learning. Move from the whole sky to one real structure; every
-            frame below comes from the shipped app and the same parsed graph.
-          </p>
-        </div>
+        </header>
         <AtlasJourney />
-        <div class="langs" data-reveal>
-          <p class="langs-label">One atlas, whichever language you shipped</p>
-          <ul>{langs.map((l) => <li>{l}</li>)}</ul>
-          <p class="langs-note">
-            Focus a language to dim the rest — the graph, the coordinates and
-            your progress never change.
-            <a href={doc("the-galaxy")}>How focus works</a>
+      </section>
+
+      <section class="download" id="download">
+        <header class="section-head">
+          <h2>Choose the route that fits today.</h2>
+          <p>
+            Run without installing, download the exact wheel, or keep an editable
+            source checkout. All three routes lead to v{VERSION}.
           </p>
+        </header>
+
+        <div class="download-layout" id="versions">
+          <article class="stable-route">
+            <div class="route-title">
+              <img src={icon("package")} alt="" width="32" height="32" />
+              <div>
+                <p>Recommended</p>
+                <h3>Run Codemble v{VERSION}</h3>
+              </div>
+            </div>
+            <p>
+              Best for a first real project. It is the latest GitHub release and
+              PyPI package, with a wheel, source archive, and published SHA256 digests.
+            </p>
+            <ol class="run-steps">
+              <li>
+                <span>01</span>
+                <div><strong>Install uv once</strong><code>brew install uv</code></div>
+              </li>
+              <li>
+                <span>02</span>
+                <div><strong>Open Codemble</strong><code>{INSTALL}</code></div>
+              </li>
+            </ol>
+            <div class="artifact-links">
+              <a class="button button-primary" href={WHEEL} download>
+                <img src={icon("download-on-fill")} alt="" width="20" height="20" />
+                Download wheel
+              </a>
+              <a href={SOURCE_ARCHIVE} download>
+                <img src={icon("code")} alt="" width="20" height="20" />
+                Source archive
+              </a>
+              <a href={DIGESTS}>
+                <img src={icon("shield")} alt="" width="20" height="20" />
+                SHA256 digests
+              </a>
+              <a href={RELEASE}>
+                <img src={icon("release")} alt="" width="20" height="20" />
+                Release notes
+              </a>
+            </div>
+          </article>
+
+          <aside class="source-route">
+            <div class="route-title">
+              <img src={icon("code")} alt="" width="32" height="32" />
+              <div>
+                <p>Editable</p>
+                <h3>Build v{VERSION} from source</h3>
+              </div>
+            </div>
+            <p>
+              This is the same app shown on the page: seven languages, the
+              explorer’s trail, the brighter sky, Impact, and automatic Home
+              selection—ready for documentation or code changes.
+            </p>
+            <pre><code>git clone --branch {release.tag} --depth 1 {REPO}.git
+cd Codemble
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+codemble</code></pre>
+            <p class="route-footnote">
+              Source builds are for testers and contributors. <a href={doc("build-from-source")}>Read the verified build guide.</a>
+            </p>
+          </aside>
         </div>
       </section>
 
-      <!-- ===== 転 TEN — plate three: the turn ======================== -->
-      <section class="act act-turn" id="turn">
-        <div class="act-inner">
-          <div class="act-head">
-            <p class="act-mark">
-              <span lang="ja">転</span> ten<span class="sep">·</span>plate three
-            </p>
-            <h2>Then it stops being a map.</h2>
-            <p class="act-lede">
-              Here is the turn. Codemble looks like a visualisation, and every
-              visualisation lets you nod along without learning anything. This
-              one asks you to prove it.
-            </p>
-          </div>
-          <div class="turn-grid">
-            <article class="turn-card" data-reveal>
-              <h3>Checks are drawn from your graph</h3>
-              <p>
-                Short questions built from your code’s actual structure — which
-                module imports this one, what Home reaches first. The answers
-                come from the parsed graph, never from the model, so a confident
-                wrong answer is not possible.
-              </p>
-            </article>
-            <article class="turn-card" data-reveal style="--d:70ms">
-              <h3>Passing lights the region, permanently</h3>
-              <p>
-                A region is one module. Pass its checks and it lights in kohaku
-                amber and stays lit, saved locally in <code>~/.codemble/</code>.
-                Edit that file later and only that region goes dark again —
-                nothing else you earned is taken away.
-              </p>
-            </article>
-            <article class="turn-card" data-reveal style="--d:140ms">
-              <h3>One score, and it is the real one</h3>
-              <p>
-                No XP, no streaks, no leaderboards. A fully lit atlas means you
-                understand your project. Exploring is tracked separately and
-                says less on purpose: flying to a system charts it and keeps its
-                routes drawn, but only a passed check turns it amber.
-              </p>
-            </article>
-          </div>
-          <p class="turn-honest" data-reveal>
-            A region with no safe graph-derived check stays dark and tells you
-            why. Lighting a star for showing up would be a lie about what you
-            know.
+      <section class="capabilities">
+        <header class="section-head">
+          <h2>What Codemble does, without the astronomy lesson.</h2>
+          <p>
+            Point it at a folder. Codemble reads supported source without running
+            your app, package scripts, compilers, or tests.
           </p>
+        </header>
+
+        <dl class="capability-list">
+          {
+            capabilities.map((item) => (
+              <div>
+                <dt>
+                  <img src={icon(item.icon)} alt="" width="24" height="24" />
+                  {item.title}
+                </dt>
+                <dd>{item.body}</dd>
+              </div>
+            ))
+          }
+        </dl>
+
+        <div class="language-ledger" aria-label="Supported languages">
+          <strong>One project can mix:</strong>
+          <span>Python</span><span>JavaScript</span><span>TypeScript</span>
+          <span>Go</span><span>Java</span><span>Rust</span><span>C#</span>
         </div>
       </section>
 
-      <!-- ===== 結 KETSU — plate four: the contract =================== -->
-      <section class="act" id="contract">
-        <div class="act-head">
-          <p class="act-mark">
-            <span lang="ja">結</span> ketsu<span class="sep">·</span>plate four
+      <section class="trust" id="trust">
+        <header class="section-head">
+          <h2>The map admits where certainty ends.</h2>
+          <p>
+            Codemble is for readers who may not yet spot a confident mistake.
+            Accuracy therefore outranks visual drama, feature count, and model fluency.
           </p>
-          <h2>Six rules that outrank every feature.</h2>
-          <p class="act-lede">
-            Codemble’s reader often cannot tell when a tool is wrong — that is
-            exactly why they need it. A tool that teaches a beginner something
-            false is worse than no tool, so these come first, including ahead of
-            what we want to build.
-          </p>
-        </div>
+        </header>
 
-        <div class="contract-block">
-          <ol class="contract">
+        <div class="trust-layout">
+          <ol class="contract-list">
             {
-              contract.map((rule, i) => (
-                <li data-reveal style={`--d:${i * 50}ms`}>
-                  <span class="contract-n" aria-hidden="true">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <p set:html={rule.replace(/file:line/, "<code>file:line</code>")} />
-                </li>
-              ))
-            }
-          </ol>
-          <img class="seal" src={plate("seal.svg")} alt="" width="120" height="120" loading="lazy" />
-        </div>
-
-        <div class="install" data-reveal>
-          <h3>Run it on your own project</h3>
-          <ol class="steps">
-            {
-              steps.map((step) => (
+              contract.map((rule, index) => (
                 <li>
-                  <svg
-                    class="step-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <Fragment set:html={step.icon} />
-                  </svg>
-                  <div class="step-body">
-                    <p class="step-title">{step.title}</p>
-                    <p class="step-note">{step.note}</p>
-                    <div class="cmd cmd-block">
-                      <code>{step.cmd}</code>
-                      <button type="button" data-copy={step.cmd} class="cmd-copy">
-                        <span data-copy-label>Copy</span>
-                      </button>
-                    </div>
-                  </div>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <p>{rule}</p>
                 </li>
               ))
             }
           </ol>
-          <p class="install-note">
-            Codemble opens your browser — pick your project folder there, or
-            skip the picker with <code>codemble ./your-project</code>. No
-            Homebrew? Use the
-            <a href="https://docs.astral.sh/uv/getting-started/installation/">
-              uv installer
-            </a>. Prefer a permanent install? <code>pipx install codemble</code>
-            needs no uv.
-          </p>
-          <p class="install-note">
-            Your code is parsed locally. The only network calls are the LLM
-            requests you configure, sent from your machine straight to your
-            provider. Without a key you still get the atlas, the source, the
-            lens, the checks, and the lists of what a change would reach — only
-            the prose needs a model.
-          </p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href={doc("installation")}>
-              Installation guide
-            </a>
-            <a class="btn btn-quiet" href={doc("early-testing")}>
-              Testing notes
-            </a>
-          </div>
+          <aside class="privacy-ledger">
+            <h3>Your machine is the boundary.</h3>
+            <dl>
+              <div><dt>Parsed locally</dt><dd>source · graph · maps</dd></div>
+              <div><dt>Saved locally</dt><dd>progress · narration cache</dd></div>
+              <div><dt>Works without AI</dt><dd>Impact · Lens · checks</dd></div>
+              <div><dt>Optional network</dt><dd>opening Study sends bounded context to your chosen narrator</dd></div>
+              <div><dt>Never present</dt><dd>accounts · telemetry · Codemble cloud</dd></div>
+            </dl>
+            <a href={doc("correctness")}>Read the correctness contract →</a>
+          </aside>
+        </div>
+      </section>
+
+      <section class="faq">
+        <header class="section-head">
+          <h2>Before you point it at a repository.</h2>
+        </header>
+        <div class="faq-list">
+          <details>
+            <summary>Does Codemble run my code?</summary>
+            <p>No. It reads supported source files and parses their structure. It does not run the project, package scripts, compilers, or tests.</p>
+          </details>
+          <details>
+            <summary>Do I need an Anthropic or OpenAI key?</summary>
+            <p>No. The galaxy, maps, source, structural summary, Impact, Lens, checks, and saved progress all work without a model. If you configure a narrator, opening Study automatically requests grounded prose with bounded context.</p>
+          </details>
+          <details>
+            <summary>Are these screenshots from the downloadable app?</summary>
+            <p>Yes. The captures, PyPI package, and current source all report v{VERSION}. Each frame is reproduced from the real local app, not a mockup.</p>
+          </details>
+          <details>
+            <summary>What happens when Codemble cannot prove a relationship?</summary>
+            <p>It labels the route possible and draws it differently. Broken or unsupported source stays counted instead of vanishing from the picture.</p>
+          </details>
         </div>
       </section>
     </main>
 
-    <footer class="foot">
-      <div class="foot-inner">
-        <p class="foot-statement">
-          Zero invented facts. A wrong explanation is our highest-severity bug.
-        </p>
-        <div class="foot-row">
-          <p class="foot-mark">
-            <img src={`${base}/brand/mark.svg`} alt="" width="22" height="22" />
-            Codemble · Phase 1 tester release · Apache-2.0
-          </p>
-          <nav class="foot-links" aria-label="Footer">
-            <a href={doc("introduction")}>Docs</a>
-            <a href={doc("roadmap")}>Roadmap</a>
-            <a href={doc("contributing")}>Contributing</a>
-            <a href={REPO} rel="noopener">GitHub</a>
-          </nav>
-        </div>
-      </div>
+    <aside class="download-dock" data-download-dock hidden aria-label="Download Codemble">
+      <p><strong>Codemble v{VERSION}</strong><span>One command · local project picker</span></p>
+      <code>{INSTALL}</code>
+      <a href="#download">
+        <img src={icon("download-on-fill")} alt="" width="20" height="20" />
+        Download
+      </a>
+    </aside>
+
+    <!-- Ft4: a technical colophon, not a generic link catalogue. -->
+    <footer class="colophon">
+      <p>
+        Codemble · Apache-2.0 · Python 3.11+ · local FastAPI server · React +
+        three.js instrument · Formal Edo interface · v{VERSION}. No account,
+        telemetry, hosted source, or invented structure.
+      </p>
+      <nav aria-label="Footer">
+        <a href={doc("download")}>Download</a>
+        <a href={doc("introduction")}>Docs</a>
+        <a href={`${REPO}/blob/main/TESTING.md`}>Test it</a>
+        <a href={REPO}>GitHub</a>
+      </nav>
     </footer>
 
     <script>
-      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const root = document.documentElement;
+      const themeButton = document.querySelector<HTMLElement>("[data-theme-toggle]");
+      const themeIcon = document.querySelector<HTMLElement>("[data-theme-icon]");
 
-      const items = document.querySelectorAll<HTMLElement>("[data-reveal]");
-      if (reduce || !("IntersectionObserver" in window)) {
-        items.forEach((el) => el.classList.add("shown"));
-      } else {
-        const io = new IntersectionObserver(
-          (entries) => {
-            for (const e of entries) {
-              if (!e.isIntersecting) continue;
-              e.target.classList.add("shown");
-              io.unobserve(e.target);
-            }
-          },
-          { threshold: 0.16 },
+      const renderTheme = () => {
+        const dark = root.dataset.theme !== "light";
+        if (themeIcon) themeIcon.textContent = dark ? "☾" : "☀";
+        themeButton?.setAttribute(
+          "aria-label",
+          dark ? "Switch to light theme" : "Switch to dark theme",
         );
-        items.forEach((el) => io.observe(el));
-      }
+      };
 
-      /* 起承転結 rail follows the reader. */
-      const rail = document.querySelectorAll<HTMLElement>("[data-rail]");
-      const sections = document.querySelectorAll<HTMLElement>("main section[id]");
-      if ("IntersectionObserver" in window && rail.length) {
-        const spy = new IntersectionObserver(
-          (entries) => {
-            for (const e of entries) {
-              if (!e.isIntersecting) continue;
-              rail.forEach((r) =>
-                r.toggleAttribute("data-current", r.dataset.rail === e.target.id),
-              );
-            }
-          },
-          { rootMargin: "-45% 0px -45% 0px" },
-        );
-        sections.forEach((s) => spy.observe(s));
-      }
+      themeButton?.addEventListener("click", () => {
+        root.dataset.theme = root.dataset.theme === "light" ? "dark" : "light";
+        localStorage.setItem("starlight-theme", root.dataset.theme);
+        renderTheme();
+      });
+      renderTheme();
 
-      /* Copy — silent success, label reverts. No toast. */
-      document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((b) => {
-        b.addEventListener("click", async () => {
-          const label = b.querySelector("[data-copy-label]");
+      document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const label = button.querySelector<HTMLElement>("[data-copy-label]");
+          if (!label) return;
           try {
-            await navigator.clipboard.writeText(b.dataset.copy || "");
-            if (label) label.textContent = "Copied";
-            b.setAttribute("data-done", "");
+            if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+            await navigator.clipboard.writeText(button.dataset.copy || "");
+            label.textContent = "Copied";
+            button.dataset.copied = "";
           } catch {
-            if (label) label.textContent = "Press ⌘C";
+            label.textContent = "Select command";
+            button.dataset.copyFailed = "";
+            const command = button.closest(".command")?.querySelector("code");
+            const selection = window.getSelection();
+            if (command && selection) {
+              const range = document.createRange();
+              range.selectNodeContents(command);
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
           }
-          setTimeout(() => {
-            if (label) label.textContent = "Copy";
-            b.removeAttribute("data-done");
-          }, 1800);
+          window.setTimeout(() => {
+            label.textContent = "Copy";
+            delete button.dataset.copied;
+            delete button.dataset.copyFailed;
+          }, 2500);
         });
       });
 
-      /* Theme toggle — same storage key as Starlight. */
-      const toggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
-      const icon = document.querySelector("[data-theme-icon]");
-      const paint = (t: string) => {
-        document.documentElement.dataset.theme = t;
-        if (icon) icon.textContent = t === "dark" ? "☾" : "☀";
-        toggle?.setAttribute(
-          "aria-label",
-          t === "dark" ? "Switch to light theme" : "Switch to dark theme",
-        );
-      };
-      paint(document.documentElement.dataset.theme || "dark");
-      toggle?.addEventListener("click", () => {
-        const next =
-          document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-        localStorage.setItem("starlight-theme", next);
-        paint(next);
-      });
+      const dock = document.querySelector<HTMLElement>("[data-download-dock]");
+      const tour = document.querySelector("#tour");
+      const download = document.querySelector("#download");
+      if (dock && tour && download && "IntersectionObserver" in window) {
+        let tourReached = false;
+        let downloadVisible = false;
+        const renderDock = () => {
+          dock.hidden = !tourReached || downloadVisible;
+        };
+        new IntersectionObserver(
+          ([entry]) => {
+            tourReached = entry.boundingClientRect.top < innerHeight * 0.55;
+            renderDock();
+          },
+          { threshold: [0, 0.25] },
+        ).observe(tour);
+        new IntersectionObserver(
+          ([entry]) => {
+            downloadVisible = entry.isIntersecting;
+            renderDock();
+          },
+          { threshold: 0.05 },
+        ).observe(download);
+      }
     </script>
   </body>
 </html>

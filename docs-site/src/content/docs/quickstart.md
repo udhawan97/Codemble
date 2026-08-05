@@ -3,10 +3,15 @@ title: Quickstart
 description: From one command to your first lit star system.
 ---
 
+:::note[This quickstart matches v0.16.0]
+The one-command package, current source, and screenshots all cover the same
+seven-language app. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
+:::
+
 ## 1. Install uv
 
 Codemble runs through [uv](https://docs.astral.sh/uv/), which fetches the
-current release on demand and leaves nothing in your system Python. Install it
+pinned packaged release and leaves nothing in your system Python. Install it
 once:
 
 ```bash
@@ -17,21 +22,21 @@ No Homebrew? Use the official installer — `curl -LsSf
 https://astral.sh/uv/install.sh | sh` on macOS and Linux, or `powershell
 -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` on
 Windows. If you would rather install Codemble permanently, `pipx install
-codemble` needs no uv at all.
+codemble==0.16.0` needs no uv at all.
 
 ## 2. Point it at your project
 
 ```bash
-uvx codemble
+uvx --from codemble==0.16.0 codemble
 ```
 
 Codemble opens your browser to an in-app picker: browse your home folders or
-reopen a recent project, then pick it. Python, JavaScript, TypeScript, Go, Java,
-Rust, C#, and any mix of them are read the same way. To skip the picker, pass a
-path directly:
+reopen a recent project, then pick it. Codemble reads Python, JavaScript,
+TypeScript, Go, Java, Rust, C#, and mixtures of those languages. To skip the
+picker, pass a path directly:
 
 ```bash
-codemble ./my-project
+uvx --from codemble==0.16.0 codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -44,7 +49,7 @@ busiest-first subdirectories as buttons and accepts a typed path, right in the
 UI. From the CLI, select the scope yourself:
 
 ```bash
-codemble --path ./my-project/src
+uvx --from codemble==0.16.0 codemble --path ./my-project/src
 ```
 
 ## 3. Find Home
@@ -107,21 +112,22 @@ selected parser-backed target. Use **Fit** when you want the whole diagram as an
 overview, and press the percentage button to return to 100%. Codemble keeps your
 zoom and pan when fresh Map data arrives or you briefly switch layers.
 
-No API key is required to inspect source, parser relationships, or the **Impact**
-lists that show what a change to a structure would reach and what it depends on.
-With a key, Codemble sends only the selected source context directly to your
-configured provider when you open Study; it does not run narration in the
-background.
+No API key is required to inspect source, parser relationships, Lens notes, or
+checks. With a key, Codemble sends only the selected source context directly to
+your configured provider when you open Study; it does not run narration in the
+background. Model-free **Impact** lists show what a change would reach and what
+it depends on.
 
-## 5. Explore, then light it up
+## 5. Study, then light it up
 
-Flying to a system charts it: its import routes stay drawn, and the star chart
-counts it under **Systems explored**. That is saved with the rest of your
-progress, and it is the smaller of the two claims Codemble makes about you.
+Open one system, read a real structure, then choose **Prove understanding**.
+Pass the region's graph-derived checks and its stars light up—permanently.
+Watch your [star chart](/Codemble/star-chart/) grow as you meet language
+concepts.
 
-The larger one is earned. Pass a region's checks and its stars light up —
-permanently. Watch your [star chart](/Codemble/star-chart/) grow as you meet new
-language concepts.
+Codemble separately charts the systems you visit and keeps their routes drawn.
+That trail records where you have been; it never substitutes for the check that
+records understanding.
 
 A fully lit galaxy means you understand your project. That's the game.
 

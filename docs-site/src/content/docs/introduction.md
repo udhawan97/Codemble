@@ -42,10 +42,9 @@ optional extra: bring your own Claude or OpenAI key, or run a local model
 through Ollama and send nothing anywhere.
 
 :::note[Status]
-Codemble is in its Phase 1 tester release, installable from PyPI. Python,
-JavaScript, TypeScript, Go, Java, Rust, C#, and mixed projects run through the
-same local learning loop. The original unaided Python
-learner-acceptance issue remains open; technical completion does not substitute
-for human evidence. Follow on [GitHub](https://github.com/udhawan97/Codemble) —
-the roadmap stays public.
+Codemble **v0.16.0** is published on PyPI and maps Python, JavaScript,
+TypeScript, Go, Java, Rust, C#, and mixed projects. The downloadable package,
+current source, screenshots, and these product guides match. The original
+unaided learner-acceptance issue remains open; technical completion does not
+substitute for human evidence. [Choose a run or download route](/Codemble/download/).
 :::

@@ -3,6 +3,10 @@ title: Architecture
 description: The adapter seam, the render-ready graph, and why the LLM only narrates.
 ---
 
+:::note[v0.16.0 architecture]
+This page describes the seven-language packaged app and current source tree.
+:::
+
 ## Three load-bearing decisions
 
 ### 1. Language adapters (the seam)
