@@ -212,10 +212,13 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: the explorable galaxy** · Last updated: 2026-08-04 ·
-Session note: three evidence-led audit loops against the served v0.15.0 build
-found eight gaps; UD then reported six more from the running app, and **the ones
-UD found were the more serious**, which is the finding worth keeping. Released
-as **v0.16.0**.
+Session note: default-branch cleanup integrated the Formal Edo public surface
+and three verified GitHub Actions upgrades, while preserving active or unmerged
+work that ancestry could not prove redundant. The v0.16.0 release context
+follows: three evidence-led audit loops against the served v0.15.0 build found
+eight gaps; UD then reported six more from the running app, and **the ones UD
+found were the more serious**, which is the finding worth keeping. Released as
+**v0.16.0**.
 
 **A language focus emptied the Map, and that broke 5 of the 7 languages this
 project ships.** Home is written in one language and nothing in another has an
@@ -1609,6 +1612,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-04 | A Workflow row is one `<text>` with two `<tspan>`s, never a second `<text>` positioned by an estimate of the first one's width | It was `dx={row.label.length * 0.62}em`, and `em` resolves against the meta's **own 11px** while the mono label advances at **13px** -- a systematic ~15% undershoot on every row, so "— possible call" and "— shown above" printed through the tail of the name they described. Reported from the served build as text merging into text. A guess at rendered text width is wrong by construction; tspans flow at whatever width the label actually renders, which is the same reason `nameAtlas` measures plates rather than estimating them |
 | 2026-08-04 | The public surface is a **Formal Edo Workbench** led by current v0.16.0 product evidence; PyPI is the binary download source | UD requested a full README/website overhaul that matches the exploration-first app and makes downloads obvious. The previous decorative atlas led with an abstraction while the strongest proof was the product itself. The new signature is the evidence chain—Galaxy, Map, System, Impact, proof—beside an icon-led artifact ledger. The proof frame is a close Home-system view, not a distant Galaxy claim: all four structures visibly glow after the checks pass. Packaged stable and current source both report v0.16.0; the GitHub release carries notes but no uploaded binaries, so direct wheel/sdist downloads and their published SHA256 digests come from PyPI. This supersedes the landing-only parts of the 2026-07-19, 2026-07-22, and 2026-07-29 site decisions; the ensō, Formal Edo palette, reading scale, narrow-screen readable captures, and semantic accent rules remain locked |
 | 2026-08-04 | Product capture **owns its disposable server** and public release truth has an executable manifest | Council review found two trust failures in tooling that otherwise looked like documentation: an externally supplied capture URL could clear real progress and inherit a narrator, while a moving package index could make a version-specific one-command claim false between reviews. `capture:docs` now starts a current-source child on a random loopback port with a unique temporary data directory, removes provider configuration, requires reset success, refuses external URLs, and tears the child down. `docs-site/release.json` is the release manifest; `check:release` verifies it against source package versions, PyPI latest metadata, GitHub latest, artifact URLs, published digests, and downloaded bytes. Exact-release commands and source clones are pinned; the short `uvx codemble` route is described honestly as intentionally moving |
+| 2026-08-04 | Default-branch cleanup integrates coherent candidates, but preserves any active worktree or unmerged tip that ancestry and patch equivalence cannot prove redundant | The public-site overhaul and three green Actions upgrades are complete units and pass the combined repository gates. The dirty Dawn Sequence checkout contains user state, the clean `cb1a5c` worktree is still attached, and the stale planning tip remains unmerged; deleting any of them would turn an evidence gap into data loss. Remote or local refs are pruned only after their exact content is reachable from synchronized `main` |
 
 ## Non-Goals — do NOT build (point here when asked)
 
