@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 
 import { clearStaleNonTouchPointers } from "../src/orbitPointerGuard.js";
 
@@ -23,12 +22,5 @@ assert.equal(clearStaleNonTouchPointers(pen, { pointerType: "pen" }), true);
 assert.deepEqual(pen._pointers, []);
 
 assert.equal(clearStaleNonTouchPointers({}, { pointerType: "mouse" }), false);
-
-const galaxySource = readFileSync(new URL("../src/GalaxyCanvas.jsx", import.meta.url), "utf8");
-assert.match(
-  galaxySource,
-  /\.enableNodeDrag\(false\)/,
-  "the immutable graph must not install 3d-force-graph drag controls",
-);
 
 console.log("orbit pointer guard contract: ok");

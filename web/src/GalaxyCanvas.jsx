@@ -1,65 +1,16 @@
-import ForceGraph3D from "3d-force-graph";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
 
-import { attachBloom, prefersReducedMotion } from "./galaxyEffects.js";
-import { runDawnSequence } from "./dawnSequence.js";
-import {
-  CAMERA_DURATION,
-  cameraBoundsFor,
-  frameLevel,
-  frameStudy,
-  viewportAspect,
-} from "./galaxyView.js";
-import {
-  createDressing,
-  createGalacticGlow,
-  createStarfield,
-  seedFromHashes,
-} from "./galaxyMaterials.js";
+import { prefersReducedMotion } from "./galaxyEffects.js";
+import { createGalaxyRuntime } from "./galaxyRuntime.js";
+import { seedFromHashes } from "./galaxyMaterials.js";
 import {
   LEVELS,
-  NODE_REL_SIZE,
-  galaxyData,
-  highlightColor,
-  highlightLinkColor,
-  isUncharted,
-  nodeRadius,
-  linkLabel,
   NEBULA_TINTS,
+  galaxyData,
   nodeLabel,
   systemData,
 } from "./graphData.js";
-import { createBody, createBodyGeometry, createBodySpin } from "./celestialBodies.js";
-import { createNameAtlas } from "./nameAtlas.js";
-import { guardOrbitPointerState } from "./orbitPointerGuard.js";
-import {
-  createPossibleRoute,
-  refreshPossibleRoutes,
-  updateRouteGeometry,
-} from "./possibleRoutes.js";
-import {
-  createSystemOrbitGuides,
-  disposeSystemOrbitGuides,
-  systemOrbitPlan,
-} from "./systemOrbits.js";
-
-
-// Never straight down and never edge-on: at 0 the galaxy plane collapses to a
-// line, and past ~86 degrees the learner is under the plane looking up at a sky
-// that reads as a different project.
-const MIN_POLAR_ANGLE = 0.16;
-const MAX_POLAR_ANGLE = 1.5;
-// Label declutter. Recomputed on a timer rather than per frame: at 169 systems
-// this is a projection plus a sort, and doing it 60 times a second to reprint
-// text that has not moved is how a readable sky becomes a slow one.
-const LABEL_TICK_MS = 110;
-// 3d-force-graph mutates the scene on its own render tick, not the React
-// commit that flips `level` to GALAXY, so the newly-lit system's group may
-// not exist for a frame or two. A handful of retry frames covers that
-// without hanging forever if the target genuinely never appears (e.g. the
-// region is hidden by the current language focus).
-const MAX_DAWN_RETRY_FRAMES = 6;
+import { systemOrbitPlan } from "./systemOrbits.js";
 
 export function GalaxyCanvas({
   graph,
@@ -76,33 +27,15 @@ export function GalaxyCanvas({
   onDawnConsumed,
 }) {
   const hostRef = useRef(null);
-  const rendererRef = useRef(null);
-  const controlsRef = useRef(null);
+  const runtimeRef = useRef(null);
   const advanceRef = useRef(onAdvance);
   const retreatRef = useRef(onRetreat);
   const hoverRef = useRef(onHoverNode);
-  const pendingDawnRef = useRef(pendingDawnRegionId);
-  const dawnGraphRef = useRef(graph);
-  const onDawnConsumedRef = useRef(onDawnConsumed);
-  const dawnStartedRef = useRef(null);
-  const highlightRef = useRef({ activeId: null, neighborIds: new Set() });
-  const dressingRef = useRef(null);
-  const bloomRef = useRef(null);
-  const reframeRef = useRef(null);
-  const userFramedRef = useRef(false);
-  const focusedIdRef = useRef(null);
-  // The body tier is a level-of-detail decision, and `nodeThreeObject` is a
-  // stable accessor the library calls on its own tick, so the level it should
-  // read has to travel by ref rather than closure.
-  const levelRef = useRef(level);
-  const bodyGeometryRef = useRef(null);
+  const dawnConsumedRef = useRef(onDawnConsumed);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [renderError, setRenderError] = useState("");
   const palette = useMemo(readPalette, []);
   const reducedMotion = useMemo(prefersReducedMotion, []);
-  // The seed's *value*, not the identity of the object it came from. The
-  // Learner Projection now preserves focused-graph identity on unrelated
-  // commits too; value-keying here keeps that protection local to the sky.
   const starfieldSeed = seedFromHashes(graph.file_hashes);
   const data = useMemo(() => {
     if (level === LEVELS.GALAXY) return galaxyData(graph, palette, revealedRegionIds);
@@ -119,507 +52,67 @@ export function GalaxyCanvas({
     advanceRef.current = onAdvance;
     retreatRef.current = onRetreat;
     hoverRef.current = onHoverNode;
-    pendingDawnRef.current = pendingDawnRegionId;
-    // By ref, not by closure: the dawn effect keeps a deliberately narrow
-    // dependency list (see its comment), because any dependency that changes
-    // while a dawn is playing tears the effect down and cancels it mid-flare.
-    dawnGraphRef.current = graph;
-    onDawnConsumedRef.current = onDawnConsumed;
-  }, [onAdvance, onRetreat, onHoverNode, pendingDawnRegionId, onDawnConsumed]);
-
-  // Both defer to graphData: "what colour is this node right now" gets one
-  // answer, in the module that already owns the standing one, rather than a
-  // closure here that only this file could reach.
-  function nodeColor(node) {
-    return highlightColor(node, highlightRef.current, palette);
-  }
-
-  function linkColor(link) {
-    return highlightLinkColor(link, highlightRef.current, palette, linkEndId);
-  }
-
-  function linkWidth(link) {
-    if (link.focusDim) return 0.4;
-    const { activeId } = highlightRef.current;
-    const base = Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25);
-    if (!activeId) return base;
-    const source = linkEndId(link.source);
-    const target = linkEndId(link.target);
-    return source === activeId || target === activeId ? base + 0.9 : base;
-  }
+    dawnConsumedRef.current = onDawnConsumed;
+  }, [onAdvance, onRetreat, onHoverNode, onDawnConsumed]);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
-    const probe = document.createElement("canvas");
-    if (!probe.getContext("webgl2") && !probe.getContext("webgl")) {
-      setRenderError("Codemble needs WebGL to draw your galaxy. Enable WebGL and reload.");
-      return undefined;
-    }
-
     try {
-      const dressing = createDressing(palette);
-      // One sphere buffer shared by every body in every system, so a system of
-      // sixty members uploads one geometry rather than sixty. Owned here
-      // because it outlives any single node object.
-      bodyGeometryRef.current = createBodyGeometry();
-      dressingRef.current = dressing;
-      // controlType is construction-time only in this library, so orbit has to
-      // be chosen here rather than toggled later.
-      const renderer = ForceGraph3D({ controlType: "orbit" })(host)
-        .backgroundColor(palette.ground)
-        .showNavInfo(false)
-        .enableNavigationControls(true)
-        // The parser owns the layout, and moving a node is not a learner
-        // action. More importantly, 3d-force-graph's drag-end bridge emits a
-        // synthetic touch pointerup while OrbitControls is still completing
-        // the real mouse pointerup, which corrupts its pointer bookkeeping.
-        .enableNodeDrag(false)
-        .warmupTicks(0)
-        .cooldownTicks(0)
-        .nodeId("id")
-        .nodeLabel(nodeLabel)
-        .nodeVal("val")
-        .nodeColor(nodeColor)
-        .nodeRelSize(NODE_REL_SIZE)
-        .nodeResolution(8)
-        // Study level no longer dims the whole scene: focusDim removes the glow
-        // from unconnected nodes instead, so the selection's connections stay
-        // visible while everything else recedes.
-        .nodeOpacity(0.82)
-        .nodeThreeObject((node) =>
-          makeMarker(node, palette, dressing, focusedIdRef.current, {
-            level: levelRef.current,
-            bodyGeometry: bodyGeometryRef.current,
-          }),
-        )
-        .nodeThreeObjectExtend(true)
-        .linkColor(linkColor)
-        .linkLabel(linkLabel)
-        // 0.5, not the old 0.32: routes were already drawn in low-contrast ink
-        // and the global opacity multiplied them near-invisible (audit gap 3).
-        // The route token itself stays below --cm-route-possible, so raising
-        // opacity cannot make a proven edge outshout an unproven one.
-        .linkOpacity(0.5)
-        .linkWidth(linkWidth)
-        .linkCurvature(0.12)
-        // Uncertainty gets a SHAPE channel, not just an ink. A proven route is
-        // the library's own cylinder; an unproven one is a dashed line we own,
-        // because a cylinder mesh cannot be dashed. Colour alone vanishes under
-        // colour-blindness and in any greyscale capture, and "possible call" is
-        // the one claim a learner must never misread as proven.
-        .linkThreeObject((link) =>
-          link.certain ? null : createPossibleRoute(link, linkColor(link)),
-        )
-        .linkPositionUpdate((object, { start, end }, link) =>
-          // Falsy hands the link back to the library's own positioning; truthy
-          // means we placed it ourselves, which is the only way the dash phase
-          // gets measured (the library never calls computeLineDistances).
-          link.certain ? false : updateRouteGeometry(object, link.__curve, start, end),
-        )
-        .linkVisibility((link) => !(mode === "easy" && link.focusDim))
-        .linkHoverPrecision(4)
-        .linkDirectionalArrowRelPos(1)
-        .linkDirectionalArrowColor(linkColor)
-        // Particles drift only on CERTAIN call edges. A possible call stays
-        // still, so motion can never imply proof -- and reduced motion means no
-        // continuous drift at all, the same contract the nebula dawn honours.
-        // Certainty keeps a colour channel either way, so nothing is lost.
-        .linkDirectionalParticles((link) =>
-          link.kind === "call" && link.certain && !link.focusDim && !reducedMotion ? 2 : 0,
-        )
-        .linkDirectionalParticleSpeed(0.006)
-        .linkDirectionalParticleWidth(1.1)
-        .linkDirectionalParticleColor(() => palette.orbit)
-        .onNodeHover((node) => {
-          host.style.cursor = node ? "pointer" : "default";
-          hoverRef.current(node?.id ?? null);
-        })
-        .onNodeClick((node) => advanceRef.current(node));
-      const hideNavigationHint = requestAnimationFrame(() => {
-        host.querySelector(".scene-nav-info")?.remove();
+      const runtime = createGalaxyRuntime({
+        host,
+        palette,
+        reducedMotion,
+        onHoverNode: (nodeId) => hoverRef.current(nodeId),
+        onAdvance: (node) => advanceRef.current(node),
+        onDawnConsumed: (regionId) => dawnConsumedRef.current?.(regionId),
       });
-
-      // The bounded half of "bounded orbit". Panning is the degree of freedom
-      // that lets a learner drift into empty space with nothing on screen to
-      // navigate back by, so it is the one that stays off; rotation and zoom
-      // are clamped rather than removed. Damping is safe because the library
-      // calls controls.update() every frame.
-      const controls = renderer.controls();
-      controls.enablePan = false;
-      // Damping keeps the view gliding after the pointer is released, which is
-      // motion the learner did not ask for -- the same reason the drift
-      // particles and the nebula dawn check this. Reduced motion gets a camera
-      // that stops exactly when the drag stops.
-      controls.enableDamping = !reducedMotion;
-      controls.dampingFactor = 0.12;
-      controls.rotateSpeed = 0.55;
-      controls.zoomSpeed = 0.7;
-      controls.minPolarAngle = MIN_POLAR_ANGLE;
-      controls.maxPolarAngle = MAX_POLAR_ANGLE;
-      controlsRef.current = controls;
-      // Once the learner has moved the camera themselves, a later resize must
-      // not snap their view back to the default fit.
-      const markUserFramed = () => {
-        userFramedRef.current = true;
-      };
-      controls.addEventListener("start", markUserFramed);
-      const removePointerGuard = guardOrbitPointerState(host, controls);
-
-      // Sized from the host, not from whatever the composer happens to hold: a
-      // re-mount into an identically-sized element gets no resize at all, and
-      // an unsized pass chain presents an empty canvas. See attachBloom.
-      bloomRef.current = attachBloom(renderer, host.getBoundingClientRect());
-      rendererRef.current = renderer;
-
-      const resize = new ResizeObserver(([entry]) => {
-        const { width, height } = entry.contentRect;
-        renderer.width(width).height(height);
-        const aspect = viewportAspect(entry.contentRect);
-        if (!userFramedRef.current && aspect !== null) reframeRef.current?.(aspect);
-      });
-      resize.observe(host);
+      runtimeRef.current = runtime;
+      setRenderError("");
       return () => {
-        resize.disconnect();
-        controls.removeEventListener("start", markUserFramed);
-        cancelAnimationFrame(hideNavigationHint);
-        removePointerGuard();
-        renderer.pauseAnimation();
-        bloomRef.current?.dispose();
-        bloomRef.current = null;
-        // The only thing that frees the WebGL context: _destructor empties the
-        // scene and disposes the controls, the renderer and the composer
-        // (three-render-objects.mjs:466-472). Without it, every Galaxy<->Map
-        // switch and every Star chart visit stranded a live context, and after
-        // ~16 the browser force-lost the oldest ones -- the galaxy went blank
-        // with nothing in the console to say why.
-        renderer._destructor();
-        // After _destructor, not before: it empties the scene, which hands the
-        // shared halo/nebula resources to three-forcegraph's deallocator. That
-        // is a no-op by design (see galaxyMaterials), so this is the real free.
-        dressing.dispose();
-        // After _destructor for the same reason dressing is: it empties the
-        // scene first. Per-node body MATERIALS are deliberately not owned here
-        // -- they are unshared, so the library freeing them with their node is
-        // correct; only this shared geometry needs an explicit release.
-        bodyGeometryRef.current?.dispose();
-        bodyGeometryRef.current = null;
-        dressingRef.current = null;
-        controlsRef.current = null;
-        host.replaceChildren();
-        rendererRef.current = null;
+        runtime.dispose();
+        if (runtimeRef.current === runtime) runtimeRef.current = null;
       };
     } catch (error) {
-      setRenderError(`The galaxy could not start: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      setRenderError(
+        message.startsWith("Codemble needs WebGL")
+          ? message
+          : `The galaxy could not start: ${message}`,
+      );
       return undefined;
     }
-  }, [palette]);
+  }, [palette, reducedMotion]);
 
   useEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer) return;
-    // Set BEFORE graphData, so the node objects the library is about to build
-    // read the tier they belong to rather than the previous level's.
-    levelRef.current = level;
-    renderer
-      .nodeResolution(data.nodes.length >= 900 ? 4 : 8)
-      // Level-of-detail. The galaxy keeps the library's cheap lambert sphere
-      // under a halo sprite, because up to ~1,000 of them are on screen. A
-      // system supplies its own procedural body, so the default sphere must
-      // stop drawing or it would z-fight the surface it sits inside.
-      .nodeThreeObjectExtend(level === LEVELS.GALAXY)
-      .linkVisibility((link) => !(mode === "easy" && link.focusDim))
-      // Arrows only where an edge means a direction the learner can act on.
-      .linkDirectionalArrowLength(level === LEVELS.GALAXY ? 0 : 3.2)
-      .graphData(data);
-    // Re-clamp before the move, so the tween never lands outside the range it
-    // is about to be held to. cameraPosition's lookAt writes controls.target
-    // directly now that controls are enabled (three-render-objects setLookAt),
-    // which is what re-anchors the orbit on every level change for free.
-    //
-    // The aspect always comes from the host element -- the thing actually being
-    // drawn into -- and never from `renderer.width()/height()` or
-    // `camera.aspect`. The library batches width and height and applies them on
-    // its next tick, so its copy still carries the previous viewport at the
-    // moment a resize is handled. One source, so there is nothing to go stale.
-    //
-    // The host is preferred but not required: on the commit that mounts a
-    // fresh canvas it may not have been laid out yet, and an unmeasured
-    // element yields no aspect. The renderer's own size is the fallback --
-    // stale by at most one tick, which is still an honest number, where `null`
-    // would drop the level back to its art-directed default and reopen the
-    // fixed-distance clipping this module exists to end.
-    const applyFraming = (duration, aspect) => {
-      const framed = frameLevel({
-        level,
-        nodes: data.nodes,
-        orbitPlan,
-        fov: renderer.camera()?.fov,
-        aspect:
-          aspect ??
-          viewportAspect(hostRef.current?.getBoundingClientRect()) ??
-          viewportAspect({ width: renderer.width(), height: renderer.height() }),
-        // Only the controls, not the prose beside them. A `pointer-events: none`
-        // paragraph over a star costs nothing -- the star is still clickable and
-        // still visible around the text -- while a button over one silently
-        // takes the click and opens something else. Reserving the whole panel
-        // would push every system back for a problem only its buttons have.
-        //
-        // System level only, and that is a measured trade rather than caution.
-        // A system draws a handful of bodies under a panel wide enough to hide
-        // one of them outright. The galaxy's only overlay control is the small
-        // Key toggle in a corner, and reserving it cost the whole sky ~6% of its
-        // size -- a real loss on the view the previous release tuned to fill 90%
-        // of the canvas, to dodge a button almost nothing lands under.
-        viewport: canvasViewport(hostRef.current, renderer),
-        chrome: level === LEVELS.SYSTEM ? interactiveChrome(hostRef.current) : [],
-      });
-      if (controlsRef.current) {
-        controlsRef.current.minDistance = framed.min;
-        controlsRef.current.maxDistance = framed.max;
-      }
-      // The target, not the origin: a parser-derived layout is not centred on
-      // (0,0,0), so aiming there left the sky pinned to one corner of the
-      // canvas. It is also what OrbitControls then swings around, which is the
-      // behaviour bounded orbit wants -- the subject stays the subject.
-      renderer.cameraPosition(framed.position, framed.target, duration);
-    };
-    applyFraming(CAMERA_DURATION);
-    // A resize changes the aspect, and with it what fits; re-frame from the
-    // observer unless the learner has taken the camera themselves, in which
-    // case their view is the one worth keeping.
-    userFramedRef.current = false;
-    reframeRef.current = (aspect) => applyFraming(0, aspect);
+    runtimeRef.current?.update({
+      graph,
+      data,
+      level,
+      mode,
+      orbitPlan,
+      selectedNode,
+      hoverNodeId,
+      pendingDawnRegionId,
+      starfieldSeed,
+      focusedNodeId: data.nodes[focusedIndex]?.id ?? null,
+    });
+  }, [
+    data,
+    focusedIndex,
+    graph,
+    hoverNodeId,
+    level,
+    mode,
+    orbitPlan,
+    pendingDawnRegionId,
+    selectedNode,
+    starfieldSeed,
+  ]);
+
+  useEffect(() => {
     setFocusedIndex(0);
-    return () => {
-      reframeRef.current = null;
-    };
   }, [data, level, mode, orbitPlan]);
-
-  useEffect(() => {
-    focusedIdRef.current = data.nodes[focusedIndex]?.id ?? null;
-    rendererRef.current?.refresh();
-  }, [data.nodes, focusedIndex]);
-
-  useEffect(() => {
-    const renderer = rendererRef.current;
-    const dressing = dressingRef.current;
-    if (!renderer || !dressing || level === LEVELS.GALAXY || !orbitPlan.length) {
-      return undefined;
-    }
-    const scene = renderer.scene();
-    const guides = createSystemOrbitGuides(orbitPlan, palette, dressing);
-    scene.add(guides);
-    // Bodies turn only while a system is on screen. Rotation moves a body's own
-    // surface and never its position -- the layout stays parser-owned -- and
-    // reduced motion gets still worlds rather than slower ones.
-    const stopSpin = createBodySpin(scene, { reducedMotion });
-    return () => {
-      stopSpin();
-      scene.remove(guides);
-      disposeSystemOrbitGuides(guides);
-    };
-  }, [level, orbitPlan, palette, reducedMotion]);
-
-  useEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer) return undefined;
-    const scene = renderer.scene();
-    for (const name of ["codemble-starfield", "codemble-galactic-glow"]) {
-      const previous = scene.getObjectByName(name);
-      if (previous) {
-        scene.remove(previous);
-        previous.geometry?.dispose();
-        previous.material?.dispose();
-      }
-    }
-    // Seeded by the project's own file hashes: same code, same sky, every run.
-    const starfield = createStarfield(starfieldSeed, palette);
-    // Unseeded on purpose: the glow carries no per-project information at all,
-    // so there is nothing for a seed to make deterministic.
-    const glow = createGalacticGlow(palette);
-    scene.add(starfield);
-    scene.add(glow);
-    return () => {
-      scene.remove(starfield);
-      starfield.geometry.dispose();
-      starfield.material.dispose();
-      scene.remove(glow);
-      glow.material.map?.dispose();
-      glow.material.dispose();
-    };
-  }, [starfieldSeed, palette]);
-
-  // Keyed on `level` (not pendingDawnRegionId) so a normal galaxy-level
-  // re-render never re-triggers this: the region to play is read from a ref
-  // instead. That matters because this effect consumes the pending signal
-  // itself -- if `pendingDawnRegionId` were a dependency, clearing it would
-  // change that dependency and tear this same effect straight back down,
-  // cancelling the dawn a frame after starting it. dawnStartedRef then makes
-  // "exactly once" airtight even before that consume round-trip lands: a
-  // second GALAXY entry for the same region id is a guaranteed no-op.
-  useEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer || level !== LEVELS.GALAXY) return undefined;
-    const regionId = pendingDawnRef.current;
-    if (!regionId || dawnStartedRef.current === regionId) return undefined;
-    dawnStartedRef.current = regionId;
-    onDawnConsumedRef.current?.(regionId);
-
-    let cancelled = false;
-    let stopDawn = () => {};
-    // requestAnimationFrame always calls its callback with a timestamp, so a
-    // default parameter (`frame = 0`) never applies on the first tick -- the
-    // retry count must be threaded through explicitly instead, or the very
-    // first check reads as "budget already exhausted" and the retry never
-    // actually retries.
-    const attempt = (frame) => {
-      if (cancelled) return;
-      const scene = renderer.scene();
-      const found = Boolean(scene.getObjectByName(`codemble-system-${regionId}`));
-      if (found || frame >= MAX_DAWN_RETRY_FRAMES) {
-        stopDawn = runDawnSequence({
-          scene,
-          regionId,
-          palette,
-          dressing: dressingRef.current,
-          // Region routes, not the level's drawn links: the dawn plays at
-          // galaxy level where these are the same, but reading graph truth
-          // directly keeps the moment honest if the drawn set is ever thinned.
-          routes: dawnGraphRef.current?.region_edges ?? [],
-          hopsById: new Map(
-            (dawnGraphRef.current?.regions ?? []).map((item) => [
-              item.id,
-              item.hops_from_home,
-            ]),
-          ),
-        });
-        return;
-      }
-      frameHandle = requestAnimationFrame(() => attempt(frame + 1));
-    };
-    let frameHandle = requestAnimationFrame(() => attempt(0));
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frameHandle);
-      stopDawn();
-    };
-  }, [level, palette]);
-
-  useEffect(() => {
-    // At study level the selection is the subject even without a pointer, so
-    // its connections stay legible instead of the scene fading to 0.16.
-    const activeId = hoverNodeId ?? (level === LEVELS.STUDY ? selectedNode?.id ?? null : null);
-    const neighborIds = new Set();
-    if (activeId) {
-      for (const link of data.links) {
-        const source = linkEndId(link.source);
-        const target = linkEndId(link.target);
-        if (source === activeId) neighborIds.add(target);
-        if (target === activeId) neighborIds.add(source);
-      }
-    }
-    highlightRef.current = { activeId, neighborIds };
-    const renderer = rendererRef.current;
-    if (!renderer) return;
-    // Re-setting an accessor to itself is the library's own refresh idiom.
-    renderer
-      .nodeColor(renderer.nodeColor())
-      .linkColor(renderer.linkColor())
-      .linkWidth(renderer.linkWidth())
-      .linkDirectionalArrowColor(renderer.linkDirectionalArrowColor());
-    // A dashed route owns its material, so `linkColor` no longer reaches it the
-    // way it reaches a library-built link. Without this, hovering a system lit
-    // its proven routes and left its unproven ones dark -- which would have
-    // made uncertainty look like irrelevance.
-    refreshPossibleRoutes(renderer.scene(), linkColor);
-  }, [data, hoverNodeId, level, selectedNode?.id]);
-
-  const nameAtlas = useMemo(() => createNameAtlas(data.nodes), [data.nodes]);
-
-  useEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer) return undefined;
-    const scene = renderer.scene();
-
-    function relabel() {
-      const camera = renderer.camera();
-      const controls = controlsRef.current;
-      // The *fitted* range the camera is actually held to, not the art-directed
-      // floor it started from. A project whose layout outgrows the default has
-      // its clamps widened by the fit, and budgeting labels against the narrow
-      // range read "as far out as it goes" while the camera was still near.
-      const fallback = cameraBoundsFor(level);
-      const bounds = controls
-        ? { min: controls.minDistance ?? fallback.min, max: controls.maxDistance ?? fallback.max }
-        : fallback;
-      const distance = controls
-        ? camera.position.distanceTo(controls.target)
-        : camera.position.length();
-      nameAtlas.place({
-        scene,
-        camera,
-        width: renderer.width(),
-        height: renderer.height(),
-        distance,
-        distanceBounds: bounds,
-        hoverNodeId,
-        chrome: chromeBoxes(hostRef.current),
-      });
-    }
-
-    // Wrapped because this runs on a timer: an exception mid-pass leaves every
-    // plate in the hidden state the pass starts from, so the whole sky silently
-    // loses its names with nothing on screen to say why. Reporting it and
-    // stopping the timer turns that into something diagnosable.
-    let timer = null;
-    function tick() {
-      try {
-        relabel();
-      } catch (error) {
-        if (timer !== null) clearInterval(timer);
-        nameAtlas.hide(scene);
-        console.error("Codemble: label declutter failed, names disabled", error);
-      }
-    }
-    tick();
-    timer = setInterval(tick, LABEL_TICK_MS);
-    return () => {
-      clearInterval(timer);
-      nameAtlas.hide(scene);
-    };
-  }, [hoverNodeId, level, nameAtlas]);
-
-  useEffect(() => {
-    const benchmarking = new URLSearchParams(window.location.search).has("benchmark");
-    if (!benchmarking || data.nodes.length < 900) return undefined;
-    document.documentElement.removeAttribute("data-codemble-fps");
-    const begin = setTimeout(() => {
-      const graphRenderer = rendererRef.current;
-      if (!graphRenderer) return;
-      const webglRenderer = graphRenderer.renderer();
-      const composer = graphRenderer.postProcessingComposer();
-      const frameCount = 60;
-      const startedAt = performance.now();
-      for (let frame = 0; frame < frameCount; frame += 1) {
-        // Must go through the composer: rendering the scene directly would skip
-        // the bloom pass and report a framerate the learner never sees.
-        composer.render();
-      }
-      webglRenderer.getContext().finish();
-      const elapsed = performance.now() - startedAt;
-      document.documentElement.dataset.codembleFps = ((frameCount * 1000) / elapsed).toFixed(1);
-    }, 1000);
-    return () => clearTimeout(begin);
-  }, [data.nodes.length]);
-
-  useEffect(() => {
-    if (!rendererRef.current || level !== LEVELS.STUDY) return;
-    const framed = frameStudy(selectedNode);
-    if (!framed) return;
-    rendererRef.current.cameraPosition(framed.position, framed.target, CAMERA_DURATION);
-  }, [level, selectedNode]);
 
   const focusedNode = data.nodes[focusedIndex] ?? null;
 
@@ -639,19 +132,11 @@ export function GalaxyCanvas({
     }
   }
 
-  // The wheel is the orbit's zoom now, so it no longer changes level: two
-  // meanings on one gesture meant every attempt to look closer also teleported
-  // the learner somewhere else. Level changes are click, Enter, Escape and the
-  // breadcrumb, all of which say what they will do before they do it.
-
   if (renderError) {
     return (
       <section className="webgl-error" role="alert">
         <h1>The sky could not open.</h1>
         <p>{renderError}</p>
-        {/* The 2D layer draws from the same parser graph without WebGL, and its
-            switch is in the header rail one step away -- cheaper and kinder than
-            leaving a stranded learner with only "enable WebGL and reload". */}
         <p>
           The {mode === "easy" ? "Diagram" : "Map"} layer works without WebGL —
           switch to it at the top of the window to explore the same code.
@@ -678,155 +163,6 @@ export function GalaxyCanvas({
   );
 }
 
-// The DOM drawn ON TOP of the sky, in the canvas's own CSS pixels: the
-// orientation line at the top-left and the keyboard readout at the bottom-left.
-// Both are `pointer-events: none` overlays, so nothing about them reaches the
-// scene and a name plate is otherwise printed straight through them -- on this
-// repository across "24 charted · 2 could not be read · all under tests/",
-// which is the line that states what Codemble could not parse.
-//
-// Read from the DOM each pass rather than cached: the line's width changes with
-// the language focus, with `Show all`, and with the register's wording, and a
-// stale rectangle would reserve sky that is no longer covered.
-/** The canvas box the camera is framing into, in CSS pixels. */
-function canvasViewport(host, renderer) {
-  const box = host?.getBoundingClientRect();
-  if (box?.width && box?.height) return { width: box.width, height: box.height };
-  const width = renderer?.width?.();
-  const height = renderer?.height?.();
-  return width && height ? { width, height } : null;
-}
-
-/**
- * Chrome that takes clicks, as rectangles relative to the canvas.
- *
- * Distinct from `chromeBoxes`, which reserves space for *name plates* and so
- * cares about anything drawn over the sky. This one answers a different
- * question -- what would swallow a click meant for a star -- so it lists only
- * the controls. `.orientation-copy` itself is `pointer-events: none`; its
- * buttons opt back in, which is exactly the set that can steal a planet.
- */
-function interactiveChrome(host) {
-  const stage = host?.closest(".map-stage");
-  if (!stage) return [];
-  const origin = host.getBoundingClientRect();
-  const boxes = [];
-  for (const element of stage.querySelectorAll(".orientation-copy button, .legend-toggle")) {
-    if (getComputedStyle(element).pointerEvents === "none") continue;
-    const box = element.getBoundingClientRect();
-    if (!box.width || !box.height) continue;
-    boxes.push({
-      left: box.left - origin.left,
-      right: box.right - origin.left,
-      top: box.top - origin.top,
-      bottom: box.bottom - origin.top,
-    });
-  }
-  return boxes;
-}
-
-function chromeBoxes(host) {
-  // The stage, not the host's parent. These overlays are not siblings of the
-  // canvas: `.orientation-bar` is a child of the stage while `.keyboard-focus`
-  // sits inside `.galaxy-frame`, and the canvas itself is three divs deep
-  // inside that. Scoping to the host's parent found neither, which is a no-op
-  // that looks exactly like a working fix until you count the plates.
-  const stage = host?.closest(".map-stage");
-  if (!stage) return [];
-  const origin = host.getBoundingClientRect();
-  const boxes = [];
-  for (const element of stage.querySelectorAll(".orientation-bar, .keyboard-focus")) {
-    const box = element.getBoundingClientRect();
-    if (!box.width || !box.height) continue;
-    boxes.push({
-      left: box.left - origin.left,
-      right: box.right - origin.left,
-      top: box.top - origin.top,
-      bottom: box.bottom - origin.top,
-    });
-  }
-  return boxes;
-}
-
-function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } = {}) {
-  const group = new THREE.Group();
-  group.name = node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
-  // From graphData, which also tells the camera how far a star's glow reaches:
-  // one owner for how big a node is drawn, rather than this arithmetic here and
-  // the framing's copy of it there.
-  const radius = nodeRadius(node);
-  // System tier: a real procedural world instead of the library's flat sphere.
-  // The colour handed over is already the semantic one graphData decided from
-  // community, centrality, understood and partial -- the shader only gives it
-  // a surface, and may never change what it means.
-  const worldTier = level && level !== LEVELS.GALAXY && bodyGeometry;
-  if (worldTier) {
-    group.add(
-      createBody({ node, color: node.color, palette, radius, geometry: bodyGeometry }),
-    );
-  }
-  // An uncharted region keeps its true position, its colour, its NAME and its
-  // clickability -- being somewhere the learner has not been is not a reason
-  // to hide it. What it does without, until reached, is the glow and the
-  // language fog, so the charted sky still reads as the part of the project
-  // they have actually walked.
-  const uncharted = isUncharted(node);
-  // Dimmed nodes keep their true colour and lose their glow. Dimming by
-  // removing light rather than shifting hue keeps a lit star recognisably lit.
-  // A world lights itself through its own shader, so the halo sprite that
-  // stands in for a body at galaxy range would only wash it out.
-  if (!node.focusDim && !uncharted && !worldTier) group.add(dressing.halo(node, radius));
-  if (node.kind === "region" && !uncharted) {
-    const tint = palette.nebula[node.language];
-    if (tint) group.add(dressing.nebula(tint, radius * 14));
-  }
-  if (node.label) {
-    const plate = dressing.label(node.label, radius);
-    // The declutter pass finds plates by walking the live scene, so the id it
-    // needs to rank them by has to travel on the sprite itself.
-    plate.userData.nodeId = node.id;
-    group.add(plate);
-  }
-  if (node.home) {
-    const homeRing = new THREE.Mesh(
-      new THREE.TorusGeometry(radius * 1.7, Math.max(0.18, radius * 0.07), 8, 36),
-      new THREE.MeshBasicMaterial({ color: palette.home }),
-    );
-    homeRing.rotation.x = Math.PI / 2.8;
-    group.add(homeRing);
-  }
-  // A class wears a thin ring (D2's cheap half): "this planet is a container
-  // of methods" is a parser fact (NodeKind), and the ring gives the system
-  // view bodies with character without inventing anything. Route ink, not
-  // amber and not ruri -- a ring is structure, not progress or interaction.
-  if (node.kind === "class" && !node.focusDim) {
-    const classRing = new THREE.Mesh(
-      new THREE.TorusGeometry(radius * 1.45, Math.max(0.1, radius * 0.045), 6, 28),
-      new THREE.MeshBasicMaterial({ color: palette.route }),
-    );
-    classRing.rotation.x = Math.PI / 2.4;
-    group.add(classRing);
-  }
-  if (node.selected) {
-    const selectedRing = new THREE.Mesh(
-      new THREE.TorusGeometry(radius * 2.1, Math.max(0.16, radius * 0.05), 6, 24),
-      new THREE.MeshBasicMaterial({ color: palette.orbit }),
-    );
-    selectedRing.rotation.x = Math.PI / 2.8;
-    group.add(selectedRing);
-  }
-  if (node.id === focusedId) group.add(dressing.reticle(radius));
-  return group;
-}
-
-// The force layout swaps link endpoints from ids to node objects in place.
-function linkEndId(end) {
-  return typeof end === "object" && end !== null ? end.id : end;
-}
-
-// A custom property hands back its authored text, so a token written as
-// color-mix() reaches WebGL as a string three.js cannot parse and renders black.
-// Painting it once turns any CSS colour the browser understands into plain rgb.
 function toRenderableColor(value) {
   const context = document.createElement("canvas").getContext("2d");
   context.fillStyle = "#000000";
@@ -838,51 +174,30 @@ function toRenderableColor(value) {
 
 function readPalette() {
   const styles = getComputedStyle(document.documentElement);
-  const value = (token) =>
-    toRenderableColor(styles.getPropertyValue(token).trim());
+  const value = (token) => toRenderableColor(styles.getPropertyValue(token).trim());
   return Object.freeze({
-    // The sky is its own token now, not the panel ground: painting the canvas
-    // with --cm-ground made the galaxy's background the interface's background
-    // (relative luminance 0.0037 -- black in all but name), and lifting it
-    // would have dragged every panel with it.
     ground: value("--cm-sky"),
     skyGlow: value("--cm-sky-glow"),
     home: value("--cm-ink"),
     orbit: value("--cm-orbit"),
-    // Three canvas-only ramp values. They used to borrow the panel's text
-    // tokens, which tied how bright an un-understood star may be to the
-    // interface's typography. A lit star (--cm-star-high) sits above all
-    // three, and above every community family, by a measured margin.
     nodeBright: value("--cm-node-bright"),
     node: value("--cm-node-mid"),
     nodeDim: value("--cm-node-unlit"),
     starCool: value("--cm-star-cool"),
     starPale: value("--cm-star-pale"),
-    // The dedicated route ink (audit gap 3): --cm-hairline belongs to borders
-    // and panel rules, and an edge drawn in chrome ink disappears beside it.
     route: value("--cm-route"),
     routePossible: value("--cm-route-possible"),
-    // Everything outside the current selection or hover recedes to this;
-    // it stays a plain value so readPalette can hand WebGL real rgb().
     faded: value("--cm-hairline-soft"),
     star: value("--cm-star-high"),
     starHalo: value("--cm-star-halo"),
-    // Keyed by language, straight off graphData's one tint table, so a new
-    // language cannot arrive here with fog missing and nothing to say so.
     nebula: Object.freeze(
       Object.fromEntries(
         Object.entries(NEBULA_TINTS).map(([language, property]) => [language, value(property)]),
       ),
     ),
-    // The eight community family hues (D1). Read in index order so
-    // communityPaletteIndex's arithmetic and this array can never disagree.
     communities: Object.freeze(
       Array.from({ length: 8 }, (_, index) => value(`--cm-com-${index}`)),
     ),
-    // Read raw, NOT through toRenderableColor: these two are painted with a 2D
-    // canvas context, which understands any CSS colour including the plate's
-    // alpha. Flattening them to rgb() the way WebGL requires would silently
-    // make the label plate opaque.
     labelPlate: styles.getPropertyValue("--cm-label-plate").trim(),
     labelInk: styles.getPropertyValue("--cm-label-ink").trim(),
   });

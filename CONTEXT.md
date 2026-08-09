@@ -1,5 +1,11 @@
 # Codemble domain model
 
+## Galaxy Runtime
+
+The lifetime of one interactive galaxy: renderer admission and configuration,
+camera and scene updates, asynchronous visual work, and strict disposal. React
+supplies learner-facing facts but does not own WebGL resources.
+
 ## Project Selection
 
 The learner's choice of one local folder, constrained to Codemble's allowed
