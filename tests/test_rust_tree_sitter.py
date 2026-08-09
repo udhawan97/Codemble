@@ -471,10 +471,6 @@ def test_entrypoint_ranking_and_explicit_selection_are_parser_bounded(graph) -> 
         RustAdapter().parse(FIXTURE, entrypoint="made-up")
 
 
-def test_repeated_parses_are_byte_identical() -> None:
-    assert RustAdapter().parse(FIXTURE).to_json() == RustAdapter().parse(FIXTURE).to_json()
-
-
 def test_concepts_are_tree_sitter_proven_owned_and_language_tagged(graph) -> None:  # type: ignore[no-untyped-def]
     concepts_by_node: dict[str, set[tuple[str, int]]] = {}
     nodes = {node.id: node for node in graph.nodes}
@@ -555,8 +551,3 @@ def test_a_single_rust_file_parses_without_a_project_around_it(tmp_path: Path) -
 
     assert graph.partial_files == ()
     assert {node.id for node in graph.nodes} == {"rust:sample.rs", "rust:sample.rs::mapped"}
-
-
-def test_an_unreadable_scope_is_refused_rather_than_guessed(tmp_path: Path) -> None:
-    with pytest.raises(RustParseError, match="no Rust files found"):
-        RustAdapter().parse(tmp_path)

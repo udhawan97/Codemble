@@ -20,6 +20,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Canvas viewport and overlay measurement now have one role-aware owner, so
   camera click protection and Name Atlas legibility consume the same translated
   DOM facts without merging their different decisions.
+- JavaScript/TypeScript, Go, Java, Rust, and C# adapters now share one private
+  discovery, parse, and finalization lifecycle while preserving their public
+  interfaces, language-owned evidence, serialized graphs, and exact errors.
 - The README and public website now use a Formal Edo Workbench built around
   real v0.16.0 product captures, plain-language capability and trust sections,
   and a responsive five-step Explore → Map → Land → Inspect → Prove journey.

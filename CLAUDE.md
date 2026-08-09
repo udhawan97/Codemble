@@ -212,9 +212,10 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M15 architecture deepening** · Last updated: 2026-08-09 ·
-Session note: Waves 1–2 moved the full WebGL renderer lifetime behind the Galaxy
-Runtime and canvas measurement behind Canvas Occlusion; the shared tree-sitter
-lifecycle remains. The preceding default-branch cleanup integrated the Formal Edo public surface
+Session note: M15 is complete: Galaxy Runtime owns WebGL lifetime, Canvas
+Occlusion owns role-aware measurements, and five tree-sitter adapters share one
+private discovery/parse/finalization lifecycle without changing graph bytes or
+public contracts. The preceding default-branch cleanup integrated the Formal Edo public surface
 and three scoped GitHub Actions upgrades, while preserving active or unmerged
 work that ancestry could not prove redundant. Only `setup-python@v7` ran in CI;
 the upload/download artifact handoff in the release-published/manual-dispatch
@@ -1434,12 +1435,12 @@ unchanged; focused module suites and the existing end-to-end session/server
 suites pass; the production SPA is rebuilt; the 1,000-node projection benchmark
 shows lower repeated-commit work without changing derived values.
 
-### M15 — Runtime, occlusion, and adapter lifecycle depth (2026-08-09)
+### M15 — Runtime, occlusion, and adapter lifecycle depth ✅ (2026-08-09)
 - [x] Put renderer admission, scene updates, asynchronous visual work, and
       strict WebGL cleanup behind one Galaxy Runtime
 - [x] Put canvas viewport and overlay-role measurement behind one Canvas
       Occlusion operation
-- [ ] Put shared tree-sitter discovery, parse, and finalization behind one
+- [x] Put shared tree-sitter discovery, parse, and finalization behind one
       private lifecycle core while preserving all five adapter contracts
 
 **Acceptance:** React stays a shallow galaxy adapter; framing and label
@@ -1632,6 +1633,7 @@ wave passes focused and complete gates and lands as one reversible commit.
 | 2026-08-04 | Default-branch cleanup integrates coherent candidates, but preserves any active worktree or unmerged tip that ancestry and patch equivalence cannot prove redundant | The public-site overhaul and three Actions upgrades are coherent units, their workflow YAML parses, and the combined repository gates pass. Only `setup-python@v7` ran there; the upload/download handoff in the release-published/manual-dispatch workflow remains a next-publish verification point. The dirty Dawn Sequence checkout contains user state, the clean `cb1a5c` worktree is still attached, and the stale planning tip remains unmerged; deleting any of them would turn an evidence gap into data loss. Remote or local refs are pruned only after their exact content is reachable from synchronized `main` |
 | 2026-08-09 | `galaxyRuntime` owns the complete renderer lifetime behind `update` and `dispose`; `GalaxyCanvas` owns only React projection, keyboard focus, and render-error presentation | Renderer setup, graph commit, framing, guides, particles, Dawn, Name Atlas timers, benchmark work, and WebGL teardown shared mutable refs across eleven React effects, so replacement and cleanup order were implicit. One in-process owner makes stale-callback suppression, host-sized bloom, graph-before-frame ordering, and exact one-time disposal interface outcomes without moving camera decisions out of `galaxyView` or changing public props |
 | 2026-08-09 | `measureCanvasOcclusion` is the one owner of canvas viewport, overlay roles, DOM-to-canvas translation, and renderer fallback | System framing and Name Atlas need different obstruction facts, but their duplicated DOM scrapes had already drifted once to the wrong subtree. One immutable measurement result keeps click-taking controls distinct from name-covering chrome while `galaxyView` and `nameAtlas` retain every framing and placement decision |
+| 2026-08-09 | Five tree-sitter adapters inherit discovery, `parse`, `parse_files`, finalization, and error translation from one private lifecycle core; their public `LanguageAdapter` signatures and language-owned `concepts` implementations stay unchanged | The five classes repeated the same source-scope and canonicalization protocol while their real value lives in different syntax indexes and graph-draft builders. Centralizing only the invariant lifecycle removes a sixth language's opportunity to drift without turning syntax evidence into a lowest-common-denominator abstraction; a real-adapter conformance suite and captured `Graph.to_json()` baselines pin the seam |
 
 ## Non-Goals — do NOT build (point here when asked)
 

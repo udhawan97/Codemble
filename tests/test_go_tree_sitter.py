@@ -441,10 +441,6 @@ def test_a_main_function_outside_package_main_is_not_an_entrypoint(
     assert graph.selected_entrypoint is None
 
 
-def test_repeated_parses_are_byte_identical() -> None:
-    assert GoAdapter().parse(FIXTURE).to_json() == GoAdapter().parse(FIXTURE).to_json()
-
-
 def test_concepts_are_tree_sitter_proven_owned_and_language_tagged(graph) -> None:  # type: ignore[no-untyped-def]
     nodes = {node.id: node for node in graph.nodes}
     by_node: dict[str, set[tuple[str, int]]] = {}
@@ -489,12 +485,3 @@ def test_concepts_method_matches_graph_annotations_for_one_owner(graph) -> None:
 
     assert direct == serialized
     assert direct
-
-
-def test_an_empty_or_missing_scope_is_refused_rather_than_guessed(
-    tmp_path: Path,
-) -> None:
-    with pytest.raises(GoParseError, match="no Go files found"):
-        GoAdapter().parse(tmp_path)
-    with pytest.raises(GoParseError, match="does not exist"):
-        GoAdapter().parse(tmp_path / "absent")

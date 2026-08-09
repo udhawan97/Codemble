@@ -20,9 +20,8 @@ from codemble.adapters.base import (
     Graph,
     Node,
 )
-from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
 from codemble.adapters.parse_progress import note_file_parsed
-from codemble.graph.finalize import GraphFinalizationError, finalize_graph
+from codemble.adapters.tree_sitter_core import _TreeSitterAdapterCore
 
 _EXTENSIONS = frozenset({".cs"})
 # `bin` and `obj` hold the compiler's own output -- including generated partial
@@ -270,48 +269,23 @@ class _CSharpIndex:
         )
 
 
-class CSharpAdapter:
+class CSharpAdapter(_TreeSitterAdapterCore):
     """Map C# source into one deterministic, parser-proven graph."""
 
     language = "csharp"
     file_extensions = _EXTENSIONS
     ignored_directories = _GENERATED_DIRECTORIES
+    _parse_error_type = CSharpParseError
+    _source_label = "C#"
 
-    def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
-        """Return the exact C# source scope accepted by this adapter."""
+    def _parse_owned_file(self, path: Path, project_root: Path) -> _ParsedFile:
+        return _parse_file(path, project_root)
 
-        normalized = path.expanduser().resolve()
-        try:
-            discovery = discover_source_files(
-                normalized,
-                self.file_extensions,
-                ignored_directories=self.ignored_directories,
-            )
-        except SourceDiscoveryError as error:
-            raise CSharpParseError(str(error)) from error
-        if not discovery.files:
-            if normalized.is_file():
-                raise CSharpParseError(f"expected a C# file or directory: {normalized}")
-            raise CSharpParseError(f"no C# files found under: {normalized}")
-        return discovery.root, discovery.files
-
-    def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
-        """Parse ``path`` using the official tree-sitter C# grammar wheel."""
-
-        project_root, files = self.discover(path)
-        return self.parse_files(project_root, files, entrypoint=entrypoint)
-
-    def parse_files(
+    def _build_graph_draft(
         self,
         project_root: Path,
-        files: tuple[Path, ...],
-        *,
-        entrypoint: str | None = None,
+        parsed_files: tuple[_ParsedFile, ...],
     ) -> Graph:
-        """Parse C# files already discovered as owned by this adapter."""
-
-        parsed_files = tuple(_parse_file(file, project_root) for file in files)
-
         nodes: list[Node] = []
         definitions: list[_Definition] = []
         for parsed in parsed_files:
@@ -334,7 +308,7 @@ class CSharpAdapter:
             edges.extend(_import_edges(parsed, index))
         edges.extend(_call_edges(index))
 
-        draft = Graph(
+        return Graph(
             nodes=index.nodes,
             edges=tuple(edges),
             entrypoint_candidates=(),
@@ -349,11 +323,6 @@ class CSharpAdapter:
                 if parsed.tree.root_node.has_error
             ),
         )
-        try:
-            return finalize_graph(draft, entrypoint=entrypoint)
-        except GraphFinalizationError as error:
-            raise CSharpParseError(str(error)) from error
-
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""
 

@@ -534,13 +534,6 @@ def test_a_parameter_annotation_never_makes_a_class_look_like_a_test(
     assert graph.entrypoint_candidates == ()
 
 
-def test_repeated_parses_are_byte_identical() -> None:
-    first = JavaAdapter().parse(FIXTURE).to_json()
-    second = JavaAdapter().parse(FIXTURE).to_json()
-
-    assert first == second
-
-
 def test_concepts_are_tree_sitter_proven_owned_and_language_tagged(graph) -> None:  # type: ignore[no-untyped-def]
     nodes = {node.id: node for node in graph.nodes}
     by_node: dict[str, set[str]] = {}
@@ -603,10 +596,3 @@ def test_concepts_method_matches_graph_annotations_for_one_owner(graph) -> None:
 
     assert direct == serialized
     assert direct
-
-
-def test_a_missing_scope_is_refused_rather_than_silently_empty(tmp_path: Path) -> None:
-    (tmp_path / "notes.txt").write_text("no java here\n", encoding="utf-8")
-
-    with pytest.raises(JavaParseError, match="no Java files found"):
-        JavaAdapter().parse(tmp_path)

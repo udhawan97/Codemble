@@ -12,6 +12,12 @@ The current canvas viewport and the role-classified rectangles of interface
 chrome drawn over it. Click obstructions protect navigation targets; name
 obstructions protect legibility, and both are expressed in canvas-local pixels.
 
+## Tree-sitter Adapter Lifecycle
+
+The shared path from a requested source scope to one canonically finalized
+graph for Codemble's tree-sitter languages. Discovery, owned-file parsing, and
+error translation are common; syntax evidence and concepts remain language-owned.
+
 ## Project Selection
 
 The learner's choice of one local folder, constrained to Codemble's allowed

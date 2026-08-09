@@ -21,9 +21,8 @@ from codemble.adapters.base import (
     Graph,
     Node,
 )
-from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
 from codemble.adapters.parse_progress import note_file_parsed
-from codemble.graph.finalize import GraphFinalizationError, finalize_graph
+from codemble.adapters.tree_sitter_core import _TreeSitterAdapterCore
 
 _JAVASCRIPT_EXTENSIONS = frozenset({".js", ".jsx", ".mjs", ".cjs"})
 _TYPESCRIPT_EXTENSIONS = frozenset({".ts", ".tsx", ".mts", ".cts"})
@@ -255,52 +254,23 @@ class _SyntaxEvidenceIndex:
         )
 
 
-class JavaScriptTypeScriptAdapter:
+class JavaScriptTypeScriptAdapter(_TreeSitterAdapterCore):
     """Map JavaScript, JSX, TypeScript, and TSX into one deterministic graph."""
 
     language = "javascript-typescript"
     file_extensions = _ALL_EXTENSIONS
     ignored_directories = _GENERATED_DIRECTORIES
+    _parse_error_type = JavaScriptTypeScriptParseError
+    _source_label = "JavaScript/TypeScript"
 
-    def discover(self, path: Path) -> tuple[Path, tuple[Path, ...]]:
-        """Return the exact JS/TS source scope accepted by this adapter."""
+    def _parse_owned_file(self, path: Path, project_root: Path) -> _ParsedFile:
+        return _parse_file(path, project_root)
 
-        normalized = path.expanduser().resolve()
-        try:
-            discovery = discover_source_files(
-                normalized,
-                self.file_extensions,
-                ignored_directories=self.ignored_directories,
-            )
-        except SourceDiscoveryError as error:
-            raise JavaScriptTypeScriptParseError(str(error)) from error
-        if not discovery.files:
-            if normalized.is_file():
-                raise JavaScriptTypeScriptParseError(
-                    f"expected a JavaScript/TypeScript file or directory: {normalized}"
-                )
-            raise JavaScriptTypeScriptParseError(
-                f"no JavaScript/TypeScript files found under: {normalized}"
-            )
-        return discovery.root, discovery.files
-
-    def parse(self, path: Path, *, entrypoint: str | None = None) -> Graph:
-        """Parse ``path`` using official tree-sitter grammar wheels."""
-
-        project_root, files = self.discover(path)
-        return self.parse_files(project_root, files, entrypoint=entrypoint)
-
-    def parse_files(
+    def _build_graph_draft(
         self,
         project_root: Path,
-        files: tuple[Path, ...],
-        *,
-        entrypoint: str | None = None,
+        parsed_files: tuple[_ParsedFile, ...],
     ) -> Graph:
-        """Parse JS/TS files already owned by this adapter."""
-
-        parsed_files = tuple(_parse_file(file, project_root) for file in files)
-
         nodes: list[Node] = []
         definitions: list[_Definition] = []
         for parsed in parsed_files:
@@ -331,7 +301,7 @@ class JavaScriptTypeScriptAdapter:
         call_edges = _call_edges(index, bindings_by_module)
         all_edges = [*import_edges, *call_edges]
         annotations = _concept_annotations(index)
-        draft = Graph(
+        return Graph(
             nodes=index.nodes,
             edges=tuple(all_edges),
             entrypoint_candidates=(),
@@ -346,11 +316,6 @@ class JavaScriptTypeScriptAdapter:
                 if parsed.tree.root_node.has_error
             ),
         )
-        try:
-            return finalize_graph(draft, entrypoint=entrypoint)
-        except GraphFinalizationError as error:
-            raise JavaScriptTypeScriptParseError(str(error)) from error
-
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""
 

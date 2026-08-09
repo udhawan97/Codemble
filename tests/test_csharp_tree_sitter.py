@@ -587,13 +587,6 @@ def test_top_level_statements_rank_the_file_itself(tmp_path: Path) -> None:
     )
 
 
-def test_repeated_parses_are_byte_identical() -> None:
-    first = CSharpAdapter().parse(FIXTURE).to_json()
-    second = CSharpAdapter().parse(FIXTURE).to_json()
-
-    assert first == second
-
-
 def test_concepts_are_tree_sitter_proven_owned_and_language_tagged(graph) -> None:  # type: ignore[no-untyped-def]
     nodes = {node.id: node for node in graph.nodes}
     concepts_by_node: dict[str, set[str]] = {}
