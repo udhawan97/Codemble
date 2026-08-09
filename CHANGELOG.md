@@ -17,6 +17,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Galaxy rendering now runs behind one lifecycle owner, leaving the React
   canvas as a shallow projection and keyboard adapter while preserving camera,
   Dawn, reduced-motion, and renderer-cleanup behavior.
+- Canvas viewport and overlay measurement now have one role-aware owner, so
+  camera click protection and Name Atlas legibility consume the same translated
+  DOM facts without merging their different decisions.
 - The README and public website now use a Formal Edo Workbench built around
   real v0.16.0 product captures, plain-language capability and trust sections,
   and a responsive five-step Explore → Map → Land → Inspect → Prove journey.

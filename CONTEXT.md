@@ -6,6 +6,12 @@ The lifetime of one interactive galaxy: renderer admission and configuration,
 camera and scene updates, asynchronous visual work, and strict disposal. React
 supplies learner-facing facts but does not own WebGL resources.
 
+## Canvas Occlusion
+
+The current canvas viewport and the role-classified rectangles of interface
+chrome drawn over it. Click obstructions protect navigation targets; name
+obstructions protect legibility, and both are expressed in canvas-local pixels.
+
 ## Project Selection
 
 The learner's choice of one local folder, constrained to Codemble's allowed

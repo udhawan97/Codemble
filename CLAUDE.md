@@ -212,9 +212,9 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M15 architecture deepening** · Last updated: 2026-08-09 ·
-Session note: Wave 1 moved the full WebGL renderer lifetime behind the Galaxy
-Runtime's `update`/`dispose` seam; Canvas Occlusion and the shared tree-sitter
-lifecycle remain. The preceding default-branch cleanup integrated the Formal Edo public surface
+Session note: Waves 1–2 moved the full WebGL renderer lifetime behind the Galaxy
+Runtime and canvas measurement behind Canvas Occlusion; the shared tree-sitter
+lifecycle remains. The preceding default-branch cleanup integrated the Formal Edo public surface
 and three scoped GitHub Actions upgrades, while preserving active or unmerged
 work that ancestry could not prove redundant. Only `setup-python@v7` ran in CI;
 the upload/download artifact handoff in the release-published/manual-dispatch
@@ -1437,7 +1437,7 @@ shows lower repeated-commit work without changing derived values.
 ### M15 — Runtime, occlusion, and adapter lifecycle depth (2026-08-09)
 - [x] Put renderer admission, scene updates, asynchronous visual work, and
       strict WebGL cleanup behind one Galaxy Runtime
-- [ ] Put canvas viewport and overlay-role measurement behind one Canvas
+- [x] Put canvas viewport and overlay-role measurement behind one Canvas
       Occlusion operation
 - [ ] Put shared tree-sitter discovery, parse, and finalization behind one
       private lifecycle core while preserving all five adapter contracts
@@ -1631,6 +1631,7 @@ wave passes focused and complete gates and lands as one reversible commit.
 | 2026-08-04 | Product capture **owns its disposable server** and public release truth has an executable manifest | Council review found two trust failures in tooling that otherwise looked like documentation: an externally supplied capture URL could clear real progress and inherit a narrator, while a moving package index could make a version-specific one-command claim false between reviews. `capture:docs` now starts a current-source child on a random loopback port with a unique temporary data directory, removes provider configuration, requires reset success, refuses external URLs, and tears the child down. `docs-site/release.json` is the release manifest; `check:release` verifies it against source package versions, PyPI latest metadata, GitHub latest, artifact URLs, published digests, and downloaded bytes. Exact-release commands and source clones are pinned; the short `uvx codemble` route is described honestly as intentionally moving |
 | 2026-08-04 | Default-branch cleanup integrates coherent candidates, but preserves any active worktree or unmerged tip that ancestry and patch equivalence cannot prove redundant | The public-site overhaul and three Actions upgrades are coherent units, their workflow YAML parses, and the combined repository gates pass. Only `setup-python@v7` ran there; the upload/download handoff in the release-published/manual-dispatch workflow remains a next-publish verification point. The dirty Dawn Sequence checkout contains user state, the clean `cb1a5c` worktree is still attached, and the stale planning tip remains unmerged; deleting any of them would turn an evidence gap into data loss. Remote or local refs are pruned only after their exact content is reachable from synchronized `main` |
 | 2026-08-09 | `galaxyRuntime` owns the complete renderer lifetime behind `update` and `dispose`; `GalaxyCanvas` owns only React projection, keyboard focus, and render-error presentation | Renderer setup, graph commit, framing, guides, particles, Dawn, Name Atlas timers, benchmark work, and WebGL teardown shared mutable refs across eleven React effects, so replacement and cleanup order were implicit. One in-process owner makes stale-callback suppression, host-sized bloom, graph-before-frame ordering, and exact one-time disposal interface outcomes without moving camera decisions out of `galaxyView` or changing public props |
+| 2026-08-09 | `measureCanvasOcclusion` is the one owner of canvas viewport, overlay roles, DOM-to-canvas translation, and renderer fallback | System framing and Name Atlas need different obstruction facts, but their duplicated DOM scrapes had already drifted once to the wrong subtree. One immutable measurement result keeps click-taking controls distinct from name-covering chrome while `galaxyView` and `nameAtlas` retain every framing and placement decision |
 
 ## Non-Goals — do NOT build (point here when asked)
 

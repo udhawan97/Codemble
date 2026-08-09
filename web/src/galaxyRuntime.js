@@ -2,6 +2,7 @@ import ForceGraph3D from "3d-force-graph";
 import * as THREE from "three";
 
 import { createBody, createBodyGeometry, createBodySpin } from "./celestialBodies.js";
+import { measureCanvasOcclusion } from "./canvasOcclusion.js";
 import { runDawnSequence } from "./dawnSequence.js";
 import { attachBloom } from "./galaxyEffects.js";
 import {
@@ -215,6 +216,7 @@ export function createGalaxyRuntime({
   function applyFraming(duration, aspect) {
     if (!snapshot) return;
     const { data, level, orbitPlan } = snapshot;
+    const occlusion = measureCanvasOcclusion({ host, renderer });
     const framed = frameLevel({
       level,
       nodes: data.nodes,
@@ -224,8 +226,8 @@ export function createGalaxyRuntime({
         aspect ??
         viewportAspect(host.getBoundingClientRect()) ??
         viewportAspect({ width: renderer.width(), height: renderer.height() }),
-      viewport: canvasViewport(host, renderer),
-      chrome: level === LEVELS.SYSTEM ? interactiveChrome(host) : [],
+      viewport: occlusion.viewport,
+      chrome: level === LEVELS.SYSTEM ? occlusion.clickObstructions : [],
     });
     controls.minDistance = framed.min;
     controls.maxDistance = framed.max;
@@ -324,6 +326,7 @@ export function createGalaxyRuntime({
         const distance = controls
           ? camera.position.distanceTo(controls.target)
           : camera.position.length();
+        const occlusion = measureCanvasOcclusion({ host, renderer });
         atlas.place({
           scene,
           camera,
@@ -332,7 +335,7 @@ export function createGalaxyRuntime({
           distance,
           distanceBounds: bounds,
           hoverNodeId: snapshot.hoverNodeId,
-          chrome: chromeBoxes(host),
+          chrome: occlusion.nameObstructions,
         });
       } catch (error) {
         if (atlasTimer !== null) clock.clearInterval(atlasTimer);
@@ -500,52 +503,6 @@ export function createGalaxyRuntime({
     throw error;
   }
   return Object.freeze({ update, dispose });
-}
-
-/** The canvas box the camera is framing into, in CSS pixels. */
-function canvasViewport(host, renderer) {
-  const box = host?.getBoundingClientRect();
-  if (box?.width && box?.height) return { width: box.width, height: box.height };
-  const width = renderer?.width?.();
-  const height = renderer?.height?.();
-  return width && height ? { width, height } : null;
-}
-
-function interactiveChrome(host) {
-  const stage = host?.closest(".map-stage");
-  if (!stage) return [];
-  const origin = host.getBoundingClientRect();
-  const boxes = [];
-  for (const element of stage.querySelectorAll(".orientation-copy button, .legend-toggle")) {
-    if (getComputedStyle(element).pointerEvents === "none") continue;
-    const box = element.getBoundingClientRect();
-    if (!box.width || !box.height) continue;
-    boxes.push({
-      left: box.left - origin.left,
-      right: box.right - origin.left,
-      top: box.top - origin.top,
-      bottom: box.bottom - origin.top,
-    });
-  }
-  return boxes;
-}
-
-function chromeBoxes(host) {
-  const stage = host?.closest(".map-stage");
-  if (!stage) return [];
-  const origin = host.getBoundingClientRect();
-  const boxes = [];
-  for (const element of stage.querySelectorAll(".orientation-bar, .keyboard-focus")) {
-    const box = element.getBoundingClientRect();
-    if (!box.width || !box.height) continue;
-    boxes.push({
-      left: box.left - origin.left,
-      right: box.right - origin.left,
-      top: box.top - origin.top,
-      bottom: box.bottom - origin.top,
-    });
-  }
-  return boxes;
 }
 
 function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } = {}) {
