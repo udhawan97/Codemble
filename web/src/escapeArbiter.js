@@ -1,7 +1,7 @@
 /**
  * Who owns the Escape key right now.
  *
- * There is one key and eight things that can be open over the stage, so
+ * There is one key and nine things that can be open over the stage, so
  * precedence has to be decided somewhere. It used to be decided by an
  * eleven-term disjunction inside App.jsx -- plus a second, shorter copy of the
  * same list on the chart stage -- which meant adding a global surface required
@@ -44,6 +44,7 @@ export const ESCAPE_OWNERS = Object.freeze([
   { id: "finder", open: (facts) => facts.finderOpen === true, dismissible: false },
   { id: "entrypoint", open: (facts) => facts.entrypointOpen === true, dismissible: false },
   { id: "chart", open: (facts) => facts.showChart === true, dismissible: true },
+  { id: "firstFlight", open: (facts) => facts.firstFlightOpen === true, dismissible: true },
 ]);
 
 /**

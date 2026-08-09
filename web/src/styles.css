@@ -2993,6 +2993,36 @@ input:focus-visible {
   cursor: pointer;
 }
 
+.first-flight__system {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-mono);
+}
+
+.first-flight__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs);
+  margin-inline-start: auto;
+}
+
+.first-flight__actions button[disabled] {
+  border-color: var(--cm-hairline);
+  color: var(--cm-ink-3);
+  cursor: default;
+}
+
+@media (max-width: 40rem) {
+  .first-flight__system,
+  .first-flight__actions {
+    flex: 1 1 100%;
+  }
+
+  .first-flight__actions {
+    margin-inline-start: 0;
+  }
+}
+
 /* Docked at every width, never floated. As an overlay it covered the very
    things it was guiding toward: the Map's teaching caption read "…y rather
    than being placed by guesswork.", galaxy name plates sat behind it, and

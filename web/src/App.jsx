@@ -30,6 +30,7 @@ import {
   createLearnerSession,
 } from "./learnerSession.js";
 import { escapeAction } from "./escapeArbiter.js";
+import { firstFlightPlan } from "./firstFlight.js";
 import { PARSE_STAGES } from "./projectMapping.js";
 import { createMapViewportStore } from "./mapViewport.js";
 import { projectBriefFilename, projectBriefMarkdown } from "./projectBrief.js";
@@ -45,6 +46,8 @@ export function App() {
   // closing the quiz has somewhere obvious to put focus -- and every other
   // dismissible surface returns it, while this one dropped it on the floor.
   const checksTriggerRef = useRef(null);
+  const firstFlightTriggerRef = useRef(null);
+  const firstFlightActiveRef = useRef(false);
   const stageRef = useRef(null);
   const systemCopyRef = useRef(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -52,6 +55,7 @@ export function App() {
   // by the Read-the-source button" is a fact about this click, not about what
   // the graph or the learner's progress says.
   const [revealSource, setRevealSource] = useState(false);
+  const [firstFlightIndex, setFirstFlightIndex] = useState(null);
   const mapViewportStore = useMemo(() => createMapViewportStore(), []);
   const session = useMemo(
     () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
@@ -69,6 +73,7 @@ export function App() {
   useEffect(() => {
     if (state.status !== "ready") {
       setMobileMenuOpen(false);
+      setFirstFlightIndex(null);
       mapViewportStore.clear();
     }
   }, [mapViewportStore, state.status]);
@@ -110,6 +115,7 @@ export function App() {
       session.dispatch({ type: "HIDE_CHART" });
       restoreRailFocus(chartTriggerRef);
     },
+    firstFlight: () => exitFirstFlight(),
   };
 
   useEffect(() => {
@@ -129,7 +135,11 @@ export function App() {
       // needed `stopPropagation` to stop this handler re-reading a session it
       // had already changed and retreating a level on top of the dismissal.
       // One handler asking one ordered list cannot race itself.
-      const action = escapeAction(escapeFacts(session.getSnapshot()));
+      const action = escapeAction(
+        escapeFacts(session.getSnapshot(), {
+          firstFlightOpen: firstFlightActiveRef.current,
+        }),
+      );
       if (!action) return;
       event.preventDefault();
       if (action.kind === "dismiss") {
@@ -188,6 +198,11 @@ export function App() {
     studyData,
     studyError,
   } = state;
+
+  const firstFlightStops = useMemo(() => firstFlightPlan(graph), [graph]);
+  const firstFlightStop = firstFlightStops[firstFlightIndex] ?? null;
+  const firstFlightActive = firstFlightIndex !== null && firstFlightStop !== null;
+  firstFlightActiveRef.current = firstFlightActive;
 
   // Region id -> palette slot for the Map's box tints. The family itself is
   // assigned by the graph layer over the WHOLE project, so reading it off the
@@ -260,6 +275,23 @@ export function App() {
   function followHint() {
     session.dispatch({ type: "FOLLOW_HINT" });
     requestAnimationFrame(() => systemCopyRef.current?.focus());
+  }
+
+  function visitFirstFlightStop(index) {
+    const stop = firstFlightStops[index];
+    if (!stop) return;
+    setFirstFlightIndex(index);
+    session.dispatch({ type: "SET_LAYER", layer: "galaxy" });
+    // GO_TO_REGION is the existing arrival path: it widens a language focus
+    // when needed and calls recordVisit before committing the system. The tour
+    // gets no second progress mechanism and cannot chart a stop it did not
+    // actually visit.
+    session.dispatch({ type: "GO_TO_REGION", regionId: stop.id });
+  }
+
+  function exitFirstFlight() {
+    setFirstFlightIndex(null);
+    restoreRailFocus(firstFlightTriggerRef);
   }
 
   function dismissCoachmarks() {
@@ -756,6 +788,7 @@ export function App() {
             pendingDawnRegionId={pendingDawnRegionId}
             revealedRegionIds={revealedRegionIds}
             mode={mode}
+            firstFlightActive={firstFlightActive}
             onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
             onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
             onRetreat={() => session.dispatch({ type: "RETREAT" })}
@@ -1001,6 +1034,19 @@ export function App() {
         <HintChip
           hint={hint}
           onFollow={followHint}
+          firstFlight={{
+            available: firstFlightStops.length > 0,
+            active: firstFlightActive,
+            stop: firstFlightStop,
+            index: firstFlightIndex ?? 0,
+            total: firstFlightStops.length,
+            mode,
+            triggerRef: firstFlightTriggerRef,
+            onStart: () => visitFirstFlightStop(0),
+            onBack: () => visitFirstFlightStop(firstFlightIndex - 1),
+            onNext: () => visitFirstFlightStop(firstFlightIndex + 1),
+            onExit: exitFirstFlight,
+          }}
         />
       ) : null}
 
@@ -1042,7 +1088,7 @@ const STAGE_ORDER = PARSE_STAGES.map(({ id }) => id);
  * `canRetreat` is where "the Map is the layer with a documented way back, and
  * the galaxy level is already the outermost place there is" is stated once.
  */
-function escapeFacts(snapshot) {
+function escapeFacts(snapshot, { firstFlightOpen = false } = {}) {
   return {
     ready: snapshot.status === "ready",
     canRetreat: snapshot.layer === "map" && snapshot.level !== LEVELS.GALAXY,
@@ -1051,6 +1097,7 @@ function escapeFacts(snapshot) {
     sidebarOpen: snapshot.sidebarOpen,
     showChecks: snapshot.showChecks,
     entrypointOpen: snapshot.entrypointOpen,
+    firstFlightOpen,
     // Native dialogs -- the audience gate, coach marks, confirms -- own Escape.
     nativeDialogOpen: document.querySelector("dialog[open]") !== null,
     // So does an open rail disclosure, which closes on Escape and returns focus

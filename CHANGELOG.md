@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Added
+- A stateless, re-runnable First Flight from Home through at most five direct,
+  proven imports, using the existing travel and visit-recording path with
+  keyboard controls, ordered Escape dismissal, and reduced-motion jump cuts.
 - Proven import cycles as canonical graph schema 10 truth, with deterministic
   region-level components surfaced in the Map, project overview, and exported
   brief; possible-only loops remain explicitly excluded.

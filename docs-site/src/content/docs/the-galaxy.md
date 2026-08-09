@@ -128,6 +128,27 @@ does.
 Clearing a project's progress clears both: the understood regions and the
 explored trail.
 
+## Take a First Flight
+
+When Codemble has a Home, the guidance strip offers a short **First Flight**.
+It lands at Home first, then visits only the modules Home directly imports
+through routes the parser proved, ordered deterministically by their graph
+centrality and id. The route is capped at six systems in total, so it remains
+an orientation rather than turning into an exhaustive walkthrough.
+
+Each stop names the system, language, and how many galaxy import routes lead in
+and out. **Next**, **Back**, and **Exit** are keyboard reachable. Escape exits
+through the same ordered dismissal path as the app's other transient surfaces
+and returns focus to the First Flight control. Every landing uses the normal
+travel path, so a toured system is charted exactly as one reached by clicking a
+star. With reduced motion enabled, the camera jump-cuts between stops instead
+of animating.
+
+First Flight has no completion badge or saved state. It can be run again at any
+time, and if the parser has not resolved a Home the control is absent rather
+than building a route around a guess. Easy and Expert change the language of
+the guidance, not the systems visited or the facts shown.
+
 ## Bounded orbit, not free flight
 
 Drag to orbit the current subject and use the wheel to zoom. Panning is off,

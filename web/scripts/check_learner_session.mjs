@@ -1161,8 +1161,9 @@ function revealGraph() {
   };
 }
 
+const revealAdapter = createInMemoryLearnerSessionAdapter({ graph: revealGraph() });
 const revealSession = createLearnerSession({
-  adapter: createInMemoryLearnerSessionAdapter({ graph: revealGraph() }),
+  adapter: revealAdapter,
   clock,
 });
 await revealSession.start();
@@ -1181,6 +1182,12 @@ assert.deepEqual(
 // Walking into a region reveals its neighbours while it is the subject.
 await revealSession.dispatch({ type: "GO_TO_REGION", regionId: "far" });
 assert.equal(revealSession.getSnapshot().region.id, "far");
+await Promise.resolve();
+assert.deepEqual(
+  await revealAdapter.fetchVisited(),
+  { visited: ["far"] },
+  "GO_TO_REGION persists the same visit that manual travel records",
+);
 assert.equal(
   revealSession.getSnapshot().finderOpen,
   false,

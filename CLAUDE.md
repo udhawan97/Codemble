@@ -211,8 +211,18 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: the explorable galaxy** · Last updated: 2026-08-04 ·
-Session note: default-branch cleanup integrated the Formal Edo public surface
+**Current milestone: the explorable galaxy** · Last updated: 2026-08-09 ·
+Session note: three UD-approved source features now live on a dedicated feature
+branch, each in its own signed conventional commit: a deterministic client-side
+Markdown project brief, proven region-level import cycles in graph schema 10,
+and a stateless First Flight from Home through at most five direct proven
+imports. Current-source verification covered the full Python and web suites,
+docs checks/build, reproducible production bundles, browser space/escape/reach
+gates, and live 1440px/320px Easy/Expert use with a hand-verified cycle fixture
+and reduced motion. No tag, release, publish, or milestone advance occurred;
+issue #13 still requires human tester evidence.
+
+The previous session note follows: default-branch cleanup integrated the Formal Edo public surface
 and three scoped GitHub Actions upgrades, while preserving active or unmerged
 work that ancestry could not prove redundant. Only `setup-python@v7` ran in CI;
 the upload/download artifact handoff in the release-published/manual-dispatch
@@ -1617,6 +1627,7 @@ shows lower repeated-commit work without changing derived values.
 | 2026-08-04 | Default-branch cleanup integrates coherent candidates, but preserves any active worktree or unmerged tip that ancestry and patch equivalence cannot prove redundant | The public-site overhaul and three Actions upgrades are coherent units, their workflow YAML parses, and the combined repository gates pass. Only `setup-python@v7` ran there; the upload/download handoff in the release-published/manual-dispatch workflow remains a next-publish verification point. The dirty Dawn Sequence checkout contains user state, the clean `cb1a5c` worktree is still attached, and the stale planning tip remains unmerged; deleting any of them would turn an evidence gap into data loss. Remote or local refs are pruned only after their exact content is reachable from synchronized `main` |
 | 2026-08-09 | The star chart exports a fully client-side Markdown project brief derived from `projectOverview(graph)` | Approved by UD as the portable handoff for the existing project summary. The renderer is pure and deterministic; the only browser-specific code creates and downloads the Blob. The brief preserves the app's truth boundaries: no resolved Home says so rather than naming a guess, centrality is described only as "called from the most places", uncertain edges remain hedged, unsupported sources stay visible, and charted remains separate from understood. Easy and Expert change only the control label, never the exported facts |
 | 2026-08-09 | Graph schema 10 serializes deterministic region-level import cycles computed only from `certain=True` import edges | Approved by UD as a structural fact, not a new check family. The SCC pass reads raw import edges rather than aggregated `RegionEdge.certain`: one possible sibling makes an aggregate route conservatively possible, but it must not erase a separate proven edge that completes a cycle. Members and components sort canonically; `finalize_graph` clears the field before layout replaces it, because the normal composition path finalizes twice. Possible-only loops are excluded. The Map carries the full prose line in both registers, Easy avoids parser vocabulary, and the star-chart overview and export inherit the same field |
+| 2026-08-09 | First Flight is a frontend-only, stateless and re-runnable route: Home, then at most five direct proven imports sorted by region centrality and id | Approved by UD as bounded orientation, not progression. A pure sequencer owns the order and never invents Home; React owns only ephemeral stop position. Every stop dispatches the existing `GO_TO_REGION` travel action, so the one `recordVisit` path charts it exactly like manual travel. The chip reuses galaxy region-route degree for its used-by/uses facts, Easy and Expert change words rather than behavior, and the camera uses the existing frame machinery with zero-duration jump cuts under reduced motion. One `firstFlight` entry joins the ordered Escape arbiter and existing task-deferred focus return. No API, layout mutation, persistence, completion reward, or new check family is added |
 
 ## Non-Goals — do NOT build (point here when asked)
 

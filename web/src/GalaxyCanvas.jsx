@@ -4,6 +4,7 @@ import * as THREE from "three";
 
 import { attachBloom, prefersReducedMotion } from "./galaxyEffects.js";
 import { runDawnSequence } from "./dawnSequence.js";
+import { flightCameraDuration } from "./firstFlight.js";
 import {
   CAMERA_DURATION,
   cameraBoundsFor,
@@ -70,6 +71,7 @@ export function GalaxyCanvas({
   pendingDawnRegionId,
   revealedRegionIds,
   mode,
+  firstFlightActive,
   onHoverNode,
   onAdvance,
   onRetreat,
@@ -91,6 +93,7 @@ export function GalaxyCanvas({
   const reframeRef = useRef(null);
   const userFramedRef = useRef(false);
   const focusedIdRef = useRef(null);
+  const firstFlightActiveRef = useRef(firstFlightActive);
   // The body tier is a level-of-detail decision, and `nodeThreeObject` is a
   // stable accessor the library calls on its own tick, so the level it should
   // read has to travel by ref rather than closure.
@@ -125,7 +128,15 @@ export function GalaxyCanvas({
     // while a dawn is playing tears the effect down and cancels it mid-flare.
     dawnGraphRef.current = graph;
     onDawnConsumedRef.current = onDawnConsumed;
-  }, [onAdvance, onRetreat, onHoverNode, pendingDawnRegionId, onDawnConsumed]);
+    firstFlightActiveRef.current = firstFlightActive;
+  }, [
+    onAdvance,
+    onRetreat,
+    onHoverNode,
+    pendingDawnRegionId,
+    onDawnConsumed,
+    firstFlightActive,
+  ]);
 
   // Both defer to graphData: "what colour is this node right now" gets one
   // answer, in the module that already owns the standing one, rather than a
@@ -384,7 +395,12 @@ export function GalaxyCanvas({
       // behaviour bounded orbit wants -- the subject stays the subject.
       renderer.cameraPosition(framed.position, framed.target, duration);
     };
-    applyFraming(CAMERA_DURATION);
+    applyFraming(
+      flightCameraDuration(CAMERA_DURATION, {
+        active: firstFlightActiveRef.current,
+        reducedMotion,
+      }),
+    );
     // A resize changes the aspect, and with it what fits; re-frame from the
     // observer unless the learner has taken the camera themselves, in which
     // case their view is the one worth keeping.
@@ -394,7 +410,7 @@ export function GalaxyCanvas({
     return () => {
       reframeRef.current = null;
     };
-  }, [data, level, mode, orbitPlan]);
+  }, [data, level, mode, orbitPlan, reducedMotion]);
 
   useEffect(() => {
     focusedIdRef.current = data.nodes[focusedIndex]?.id ?? null;
@@ -634,6 +650,10 @@ export function GalaxyCanvas({
       event.preventDefault();
       advanceRef.current(focusedNode);
     } else if (event.key === "Escape" || event.key === "Backspace") {
+      // First Flight is a dismissible surface in the one Escape arbiter. Let
+      // its Escape bubble there instead of retreating here first; otherwise
+      // one key would leave the system and then close the tour on top of it.
+      if (event.key === "Escape" && firstFlightActiveRef.current) return;
       event.preventDefault();
       retreatRef.current();
     }
