@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Added
+- A fully local Markdown project-brief export from the star chart, carrying the
+  parser's language/file/structure breakdown, honest Home result, most-called
+  modules, certainty coverage, unsupported sources, and learning progress.
 - A reproducible current-app screenshot pipeline covering Galaxy, both Map
   registers, System, Study, parser-owned Impact, and the lit result.
 - An icon-led download surface with direct PyPI wheel and source artifacts,

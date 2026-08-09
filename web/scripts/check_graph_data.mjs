@@ -20,6 +20,7 @@ import {
   moduleIndex,
   nebulaTintPaint,
   nodeLabel,
+  projectName,
   projectLanguageOptions,
   revealedRegionIds,
   sharedTopSegment,
@@ -333,6 +334,7 @@ assert.equal(
 // home -> near -> mid -> far, plus `lit` (understood, off the Home chain) with
 // its own neighbour `beside`, plus `island`, which nothing imports at all.
 const sky = {
+  project_root: "/tmp/projects/sky-map",
   nodes: [
     "home",
     "near",
@@ -726,11 +728,18 @@ console.log("transient colour and reveal predicates passed");
 // anything the graph cannot answer is absent rather than guessed.
 {
   const overview = projectOverview(sky);
+  assert.equal(projectName(sky), "sky-map", "the project name comes from the graph root");
+  assert.equal(overview.projectName, "sky-map");
   assert.equal(overview.modules, sky.regions.length, "modules counts regions");
   assert.equal(overview.structures, sky.nodes.length, "structures counts nodes");
   assert.ok(
     overview.languages.length > 0 && overview.languages.every((row) => row.count > 0),
     "every language listed has at least one module",
+  );
+  assert.equal(
+    overview.languages.reduce((total, row) => total + row.structures, 0),
+    sky.nodes.length,
+    "the language breakdown accounts for every structure exactly once",
   );
   assert.equal(
     overview.languages.reduce((total, row) => total + row.count, 0),
@@ -744,6 +753,11 @@ console.log("transient colour and reveal predicates passed");
     );
   }
   assert.ok(overview.biggest.length <= 5 && overview.busiest.length <= 5, "both lists are capped");
+  assert.deepEqual(
+    overview.relationships,
+    { proven: 0, hedged: 0 },
+    "only explicitly certain or uncertain parser edges are claimed",
+  );
   for (let i = 1; i < overview.busiest.length; i += 1) {
     assert.ok(
       overview.busiest[i - 1].value >= overview.busiest[i].value,

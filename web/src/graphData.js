@@ -655,6 +655,12 @@ export function defaultRegion(graph) {
   return graph.regions.find((region) => region.home) ?? graph.regions[0] ?? null;
 }
 
+export function projectName(graph) {
+  const root = String(graph?.project_root ?? "");
+  const name = root.split("/").filter(Boolean).at(-1) ?? root;
+  return name || "Local project";
+}
+
 /**
  * What is this project? Answered from the graph, for a learner who has just
  * opened a codebase they did not write.
@@ -674,14 +680,27 @@ export function defaultRegion(graph) {
 export function projectOverview(graph) {
   const regions = graph?.regions ?? [];
   const nodes = graph?.nodes ?? [];
+  const edges = graph?.edges ?? [];
   const byLanguage = new Map();
   for (const region of regions) {
     byLanguage.set(region.language, (byLanguage.get(region.language) ?? 0) + 1);
   }
+  const structuresByLanguage = new Map();
+  for (const node of nodes) {
+    structuresByLanguage.set(
+      node.language,
+      (structuresByLanguage.get(node.language) ?? 0) + 1,
+    );
+  }
   const languages = [...byLanguage.entries()]
     // Size first, then name, so the same project always lists them the same way.
     .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
-    .map(([language, count]) => ({ language, label: languageLabel(language), count }));
+    .map(([language, count]) => ({
+      language,
+      label: languageLabel(language),
+      count,
+      structures: structuresByLanguage.get(language) ?? 0,
+    }));
 
   const ranked = (key) =>
     regions
@@ -692,6 +711,7 @@ export function projectOverview(graph) {
 
   const home = defaultRegion(graph);
   return {
+    projectName: projectName(graph),
     modules: regions.length,
     structures: nodes.length,
     lines: regions.reduce((total, region) => total + (region.loc ?? 0), 0),
@@ -704,6 +724,21 @@ export function projectOverview(graph) {
       (total, entry) => total + (entry.count ?? 0),
       0,
     ),
+    unsupportedSources: [...(graph?.unsupported_sources ?? [])]
+      .map((entry) => ({
+        extension: entry.extension,
+        language: entry.language,
+        count: entry.count ?? 0,
+      }))
+      .sort(
+        (left, right) =>
+          String(left.extension).localeCompare(String(right.extension)) ||
+          String(left.language).localeCompare(String(right.language)),
+      ),
+    relationships: {
+      proven: edges.filter((edge) => edge.certain === true).length,
+      hedged: edges.filter((edge) => edge.certain === false).length,
+    },
     understood: regions.filter((region) => region.understood).length,
   };
 }

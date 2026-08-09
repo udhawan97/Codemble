@@ -32,6 +32,7 @@ import {
 import { escapeAction } from "./escapeArbiter.js";
 import { PARSE_STAGES } from "./projectMapping.js";
 import { createMapViewportStore } from "./mapViewport.js";
+import { projectBriefFilename, projectBriefMarkdown } from "./projectBrief.js";
 import { systemOrbitPlan } from "./systemOrbits.js";
 
 export function App() {
@@ -2044,7 +2045,7 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
  * and every name here is the parser's, which is why this works with no API key
  * and cannot disagree with the galaxy or the map.
  */
-function ProjectSummary({ overview, mode }) {
+function ProjectSummary({ overview, mode, charted }) {
   const easy = mode === "easy";
   const languageLine = overview.languages
     .map((row) => `${row.label} ${row.count}`)
@@ -2115,8 +2116,29 @@ function ProjectSummary({ overview, mode }) {
           </div>
         ) : null}
       </dl>
+      <button
+        className="project-summary__export"
+        type="button"
+        onClick={() => downloadProjectBrief(overview, charted)}
+      >
+        {easy ? "Save a project guide" : "Export Markdown brief"}
+      </button>
     </section>
   );
+}
+
+function downloadProjectBrief(overview, charted) {
+  const markdown = projectBriefMarkdown(overview, { charted });
+  const url = URL.createObjectURL(
+    new Blob([markdown], { type: "text/markdown;charset=utf-8" }),
+  );
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = projectBriefFilename(overview);
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function StarChart({ chart, studiedCount, exploredCount, projectName, mode, overview, onClearProgress }) {
@@ -2137,7 +2159,9 @@ function StarChart({ chart, studiedCount, exploredCount, projectName, mode, over
             no summary or anything about the project", and it is also the first
             question a learner has. Everything below is read off the parser's
             own graph. */}
-        {overview ? <ProjectSummary overview={overview} mode={mode} /> : null}
+        {overview ? (
+          <ProjectSummary overview={overview} mode={mode} charted={exploredCount} />
+        ) : null}
         <h2 className="star-chart-section">
           {mode === "easy" ? "Ideas your code uses" : "Parser-detected concepts"}
         </h2>

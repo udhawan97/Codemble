@@ -3598,6 +3598,27 @@ input:focus-visible {
   color: var(--cm-ink);
 }
 
+.project-summary__export {
+  min-height: 44px;
+  margin-block-start: var(--cm-space-lg);
+  padding: var(--cm-space-xs) var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-orbit);
+  cursor: pointer;
+  font: 500 var(--cm-text-sm) / 1.3 var(--cm-font-mono);
+}
+
+.project-summary__export:hover {
+  background: color-mix(in srgb, var(--cm-orbit) 10%, transparent);
+}
+
+.project-summary__export:focus-visible {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 3px;
+}
+
 .star-chart-section {
   margin-block: var(--cm-space-xl) 0;
   font-family: var(--cm-font-display);

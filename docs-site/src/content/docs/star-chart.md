@@ -32,6 +32,15 @@ Every figure is read straight off the parsed graph. It needs no API key, and it
 cannot disagree with the galaxy or the map, because all three read the same
 graph.
 
+Use **Save a project guide** in Easy mode or **Export Markdown brief** in
+Expert mode to take those facts with you. The download is assembled entirely
+in your browser: no server upload and no model call. It includes the project
+name, per-language file and structure counts, Home (or an explicit unresolved
+result), modules called from the most places, proven and hedged relationship
+counts, unreadable and unsupported files, and separate charted and understood
+totals. Hedged relationships remain labelled as possible parser matches in the
+file; exporting never upgrades them into facts.
+
 Two details are deliberate. A project whose entrypoint Codemble cannot resolve
 says so rather than naming a guess. And the ranking is labelled **called from
 the most places**, not "most important": it counts the distinct structures that
