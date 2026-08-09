@@ -171,9 +171,10 @@ class Graph:
     concept_annotations: tuple[ConceptAnnotation, ...] = ()
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
+    import_cycles: tuple[tuple[str, ...], ...] = ()
     partial_files: tuple[str, ...] = ()
     unsupported_sources: tuple[UnsupportedSource, ...] = ()
-    schema_version: int = field(default=9, init=False)
+    schema_version: int = field(default=10, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""
@@ -215,6 +216,10 @@ class Graph:
             "region_edges": [
                 asdict(edge)
                 for edge in sorted(self.region_edges, key=lambda item: (item.src, item.dst))
+            ],
+            "import_cycles": [
+                list(cycle)
+                for cycle in sorted(tuple(sorted(cycle)) for cycle in self.import_cycles)
             ],
             "partial_files": sorted(self.partial_files),
             "unsupported_sources": [

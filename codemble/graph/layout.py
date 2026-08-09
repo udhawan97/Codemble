@@ -222,7 +222,74 @@ def layout_graph(graph: Graph) -> Graph:
         nodes=tuple(sorted(positioned_nodes, key=lambda node: node.id)),
         regions=tuple(sorted(regions, key=lambda region: region.id)),
         region_edges=region_edges,
+        import_cycles=_import_cycles(graph.nodes, graph.edges),
     )
+
+
+def _import_cycles(
+    nodes: tuple[Node, ...], edges: tuple[Edge, ...]
+) -> tuple[tuple[str, ...], ...]:
+    """Return canonical region SCCs over proven project imports only.
+
+    Region routes deliberately become uncertain when *any* import aggregated
+    into the mark is uncertain. That is the right visual claim for one line
+    representing several edges, but the wrong input here: a proven edge must
+    still participate in a cycle even when a possible sibling shares its
+    region pair. Work from the parser edges so certainty is never lost.
+    """
+
+    region_by_node = {node.id: node.region for node in nodes}
+    neighbors: dict[str, set[str]] = {
+        region_id: set() for region_id in sorted(set(region_by_node.values()))
+    }
+    for edge in sorted(edges, key=lambda item: (item.src, item.dst, item.lineno)):
+        if edge.kind != "import" or edge.external or not edge.certain:
+            continue
+        src = region_by_node.get(edge.src)
+        dst = region_by_node.get(edge.dst)
+        if src is None or dst is None:
+            continue
+        neighbors[src].add(dst)
+
+    index = 0
+    indexes: dict[str, int] = {}
+    lowlinks: dict[str, int] = {}
+    stack: list[str] = []
+    on_stack: set[str] = set()
+    cycles: list[tuple[str, ...]] = []
+
+    def visit(region_id: str) -> None:
+        nonlocal index
+        indexes[region_id] = index
+        lowlinks[region_id] = index
+        index += 1
+        stack.append(region_id)
+        on_stack.add(region_id)
+
+        for neighbor in sorted(neighbors[region_id]):
+            if neighbor not in indexes:
+                visit(neighbor)
+                lowlinks[region_id] = min(lowlinks[region_id], lowlinks[neighbor])
+            elif neighbor in on_stack:
+                lowlinks[region_id] = min(lowlinks[region_id], indexes[neighbor])
+
+        if lowlinks[region_id] != indexes[region_id]:
+            return
+        component: list[str] = []
+        while stack:
+            member = stack.pop()
+            on_stack.remove(member)
+            component.append(member)
+            if member == region_id:
+                break
+        members = tuple(sorted(component))
+        if len(members) > 1 or region_id in neighbors[region_id]:
+            cycles.append(members)
+
+    for region_id in sorted(neighbors):
+        if region_id not in indexes:
+            visit(region_id)
+    return tuple(sorted(cycles))
 
 
 def _communities(

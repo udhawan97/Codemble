@@ -11,6 +11,7 @@ import {
   groupByCommunity,
   highlightColor,
   highlightLinkColor,
+  importCycleSummary,
   isCharted,
   isTestScopedPath,
   isUncharted,
@@ -335,6 +336,7 @@ assert.equal(
 // its own neighbour `beside`, plus `island`, which nothing imports at all.
 const sky = {
   project_root: "/tmp/projects/sky-map",
+  import_cycles: [["home", "near"]],
   nodes: [
     "home",
     "near",
@@ -757,6 +759,16 @@ console.log("transient colour and reveal predicates passed");
     overview.relationships,
     { proven: 0, hedged: 0 },
     "only explicitly certain or uncertain parser edges are claimed",
+  );
+  assert.deepEqual(overview.importCycles, [["home", "near"]]);
+  assert.equal(
+    importCycleSummary(overview.importCycles, "easy"),
+    "1 file circle found. In the largest, these files bring each other in: home → near → home.",
+    "Easy names the relationship without parser vocabulary",
+  );
+  assert.equal(
+    importCycleSummary(overview.importCycles, "expert"),
+    "1 proven import cycle. Largest: home → near → home.",
   );
   for (let i = 1; i < overview.busiest.length; i += 1) {
     assert.ok(

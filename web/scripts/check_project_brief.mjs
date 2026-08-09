@@ -22,6 +22,7 @@ const overview = {
   unreadable: 1,
   unsupportedSources: [{ extension: ".rb", language: "Ruby", count: 2 }],
   relationships: { proven: 12, hedged: 3 },
+  importCycles: [["garden.shared", "web/src/main.ts"]],
   understood: 1,
 };
 
@@ -52,6 +53,10 @@ assert.equal(
 
 - garden.shared — called from 4 places.
 - web/src/main.ts — called from 1 place.
+
+## Proven import cycles
+
+- garden.shared → web/src/main.ts → garden.shared
 
 ## Parser evidence
 
@@ -86,6 +91,7 @@ const noHome = projectBriefMarkdown({
   unreadable: 0,
   unsupportedSources: [],
   relationships: { proven: 0, hedged: 0 },
+  importCycles: [],
   understood: 0,
 });
 assert.match(noHome, /No Home entrypoint was resolved; this brief does not invent one\./);
@@ -94,5 +100,6 @@ assert.ok(
   "project names cannot change Markdown structure",
 );
 assert.match(noHome, /Unsupported source files: 0\./);
+assert.match(noHome, /## Proven import cycles\n\n- None reported\./);
 
 console.log("project brief contracts passed");

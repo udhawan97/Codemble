@@ -27,6 +27,7 @@ export function projectBriefMarkdown(overview, { charted = 0 } = {}) {
   const busiest = overview?.busiest ?? [];
   const unsupportedSources = overview?.unsupportedSources ?? [];
   const relationships = overview?.relationships ?? { proven: 0, hedged: 0 };
+  const importCycles = overview?.importCycles ?? [];
   const modules = overview?.modules ?? 0;
   const structures = overview?.structures ?? 0;
   const understood = overview?.understood ?? 0;
@@ -65,6 +66,14 @@ export function projectBriefMarkdown(overview, { charted = 0 } = {}) {
             `- ${markdownText(row.id)} — called from ${countLabel(row.value, "place")}.`,
         )
       : ["- No module has a reported caller count."]),
+    "",
+    "## Proven import cycles",
+    "",
+    ...(importCycles.length
+      ? importCycles.map(
+          (cycle) => `- ${cycle.map(markdownText).join(" → ")} → ${markdownText(cycle[0])}`,
+        )
+      : ["- None reported."]),
     "",
     "## Parser evidence",
     "",

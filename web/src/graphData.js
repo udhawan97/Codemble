@@ -661,6 +661,19 @@ export function projectName(graph) {
   return name || "Local project";
 }
 
+export function importCycleSummary(cycles, mode) {
+  if (!cycles?.length) return null;
+  const largest = [...cycles].sort(
+    (left, right) =>
+      right.length - left.length || left.join("\0").localeCompare(right.join("\0")),
+  )[0];
+  const route = [...largest, largest[0]].join(" → ");
+  if (mode === "easy") {
+    return `${cycles.length} ${cycles.length === 1 ? "file circle" : "file circles"} found. In the largest, these files bring each other in: ${route}.`;
+  }
+  return `${cycles.length} proven import ${cycles.length === 1 ? "cycle" : "cycles"}. Largest: ${route}.`;
+}
+
 /**
  * What is this project? Answered from the graph, for a learner who has just
  * opened a codebase they did not write.
@@ -739,6 +752,7 @@ export function projectOverview(graph) {
       proven: edges.filter((edge) => edge.certain === true).length,
       hedged: edges.filter((edge) => edge.certain === false).length,
     },
+    importCycles: (graph?.import_cycles ?? []).map((cycle) => [...cycle]),
     understood: regions.filter((region) => region.understood).length,
   };
 }

@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Added
+- Proven import cycles as canonical graph schema 10 truth, with deterministic
+  region-level components surfaced in the Map, project overview, and exported
+  brief; possible-only loops remain explicitly excluded.
 - A fully local Markdown project-brief export from the star chart, carrying the
   parser's language/file/structure breakdown, honest Home result, most-called
   modules, certainty coverage, unsupported sources, and learning progress.

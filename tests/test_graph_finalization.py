@@ -134,6 +134,44 @@ def test_import_communities_are_deterministic_and_match_two_joined_cliques() -> 
     assert len(set(communities.values())) == 2
 
 
+def test_import_cycles_use_only_proven_edges_and_are_idempotent() -> None:
+    draft = Graph(
+        nodes=tuple(
+            _node(region_id, region=region_id)
+            for region_id in ("acyclic", "cycle_a", "cycle_b", "possible_a", "possible_b")
+        ),
+        edges=(
+            Edge("cycle_a", "cycle_b", "import", True, 1),
+            Edge("cycle_a", "cycle_b", "import", False, 6),
+            Edge("cycle_b", "cycle_a", "import", True, 2),
+            Edge("cycle_b", "acyclic", "import", True, 3),
+            Edge("possible_a", "possible_b", "import", False, 4),
+            Edge("possible_b", "possible_a", "import", False, 5),
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={},
+        # Stale derived data must be replaced, not appended to. The normal
+        # composition path finalizes twice, so accumulating here would report
+        # duplicate or obsolete cycles in real projects while one-pass unit
+        # fixtures stayed green.
+        import_cycles=(("stale", "truth"),),
+    )
+
+    first = finalize_graph(draft)
+    second = finalize_graph(first)
+
+    assert first.import_cycles == (("cycle_a", "cycle_b"),)
+    assert next(
+        edge
+        for edge in first.region_edges
+        if edge.src == "cycle_a" and edge.dst == "cycle_b"
+    ).certain is False, "the proven cycle survives a conservatively hedged aggregate route"
+    assert second.import_cycles == first.import_cycles
+    assert second.to_json() == first.to_json()
+    assert first.to_dict()["import_cycles"] == [["cycle_a", "cycle_b"]]
+
+
 def test_constellations_keep_same_community_regions_closer() -> None:
     graph = finalize_graph(_community_fixture())
     regions = {region.id: region for region in graph.regions}
@@ -395,7 +433,7 @@ def test_hops_from_home_is_deterministic_and_serialized_in_the_render_schema() -
     payload = finalize_graph(draft).to_dict()
 
     assert finalize_graph(draft).to_json() == finalize_graph(draft).to_json()
-    assert payload["schema_version"] == 9
+    assert payload["schema_version"] == 10
     assert {region["id"]: region["hops_from_home"] for region in payload["regions"]} == {
         "app": 0,
         "mid": 1,
@@ -502,16 +540,18 @@ def test_unsupported_sources_are_carried_and_serialized_in_canonical_order() -> 
             UnsupportedSource(".go", "Go", 12),
             UnsupportedSource(".h", None, 3),
         ),
+        import_cycles=(("z", "a"), ("c", "b")),
     )
 
     payload = graph.to_dict()
 
-    assert payload["schema_version"] == 9
+    assert payload["schema_version"] == 10
     assert payload["unsupported_sources"] == [
         {"extension": ".go", "language": "Go", "count": 12},
         {"extension": ".h", "language": None, "count": 3},
         {"extension": ".rs", "language": "Rust", "count": 1},
     ]
+    assert payload["import_cycles"] == [["a", "z"], ["b", "c"]]
 
 
 def test_a_graph_with_nothing_unsupported_reports_an_empty_list() -> None:

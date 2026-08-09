@@ -718,6 +718,7 @@ export function App() {
             selectedRegionId={level === LEVELS.GALAXY ? undefined : region?.id}
             hasEntrypointCandidates={graph.entrypoint_candidates.length > 0}
             unsupportedSources={focusedGraph.unsupported_sources}
+            importCycles={graph.import_cycles}
             error={mapError}
             // A focus can empty either tab -- every module of one language can
             // be unreachable from a Home written in another. The empty states
@@ -2112,6 +2113,22 @@ function ProjectSummary({ overview, mode, charted }) {
               ]
                 .filter(Boolean)
                 .join(" · ")}
+            </dd>
+          </div>
+        ) : null}
+        {overview.importCycles.length ? (
+          <div>
+            <dt>{easy ? "Files that bring each other in" : "Proven import cycles"}</dt>
+            <dd>
+              {overview.importCycles.length} {overview.importCycles.length === 1 ? "circle" : "circles"}
+              {" · "}
+              {overview.importCycles
+                .slice()
+                .sort(
+                  (left, right) =>
+                    right.length - left.length || left.join("\0").localeCompare(right.join("\0")),
+                )[0]
+                .join(" → ")}
             </dd>
           </div>
         ) : null}

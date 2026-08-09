@@ -47,7 +47,11 @@ Home selection, so ambiguous rank-zero candidates remain unselected until the
 learner chooses. Later revisions added the import community a region belongs to,
 its hop distance from Home, each node's call-depth orbit, a count of files in
 languages no adapter read, and which communities are large enough to be given a
-colour family — all of them facts the renderer would otherwise have to infer. Concept annotations contain the exact node, line span, and
+colour family — all of them facts the renderer would otherwise have to infer.
+Schema 10 also carries canonical **import cycles**: strongly connected groups
+of regions computed only from imports whose certainty flag is true. Members and
+components are sorted, the field is replaced on every finalization pass, and a
+loop made only of possible imports is not reported. Concept annotations contain the exact node, line span, and
 source snippet that the Lens is allowed to teach. Each annotation also carries
 its language, so identically named concepts stay separate in the star chart.
 Several of the supported languages have an `async/await`, and each keeps its own

@@ -193,6 +193,13 @@ backward edge, anything skipping a layer — run out to a corridor beside the
 drawing and return the same way, so a long connection is still traceable
 end to end.
 
+When proven imports form a cycle, the Map states it in a full prose line beneath
+the drawing and names every module in the largest cycle. Easy mode calls it a
+file circle and says the files bring each other in; Expert mode uses the import
+cycle term. This fact comes from graph schema 10, not from SVG geometry, and a
+possible-only loop is never promoted into the report. The same cycle line is
+carried into the star-chart project overview and its Markdown export.
+
 The Map opens at readable 100% on compact screens and centres Home or the
 selected target instead of shrinking every box into a whole-diagram thumbnail.
 **Fit** gives the overview: on a wide drawing it fits the whole shape, and on a

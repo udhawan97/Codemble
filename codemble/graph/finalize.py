@@ -114,6 +114,7 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
         ),
         regions=(),
         region_edges=(),
+        import_cycles=(),
         partial_files=tuple(sorted(set(graph.partial_files))),
     )
     return layout_graph(finalized)
