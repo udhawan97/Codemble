@@ -1,3 +1,5 @@
+import { readOnlyRequestErrorMessage } from "./localServerErrors.js";
+
 const DEFAULT_CLOCK = Object.freeze({
   setTimeout(callback, delay) {
     return globalThis.setTimeout(callback, delay);
@@ -74,13 +76,14 @@ export function createProjectMapping({
           ...listing,
           recents: recentsPayload.recents,
           error: "",
+          retryPath: null,
           scale: null,
           busy: false,
         },
       });
     } catch (requestError) {
       if (!isAbortError(requestError) && requestGeneration === generation) {
-        commit({ phase: "error", error: errorMessage(requestError) });
+        commit({ phase: "error", error: readOnlyRequestErrorMessage(requestError) });
       }
     }
     return snapshot;
@@ -101,7 +104,9 @@ export function createProjectMapping({
         !controller.signal.aborted &&
         snapshot.phase === "picking"
       ) {
-        commit({ picker: { ...snapshot.picker, ...listing, error: "" } });
+        commit({
+          picker: { ...snapshot.picker, ...listing, error: "", retryPath: null },
+        });
       }
     } catch (requestError) {
       if (
@@ -110,7 +115,13 @@ export function createProjectMapping({
         !isAbortError(requestError) &&
         snapshot.phase === "picking"
       ) {
-        commit({ picker: { ...snapshot.picker, error: errorMessage(requestError) } });
+        commit({
+          picker: {
+            ...snapshot.picker,
+            error: readOnlyRequestErrorMessage(requestError),
+            retryPath: path,
+          },
+        });
       }
     }
     return undefined;
@@ -126,7 +137,13 @@ export function createProjectMapping({
     const controller = pickerController;
     commit({
       failure: null,
-      picker: { ...snapshot.picker, busy: true, error: "", scale: null },
+      picker: {
+        ...snapshot.picker,
+        busy: true,
+        error: "",
+        retryPath: null,
+        scale: null,
+      },
     });
     try {
       const result = await adapter.selectProject(path, { signal: controller.signal });

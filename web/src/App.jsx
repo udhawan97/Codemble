@@ -237,7 +237,7 @@ export function App() {
   // learner on <body> after working through a region.
   function closeChecks() {
     session.dispatch({ type: "CLOSE_CHECKS" });
-    restoreRailFocus(checksTriggerRef);
+    restoreRailFocus(checksTriggerRef, systemCopyRef);
   }
 
   function openFinder(event) {
@@ -258,7 +258,10 @@ export function App() {
 
   function followHint() {
     session.dispatch({ type: "FOLLOW_HINT" });
-    requestAnimationFrame(() => systemCopyRef.current?.focus());
+    // OPEN_CHECKS commits synchronously before its request begins. Yield focus
+    // to the panel heading when that is where guidance went; otherwise restore
+    // the newly committed system context on a task, never on a WebGL frame.
+    if (!session.getSnapshot().showChecks) restoreRailFocus(systemCopyRef);
   }
 
   function dismissCoachmarks() {
@@ -1205,7 +1208,17 @@ function LoadingScreen({ progress, onCancel }) {
 }
 
 function PickerScreen({ picker, failure, onBrowse, onSelect }) {
-  const { path, parent, entries, recents, error, scale, busy } = picker;
+  const { path, parent, entries, recents, error, retryPath, scale, busy } = picker;
+  const browseHeadingRef = useRef(null);
+  const retryRef = useRef(null);
+  const hadRetryRef = useRef(false);
+
+  useLayoutEffect(() => {
+    const hadRetry = hadRetryRef.current;
+    if (retryPath) retryRef.current?.focus();
+    else if (hadRetry) browseHeadingRef.current?.focus();
+    hadRetryRef.current = Boolean(retryPath);
+  }, [retryPath]);
   return (
     <main className="picker-screen" aria-busy={busy}>
       <header className="picker-header">
@@ -1244,12 +1257,25 @@ function PickerScreen({ picker, failure, onBrowse, onSelect }) {
       {failure ? (
         <ProjectFailure failure={failure} busy={busy} onSelect={onSelect} />
       ) : error ? (
-        <p className="picker-error" role="alert">
-          {error}
-        </p>
+        <div className="picker-error">
+          <p role="alert">{error}</p>
+          {retryPath ? (
+            <button
+              ref={retryRef}
+              className="picker-retry"
+              type="button"
+              disabled={busy}
+              onClick={() => onBrowse(retryPath)}
+            >
+              Try this folder again
+            </button>
+          ) : null}
+        </div>
       ) : null}
       <section className="picker-browser" aria-labelledby="picker-browser-heading">
-        <h2 id="picker-browser-heading">Browse folders</h2>
+        <h2 ref={browseHeadingRef} id="picker-browser-heading" tabIndex={-1}>
+          Browse folders
+        </h2>
         <p className="picker-path">{path}</p>
         <ul>
           {parent ? (

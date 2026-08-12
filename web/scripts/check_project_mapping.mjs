@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 
+import {
+  READ_ONLY_SERVER_UNAVAILABLE,
+  readOnlyRequestErrorMessage,
+} from "../src/localServerErrors.js";
 import { PARSE_STAGES, createProjectMapping } from "../src/projectMapping.js";
 
 assert.deepEqual(
@@ -7,6 +11,21 @@ assert.deepEqual(
   ["discovering", "parsing", "resolving", "checks", "layout"],
   "the mapping module owns the backend's learner-visible stage vocabulary",
 );
+
+assert.equal(
+  readOnlyRequestErrorMessage(new TypeError("Failed to fetch")),
+  READ_ONLY_SERVER_UNAVAILABLE,
+  "browser-specific transport phrases are never shown to the learner",
+);
+{
+  const refusal = new Error("That folder is outside your home directory.");
+  refusal.status = 403;
+  assert.equal(
+    readOnlyRequestErrorMessage(refusal),
+    refusal.message,
+    "an HTTP refusal keeps the server's learner-facing explanation",
+  );
+}
 
 {
   const timers = createClock();
@@ -51,6 +70,80 @@ assert.deepEqual(
   assert.equal(mapping.getSnapshot().progress, null);
   assert.equal(readyCalls, 1);
   assert.equal(timers.size(), 0);
+  mapping.dispose();
+}
+
+{
+  const timers = createClock();
+  const attempts = [];
+  let transportDown = true;
+  const mapping = createProjectMapping({
+    adapter: pickerAdapter({
+      browsePicker: async (path) => {
+        attempts.push(path);
+        if (path !== null && transportDown) throw new TypeError("Failed to fetch");
+        return {
+          path: path ?? "/home/u",
+          parent: "/home/u",
+          entries: [{ name: "src", path: `${path}/src` }],
+        };
+      },
+    }),
+    clock: timers.clock,
+  });
+
+  await mapping.start();
+  const before = mapping.getSnapshot().picker;
+  await mapping.browse("/home/u/demo");
+  assert.equal(mapping.getSnapshot().picker.path, before.path);
+  assert.deepEqual(mapping.getSnapshot().picker.entries, before.entries);
+  assert.equal(mapping.getSnapshot().picker.retryPath, "/home/u/demo");
+  assert.equal(mapping.getSnapshot().picker.error, READ_ONLY_SERVER_UNAVAILABLE);
+
+  transportDown = false;
+  await mapping.browse(mapping.getSnapshot().picker.retryPath);
+  assert.equal(attempts.at(-1), "/home/u/demo");
+  assert.equal(mapping.getSnapshot().picker.path, "/home/u/demo");
+  assert.equal(mapping.getSnapshot().picker.error, "");
+  assert.equal(mapping.getSnapshot().picker.retryPath, null);
+
+  transportDown = true;
+  await mapping.browse("/home/u/other");
+  assert.equal(mapping.getSnapshot().picker.retryPath, "/home/u/other");
+  await mapping.select("/home/u/demo");
+  assert.equal(
+    mapping.getSnapshot().picker.retryPath,
+    null,
+    "beginning a selection retires a stale browse retry target",
+  );
+  mapping.dispose();
+}
+
+{
+  const mapping = createProjectMapping({
+    adapter: pickerAdapter({
+      browsePicker: async (path) => {
+        if (path === null) {
+          return {
+            path: "/home/u",
+            parent: "/home",
+            entries: [{ name: "demo", path: "/home/u/demo" }],
+          };
+        }
+        const refusal = new Error("That folder is outside your home directory.");
+        refusal.status = 403;
+        throw refusal;
+      },
+    }),
+  });
+
+  await mapping.start();
+  await mapping.browse("/outside");
+  assert.equal(
+    mapping.getSnapshot().picker.error,
+    "That folder is outside your home directory.",
+  );
+  assert.equal(mapping.getSnapshot().picker.retryPath, "/outside");
   mapping.dispose();
 }
 
@@ -134,6 +227,7 @@ function pickerAdapter({
   selection = { state: "parsing" },
   progress = [],
   fetchProgress,
+  browsePicker,
 } = {}) {
   const queue = [...progress];
   return {
@@ -141,6 +235,7 @@ function pickerAdapter({
       return { recents: [] };
     },
     async browsePicker(path) {
+      if (browsePicker) return browsePicker(path);
       return {
         path: path ?? "/home/u",
         parent: path ? null : "/home",

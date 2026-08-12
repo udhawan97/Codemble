@@ -86,14 +86,19 @@ jobs:
             curl -sf -o /dev/null http://127.0.0.1:8899/ && break
             sleep 2
           done
-      - name: Install Chromium
-        run: cd web && npx --yes playwright install --with-deps chromium
+      - name: Install browser engines
+        run: cd web && npx --yes playwright install --with-deps chromium webkit
       - name: Shell space budget
         run: cd web && CODEMBLE_URL=http://127.0.0.1:8899 npm run check:space
       # Runs even when the budget fails, so one browser run reports both.
       - name: Escape surfaces
         if: ${{ !cancelled() }}
         run: cd web && CODEMBLE_URL=http://127.0.0.1:8899 npm run check:escape
+      # Owns separate project-bound and unbound-picker servers with disposable
+      # data roots, then exercises the repaired journeys in both browser engines.
+      - name: User-flow repairs
+        if: ${{ !cancelled() }}
+        run: cd web && npm run check:userflows
   package-check:
     runs-on: ubuntu-latest
     steps:

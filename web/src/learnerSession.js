@@ -1,5 +1,6 @@
 import { LEVELS, defaultRegion } from "./graphData.js";
 import { createLearnerProjection } from "./learnerProjection.js";
+import { readOnlyRequestErrorMessage } from "./localServerErrors.js";
 import { createProjectMapping } from "./projectMapping.js";
 
 const DEFAULT_CLOCK = Object.freeze({
@@ -156,7 +157,7 @@ export function createLearnerSession({
       pickerState = await adapter.loadPickerState({ signal: controller.signal });
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
-        commit({ status: "error", error: appDownMessage(requestError) });
+        commit({ status: "error", error: readOnlyRequestErrorMessage(requestError) });
       }
       return snapshot;
     }
@@ -182,7 +183,7 @@ export function createLearnerSession({
       });
     } catch (requestError) {
       if (!isAbortError(requestError) && requestLifecycle === lifecycle) {
-        commit({ status: "error", error: appDownMessage(requestError) });
+        commit({ status: "error", error: readOnlyRequestErrorMessage(requestError) });
       }
     }
     // Outside the try on purpose, and never awaited into it: preferences are
@@ -1373,28 +1374,8 @@ function isAbortError(error) {
   return error instanceof Error && error.name === "AbortError";
 }
 
-// True only when an HTTP response actually arrived and said no: the adapter's
-// request() stamps `status` on every error it raises from one. A fetch that
-// never reached the server rejects with a bare TypeError ("Failed to fetch"),
-// which carries no status -- and a deliberate cancel is an AbortError, which
-// every caller checks first, so it can never be mistaken for either.
-function isServerRefusal(error) {
-  return Number.isInteger(error?.status);
-}
-
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
-}
-
-// The message behind the app-level "did not load" screen. A refusal already
-// carries the server's own learner-facing sentence, so it is passed through --
-// but an unreachable server produces the browser's words for it ("Failed to
-// fetch"), which name nothing the learner can do anything about. The one thing
-// that is certainly true, and the one action that fixes it, is said instead.
-function appDownMessage(error) {
-  return isServerRefusal(error)
-    ? errorMessage(error)
-    : `Codemble's local server is not responding, so nothing can be loaded from it. It may have stopped — start it again by running codemble in your terminal. (${errorMessage(error)})`;
 }
 
 function requiredFixture(fixtures, key, description) {

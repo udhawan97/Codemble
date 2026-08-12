@@ -1263,6 +1263,55 @@ input:focus-visible {
   border-block-start: 1px solid var(--cm-hairline);
 }
 
+/* At CSS reflow widths the question uses nearly the whole viewport and gives
+   its decision list a real share of the block axis. `min()` keeps that floor
+   from pushing the fixed exit out of a short window. */
+@media (max-width: 39.999rem), (max-height: 44rem) {
+  .entrypoint-picker {
+    width: calc(100vw - (2 * var(--cm-space-sm)));
+    height: calc(100dvh - (2 * var(--cm-space-sm)));
+    max-height: none;
+    padding: var(--cm-space-md);
+    /* A nearly full-height modal cannot translate downward without crossing
+       the viewport edge during its own entrance. Opacity keeps the reveal. */
+    animation-name: entrypoint-enter-reduced;
+  }
+
+  .entrypoint-scroll {
+    min-height: min(7.5rem, 22dvh);
+    flex-basis: min(10rem, 28dvh);
+  }
+}
+
+/* A short landscape/zoomed window cannot promise a whole candidate, but it
+   must keep both the list and the explicit way out visible and scrollable. */
+@media (max-height: 32rem) {
+  .entrypoint-picker {
+    padding: var(--cm-space-sm);
+  }
+
+  .entrypoint-picker h1 {
+    margin-block-start: var(--cm-space-xs);
+    font-size: var(--cm-text-lg);
+  }
+
+  .entrypoint-picker > p:not(:first-child),
+  .entrypoint-count,
+  .entrypoint-continue {
+    margin-block-start: var(--cm-space-xs);
+  }
+
+  .entrypoint-picker > p:not(:first-child) {
+    font-size: var(--cm-text-xs);
+    line-height: 1.3;
+  }
+
+  .entrypoint-scroll {
+    min-height: min(4rem, 18dvh);
+    flex-basis: min(6rem, 24dvh);
+  }
+}
+
 .entrypoint-scroll details {
   border-block-end: 1px solid var(--cm-hairline);
 }
@@ -2568,6 +2617,26 @@ input:focus-visible {
 
 .picker-error {
   color: var(--cm-error);
+}
+
+.picker-error p {
+  margin: 0;
+}
+
+.picker-retry {
+  min-height: 44px;
+  margin-block-start: var(--cm-space-sm);
+  padding: var(--cm-space-xs) var(--cm-space-md);
+  border: 1px solid var(--cm-error);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-ink);
+  cursor: pointer;
+}
+
+.picker-retry:focus-visible {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 2px;
 }
 
 .picker-select {

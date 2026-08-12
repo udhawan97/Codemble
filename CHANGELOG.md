@@ -31,6 +31,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Product capture now launches and removes its own provider-free disposable
   server; it cannot reset progress on a normal Codemble session.
 
+### Fixed
+- Home calibration now reserves a real decision-list viewport at 320px reflow
+  widths while keeping its explicit exit visible, and short-height windows keep
+  the same list scrollable instead of clipping the focused first candidate.
+- Following **Prove understanding** from Study now leaves focus on the quiz
+  heading; Escape and Close return to the remounted prove control instead of a
+  hidden system panel or the document body.
+- A folder-browse outage now keeps the last successful folder visible, replaces
+  browser-engine error phrases with stable local-server guidance, and offers an
+  exact-folder retry with continuous keyboard focus through failure and recovery.
+
 ## [0.16.0] - 2026-08-04
 
 ### Added
