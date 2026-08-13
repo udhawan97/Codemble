@@ -15,6 +15,7 @@ from codemble.graph import GraphFinalizationError, finalize_graph
 from codemble.graph.layout import (
     _CONSTELLATION_SPACING,
     _REGION_SPACING,
+    _import_cycles,
     with_entrypoint,
 )
 
@@ -132,6 +133,137 @@ def test_import_communities_are_deterministic_and_match_two_joined_cliques() -> 
     assert {communities[region_id] for region_id in ("a0", "a1", "a2")} == {0}
     assert {communities[region_id] for region_id in ("b0", "b1", "b2")} == {1}
     assert len(set(communities.values())) == 2
+
+
+def test_import_cycles_use_only_proven_edges_and_are_idempotent() -> None:
+    draft = Graph(
+        nodes=tuple(
+            _node(region_id, region=region_id)
+            for region_id in ("acyclic", "cycle_a", "cycle_b", "possible_a", "possible_b")
+        ),
+        edges=(
+            Edge("cycle_a", "cycle_b", "import", True, 1),
+            Edge("cycle_a", "cycle_b", "import", False, 6),
+            Edge("cycle_b", "cycle_a", "import", True, 2),
+            Edge("cycle_b", "acyclic", "import", True, 3),
+            Edge("possible_a", "possible_b", "import", False, 4),
+            Edge("possible_b", "possible_a", "import", False, 5),
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={},
+        # Stale derived data must be replaced, not appended to. The normal
+        # composition path finalizes twice, so accumulating here would report
+        # duplicate or obsolete cycles in real projects while one-pass unit
+        # fixtures stayed green.
+        import_cycles=(("stale", "truth"),),
+    )
+
+    first = finalize_graph(draft)
+    second = finalize_graph(first)
+
+    assert first.import_cycles == (("cycle_a", "cycle_b"),)
+    assert next(
+        edge
+        for edge in first.region_edges
+        if edge.src == "cycle_a" and edge.dst == "cycle_b"
+    ).certain is False, "the proven cycle survives a conservatively hedged aggregate route"
+    assert second.import_cycles == first.import_cycles
+    assert second.to_json() == first.to_json()
+    assert first.to_dict()["import_cycles"] == [["cycle_a", "cycle_b"]]
+
+
+def test_import_cycle_members_are_a_group_not_an_invented_direct_route() -> None:
+    """A strongly connected group need not contain one sorted direct loop."""
+
+    draft = Graph(
+        nodes=tuple(_node(region_id, region=region_id) for region_id in ("a", "b", "c")),
+        edges=(
+            Edge("a", "c", "import", True, 1),
+            Edge("c", "a", "import", True, 2),
+            Edge("c", "b", "import", True, 3),
+            Edge("b", "c", "import", True, 4),
+        ),
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={},
+    )
+
+    assert finalize_graph(draft).import_cycles == (("a", "b", "c"),)
+
+
+def test_branching_import_dag_does_not_invent_a_cycle_group() -> None:
+    """Sibling discovery order must not substitute for DFS finish order."""
+
+    nodes = tuple(_node(region_id, region=region_id) for region_id in ("a", "b", "c"))
+    edges = (
+        Edge("a", "b", "import", True, 1),
+        Edge("a", "c", "import", True, 2),
+        Edge("b", "c", "import", True, 3),
+    )
+
+    assert _import_cycles(nodes, edges) == ()
+
+
+def test_import_cycle_groups_match_mutual_reachability_for_every_four_node_graph() -> None:
+    """Exhaustively compare SCC output with an independent reachability oracle."""
+
+    region_ids = ("a", "b", "c", "d")
+    nodes = tuple(_node(region_id, region=region_id) for region_id in region_ids)
+    possible_edges = tuple(
+        (src, dst) for src in region_ids for dst in region_ids if src != dst
+    )
+
+    for mask in range(1 << len(possible_edges)):
+        selected = tuple(
+            pair for index, pair in enumerate(possible_edges) if mask & (1 << index)
+        )
+        edges = tuple(
+            Edge(src, dst, "import", True, index + 1)
+            for index, (src, dst) in enumerate(selected)
+        )
+        reachable = {region_id: {region_id} for region_id in region_ids}
+        for src, dst in selected:
+            reachable[src].add(dst)
+        for through in region_ids:
+            for src in region_ids:
+                if through in reachable[src]:
+                    reachable[src].update(reachable[through])
+
+        unassigned = set(region_ids)
+        expected: list[tuple[str, ...]] = []
+        while unassigned:
+            root = min(unassigned)
+            component = tuple(
+                region_id
+                for region_id in region_ids
+                if region_id in reachable[root] and root in reachable[region_id]
+            )
+            unassigned.difference_update(component)
+            if len(component) > 1:
+                expected.append(component)
+
+        assert _import_cycles(nodes, edges) == tuple(sorted(expected)), f"mask={mask:#x}"
+
+
+def test_import_cycle_discovery_handles_the_supported_thousand_region_boundary() -> None:
+    """A legal 1,000-file import chain must not consume Python's call stack."""
+
+    size = 1_000
+    nodes = tuple(_node(f"n{index:04d}", region=f"n{index:04d}") for index in range(size))
+    edges = tuple(
+        Edge(f"n{index:04d}", f"n{index + 1:04d}", "import", True, index + 1)
+        for index in range(size - 1)
+    )
+    draft = Graph(
+        nodes=nodes,
+        edges=edges,
+        entrypoint_candidates=(),
+        project_root="/project",
+        file_hashes={},
+    )
+
+    assert finalize_graph(draft).import_cycles == ()
 
 
 def test_constellations_keep_same_community_regions_closer() -> None:
@@ -395,7 +527,7 @@ def test_hops_from_home_is_deterministic_and_serialized_in_the_render_schema() -
     payload = finalize_graph(draft).to_dict()
 
     assert finalize_graph(draft).to_json() == finalize_graph(draft).to_json()
-    assert payload["schema_version"] == 9
+    assert payload["schema_version"] == 10
     assert {region["id"]: region["hops_from_home"] for region in payload["regions"]} == {
         "app": 0,
         "mid": 1,
@@ -502,16 +634,18 @@ def test_unsupported_sources_are_carried_and_serialized_in_canonical_order() -> 
             UnsupportedSource(".go", "Go", 12),
             UnsupportedSource(".h", None, 3),
         ),
+        import_cycles=(("z", "a"), ("c", "b")),
     )
 
     payload = graph.to_dict()
 
-    assert payload["schema_version"] == 9
+    assert payload["schema_version"] == 10
     assert payload["unsupported_sources"] == [
         {"extension": ".go", "language": "Go", "count": 12},
         {"extension": ".h", "language": None, "count": 3},
         {"extension": ".rs", "language": "Rust", "count": 1},
     ]
+    assert payload["import_cycles"] == [["a", "z"], ["b", "c"]]
 
 
 def test_a_graph_with_nothing_unsupported_reports_an_empty_list() -> None:

@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { createBody, createBodyGeometry, createBodySpin } from "./celestialBodies.js";
 import { measureCanvasOcclusion } from "./canvasOcclusion.js";
 import { runDawnSequence } from "./dawnSequence.js";
+import { flightCameraDuration } from "./firstFlight.js";
 import { attachBloom } from "./galaxyEffects.js";
 import {
   CAMERA_DURATION,
@@ -334,7 +335,8 @@ export function createGalaxyRuntime({
           height: renderer.height(),
           distance,
           distanceBounds: bounds,
-          hoverNodeId: snapshot.hoverNodeId,
+          activeNodeId: highlight.activeId,
+          neighborIds: highlight.neighborIds,
           chrome: occlusion.nameObstructions,
         });
       } catch (error) {
@@ -386,15 +388,16 @@ export function createGalaxyRuntime({
         .linkVisibility((link) => !(next.mode === "easy" && link.focusDim))
         .linkDirectionalArrowLength(next.level === LEVELS.GALAXY ? 0 : 3.2)
         .graphData(next.data);
-      applyFraming(CAMERA_DURATION);
+      applyFraming(
+        flightCameraDuration(CAMERA_DURATION, {
+          active: next.firstFlightActive,
+          reducedMotion,
+        }),
+      );
       userFramed = false;
       reframe = (aspect) => applyFraming(0, aspect);
     }
 
-    if (!previous || previous.focusedNodeId !== next.focusedNodeId) {
-      focusedNodeId = next.focusedNodeId;
-      renderer.refresh();
-    }
     if (
       !previous ||
       previous.level !== next.level ||
@@ -414,11 +417,13 @@ export function createGalaxyRuntime({
       !previous ||
       previous.data !== next.data ||
       previous.hoverNodeId !== next.hoverNodeId ||
+      previous.focusedNodeId !== next.focusedNodeId ||
       previous.level !== next.level ||
       previous.selectedNode?.id !== next.selectedNode?.id
     ) {
       const activeId =
         next.hoverNodeId ??
+        next.focusedNodeId ??
         (next.level === LEVELS.STUDY ? next.selectedNode?.id ?? null : null);
       const neighborIds = new Set();
       if (activeId) {
@@ -430,18 +435,33 @@ export function createGalaxyRuntime({
         }
       }
       highlight = { activeId, neighborIds };
+      // Hand the renderer fresh accessor identities. Its Kapsule setters may
+      // legitimately skip a same-reference function, but these functions read
+      // mutable highlight state; re-setting the old closure can therefore
+      // leave the GPU material painted for the previous neighborhood.
       renderer
-        .nodeColor(renderer.nodeColor())
-        .linkColor(renderer.linkColor())
-        .linkWidth(renderer.linkWidth())
-        .linkDirectionalArrowColor(renderer.linkDirectionalArrowColor());
+        .nodeColor((node) => nodeColor(node))
+        .linkColor((link) => linkColor(link))
+        .linkWidth((link) => linkWidth(link))
+        .linkDirectionalArrowColor((link) => linkColor(link));
       refreshPossibleRoutes(renderer.scene(), linkColor);
+    }
+
+    // Refresh the custom marker only after the highlight closure above carries
+    // the new subject. Reversing these two steps could rebuild a sphere in the
+    // old faded/active colour and then hand the library the same accessor
+    // function it already held, leaving that stale material on screen after
+    // focus moved onto overlay chrome.
+    if (!previous || previous.focusedNodeId !== next.focusedNodeId) {
+      focusedNodeId = next.focusedNodeId;
+      renderer.refresh();
     }
 
     if (
       !previous ||
       previous.data.nodes !== next.data.nodes ||
       previous.hoverNodeId !== next.hoverNodeId ||
+      previous.focusedNodeId !== next.focusedNodeId ||
       previous.level !== next.level
     ) {
       replaceAtlas();

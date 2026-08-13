@@ -69,6 +69,12 @@ const sample = frameLevel({
   fov: 50,
   aspect: 1.6,
 });
+const galaxyElevation =
+  (sample.position.y - sample.target.y) / sample.distance;
+assert.ok(
+  galaxyElevation >= 0.49 && galaxyElevation <= 0.51,
+  "the galaxy opens about 30 degrees above its plane so constellation routes keep visible depth",
+);
 assert.ok(
   Math.abs(
     sample.distance -

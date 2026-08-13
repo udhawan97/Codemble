@@ -103,6 +103,7 @@ async function runViewport(page, viewport, label) {
       chart: !!document.querySelector(".chart-stage"),
       sidebar: !!document.querySelector("[class*='index-sidebar'], aside[class*='sidebar']"),
       checks: !!document.querySelector("[class*='check-panel']"),
+      firstFlight: !!document.querySelector("[data-first-flight='active']"),
       dialog: !!document.querySelector("dialog[open]"),
       railOpen: !!document.querySelector(".rail-overflow[data-open]"),
       // The breadcrumb is the level and layer the learner can see. A
@@ -182,6 +183,53 @@ async function runViewport(page, viewport, label) {
     `document.hidden=${start.hidden}; rAF is throttled when hidden and the galaxy's frames run 1-4s`,
     start.hidden === false,
   );
+
+  // ── First Flight is a surface, not navigation hidden inside a hint ──────
+
+  {
+    if (!(await click(/First Flight/))) {
+      record("first flight", "could not reach its guidance control", false);
+    } else {
+      const opened = await state();
+      const stopText = () =>
+        page.locator("[data-first-flight='active'] .first-flight__system").textContent();
+      const firstStop = await stopText();
+      const next = page.getByRole("button", { name: "Next", exact: true });
+      await next.click();
+      await page.waitForTimeout(500);
+      const secondStop = await stopText();
+      record(
+        "first flight / next",
+        `"${firstStop?.trim()}" -> "${secondStop?.trim()}"`,
+        Boolean(firstStop && secondStop && firstStop !== secondStop),
+      );
+      const backButton = page.getByRole("button", { name: "Back", exact: true });
+      await backButton.click();
+      await page.waitForTimeout(500);
+      const returnedStop = await stopText();
+      record(
+        "first flight / back",
+        `"${secondStop?.trim()}" -> "${returnedStop?.trim()}"`,
+        returnedStop === firstStop,
+      );
+      const closed = await escape();
+      record(
+        "first flight",
+        `open=${opened.firstFlight} -> ${closed.firstFlight}`,
+        opened.firstFlight && !closed.firstFlight,
+      );
+      record(
+        "first flight / stays put",
+        `"${opened.breadcrumb}" -> "${closed.breadcrumb}"`,
+        opened.breadcrumb === closed.breadcrumb,
+      );
+      record(
+        "first flight / focus",
+        closed.focus,
+        /First Flight/.test(closed.focus),
+      );
+    }
+  }
 
   /** A surface the caller closes: it shuts, the level stays, focus comes back. */
   async function dismisses(name, opener, field, { expectFocus = true } = {}) {

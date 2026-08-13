@@ -43,7 +43,10 @@ const CAMERA_BOUNDS = {
 // node behind the camera is not cropped, it is gone. Their lengths remain the
 // fallback for a level with nothing to measure.
 const CAMERA_VIEW = {
-  GALAXY: { x: 0, y: 105, z: 310 },
+  // About 30 degrees above the layout plane. The previous 19-degree view
+  // collapsed constellation spacing and route curvature into a near-horizontal
+  // bundle; this keeps depth visible while preserving the familiar horizon.
+  GALAXY: { x: 0, y: 165, z: 286 },
   SYSTEM: { x: 0, y: 52, z: 150 },
 };
 

@@ -21,6 +21,7 @@ export function GalaxyCanvas({
   pendingDawnRegionId,
   revealedRegionIds,
   mode,
+  firstFlightActive,
   onHoverNode,
   onAdvance,
   onRetreat,
@@ -33,6 +34,7 @@ export function GalaxyCanvas({
   const hoverRef = useRef(onHoverNode);
   const dawnConsumedRef = useRef(onDawnConsumed);
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [keyboardExploring, setKeyboardExploring] = useState(false);
   const [renderError, setRenderError] = useState("");
   const palette = useMemo(readPalette, []);
   const reducedMotion = useMemo(prefersReducedMotion, []);
@@ -95,13 +97,16 @@ export function GalaxyCanvas({
       hoverNodeId,
       pendingDawnRegionId,
       starfieldSeed,
-      focusedNodeId: data.nodes[focusedIndex]?.id ?? null,
+      firstFlightActive,
+      focusedNodeId: keyboardExploring ? data.nodes[focusedIndex]?.id ?? null : null,
     });
   }, [
     data,
+    firstFlightActive,
     focusedIndex,
     graph,
     hoverNodeId,
+    keyboardExploring,
     level,
     mode,
     orbitPlan,
@@ -112,6 +117,7 @@ export function GalaxyCanvas({
 
   useEffect(() => {
     setFocusedIndex(0);
+    setKeyboardExploring(false);
   }, [data, level, mode, orbitPlan]);
 
   const focusedNode = data.nodes[focusedIndex] ?? null;
@@ -127,6 +133,10 @@ export function GalaxyCanvas({
       event.preventDefault();
       advanceRef.current(focusedNode);
     } else if (event.key === "Escape" || event.key === "Backspace") {
+      // First Flight is a dismissible surface in the one Escape arbiter. Let
+      // its Escape bubble there instead of retreating here first; otherwise
+      // one key would leave the system and then close the tour on top of it.
+      if (event.key === "Escape" && firstFlightActive) return;
       event.preventDefault();
       retreatRef.current();
     }
@@ -151,10 +161,22 @@ export function GalaxyCanvas({
       role="application"
       tabIndex="0"
       aria-label={`Codemble ${level.toLowerCase()} view. Drag to orbit, scroll to zoom. Use arrow keys to choose a node and Enter to move closer.${level === LEVELS.GALAXY ? "" : " Solid guides are parser-proven call layers; a dashed guide has no proven call path."}`}
+      onFocus={() => setKeyboardExploring(true)}
+      onBlur={() => {
+        hoverRef.current(null);
+      }}
       onKeyDown={handleKeyDown}
     >
-      <div ref={hostRef} className="galaxy-canvas" aria-hidden="true" />
-      {focusedNode ? (
+      <div
+        ref={hostRef}
+        className="galaxy-canvas"
+        aria-hidden="true"
+        // The frame still geometrically contains its overlay controls. The
+        // WebGL host does not, so this is the boundary where a pointer leaving
+        // for Key/Modules/Find can reliably retire the old neighborhood.
+        onPointerLeave={() => hoverRef.current(null)}
+      />
+      {keyboardExploring && focusedNode ? (
         <output className="keyboard-focus" aria-live="polite">
           {nodeLabel(focusedNode)}
         </output>

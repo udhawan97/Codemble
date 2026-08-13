@@ -21,6 +21,11 @@ const viewports = [
   { name: "768", width: 768, height: 900 },
   { name: "1280", width: 1280, height: 800 },
   { name: "1440", width: 1440, height: 900 },
+  // 640 CSS pixels at DPR 2 is the reflow geometry of a 1280x800 window at
+  // 200% zoom. Keep it explicit: deviceScaleFactor alone does not change CSS
+  // layout unless the viewport is reduced too.
+  { name: "200-percent", width: 640, height: 400, deviceScaleFactor: 2 },
+  { name: "reduced-motion", width: 1440, height: 900, reducedMotion: "reduce" },
 ];
 
 await mkdir(outputDirectory, { recursive: true });
@@ -34,11 +39,16 @@ function assert(condition, message) {
 for (const viewport of viewports) {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
+    deviceScaleFactor: viewport.deviceScaleFactor || 1,
+    reducedMotion: viewport.reducedMotion || "no-preference",
     permissions: ["clipboard-read", "clipboard-write"],
   });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("response", (response) => {
+    if (response.status() >= 400) errors.push(`HTTP ${response.status()} ${response.url()}`);
+  });
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
@@ -58,6 +68,16 @@ for (const viewport of viewports) {
     assert(
       proof && proof.y < viewport.height && Math.min(proof.y + proof.height, viewport.height) - proof.y >= 180,
       "1280: the hero product focal point does not fit the first fold",
+    );
+  }
+  if (viewport.name === "reduced-motion") {
+    assert(
+      await page.locator(".journey-stage").isHidden(),
+      "reduced-motion: sticky crossfade proof remained active",
+    );
+    assert(
+      await page.locator(".journey-inline-media").first().isVisible(),
+      "reduced-motion: static product proof is missing",
     );
   }
 
@@ -159,6 +179,9 @@ for (const route of ["download", "installation", "introduction", "build-from-sou
   const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("response", (response) => {
+    if (response.status() >= 400) errors.push(`HTTP ${response.status()} ${response.url()}`);
+  });
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
@@ -223,5 +246,5 @@ if (failures.length > 0) {
 }
 
 process.stdout.write(
-  `Landing checks passed at 320, 375, 414, 768, 1280, and 1440 px; docs routes passed at 375 and 1280 px.\nScreenshots: ${outputDirectory}\n`,
+  `Landing checks passed at 320, 375, 414, 768, 1280, and 1440 px, 200% reflow, and reduced motion; docs routes passed at 375 and 1280 px.\nScreenshots: ${outputDirectory}\n`,
 );

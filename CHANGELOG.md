@@ -5,7 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-13
+
 ### Added
+- A stateless, re-runnable First Flight from Home through at most five direct,
+  proven imports, using the existing travel and visit-recording path with
+  keyboard controls, ordered Escape dismissal, and reduced-motion jump cuts.
+- Proven import cycles as canonical graph schema 10 truth, with deterministic
+  region-level components surfaced in the Map, project overview, and exported
+  brief; possible-only loops remain explicitly excluded.
+- A fully local Markdown project-brief export from the star chart, carrying the
+  parser's language/file/structure breakdown, honest Home result, most-called
+  modules, certainty coverage, unsupported sources, and learning progress.
 - A reproducible current-app screenshot pipeline covering Galaxy, both Map
   registers, System, Study, parser-owned Impact, and the lit result.
 - An icon-led download surface with direct PyPI wheel and source artifacts,
@@ -14,6 +25,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   GitHub, direct artifact URLs, and the downloaded artifact bytes.
 
 ### Changed
+- Galaxy-level imports now form restrained visual corridors: proven routes
+  inside one coloured import community inherit part of that hue, while
+  cross-community bridges remain neutral and possible routes remain dashed in
+  their uncertainty ink. The active system and its one-hop neighbours on the
+  current route mesh also win the label budget for both pointer and persistent
+  keyboard exploration.
+- The galaxy opens at a steeper, more legible overview angle, and its semantic
+  Key remains an opaque, scrollable reference at compact reflow widths instead
+  of disappearing below the canvas.
 - Galaxy rendering now runs behind one lifecycle owner, leaving the React
   canvas as a shallow projection and keyboard adapter while preserving camera,
   Dawn, reduced-motion, and renderer-cleanup behavior.
@@ -24,12 +44,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   discovery, parse, and finalization lifecycle while preserving their public
   interfaces, language-owned evidence, serialized graphs, and exact errors.
 - The README and public website now use a Formal Edo Workbench built around
-  real v0.16.0 product captures, plain-language capability and trust sections,
+  real v0.17.0 product captures, plain-language capability and trust sections,
   and a responsive five-step Explore → Map → Land → Inspect → Prove journey.
 - Public docs now point every install and download path at packaged stable
-  v0.16.0 and keep the exact source-build route visible for contributors.
+  v0.17.0 and keep the exact source-build route visible for contributors.
 - Product capture now launches and removes its own provider-free disposable
   server; it cannot reset progress on a normal Codemble session.
+- Release builds now pin their backend and timestamp, prove local bytes against
+  the committed manifest before publishing, and mirror the exact PyPI wheel and
+  sdist beside `SHA256SUMS.txt` on the GitHub release.
 
 ### Fixed
 - Home calibration now reserves a real decision-list viewport at 320px reflow

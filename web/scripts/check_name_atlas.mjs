@@ -60,10 +60,18 @@ assert.deepEqual(
   "the same graph and camera produce the same atlas",
 );
 
-const hovered = atlas.place({ ...view, hoverNodeId: "node-9" });
+const hovered = atlas.place({
+  ...view,
+  activeNodeId: "node-9",
+  neighborIds: new Set(["node-8"]),
+});
 assert(
   hovered.visibleIds.includes("node-9"),
   "the pointer subject outranks every graph-derived name",
+);
+assert(
+  hovered.visibleIds.includes("node-8"),
+  "a direct neighbor joins the temporary reading order",
 );
 
 const near = atlas.place({ ...view, distance: 10 });

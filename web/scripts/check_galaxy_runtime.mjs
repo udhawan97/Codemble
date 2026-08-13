@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 globalThis.window = {};
 const { createGalaxyRuntime } = await import("../src/galaxyRuntime.js");
@@ -63,6 +64,7 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
   const consumed = [];
   const hovers = [];
   const advances = [];
+  const atlasPlacements = [];
   const clock = fakeClock();
   const sceneObjects = new Map();
   const scene = {
@@ -119,8 +121,8 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
       events.push("renderer:height");
       return this;
     },
-    cameraPosition() {
-      events.push("renderer:cameraPosition");
+    cameraPosition(_position, _lookAt, duration) {
+      events.push(`renderer:cameraPosition:${duration}`);
       return this;
     },
     graphData(value) {
@@ -219,7 +221,10 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
       return () => events.push("dawn:stop");
     },
     createNameAtlas: () => ({
-      place: () => events.push("atlas:place"),
+      place: (options) => {
+        atlasPlacements.push(options);
+        events.push("atlas:place");
+      },
       hide: () => events.push("atlas:hide"),
     }),
     documentElement: () => ({ removeAttribute() {}, dataset: {} }),
@@ -227,7 +232,13 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
   };
   const runtime = createGalaxyRuntime({
     host,
-    palette: { ground: "#000", orbit: "#0ff" },
+    palette: {
+      ground: "#000",
+      orbit: "#0ff",
+      faded: "#555",
+      route: "#444",
+      routePossible: "#fa4",
+    },
     reducedMotion,
     onHoverNode: (id) => hovers.push(id),
     onAdvance: (node) => advances.push(node),
@@ -235,7 +246,19 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
     dependencies,
     clock,
   });
-  return { runtime, renderer, callbacks, events, seeds, dawns, consumed, hovers, advances, clock };
+  return {
+    runtime,
+    renderer,
+    callbacks,
+    events,
+    seeds,
+    dawns,
+    consumed,
+    hovers,
+    advances,
+    atlasPlacements,
+    clock,
+  };
 }
 
 function snapshot(overrides = {}) {
@@ -266,8 +289,81 @@ function snapshot(overrides = {}) {
 const first = harness();
 assert.equal(first.renderer.enableNodeDrag(), false, "immutable graph disables drag at runtime");
 first.runtime.update(snapshot());
+assert.equal(
+  first.renderer.nodeColor()({ id: "target", color: "#abc" }),
+  "#0ff",
+  "keyboard focus uses the same interaction ink as pointer focus",
+);
+assert.equal(
+  first.atlasPlacements.at(-1).activeNodeId,
+  "target",
+  "keyboard focus also drives the neighborhood label order",
+);
+const beforeFocusClear = first.events.length;
+first.runtime.update(snapshot({ focusedNodeId: null, pendingDawnRegionId: null }));
+const focusClearEvents = first.events.slice(beforeFocusClear);
 assert.ok(
-  first.events.indexOf("renderer:graphData") < first.events.indexOf("renderer:cameraPosition"),
+  focusClearEvents.lastIndexOf("renderer:refresh") >
+    focusClearEvents.lastIndexOf(`nodeColor:${String(first.renderer.nodeColor())}`),
+  "marker refresh runs after the new highlight accessor is installed",
+);
+assert.equal(
+  first.renderer.nodeColor()({ id: "target", color: "#abc" }),
+  "#abc",
+  "clearing keyboard focus restores the standing node colour",
+);
+
+const neighborhood = {
+  nodes: [
+    { id: "target", color: "#111" },
+    { id: "neighbor", color: "#222" },
+    { id: "far", color: "#333" },
+    { id: "alone", color: "#666" },
+  ],
+  links: [
+    { source: "target", target: "neighbor", certain: true, color: "#444" },
+    { source: "neighbor", target: "far", certain: false, color: "#555" },
+  ],
+};
+first.runtime.update(
+  snapshot({
+    data: neighborhood,
+    focusedNodeId: "target",
+    hoverNodeId: "neighbor",
+    pendingDawnRegionId: null,
+  }),
+);
+assert.equal(first.renderer.nodeColor()(neighborhood.nodes[1]), "#0ff");
+assert.equal(first.renderer.nodeColor()(neighborhood.nodes[0]), "#111");
+assert.equal(first.renderer.nodeColor()(neighborhood.nodes[2]), "#333");
+assert.equal(first.renderer.nodeColor()(neighborhood.nodes[3]), "#555");
+assert.equal(first.renderer.linkColor()(neighborhood.links[0]), "#0ff");
+assert.equal(
+  first.renderer.linkColor()(neighborhood.links[1]),
+  "#fa4",
+  "an active possible route keeps uncertainty ink",
+);
+assert.equal(first.atlasPlacements.at(-1).activeNodeId, "neighbor");
+assert.deepEqual([...first.atlasPlacements.at(-1).neighborIds], ["target", "far"]);
+
+first.runtime.update(
+  snapshot({
+    data: neighborhood,
+    focusedNodeId: "target",
+    hoverNodeId: null,
+    pendingDawnRegionId: null,
+  }),
+);
+assert.equal(
+  first.renderer.nodeColor()(neighborhood.nodes[0]),
+  "#0ff",
+  "retiring hover restores the keyboard subject's interaction material",
+);
+assert.equal(first.atlasPlacements.at(-1).activeNodeId, "target");
+assert.deepEqual([...first.atlasPlacements.at(-1).neighborIds], ["neighbor"]);
+assert.ok(
+  first.events.indexOf("renderer:graphData") <
+    first.events.findIndex((event) => event.startsWith("renderer:cameraPosition:")),
   "graph commits before framing",
 );
 assert.deepEqual(first.seeds, [17], "the project seed reaches the starfield factory unchanged");
@@ -309,7 +405,25 @@ waiting.clock.flushFrames();
 assert.equal(waiting.dawns.length, 0, "a disposed retry cannot start Dawn later");
 
 const still = harness({ reducedMotion: true });
-still.runtime.update(snapshot({ level: "SYSTEM", orbitPlan: [{ radius: 20 }] }));
+still.runtime.update(
+  snapshot({
+    level: "SYSTEM",
+    orbitPlan: [{ radius: 20 }],
+    firstFlightActive: false,
+  }),
+);
+const beforeFlightFrame = still.events.length;
+still.runtime.update(
+  snapshot({
+    level: "GALAXY",
+    firstFlightActive: true,
+    pendingDawnRegionId: null,
+  }),
+);
+assert.ok(
+  still.events.slice(beforeFlightFrame).includes("renderer:cameraPosition:0"),
+  "reduced-motion First Flight reaches the renderer as a zero-duration jump cut",
+);
 assert.equal(still.renderer.linkDirectionalParticles()({ kind: "call", certain: true }), 0);
 still.runtime.update(snapshot({ pendingDawnRegionId: "target" }));
 assert.deepEqual(still.consumed, ["target"]);
@@ -320,5 +434,12 @@ still.runtime.dispose();
 const remount = harness({ size: { width: 900, height: 600 } });
 assert.ok(remount.events.includes("bloom:size:900x600"), "same-size remount sizes bloom from host");
 remount.runtime.dispose();
+
+const canvasSource = readFileSync(new URL("../src/GalaxyCanvas.jsx", import.meta.url), "utf8");
+assert.match(
+  canvasSource,
+  /onPointerLeave=\{\(\) => hoverRef\.current\(null\)\}/,
+  "leaving WebGL for overlay chrome clears a hover spotlight that the renderer cannot see leave",
+);
 
 console.log("galaxy runtime contract: ok");

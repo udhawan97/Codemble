@@ -4,7 +4,7 @@
  *
  * Macrostructure: Hallmark Workbench. Real product captures lead; the Formal
  * Edo system supplies material and typography without turning the site into a
- * decorative atlas. The current product and packaged release are both v0.16.0.
+ * decorative atlas. The current product and packaged release are both v0.17.0.
  */
 import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
@@ -22,14 +22,14 @@ const VERSION = release.version;
 const RELEASE = release.releaseUrl;
 const WHEEL = release.wheel.url;
 const SOURCE_ARCHIVE = release.sdist.url;
-const DIGESTS = release.pypiFilesUrl;
+const DIGESTS = release.checksums.url;
 const INSTALL = `uvx --from codemble==${VERSION} codemble`;
 
 const capabilities = [
   {
     icon: "compass",
     title: "Explore before you study",
-    body: "Every module is represented and coloured on the first frame. Labels rank and declutter; hover reveals every parser-owned name. Flying there leaves a local trail without claiming understanding.",
+    body: "Every module is represented on the first frame. Related systems and proven routes share a subtle colour cue; bridges stay neutral, possible routes stay dashed, and First Flight offers a bounded path from Home.",
   },
   {
     icon: "map",
@@ -179,7 +179,7 @@ const contract = [
           </div>
           <p class="version-note">
             The screen, one-command route, and downloads are all v{VERSION}.
-            PyPI hosts the artifacts; GitHub carries the release notes.
+            PyPI publishes the package; GitHub mirrors the exact artifacts and checksum ledger.
           </p>
         </div>
 
@@ -191,7 +191,7 @@ const contract = [
           >
             <img
               src={shot("galaxy.png")}
-              alt="Codemble v0.16.0 showing 171 represented systems across Python, JavaScript, TypeScript, Go, Java, Rust, and C#, with ranked labels, 30 systems charted, six unreadable test fixtures called out, and Home still unlit."
+              alt="Codemble v0.17.0 showing 184 represented systems across Python, JavaScript, TypeScript, Go, Java, Rust, and C#, with community-tinted route corridors, ranked labels, 30 systems charted, six unreadable test fixtures called out, and Home still unlit."
               width="1440"
               height="720"
               fetchpriority="high"
@@ -200,7 +200,7 @@ const contract = [
           </div>
           <figcaption>
             <span>Current app · Easy galaxy</span>
-            <span>171 systems · seven languages · local only</span>
+            <span>184 systems · seven languages · local only</span>
           </figcaption>
         </figure>
       </section>
@@ -208,7 +208,7 @@ const contract = [
       <section class="release-band" aria-label="Release status">
         <p>
           <strong>Everything pictured ships in v{VERSION}.</strong> Run it in one
-          command, download the PyPI artifacts, or build the same release from source.
+          command, download the verified release artifacts, or build the same release from source.
         </p>
         <a href="#download">Choose a route →</a>
       </section>
@@ -245,7 +245,8 @@ const contract = [
             </div>
             <p>
               Best for a first real project. It is the latest GitHub release and
-              PyPI package, with a wheel, source archive, and published SHA256 digests.
+              PyPI package, with the exact wheel, source archive, and SHA256SUMS ledger
+              mirrored on GitHub.
             </p>
             <ol class="run-steps">
               <li>

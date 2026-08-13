@@ -30,8 +30,10 @@ import {
   createLearnerSession,
 } from "./learnerSession.js";
 import { escapeAction } from "./escapeArbiter.js";
+import { firstFlightPlan } from "./firstFlight.js";
 import { PARSE_STAGES } from "./projectMapping.js";
 import { createMapViewportStore } from "./mapViewport.js";
+import { projectBriefFilename, projectBriefMarkdown } from "./projectBrief.js";
 import { systemOrbitPlan } from "./systemOrbits.js";
 
 export function App() {
@@ -44,6 +46,8 @@ export function App() {
   // closing the quiz has somewhere obvious to put focus -- and every other
   // dismissible surface returns it, while this one dropped it on the floor.
   const checksTriggerRef = useRef(null);
+  const firstFlightTriggerRef = useRef(null);
+  const firstFlightActiveRef = useRef(false);
   const stageRef = useRef(null);
   const systemCopyRef = useRef(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -51,6 +55,7 @@ export function App() {
   // by the Read-the-source button" is a fact about this click, not about what
   // the graph or the learner's progress says.
   const [revealSource, setRevealSource] = useState(false);
+  const [firstFlightIndex, setFirstFlightIndex] = useState(null);
   const mapViewportStore = useMemo(() => createMapViewportStore(), []);
   const session = useMemo(
     () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
@@ -68,6 +73,7 @@ export function App() {
   useEffect(() => {
     if (state.status !== "ready") {
       setMobileMenuOpen(false);
+      setFirstFlightIndex(null);
       mapViewportStore.clear();
     }
   }, [mapViewportStore, state.status]);
@@ -109,6 +115,7 @@ export function App() {
       session.dispatch({ type: "HIDE_CHART" });
       restoreRailFocus(chartTriggerRef);
     },
+    firstFlight: () => exitFirstFlight(),
   };
 
   useEffect(() => {
@@ -128,7 +135,11 @@ export function App() {
       // needed `stopPropagation` to stop this handler re-reading a session it
       // had already changed and retreating a level on top of the dismissal.
       // One handler asking one ordered list cannot race itself.
-      const action = escapeAction(escapeFacts(session.getSnapshot()));
+      const action = escapeAction(
+        escapeFacts(session.getSnapshot(), {
+          firstFlightOpen: firstFlightActiveRef.current,
+        }),
+      );
       if (!action) return;
       event.preventDefault();
       if (action.kind === "dismiss") {
@@ -187,6 +198,11 @@ export function App() {
     studyData,
     studyError,
   } = state;
+
+  const firstFlightStops = useMemo(() => firstFlightPlan(graph), [graph]);
+  const firstFlightStop = firstFlightStops[firstFlightIndex] ?? null;
+  const firstFlightActive = firstFlightIndex !== null && firstFlightStop !== null;
+  firstFlightActiveRef.current = firstFlightActive;
 
   // Region id -> palette slot for the Map's box tints. The family itself is
   // assigned by the graph layer over the WHOLE project, so reading it off the
@@ -262,6 +278,23 @@ export function App() {
     // to the panel heading when that is where guidance went; otherwise restore
     // the newly committed system context on a task, never on a WebGL frame.
     if (!session.getSnapshot().showChecks) restoreRailFocus(systemCopyRef);
+  }
+
+  function visitFirstFlightStop(index) {
+    const stop = firstFlightStops[index];
+    if (!stop) return;
+    setFirstFlightIndex(index);
+    session.dispatch({ type: "SET_LAYER", layer: "galaxy" });
+    // GO_TO_REGION is the existing arrival path: it widens a language focus
+    // when needed and calls recordVisit before committing the system. The tour
+    // gets no second progress mechanism and cannot chart a stop it did not
+    // actually visit.
+    session.dispatch({ type: "GO_TO_REGION", regionId: stop.id });
+  }
+
+  function exitFirstFlight() {
+    setFirstFlightIndex(null);
+    restoreRailFocus(firstFlightTriggerRef);
   }
 
   function dismissCoachmarks() {
@@ -720,6 +753,7 @@ export function App() {
             selectedRegionId={level === LEVELS.GALAXY ? undefined : region?.id}
             hasEntrypointCandidates={graph.entrypoint_candidates.length > 0}
             unsupportedSources={focusedGraph.unsupported_sources}
+            importCycles={graph.import_cycles}
             error={mapError}
             // A focus can empty either tab -- every module of one language can
             // be unreachable from a Home written in another. The empty states
@@ -757,6 +791,7 @@ export function App() {
             pendingDawnRegionId={pendingDawnRegionId}
             revealedRegionIds={revealedRegionIds}
             mode={mode}
+            firstFlightActive={firstFlightActive}
             onHoverNode={(nodeId) => session.dispatch({ type: "HOVER_NODE", nodeId })}
             onAdvance={(node) => session.dispatch({ type: "ADVANCE", node })}
             onRetreat={() => session.dispatch({ type: "RETREAT" })}
@@ -783,6 +818,7 @@ export function App() {
           className="legend-toggle"
           type="button"
           aria-expanded={legendOpen}
+          onPointerEnter={() => session.dispatch({ type: "HOVER_NODE", nodeId: null })}
           onClick={() => session.dispatch({ type: "TOGGLE_LEGEND" })}
         >
           Key
@@ -790,7 +826,26 @@ export function App() {
         <aside
           className="map-legend"
           hidden={!legendOpen}
+          tabIndex={0}
           aria-label={layer === "map" ? "Map legend" : "Galaxy legend"}
+          onPointerEnter={() => session.dispatch({ type: "HOVER_NODE", nodeId: null })}
+          onKeyDown={(event) => {
+            const panel = event.currentTarget;
+            const pageStep = Math.max(48, panel.clientHeight * 0.8);
+            const step = {
+              ArrowDown: 32,
+              ArrowUp: -32,
+              PageDown: pageStep,
+              PageUp: -pageStep,
+            }[event.key];
+            if (step !== undefined) {
+              event.preventDefault();
+              panel.scrollBy({ top: step, behavior: "auto" });
+            } else if (event.key === "Home" || event.key === "End") {
+              event.preventDefault();
+              panel.scrollTop = event.key === "Home" ? 0 : panel.scrollHeight;
+            }
+          }}
         >
           {layer === "galaxy" ? (
             <>
@@ -821,16 +876,10 @@ export function App() {
             {mode === "easy" ? "Certain connection" : "Parser edge · certain"}
           </span>
           <span>
-            {/* Uncertainty renders as a distinct colour in the 3D galaxy (no
-                dash support in 3d-force-graph) but as a dash in the 2D SVG
-                map -- the swatch must match whichever layer is on screen. */}
-            <i
-              className={
-                layer === "map"
-                  ? "legend-route legend-route--possible legend-route--dashed"
-                  : "legend-route legend-route--possible"
-              }
-            />
+            {/* Possible routes use the custom dashed path in the galaxy and a
+                dashed SVG path on the Map, so the semantic key is the same on
+                both layers. */}
+            <i className="legend-route legend-route--possible legend-route--dashed" />
             {mode === "easy" ? "Possible connection" : "Possible relationship"}
           </span>
           {(layer === "galaxy" && level === LEVELS.GALAXY) ||
@@ -841,8 +890,8 @@ export function App() {
                   <i /><i /><i /><i />
                 </span>
                 {mode === "easy"
-                  ? "Colour family · files that work together"
-                  : "Hue family · one import community"}
+                  ? "Colour family · related systems and their shared routes"
+                  : "Hue family · one import community; internal routes inherit a tint"}
               </span>
               {languageOptions
                 .filter((option) => option.id !== "all")
@@ -1002,6 +1051,19 @@ export function App() {
         <HintChip
           hint={hint}
           onFollow={followHint}
+          firstFlight={{
+            available: firstFlightStops.length > 0,
+            active: firstFlightActive,
+            stop: firstFlightStop,
+            index: firstFlightIndex ?? 0,
+            total: firstFlightStops.length,
+            mode,
+            triggerRef: firstFlightTriggerRef,
+            onStart: () => visitFirstFlightStop(0),
+            onBack: () => visitFirstFlightStop(firstFlightIndex - 1),
+            onNext: () => visitFirstFlightStop(firstFlightIndex + 1),
+            onExit: exitFirstFlight,
+          }}
         />
       ) : null}
 
@@ -1043,7 +1105,7 @@ const STAGE_ORDER = PARSE_STAGES.map(({ id }) => id);
  * `canRetreat` is where "the Map is the layer with a documented way back, and
  * the galaxy level is already the outermost place there is" is stated once.
  */
-function escapeFacts(snapshot) {
+function escapeFacts(snapshot, { firstFlightOpen = false } = {}) {
   return {
     ready: snapshot.status === "ready",
     canRetreat: snapshot.layer === "map" && snapshot.level !== LEVELS.GALAXY,
@@ -1052,6 +1114,7 @@ function escapeFacts(snapshot) {
     sidebarOpen: snapshot.sidebarOpen,
     showChecks: snapshot.showChecks,
     entrypointOpen: snapshot.entrypointOpen,
+    firstFlightOpen,
     // Native dialogs -- the audience gate, coach marks, confirms -- own Escape.
     nativeDialogOpen: document.querySelector("dialog[open]") !== null,
     // So does an open rail disclosure, which closes on Escape and returns focus
@@ -2070,7 +2133,7 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
  * and every name here is the parser's, which is why this works with no API key
  * and cannot disagree with the galaxy or the map.
  */
-function ProjectSummary({ overview, mode }) {
+function ProjectSummary({ overview, mode, charted }) {
   const easy = mode === "easy";
   const languageLine = overview.languages
     .map((row) => `${row.label} ${row.count}`)
@@ -2140,9 +2203,47 @@ function ProjectSummary({ overview, mode }) {
             </dd>
           </div>
         ) : null}
+        {overview.importCycles.length ? (
+          <div>
+            <dt>{easy ? "Files that bring each other in" : "Proven import cycles"}</dt>
+            <dd>
+              {overview.importCycles.length} {overview.importCycles.length === 1 ? "cycle group" : "cycle groups"}
+              {" · "}
+              {overview.importCycles
+                .slice()
+                .sort(
+                  (left, right) =>
+                    right.length - left.length || left.join("\0").localeCompare(right.join("\0")),
+                )[0]
+                .join(", ")}
+              {" · each file can reach every other through proven imports"}
+            </dd>
+          </div>
+        ) : null}
       </dl>
+      <button
+        className="project-summary__export"
+        type="button"
+        onClick={() => downloadProjectBrief(overview, charted)}
+      >
+        {easy ? "Save a project guide" : "Export Markdown brief"}
+      </button>
     </section>
   );
+}
+
+function downloadProjectBrief(overview, charted) {
+  const markdown = projectBriefMarkdown(overview, { charted });
+  const url = URL.createObjectURL(
+    new Blob([markdown], { type: "text/markdown;charset=utf-8" }),
+  );
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = projectBriefFilename(overview);
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function StarChart({ chart, studiedCount, exploredCount, projectName, mode, overview, onClearProgress }) {
@@ -2163,7 +2264,9 @@ function StarChart({ chart, studiedCount, exploredCount, projectName, mode, over
             no summary or anything about the project", and it is also the first
             question a learner has. Everything below is read off the parser's
             own graph. */}
-        {overview ? <ProjectSummary overview={overview} mode={mode} /> : null}
+        {overview ? (
+          <ProjectSummary overview={overview} mode={mode} charted={exploredCount} />
+        ) : null}
         <h2 className="star-chart-section">
           {mode === "easy" ? "Ideas your code uses" : "Parser-detected concepts"}
         </h2>

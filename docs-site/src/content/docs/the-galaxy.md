@@ -3,7 +3,7 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
-:::note[v0.16.0 product guide]
+:::note[v0.17.0 product guide]
 This page matches the packaged app, current source, and fresh product captures.
 [Choose a run or download route](/Codemble/download/).
 :::
@@ -12,7 +12,7 @@ This page matches the packaged app, current source, and fresh product captures.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.16.0 at galaxy level: 171 star systems across seven languages, each carrying its parser-owned file-path name and community colour, with ranked labels visible, routes drawn around 30 charted systems, an unlit Home, and six unreadable test fixtures called out.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.17.0 at galaxy level: 184 star systems across seven languages, with parser-owned names, community colour shared subtly by related proven routes, ranked labels, 30 charted systems, an unlit Home, and six unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -24,11 +24,11 @@ from the parsed structure of your code:
 | --- | --- |
 | Star system | One source module |
 | Planet | A function or class |
-| Route between systems | An import |
+| Route between systems | An import — a proven route inside one coloured community inherits a restrained tint; bridges stay neutral |
 | Edge between planets | A call — solid when proven, dashed and labeled "possible call" when not |
 | Size | Lines of code |
 | Brightness and glow | How many distinct places call it (centrality) |
-| Colour family | Import community — modules that import each other share a hue |
+| Colour family | Import community — related modules and their proven internal routes share a hue |
 | Nebula tint | Language |
 | Lit amber / dim | Understood / not yet |
 | Drifting particles | A call the parser proved; possible calls stay still |
@@ -64,6 +64,14 @@ star remains the brightest object by a wide margin, and the amber band itself
 is excluded from the wheel so no community can ever read as "understood".
 Inside a system its planets inherit the family hue, with lightness still
 answering callers.
+
+The route cue is intentionally quiet. A proven import whose two systems belong
+to the same coloured community picks up only part of that family's hue, making
+a corridor traceable without turning the graph into a rainbow. A route between
+communities stays in neutral route ink. A possible import keeps its own dashed,
+neutral treatment even when its endpoints share a family: colour is a grouping
+hint, never evidence that upgrades certainty. The **Key** states all three
+cases in words and line style, so colour is never the only way to read them.
 
 ## While a large project loads
 
@@ -108,7 +116,11 @@ it celebrates a fact rather than delivering one. Under
 lit state — not a faster animation, none at all.
 
 Keyboard focus carries a visible reticle in the 3D scene as well as a live text
-readout, so arrow-key navigation is never a guess about where you are.
+readout. The active system and its one-hop neighbours on the currently drawn
+route mesh win the label budget, and
+the selection persists while focus moves into the Key, so arrow-key exploration
+does not collapse into an unnamed sky. Pointer exit clears transient hover
+emphasis instead of leaving a stale constellation behind.
 
 ## The trail you leave by exploring
 
@@ -127,6 +139,27 @@ does.
 
 Clearing a project's progress clears both: the understood regions and the
 explored trail.
+
+## Take a First Flight
+
+When Codemble has a Home, the guidance strip offers a short **First Flight**.
+It lands at Home first, then visits only the modules Home directly imports
+through routes the parser proved, ordered deterministically by their graph
+centrality and id. The route is capped at six systems in total, so it remains
+an orientation rather than turning into an exhaustive walkthrough.
+
+Each stop names the system, language, and how many galaxy import routes lead in
+and out. **Next**, **Back**, and **Exit** are keyboard reachable. Escape exits
+through the same ordered dismissal path as the app's other transient surfaces
+and returns focus to the First Flight control. Every landing uses the normal
+travel path, so a toured system is charted exactly as one reached by clicking a
+star. With reduced motion enabled, the camera jump-cuts between stops instead
+of animating.
+
+First Flight has no completion badge or saved state. It can be run again at any
+time, and if the parser has not resolved a Home the control is absent rather
+than building a route around a guess. Easy and Expert change the language of
+the guidance, not the systems visited or the facts shown.
 
 ## Bounded orbit, not free flight
 
@@ -192,6 +225,13 @@ you can follow back to the source. Routes that have to travel — a cycle, a
 backward edge, anything skipping a layer — run out to a corridor beside the
 drawing and return the same way, so a long connection is still traceable
 end to end.
+
+When proven imports form a cycle, the Map states it in a full prose line beneath
+the drawing and names every module in the largest cycle. Easy mode calls it a
+file circle and says the files bring each other in; Expert mode uses the import
+cycle term. This fact comes from graph schema 10, not from SVG geometry, and a
+possible-only loop is never promoted into the report. The same cycle line is
+carried into the star-chart project overview and its Markdown export.
 
 The Map opens at readable 100% on compact screens and centres Home or the
 selected target instead of shrinking every box into a whole-diagram thumbnail.

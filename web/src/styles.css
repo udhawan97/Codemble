@@ -1119,12 +1119,43 @@ input:focus-visible {
 }
 
 .map-legend {
+  --cm-legend-top: calc(var(--cm-space-md) + 40px);
   position: absolute;
-  z-index: var(--cm-z-raised);
+  z-index: var(--cm-z-sticky);
   inset-inline-end: var(--cm-space-md);
   /* Clear of the toggle that now owns the corner. */
-  inset-block-start: calc(var(--cm-space-md) + 40px);
+  inset-block-start: var(--cm-legend-top);
   display: none;
+  max-width: min(38rem, calc(100% - 2 * var(--cm-space-md)));
+  /* A viewport can be both narrow and short at 200% zoom. The compact shell is
+     124px tall; subtract it and this panel's stage offset so the Key remains
+     inside the viewport while its own scrollport owns the hidden rows. It may
+     overlay guidance/footer while open, just like Modules and Find do. */
+  max-height: min(
+    60vh,
+    30rem,
+    calc(100dvh - 124px - var(--cm-legend-top) - var(--cm-space-md))
+  );
+  overflow-y: auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--cm-space-2xs) var(--cm-space-md);
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  --cm-scroll-cover: var(--cm-ground-2);
+  background-color: var(--cm-ground-2);
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  box-shadow: 0 16px 40px rgb(4 8 20 / 0.32);
+}
+
+/* The Key is a real disclosure at every viewport. It used to become `display:
+   grid` only above 60rem, leaving a working toggle attached to invisible
+   content on compact screens. One-column + scroll is the bounded small-screen
+   form; the desktop Map earns two columns below. */
+.map-legend:not([hidden]) {
+  display: grid;
 }
 
 /* On the Map layer the same corner also holds the zoom group (inside
@@ -1132,25 +1163,15 @@ input:focus-visible {
    clicks -- Fit and the zoom steps went dead until the Key was closed. One
    extra offset stacks the corner instead: toggle, zoom row, then the Key. */
 .map-stage:has(.map-view) .map-legend {
-  inset-block-start: calc(var(--cm-space-md) + 40px + 44px);
-  max-height: min(60vh, 30rem);
-  overflow-y: auto;
-  grid-template-columns: repeat(2, auto);
-  gap: var(--cm-space-2xs) var(--cm-space-md);
-  padding: var(--cm-space-sm) var(--cm-space-md);
-  border: 1px solid var(--cm-hairline);
-  border-radius: var(--cm-radius);
-  background: var(--cm-ground-2);
-  color: var(--cm-ink-2);
-  font-family: var(--cm-font-mono);
-  font-size: var(--cm-text-xs);
+  --cm-legend-top: calc(var(--cm-space-md) + 40px + 44px);
 }
 
 .map-legend span {
   display: inline-flex;
   align-items: center;
   gap: var(--cm-space-sm);
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
 }
 
 .legend-dot {
@@ -1572,7 +1593,8 @@ input:focus-visible {
 .check-panel,
 .star-chart-screen,
 .module-finder ul,
-.index-sidebar__scroll {
+.index-sidebar__scroll,
+.map-legend {
   --cm-scroll-cover: var(--cm-ground-2);
   background-image:
     linear-gradient(var(--cm-scroll-cover) 30%, transparent),
@@ -2477,11 +2499,12 @@ input:focus-visible {
 }
 
 @media (min-width: 60rem) {
-  /* :not([hidden]) matters: a bare `display: grid` here outranks the hidden
-     attribute's UA `display: none`, so the disclosure button would toggle
-     aria-expanded while the panel stayed permanently open. */
-  .map-legend:not([hidden]) {
-    display: grid;
+  .map-stage:has(.map-view) .map-legend {
+    grid-template-columns: repeat(2, auto);
+  }
+
+  .map-legend span {
+    white-space: nowrap;
   }
 
   .chart-stage:has(.index-sidebar) .star-chart-screen {
@@ -3062,6 +3085,36 @@ input:focus-visible {
   cursor: pointer;
 }
 
+.first-flight__system {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--cm-font-mono);
+}
+
+.first-flight__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs);
+  margin-inline-start: auto;
+}
+
+.first-flight__actions button[disabled] {
+  border-color: var(--cm-hairline);
+  color: var(--cm-ink-3);
+  cursor: default;
+}
+
+@media (max-width: 40rem) {
+  .first-flight__system,
+  .first-flight__actions {
+    flex: 1 1 100%;
+  }
+
+  .first-flight__actions {
+    margin-inline-start: 0;
+  }
+}
+
 /* Docked at every width, never floated. As an overlay it covered the very
    things it was guiding toward: the Map's teaching caption read "…y rather
    than being placed by guesswork.", galaxy name plates sat behind it, and
@@ -3181,10 +3234,8 @@ input:focus-visible {
   border-color: var(--cm-orbit);
 }
 
-/* Opt-in dash, applied only for the 2D map swatch (see App.jsx): the galaxy
-   is a distinct COLOUR only (3d-force-graph cannot dash a link), so
-   .legend-route--possible itself must stay colour-only above or the same
-   legend would misdescribe whichever layer has no dash. */
+/* Possible routes are dashed on both layers: SVG draws the Map version and
+   possibleRoutes.js owns the custom WebGL path. */
 .legend-route--dashed {
   border-block-start-style: dashed;
 }
@@ -3665,6 +3716,27 @@ input:focus-visible {
      available space never required. Same trap as the check legend. */
   overflow-wrap: break-word;
   color: var(--cm-ink);
+}
+
+.project-summary__export {
+  min-height: 44px;
+  margin-block-start: var(--cm-space-lg);
+  padding: var(--cm-space-xs) var(--cm-space-md);
+  border: 1px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-orbit);
+  cursor: pointer;
+  font: 500 var(--cm-text-sm) / 1.3 var(--cm-font-mono);
+}
+
+.project-summary__export:hover {
+  background: color-mix(in srgb, var(--cm-orbit) 10%, transparent);
+}
+
+.project-summary__export:focus-visible {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 3px;
 }
 
 .star-chart-section {

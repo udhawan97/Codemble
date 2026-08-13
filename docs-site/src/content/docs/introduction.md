@@ -42,7 +42,7 @@ optional extra: bring your own Claude or OpenAI key, or run a local model
 through Ollama and send nothing anywhere.
 
 :::note[Status]
-Codemble **v0.16.0** is published on PyPI and maps Python, JavaScript,
+Codemble **v0.17.0** is published on PyPI and maps Python, JavaScript,
 TypeScript, Go, Java, Rust, C#, and mixed projects. The downloadable package,
 current source, screenshots, and these product guides match. The original
 unaided learner-acceptance issue remains open; technical completion does not

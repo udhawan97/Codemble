@@ -3,7 +3,7 @@ title: The study panel
 description: What the parser knows, what a model adds, and what happens when you have no key.
 ---
 
-:::note[v0.16.0 product guide]
+:::note[v0.17.0 product guide]
 Parser-owned Impact and the captures below match the packaged app and current
 source. [Choose a run or download route](/Codemble/download/).
 :::
@@ -56,7 +56,7 @@ other way — a connection row, an impact row, a planet — still opens at the t
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Impact product screen. Scroll sideways to inspect it at a readable size.">
     <img src="/Codemble/shots/study-impact.png" alt="The current Expert study panel scrolled to Impact, listing structures affected by a change and dependencies that could break it, with direct depth and real file locations.">
   </div>
-  <figcaption>Codemble v0.16.0 · parser-owned Impact works without a model.</figcaption>
+  <figcaption>Codemble v0.17.0 · parser-owned Impact works without a model.</figcaption>
 </figure>
 
 Two lists, side by side. One answers *change this and what else feels it*; the

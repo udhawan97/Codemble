@@ -17,7 +17,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { NEBULA_TINTS } from "../src/graphData.js";
+import { NEBULA_TINTS, communityRouteColor } from "../src/graphData.js";
 
 // Derived, never restated: the app's own tint table names the tokens, so this
 // gate grows with the adapter registry instead of having to be remembered.
@@ -100,6 +100,11 @@ const ramp = {
 const sky = rgb("cm-sky");
 const ground = hex("cm-ground");
 const ground2 = hex("cm-ground-2");
+const routePalette = {
+  route: `rgb(${rgb("cm-route").join(", ")})`,
+  communities: families.map((value) => `rgb(${value.join(", ")})`),
+};
+const parseRgb = (value) => value.match(/\d+/g).map(Number);
 
 assert.ok(
   luminance(ramp.floor) < luminance(ramp.mid) &&
@@ -177,6 +182,17 @@ assert.ok(
   "an unproven route must be the MORE visible of the two: the Correctness " +
     "Contract requires a possible call to announce itself",
 );
+for (let family = 0; family < routePalette.communities.length; family += 1) {
+  const tinted = parseRgb(communityRouteColor(routePalette, family));
+  assert.ok(
+    luminance(rgb("cm-route-possible")) > luminance(tinted),
+    `community route ${family} is louder than uncertainty; possible imports must remain the more visible claim`,
+  );
+  assert.ok(
+    luminance(tinted) < luminance(lit),
+    `community route ${family} reaches the amber understanding band`,
+  );
+}
 
 // --- bloom is the mechanism, so it is measured too --------------------------
 

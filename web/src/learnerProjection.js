@@ -6,6 +6,7 @@ import {
   languageFocusGraph,
   languageFocusMap,
   moduleIndex,
+  projectName as graphProjectName,
   projectLanguageOptions,
   regionFiles,
   revealedRegionIds,
@@ -128,10 +129,7 @@ export function createLearnerProjection() {
 
   function nameFor(graph) {
     if (!projectNames.has(graph)) {
-      projectNames.set(
-        graph,
-        graph.project_root.split("/").filter(Boolean).at(-1) ?? graph.project_root,
-      );
+      projectNames.set(graph, graphProjectName(graph));
     }
     return projectNames.get(graph);
   }

@@ -5,12 +5,14 @@ import {
   buildConceptChart,
   communityName,
   communityFamilyIndex,
+  communityRouteColor,
   communityShade,
   conceptTitle,
   galaxyData,
   groupByCommunity,
   highlightColor,
   highlightLinkColor,
+  importCycleSummary,
   isCharted,
   isTestScopedPath,
   isUncharted,
@@ -20,6 +22,7 @@ import {
   moduleIndex,
   nebulaTintPaint,
   nodeLabel,
+  projectName,
   projectLanguageOptions,
   revealedRegionIds,
   sharedTopSegment,
@@ -333,6 +336,8 @@ assert.equal(
 // home -> near -> mid -> far, plus `lit` (understood, off the Home chain) with
 // its own neighbour `beside`, plus `island`, which nothing imports at all.
 const sky = {
+  project_root: "/tmp/projects/sky-map",
+  import_cycles: [["home", "near"]],
   nodes: [
     "home",
     "near",
@@ -559,6 +564,17 @@ assert.equal(communityShade(communityPalette, undefined, 9, 5), communityPalette
 assert.equal(communityShade(communityPalette, undefined, 1, 5), communityPalette.node);
 assert.equal(communityShade(communityPalette, undefined, 0, 5), communityPalette.nodeDim);
 
+assert.equal(
+  communityRouteColor(communityPalette, 0),
+  "rgb(100, 135, 152)",
+  "an internal proven route stays mostly neutral while inheriting its family tint",
+);
+assert.equal(
+  communityRouteColor(communityPalette, null),
+  communityPalette.route,
+  "a route with no named family stays neutral",
+);
+
 // Amber's monopoly survives D1: an understood region ignores its community.
 const hueGraph = {
   ...graph,
@@ -580,6 +596,38 @@ assert.equal(
   unlitNode.color,
   communityShade(communityPalette, 0, 9, 5),
   "unlit charted regions wear their community family",
+);
+
+const routeGraph = {
+  ...hueGraph,
+  regions: [
+    { id: "a", community: 4, community_family: 0, understood: false, centrality: 1, loc: 5 },
+    { id: "b", community: 4, community_family: 0, understood: false, centrality: 1, loc: 5 },
+    { id: "bridge", community: 8, community_family: 1, understood: false, centrality: 1, loc: 5 },
+  ],
+  nodes: [],
+  region_edges: [
+    { src: "a", dst: "b", certain: true },
+    { src: "a", dst: "bridge", certain: true },
+    { src: "b", dst: "bridge", certain: false },
+  ],
+};
+const routeColors = new Map(
+  galaxyData(routeGraph, communityPalette, null).links.map((link) => [
+    `${link.src}->${link.dst}`,
+    link.color,
+  ]),
+);
+assert.equal(routeColors.get("a->b"), communityRouteColor(communityPalette, 0));
+assert.equal(
+  routeColors.get("a->bridge"),
+  communityPalette.route,
+  "a cross-community bridge stays neutral",
+);
+assert.equal(
+  routeColors.get("b->bridge"),
+  communityPalette.routePossible,
+  "uncertainty keeps its own colour instead of borrowing either endpoint",
 );
 
 // Test-scope detection is directory-based parser truth.
@@ -664,12 +712,28 @@ console.log("graph-data contracts passed");
 
   const endId = (end) => (typeof end === "string" ? end : end.id);
   const certain = { source: "a", target: "b", certain: true };
+  const tinted = { ...certain, color: "rgb(4, 5, 6)" };
   const possible = { source: "b", target: "c", certain: false };
 
   assert.equal(highlightLinkColor(certain, null, pal, endId), pal.route);
+  assert.equal(
+    highlightLinkColor(tinted, null, pal, endId),
+    tinted.color,
+    "a proven galaxy route keeps its standing family tint",
+  );
+  assert.equal(
+    highlightLinkColor({ ...possible, color: tinted.color }, null, pal, endId),
+    pal.routePossible,
+    "a possible route can never inherit a family tint",
+  );
   assert.equal(highlightLinkColor(possible, null, pal, endId), pal.routePossible,
     "an unproven route keeps its own ink, which is deliberately the more visible one");
   assert.equal(highlightLinkColor(certain, highlight, pal, endId), pal.orbit);
+  assert.equal(
+    highlightLinkColor({ source: "a", target: "c", certain: false }, highlight, pal, endId),
+    pal.routePossible,
+    "an active possible route keeps uncertainty ink instead of borrowing interaction ink",
+  );
   assert.equal(highlightLinkColor(possible, highlight, pal, endId), pal.faded,
     "a route touching neither the hover nor two of its neighbours recedes");
   assert.equal(
@@ -726,11 +790,18 @@ console.log("transient colour and reveal predicates passed");
 // anything the graph cannot answer is absent rather than guessed.
 {
   const overview = projectOverview(sky);
+  assert.equal(projectName(sky), "sky-map", "the project name comes from the graph root");
+  assert.equal(overview.projectName, "sky-map");
   assert.equal(overview.modules, sky.regions.length, "modules counts regions");
   assert.equal(overview.structures, sky.nodes.length, "structures counts nodes");
   assert.ok(
     overview.languages.length > 0 && overview.languages.every((row) => row.count > 0),
     "every language listed has at least one module",
+  );
+  assert.equal(
+    overview.languages.reduce((total, row) => total + row.structures, 0),
+    sky.nodes.length,
+    "the language breakdown accounts for every structure exactly once",
   );
   assert.equal(
     overview.languages.reduce((total, row) => total + row.count, 0),
@@ -744,6 +815,26 @@ console.log("transient colour and reveal predicates passed");
     );
   }
   assert.ok(overview.biggest.length <= 5 && overview.busiest.length <= 5, "both lists are capped");
+  assert.deepEqual(
+    overview.relationships,
+    { proven: 0, hedged: 0 },
+    "only explicitly certain or uncertain parser edges are claimed",
+  );
+  assert.deepEqual(overview.importCycles, [["home", "near"]]);
+  assert.equal(
+    importCycleSummary(overview.importCycles, "easy"),
+    "1 file circle found. Largest group: home, near. Each file can reach every other through proven imports.",
+    "Easy names the relationship without parser vocabulary",
+  );
+  assert.equal(
+    importCycleSummary(overview.importCycles, "expert"),
+    "1 proven import cycle group. Largest strongly connected group: home, near.",
+  );
+  assert.equal(
+    importCycleSummary([["a", "b", "c"]], "expert"),
+    "1 proven import cycle group. Largest strongly connected group: a, b, c.",
+    "a sorted SCC is never rendered as direct arrows its schema does not carry",
+  );
   for (let i = 1; i < overview.busiest.length; i += 1) {
     assert.ok(
       overview.busiest[i - 1].value >= overview.busiest[i].value,

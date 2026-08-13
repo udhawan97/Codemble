@@ -9,7 +9,7 @@ only when milestones actually complete. The shape:
 
 ## NOW — learner evidence and the next packaged stable
 
-Packaged v0.16.0 and current source map Python, JavaScript, TypeScript, Go,
+Packaged v0.17.0 and current source map Python, JavaScript, TypeScript, Go,
 Java, Rust, C#, and mixed projects through one local parser-proven learning
 loop. The current work is learner evidence and correctness reports. The
 original learner-acceptance issue remains open and is not treated as passed by

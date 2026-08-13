@@ -443,6 +443,10 @@ export function communityFamilyIndex(family) {
 // like the old neutral ramp did. Fractions chosen so the mid step sits near
 // --cm-ink-3's weight and dim near --cm-node-unlit's.
 const COMMUNITY_TIER_MIX = Object.freeze({ bright: 1, mid: 0.72, dim: 0.5 });
+// A route remains mostly the established parser-edge ink. The smaller family
+// share is just enough to let a learner follow a constellation without turning
+// the route mesh into a second set of stars or competing with uncertainty.
+const COMMUNITY_ROUTE_MIX = 0.32;
 
 function parseRgb(value) {
   const match = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(String(value));
@@ -473,6 +477,19 @@ export function communityShade(palette, family, centrality, brightAt) {
   const tier =
     centrality >= brightAt ? "bright" : centrality >= 1 ? "mid" : "dim";
   return mixRgb(base, palette.ground, COMMUNITY_TIER_MIX[tier]);
+}
+
+/**
+ * A proven route inside one graph-owned community.
+ *
+ * Cross-community bridges, communities outside the eight named families, and
+ * older payloads all stay on the neutral route ink. Possible routes never call
+ * this function: uncertainty keeps its own brighter, dashed channel.
+ */
+export function communityRouteColor(palette, family) {
+  const index = communityFamilyIndex(family);
+  const base = index === null ? null : palette.communities?.[index];
+  return base ? mixRgb(base, palette.route, COMMUNITY_ROUTE_MIX) : palette.route;
 }
 
 /**
@@ -522,17 +539,26 @@ export function highlightColor(node, highlight, palette) {
 export function highlightLinkColor(link, highlight, palette, endId) {
   if (link.focusDim) return palette.faded;
   const { activeId, neighborIds } = highlight ?? {};
-  const base = link.certain ? palette.route : palette.routePossible;
+  // A possible relationship may never inherit a family tint: its uncertainty
+  // is the more important fact. Proven galaxy routes carry their standing tint
+  // on the link; system calls and older payloads fall back to neutral.
+  const base = link.certain ? link.color ?? palette.route : palette.routePossible;
   if (!activeId) return base;
   const source = endId(link.source);
   const target = endId(link.target);
-  if (source === activeId || target === activeId) return palette.orbit;
+  // Interaction may brighten a proven route, but a possible route keeps the
+  // uncertainty ink even when it touches the active system. The dash is the
+  // redundant channel; the colour remains truthful too.
+  if (source === activeId || target === activeId) {
+    return link.certain ? palette.orbit : palette.routePossible;
+  }
   return neighborIds?.has(source) && neighborIds?.has(target) ? base : palette.faded;
 }
 
 export function galaxyData(graph, palette, revealed = null) {
   const isRevealed = (regionId) => revealed === null || revealed.has(regionId);
   const files = regionFiles(graph);
+  const regionById = new Map(graph.regions.map((region) => [region.id, region]));
   // Counted over EVERY route, not the drawn subset: the tooltip answers "how
   // connected is this module", which is a fact about the project and must not
   // change with how much of the sky the learner happens to have charted.
@@ -585,13 +611,28 @@ export function galaxyData(graph, palette, revealed = null) {
     // removing a module or misreporting how many there are.
     links: graph.region_edges
       .filter((edge) => isRevealed(edge.src) && isRevealed(edge.dst))
-      .map((edge) => ({
-        ...edge,
-        source: edge.src,
-        target: edge.dst,
-        color: edge.certain ? palette.route : palette.routePossible,
-        focusDim: false,
-      })),
+      .map((edge) => {
+        const source = regionById.get(edge.src);
+        const target = regionById.get(edge.dst);
+        const sharedFamily =
+          source?.community === target?.community &&
+          source?.community_family === target?.community_family
+            ? communityFamilyIndex(source?.community_family)
+            : null;
+        return {
+          ...edge,
+          source: edge.src,
+          target: edge.dst,
+          // Family tint is a standing property of a proven route, never a
+          // renderer guess. A bridge stays neutral, making it easier to spot
+          // where one constellation hands work to another.
+          color: edge.certain
+            ? communityRouteColor(palette, sharedFamily)
+            : palette.routePossible,
+          community_family: sharedFamily,
+          focusDim: false,
+        };
+      }),
   };
 }
 
@@ -655,6 +696,25 @@ export function defaultRegion(graph) {
   return graph.regions.find((region) => region.home) ?? graph.regions[0] ?? null;
 }
 
+export function projectName(graph) {
+  const root = String(graph?.project_root ?? "");
+  const name = root.split("/").filter(Boolean).at(-1) ?? root;
+  return name || "Local project";
+}
+
+export function importCycleSummary(cycles, mode) {
+  if (!cycles?.length) return null;
+  const largest = [...cycles].sort(
+    (left, right) =>
+      right.length - left.length || left.join("\0").localeCompare(right.join("\0")),
+  )[0];
+  const members = largest.join(", ");
+  if (mode === "easy") {
+    return `${cycles.length} ${cycles.length === 1 ? "file circle" : "file circles"} found. Largest group: ${members}. Each file can reach every other through proven imports.`;
+  }
+  return `${cycles.length} proven import ${cycles.length === 1 ? "cycle group" : "cycle groups"}. Largest strongly connected group: ${members}.`;
+}
+
 /**
  * What is this project? Answered from the graph, for a learner who has just
  * opened a codebase they did not write.
@@ -674,14 +734,27 @@ export function defaultRegion(graph) {
 export function projectOverview(graph) {
   const regions = graph?.regions ?? [];
   const nodes = graph?.nodes ?? [];
+  const edges = graph?.edges ?? [];
   const byLanguage = new Map();
   for (const region of regions) {
     byLanguage.set(region.language, (byLanguage.get(region.language) ?? 0) + 1);
   }
+  const structuresByLanguage = new Map();
+  for (const node of nodes) {
+    structuresByLanguage.set(
+      node.language,
+      (structuresByLanguage.get(node.language) ?? 0) + 1,
+    );
+  }
   const languages = [...byLanguage.entries()]
     // Size first, then name, so the same project always lists them the same way.
     .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
-    .map(([language, count]) => ({ language, label: languageLabel(language), count }));
+    .map(([language, count]) => ({
+      language,
+      label: languageLabel(language),
+      count,
+      structures: structuresByLanguage.get(language) ?? 0,
+    }));
 
   const ranked = (key) =>
     regions
@@ -692,6 +765,7 @@ export function projectOverview(graph) {
 
   const home = defaultRegion(graph);
   return {
+    projectName: projectName(graph),
     modules: regions.length,
     structures: nodes.length,
     lines: regions.reduce((total, region) => total + (region.loc ?? 0), 0),
@@ -704,6 +778,22 @@ export function projectOverview(graph) {
       (total, entry) => total + (entry.count ?? 0),
       0,
     ),
+    unsupportedSources: [...(graph?.unsupported_sources ?? [])]
+      .map((entry) => ({
+        extension: entry.extension,
+        language: entry.language,
+        count: entry.count ?? 0,
+      }))
+      .sort(
+        (left, right) =>
+          String(left.extension).localeCompare(String(right.extension)) ||
+          String(left.language).localeCompare(String(right.language)),
+      ),
+    relationships: {
+      proven: edges.filter((edge) => edge.certain === true).length,
+      hedged: edges.filter((edge) => edge.certain === false).length,
+    },
+    importCycles: (graph?.import_cycles ?? []).map((cycle) => [...cycle]),
     understood: regions.filter((region) => region.understood).length,
   };
 }

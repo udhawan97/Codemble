@@ -146,9 +146,10 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** packaged stable and current source are v0.16.0.
-  GitHub carries the release notes but no uploaded binaries for this release;
-  direct wheel/source downloads and their SHA256 digests come from PyPI.
+- **Public release truth:** packaged stable remains v0.16.0 while current source
+  is the v0.17.0 release candidate. Its public copy and manifest may become the
+  stable claim only after the tagged publish workflow proves PyPI, the mirrored
+  GitHub wheel/sdist, `SHA256SUMS.txt`, and fresh downloaded bytes.
 - **Site search is Pagefind**, which only exists after `npm run build` — the
   field says so in `npm run dev` rather than failing silently.
 - **Public browser proof is a pre-push gate:** build and preview `docs-site/`,
@@ -211,18 +212,19 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M15 architecture deepening** · Last updated: 2026-08-12 ·
-Session note: the post-audit user-flow repair closes three reproduced gaps on
-current `main`: Home calibration gives the ranked choice list measured space at
-320px reflow widths without losing its fixed exit; Study guidance yields focus
-to the quiz it opens and both exits return to the prove control; and a picker
-browse outage retains the last successful folder, names the local-server
-recovery, and retries the exact failed folder without dropping keyboard focus.
-The contracts run against disposable project and picker servers in Chromium and
-WebKit. The reported version mismatch was already resolved on current `main`;
-fresh-wheel verification remains the proof rather than another implementation.
-The milestone does not advance because issue #13 still requires human tester
-evidence.
+**Current milestone: M15 architecture deepening** · Last updated: 2026-08-13 ·
+Session note: the v0.17.0 release candidate integrates the three approved
+orientation/handoff features (First Flight, proven import cycles, and the local
+Markdown project brief), the renderer and adapter deepening, and the current
+user-flow repairs. Galaxy exploration now forms restrained colour corridors
+only where a proven route stays inside one import community; bridges remain
+neutral and possible routes remain dashed. Pointer or keyboard selection raises
+the active system and its one-hop neighbours on the current route mesh into the label budget, the Key is
+an opaque compact-screen reference, and the overview opens at a steeper angle.
+The public docs and real captures are being synchronized to that exact surface.
+Packaged stable remains v0.16.0 until the v0.17.0 workflow proves PyPI, GitHub
+assets, checksum bytes, Pages, and a cold isolated install. The milestone does
+not advance because issue #13 still requires human tester evidence.
 
 Previously (2026-08-09):
 M15 is complete: Galaxy Runtime owns WebGL lifetime, Canvas
@@ -231,8 +233,8 @@ private discovery/parse/finalization lifecycle without changing graph bytes or
 public contracts. The preceding default-branch cleanup integrated the Formal Edo public surface
 and three scoped GitHub Actions upgrades, while preserving active or unmerged
 work that ancestry could not prove redundant. Only `setup-python@v7` ran in CI;
-the upload/download artifact handoff in the release-published/manual-dispatch
-workflow remains a next-publish verification point. The v0.16.0 release
+the upload/download artifact handoff in the release-published workflow remains
+a next-publish verification point. The v0.16.0 release
 context follows: three evidence-led audit loops against the served v0.15.0
 build found eight gaps; UD then reported six more from the running app, and
 **the ones UD found were the more serious**, which is the finding worth
@@ -1648,6 +1650,11 @@ wave passes focused and complete gates and lands as one reversible commit.
 | 2026-08-09 | `measureCanvasOcclusion` is the one owner of canvas viewport, overlay roles, DOM-to-canvas translation, and renderer fallback | System framing and Name Atlas need different obstruction facts, but their duplicated DOM scrapes had already drifted once to the wrong subtree. One immutable measurement result keeps click-taking controls distinct from name-covering chrome while `galaxyView` and `nameAtlas` retain every framing and placement decision |
 | 2026-08-09 | Five tree-sitter adapters inherit discovery, `parse`, `parse_files`, finalization, and error translation from one private lifecycle core; their public `LanguageAdapter` signatures and language-owned `concepts` implementations stay unchanged | The five classes repeated the same source-scope and canonicalization protocol while their real value lives in different syntax indexes and graph-draft builders. Centralizing only the invariant lifecycle removes a sixth language's opportunity to drift without turning syntax evidence into a lowest-common-denominator abstraction; a real-adapter conformance suite and captured `Graph.to_json()` baselines pin the seam |
 | 2026-08-12 | Home calibration owns a measured responsive decision-list floor; a guidance action yields focus to the foreground surface it opens; and read-only local-server failures retain their last successful view plus the exact retry target | Three current-main failures shared one trust problem: the UI completed its state transition while hiding the choice, moving focus behind the result, or replacing useful folder state with browser-engine jargon. The repair stays in view/mapping ownership: no parser or learner truth changes, no mutating request claims unchanged data, HTTP refusals keep server copy, and one disposable cross-engine gate holds the full failure/recovery paths |
+| 2026-08-09 | The star chart exports a fully client-side Markdown project brief derived from `projectOverview(graph)` | Approved by UD as the portable handoff for the existing project summary. The renderer is pure and deterministic; the only browser-specific code creates and downloads the Blob. The brief preserves the app's truth boundaries: no resolved Home says so rather than naming a guess, centrality is described only as "called from the most places", uncertain edges remain hedged, unsupported sources stay visible, and charted remains separate from understood. Easy and Expert change only the control label, never the exported facts |
+| 2026-08-09 | Graph schema 10 serializes deterministic region-level import cycles computed only from `certain=True` import edges | Approved by UD as a structural fact, not a new check family. The SCC pass reads raw import edges rather than aggregated `RegionEdge.certain`: one possible sibling makes an aggregate route conservatively possible, but it must not erase a separate proven edge that completes a cycle. Members and components sort canonically; `finalize_graph` clears the field before layout replaces it, because the normal composition path finalizes twice. Possible-only loops are excluded. The Map carries the full prose line in both registers, Easy avoids parser vocabulary, and the star-chart overview and export inherit the same field |
+| 2026-08-09 | First Flight is a frontend-only, stateless and re-runnable route: Home, then at most five direct proven imports sorted by region centrality and id | Approved by UD as bounded orientation, not progression. A pure sequencer owns the order and never invents Home; React owns only ephemeral stop position. Every stop dispatches the existing `GO_TO_REGION` travel action, so the one `recordVisit` path charts it exactly like manual travel. The chip reuses galaxy region-route degree for its used-by/uses facts, Easy and Expert change words rather than behavior, and the camera uses the existing frame machinery with zero-duration jump cuts under reduced motion. One `firstFlight` entry joins the ordered Escape arbiter and existing task-deferred focus return. No API, layout mutation, persistence, completion reward, or new check family is added |
+| 2026-08-13 | At Galaxy level, colour may connect a route only when the parser proves the import and both endpoints share the same coloured community; bridges stay neutral, possible routes keep uncertainty ink, and amber remains understanding-only | UD asked for subtle colour links that make the Galaxy easier to explore. Tinting every route by a source or destination would imply a shared grouping across a bridge, and tinting a possible route would let a grouping cue read as stronger evidence. A 32% family mix forms a corridor without overpowering node identity. The active pointer or keyboard subject and its one-hop neighbours on the current route mesh take label priority; keyboard selection persists while focus enters the Key, while pointer exit clears transient hover. The Key carries words plus solid/dashed styles at every width, so colour is redundant rather than exclusive |
+| 2026-08-13 | Release artifacts are reproducible manifest-owned bytes, published once to PyPI and mirrored with `SHA256SUMS.txt` on GitHub | The standing checklist required a wheel and checksum asset, while the workflow uploaded no GitHub assets and the public checker asserted that absence. `docs-site/release.json` now owns a UTC build epoch, predictable release URLs, and both digests; Hatchling is pinned, `docs-site` is excluded from the sdist to avoid a digest containing itself, and local plus CI builds must match the manifest before trusted publishing. The publish job attaches those exact bytes and the ledger, then re-downloads them and reconciles both registries. Structural checks remain usable before publication; the live check is a separate outside-in gate |
 
 ## Non-Goals — do NOT build (point here when asked)
 

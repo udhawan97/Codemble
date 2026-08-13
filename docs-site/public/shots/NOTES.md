@@ -1,6 +1,6 @@
 # Codemble product captures
 
-The public README and website use real 1440×720 captures of Codemble v0.16.0,
+The public README and website use real 1440×720 captures of Codemble v0.17.0,
 not mockups. Recreate them with the self-contained capture command:
 
 ```bash

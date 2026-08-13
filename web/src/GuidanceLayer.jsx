@@ -3,18 +3,70 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 
-export function HintChip({ hint, onFollow }) {
-  if (!hint) return null;
+export function HintChip({ hint, onFollow, firstFlight }) {
+  const advanceRef = useRef(null);
+  const wasFlightActive = useRef(false);
+  useLayoutEffect(() => {
+    if (firstFlight?.active && !wasFlightActive.current) {
+      advanceRef.current?.focus();
+    }
+    wasFlightActive.current = firstFlight?.active === true;
+  }, [firstFlight?.active]);
+
+  if (firstFlight?.active) {
+    const { stop, index, total, mode } = firstFlight;
+    return (
+      <output
+        className="hint-chip first-flight"
+        aria-live="polite"
+        data-first-flight="active"
+      >
+        <span aria-hidden="true">✦</span>
+        <strong>First Flight · {index + 1} of {total}</strong>
+        <span className="first-flight__system">{stop.id}</span>
+        <small>
+          {mode === "easy" ? `${stop.language} file` : `${stop.language} system`}
+          {` · used by ${stop.usedBy} · uses ${stop.uses}`}
+        </small>
+        <span className="first-flight__actions">
+          <button
+            type="button"
+            disabled={index === 0}
+            onClick={firstFlight.onBack}
+          >
+            Back
+          </button>
+          {index + 1 < total ? (
+            <button ref={advanceRef} type="button" onClick={firstFlight.onNext}>
+              Next
+            </button>
+          ) : (
+            <button ref={advanceRef} type="button" onClick={firstFlight.onExit}>
+              Finish
+            </button>
+          )}
+          <button type="button" onClick={firstFlight.onExit}>
+            Exit
+          </button>
+        </span>
+      </output>
+    );
+  }
+
+  if (!hint && !firstFlight?.available) return null;
   return (
     <output className="hint-chip" aria-live="polite">
       <span aria-hidden="true">→</span>
-      <span>
-        {hint.message}
-      </span>
-      <small>{hint.reason}</small>
-      {hint.action ? (
+      <span>{hint?.message ?? "Take a short guided route from Home."}</span>
+      {hint?.reason ? <small>{hint.reason}</small> : null}
+      {hint?.action ? (
         <button type="button" onClick={onFollow}>
           {hint.actionLabel}
+        </button>
+      ) : null}
+      {firstFlight?.available ? (
+        <button ref={firstFlight.triggerRef} type="button" onClick={firstFlight.onStart}>
+          {firstFlight.mode === "easy" ? "Take First Flight" : "Run First Flight"}
         </button>
       ) : null}
     </output>

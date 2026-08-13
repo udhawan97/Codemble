@@ -222,7 +222,91 @@ def layout_graph(graph: Graph) -> Graph:
         nodes=tuple(sorted(positioned_nodes, key=lambda node: node.id)),
         regions=tuple(sorted(regions, key=lambda region: region.id)),
         region_edges=region_edges,
+        import_cycles=_import_cycles(graph.nodes, graph.edges),
     )
+
+
+def _import_cycles(
+    nodes: tuple[Node, ...], edges: tuple[Edge, ...]
+) -> tuple[tuple[str, ...], ...]:
+    """Return canonical region SCCs over proven project imports only.
+
+    Region routes deliberately become uncertain when *any* import aggregated
+    into the mark is uncertain. That is the right visual claim for one line
+    representing several edges, but the wrong input here: a proven edge must
+    still participate in a cycle even when a possible sibling shares its
+    region pair. Work from the parser edges so certainty is never lost.
+    """
+
+    region_by_node = {node.id: node.region for node in nodes}
+    neighbors: dict[str, set[str]] = {
+        region_id: set() for region_id in sorted(set(region_by_node.values()))
+    }
+    for edge in sorted(edges, key=lambda item: (item.src, item.dst, item.lineno)):
+        if edge.kind != "import" or edge.external or not edge.certain:
+            continue
+        src = region_by_node.get(edge.src)
+        dst = region_by_node.get(edge.dst)
+        if src is None or dst is None:
+            continue
+        neighbors[src].add(dst)
+
+    # Iterative Kosaraju rather than recursive Tarjan. A valid project at the
+    # supported 1,000-file boundary can contain a 1,000-region import chain;
+    # recursing once per region hits Python's recursion limit before layout can
+    # return a graph. Both passes below keep their own explicit walk stack.
+    reverse_neighbors: dict[str, set[str]] = {region_id: set() for region_id in neighbors}
+    for src, destinations in neighbors.items():
+        for dst in destinations:
+            reverse_neighbors[dst].add(src)
+
+    visited: set[str] = set()
+    finish_order: list[str] = []
+    for root in sorted(neighbors):
+        if root in visited:
+            continue
+        visited.add(root)
+        # A frame carries the next child index. Marking every sibling visited
+        # when it is merely pushed is *not* DFS postorder: in the acyclic graph
+        # a->b, a->c, b->c it can finish c before b and make the transpose pass
+        # invent {b,c} as an SCC. Advance one child at a time so a descendant
+        # finishes before the frame resumes with its next sibling.
+        walk: list[tuple[str, int, tuple[str, ...]]] = [
+            (root, 0, tuple(sorted(neighbors[root])))
+        ]
+        while walk:
+            region_id, child_index, children = walk[-1]
+            if child_index >= len(children):
+                walk.pop()
+                finish_order.append(region_id)
+                continue
+            neighbor = children[child_index]
+            walk[-1] = (region_id, child_index + 1, children)
+            if neighbor in visited:
+                continue
+            visited.add(neighbor)
+            walk.append((neighbor, 0, tuple(sorted(neighbors[neighbor]))))
+
+    assigned: set[str] = set()
+    cycles: list[tuple[str, ...]] = []
+    for root in reversed(finish_order):
+        if root in assigned:
+            continue
+        component: list[str] = []
+        assigned.add(root)
+        walk = [(root, False)]
+        while walk:
+            region_id, _expanded = walk.pop()
+            component.append(region_id)
+            for neighbor in sorted(reverse_neighbors[region_id], reverse=True):
+                if neighbor in assigned:
+                    continue
+                assigned.add(neighbor)
+                walk.append((neighbor, False))
+        members = tuple(sorted(component))
+        if len(members) > 1 or root in neighbors[root]:
+            cycles.append(members)
+    return tuple(sorted(cycles))
 
 
 def _communities(

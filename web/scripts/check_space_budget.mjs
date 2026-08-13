@@ -61,6 +61,17 @@ const SHELL_HEADER = { wide: 148, compact: 124 };
 // actions on one row at every level, not just at the top of the loop.
 const WIDE_WIDTHS = [1440, 1280, 1100, 1024];
 
+// 640 CSS pixels at DPR 2 is the reflow geometry of a 1280x800 window at
+// 200% browser zoom. Keep the phone row too: both can be narrow, but only the
+// former is short enough to expose a disclosure that sizes itself from `vh`
+// while forgetting the stage begins below the header.
+const KEY_VIEWPORTS = [
+  { width: 1280, height: 720, deviceScaleFactor: 1, label: "1280px desktop" },
+  { width: 640, height: 400, deviceScaleFactor: 2, label: "1280x800 at 200%" },
+  { width: 640, height: 360, deviceScaleFactor: 2, label: "1280x720 at 200%" },
+  { width: 320, height: 640, deviceScaleFactor: 1, label: "320px reflow" },
+];
+
 const browser = await chromium.launch({
   channel: "chrome",
   headless: true,
@@ -242,6 +253,133 @@ try {
       await page.close();
     }
   }
+
+  // The Key is part of the Galaxy's evidence contract, not optional desktop
+  // decoration. Prove its compact form against real layout: fully contained,
+  // opaque over WebGL, internally scrollable, and carrying a non-colour dash
+  // for possible routes. Keyboard selection must survive moving focus into it.
+  for (const viewport of KEY_VIEWPORTS) {
+    const page = await browser.newPage({
+      viewport: { width: viewport.width, height: viewport.height },
+      deviceScaleFactor: viewport.deviceScaleFactor,
+    });
+    page.setDefaultTimeout(12_000);
+    try {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await settleFirstRun(page, "easy", { home: true });
+
+      let galaxy = page.getByRole("button", { name: "Galaxy", exact: true });
+      if (!(await galaxy.isVisible().catch(() => false))) {
+        const menu = page.getByRole("button", { name: "Menu", exact: true });
+        if (await menu.isVisible().catch(() => false)) await menu.click();
+        galaxy = page.getByRole("button", { name: "Galaxy", exact: true });
+      }
+      await galaxy.click();
+      await page.waitForTimeout(900);
+
+      // On one full-size canvas, find a real Three.js node with the mouse.
+      // The force-graph tooltip appears only after its raycaster has hit a
+      // rendered node, so this is a live WebGL hover rather than a dispatched
+      // React event. Moving to Key must retire that tooltip while leaving the
+      // keyboard subject intact.
+      const hovered = viewport.width === 1280 ? await hoverRenderedNode(page) : null;
+
+      const frame = page.getByRole("application", { name: /Codemble galaxy view/ });
+      await frame.focus();
+      await page.keyboard.press("ArrowRight");
+      const readout = page.locator(".keyboard-focus");
+      const subjectBefore = await readout.textContent();
+
+      await page.getByRole("button", { name: "Key", exact: true }).click();
+      const legend = page.getByLabel("Galaxy legend");
+      await legend.waitFor({ state: "visible" });
+      await legend.focus();
+      await page.keyboard.press("End");
+      const keyboardScrollTop = await legend.evaluate((element) => element.scrollTop);
+      const measured = await legend.evaluate((element) => {
+        const panel = element.getBoundingClientRect();
+        const stage = element.closest(".map-stage")?.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        const possible = element.querySelector(".legend-route--possible");
+        return {
+          panel: { top: panel.top, bottom: panel.bottom },
+          stage: stage ? { top: stage.top, bottom: stage.bottom } : null,
+          viewportBottom: window.innerHeight,
+          background: style.backgroundColor,
+          overflowY: style.overflowY,
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+          possibleStyle: possible ? getComputedStyle(possible).borderTopStyle : null,
+          tabIndex: element.tabIndex,
+        };
+      });
+      const subjectAfter = await readout.textContent();
+      const tooltipAfter =
+        hovered === null
+          ? null
+          : await page.locator(".float-tooltip-kap").evaluate((element) => ({
+              display: getComputedStyle(element).display,
+              text: element.textContent?.trim() ?? "",
+            }));
+
+      try {
+        if (hovered !== null) {
+          assert.ok(hovered.text, `${viewport.label}: WebGL hover produced no named subject`);
+          assert.equal(
+            tooltipAfter?.display,
+            "none",
+            `${viewport.label}: moving from WebGL into Key left the old hover visible`,
+          );
+        }
+        assert.equal(
+          subjectAfter,
+          subjectBefore,
+          `${viewport.label}: opening the Key retired the keyboard-selected system`,
+        );
+        assert.ok(measured.stage, `${viewport.label}: Key has no drawing-stage owner`);
+        assert.ok(
+          measured.panel.top >= measured.stage.top - 1 &&
+            measured.panel.bottom <= measured.viewportBottom - 1,
+          `${viewport.label}: Key escapes the viewport (${JSON.stringify(measured)})`,
+        );
+        assert.notEqual(
+          measured.background,
+          "rgba(0, 0, 0, 0)",
+          `${viewport.label}: WebGL can read through the Key`,
+        );
+        assert.equal(measured.overflowY, "auto", `${viewport.label}: Key does not own its overflow`);
+        assert.equal(measured.tabIndex, 0, `${viewport.label}: Key is not keyboard focusable`);
+        assert.ok(
+          measured.clientHeight >= 80,
+          `${viewport.label}: Key leaves only ${measured.clientHeight}px for its scrollable reference`,
+        );
+        assert.ok(
+          measured.scrollHeight <= measured.clientHeight || keyboardScrollTop > 0,
+          `${viewport.label}: keyboard input cannot reach the Key's hidden rows`,
+        );
+        assert.equal(
+          measured.possibleStyle,
+          "dashed",
+          `${viewport.label}: possible route is distinguished by colour alone`,
+        );
+      } catch (error) {
+        failures += 1;
+        console.error(`  FAIL ${error.message}`);
+      }
+      report.push({
+        width: viewport.width,
+        height: viewport.height,
+        register: `easy/key (${viewport.label})`,
+        header: "-",
+        guidance: "-",
+        footer: "-",
+        chromeShare: 0,
+        canvas: measured.clientHeight,
+      });
+    } finally {
+      await page.close();
+    }
+  }
 } finally {
   await browser.close();
 }
@@ -262,6 +400,29 @@ if (failures > 0) {
   throw new Error(`${failures} space-budget assertion(s) failed`);
 }
 console.log("space-budget contracts passed");
+
+/**
+ * Find one actual rendered node by moving the real pointer across the canvas.
+ * `float-tooltip-kap` is owned by three-forcegraph and is shown only when its
+ * WebGL raycaster resolves a node, which makes it a useful outside-in signal.
+ */
+async function hoverRenderedNode(page) {
+  const canvas = page.locator(".galaxy-canvas canvas");
+  const bounds = await canvas.boundingBox();
+  assert.ok(bounds && bounds.width > 0 && bounds.height > 0, "Galaxy canvas has no hoverable area");
+  const tooltip = page.locator(".float-tooltip-kap");
+  for (let y = bounds.y + 16; y < bounds.y + bounds.height - 16; y += 24) {
+    for (let x = bounds.x + 16; x < bounds.x + bounds.width - 16; x += 24) {
+      await page.mouse.move(x, y);
+      const state = await tooltip.evaluate((element) => ({
+        display: getComputedStyle(element).display,
+        text: element.textContent?.trim() ?? "",
+      }));
+      if (state.display !== "none" && state.text) return state;
+    }
+  }
+  assert.fail("The real pointer could not reach any rendered Galaxy node");
+}
 
 /**
  * Clear the first-run sequence -- audience, then Home, then coaching -- and

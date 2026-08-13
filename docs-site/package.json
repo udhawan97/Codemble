@@ -1,7 +1,7 @@
 {
   "name": "codemble-docs",
   "type": "module",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "private": true,
   "scripts": {
     "dev": "astro dev",
@@ -9,6 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check:release": "node scripts/check-release-facts.mjs",
+    "check:release:live": "node scripts/check-release-facts.mjs --live",
     "check": "npm run check:release && astro check"
   },
   "dependencies": {

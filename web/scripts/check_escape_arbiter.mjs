@@ -34,6 +34,7 @@ const dismissed = [
   ["showChecks", "checks"],
   ["sidebarOpen", "sidebar"],
   ["showChart", "chart"],
+  ["firstFlightOpen", "firstFlight"],
 ];
 for (const [fact, surface] of dismissed) {
   assert.deepEqual(
@@ -81,6 +82,11 @@ assert.deepEqual(
   { kind: "dismiss", surface: "checks" },
   "and to a panel opened over it that the window handler closes",
 );
+assert.deepEqual(
+  escapeAction(open({ showChart: true, firstFlightOpen: true })),
+  { kind: "dismiss", surface: "chart" },
+  "the chart opened over a flight closes before the flight behind it",
+);
 
 // ── Precedence is the list order, innermost first ──────────────────────────
 
@@ -110,13 +116,14 @@ assert.deepEqual(
     "finder",
     "entrypoint",
     "chart",
+    "firstFlight",
   ],
   "the order is the contract, so a reorder has to be deliberate",
 );
 
 assert.deepEqual(
   ESCAPE_OWNERS.filter((owner) => owner.dismissible).map((owner) => owner.id),
-  ["checks", "sidebar", "chart"],
+  ["checks", "sidebar", "chart", "firstFlight"],
   "every dismissible surface needs an entry in App's DISMISS map",
 );
 

@@ -29,7 +29,8 @@ export function createNameAtlas(nodes) {
     height,
     distance,
     distanceBounds,
-    hoverNodeId = null,
+    activeNodeId = null,
+    neighborIds = null,
     // Rectangles of DOM chrome drawn over the canvas, in the same CSS pixels
     // as `width`/`height`. Empty by default: a caller that draws no chrome
     // over its sky need not know this exists.
@@ -62,7 +63,16 @@ export function createNameAtlas(nodes) {
         anchor,
         halfWidth: ((sprite.userData.screenWidthFraction ?? 0.14) * height) / 2,
         halfHeight: ((sprite.userData.screenHeightFraction ?? 0.034) * height) / 2,
-        rank: nodeId === hoverNodeId ? -1 : rank.get(nodeId) ?? Infinity,
+        // The subject and its direct neighborhood are the temporary reading
+        // order. This is the label counterpart to route highlighting: the
+        // graph supplies the neighbors and the atlas still owns collision and
+        // budget decisions.
+        rank:
+          nodeId === activeNodeId
+            ? -2
+            : neighborIds?.has(nodeId)
+              ? -1
+              : rank.get(nodeId) ?? Infinity,
       });
     }
     candidates.sort(
