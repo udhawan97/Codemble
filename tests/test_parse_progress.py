@@ -8,8 +8,10 @@ import pytest
 
 from codemble.adapters.parse_progress import (
     ParseCancelled,
+    check_parse_cancelled,
     note_detail,
     note_file_parsed,
+    reporting_cancellation,
     reporting_detail,
     reporting_files,
 )
@@ -44,6 +46,17 @@ class _Recorder:
 
 def test_note_file_parsed_is_a_no_op_when_nobody_is_listening() -> None:
     note_file_parsed()
+
+
+def test_private_cancellation_checkpoint_is_a_no_op_without_a_binding() -> None:
+    check_parse_cancelled()
+
+
+def test_private_cancellation_binding_is_restored() -> None:
+    with reporting_cancellation(lambda: False):
+        with reporting_cancellation(lambda: True), pytest.raises(ParseCancelled):
+            check_parse_cancelled()
+        check_parse_cancelled()
 
 
 def test_reporting_files_restores_the_previous_binding() -> None:
@@ -132,3 +145,21 @@ def test_a_cancelling_hook_stops_the_parse_between_files() -> None:
         ProjectParser().parse(FIXTURE, progress=recorder)
 
     assert recorder.files == 2
+
+
+def test_a_cached_parse_keeps_the_same_cancellation_boundary() -> None:
+    class _Cancelling(_Recorder):
+        def file_parsed(self) -> None:
+            super().file_parsed()
+            if self.files >= 2:
+                raise ParseCancelled("stop cached reuse")
+
+    parser = ProjectParser()
+    expected = parser.parse(FIXTURE)
+    recorder = _Cancelling()
+
+    with pytest.raises(ParseCancelled, match="cached reuse"):
+        parser.parse(FIXTURE, progress=recorder)
+
+    assert recorder.files == 2
+    assert parser.parse(FIXTURE).to_json() == expected.to_json()

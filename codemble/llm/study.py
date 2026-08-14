@@ -12,9 +12,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import NamedTuple
 
-from codemble.adapters.base import Edge, Graph, Node
+from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
 from codemble.adapters.source_text import read_source_text
-from codemble.graph.impact import blast_radius
+from codemble.graph.impact import BlastRadiusIndex
 from codemble.graph.learning import LearningJourneyIndex
 from codemble.lens import lens_notes
 from codemble.llm.providers import (
@@ -70,7 +70,10 @@ class StudyService:
         self._graph = graph
         self._project_root = Path(graph.project_root).resolve()
         self._nodes = {node.id: node for node in graph.nodes}
-        self._journeys = LearningJourneyIndex(graph)
+        self._impact = BlastRadiusIndex(graph)
+        self._journeys = LearningJourneyIndex(graph, impact_index=self._impact)
+        self._annotations_by_node = _annotations_by_node(graph)
+        self._edges_by_node = _edges_by_node(graph)
         self._provider = provider
         self._cache_root = cache_root or data_dir() / "cache" / "explanations"
         self._setup_message = setup_message or (
@@ -173,7 +176,10 @@ class StudyService:
             self._graph = graph
             self._project_root = Path(graph.project_root).resolve()
             self._nodes = {node.id: node for node in graph.nodes}
-            self._journeys = LearningJourneyIndex(graph)
+            self._impact = BlastRadiusIndex(graph)
+            self._journeys = LearningJourneyIndex(graph, impact_index=self._impact)
+            self._annotations_by_node = _annotations_by_node(graph)
+            self._edges_by_node = _edges_by_node(graph)
 
     def study(self, node_id: str) -> dict[str, object]:
         """Return real source, parser neighbors, and the local structural summary.
@@ -196,7 +202,7 @@ class StudyService:
                 # Parser truth, so it arrives with the rest of the local payload and
                 # never waits on a provider. This is what lets the Expert panel lead
                 # with something useful when no key is configured at all.
-                "impact": blast_radius(self._graph, node.id),
+                "impact": self._impact.build(node.id),
                 # One mode-neutral, parser-owned route. Easy and Expert project
                 # different detail from these exact steps instead of maintaining
                 # separate explanations of how the feature reaches the app.
@@ -234,15 +240,8 @@ class StudyService:
 
         source = self._read_source(node)
         neighbors = self._neighbors(node)
-        annotations = sorted(
-            (
-                annotation
-                for annotation in self._graph.concept_annotations
-                if annotation.node_id == node.id
-            ),
-            key=lambda item: (item.lineno, item.concept, item.end_lineno),
-        )
-        lens = lens_notes(node.language, annotations)
+        annotations = self._annotations_by_node.get(node.id, ())
+        lens = lens_notes(node.language, list(annotations))
         for note in lens:
             note["citation"] = f"{node.file}:{note['line']}"
         return source, neighbors, lens
@@ -273,7 +272,7 @@ class StudyService:
         # keep the earliest observed line so identical input keeps producing
         # identical output.
         observations: dict[tuple[str, str], dict[str, object]] = {}
-        for edge in self._graph.edges:
+        for edge in self._edges_by_node.get(node.id, ()):
             resolved = _neighbor_id(edge, node.id)
             if resolved is None:
                 continue
@@ -400,6 +399,32 @@ def _neighbor_id(edge: Edge, node_id: str) -> tuple[str, str] | None:
     if edge.dst == node_id:
         return edge.src, "inbound"
     return None
+
+
+def _annotations_by_node(
+    graph: Graph,
+) -> dict[str, tuple[ConceptAnnotation, ...]]:
+    grouped: dict[str, list[ConceptAnnotation]] = {}
+    for annotation in graph.concept_annotations:
+        grouped.setdefault(annotation.node_id, []).append(annotation)
+    return {
+        node_id: tuple(
+            sorted(
+                annotations,
+                key=lambda item: (item.lineno, item.concept, item.end_lineno),
+            )
+        )
+        for node_id, annotations in grouped.items()
+    }
+
+
+def _edges_by_node(graph: Graph) -> dict[str, tuple[Edge, ...]]:
+    grouped: dict[str, list[Edge]] = {}
+    for edge in graph.edges:
+        grouped.setdefault(edge.src, []).append(edge)
+        if edge.dst != edge.src:
+            grouped.setdefault(edge.dst, []).append(edge)
+    return {node_id: tuple(edges) for node_id, edges in grouped.items()}
 
 
 def _cache_key(

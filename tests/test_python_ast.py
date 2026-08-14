@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -36,6 +37,29 @@ def test_discovers_nodes_and_keeps_parse_failures_visible(graph) -> None:  # typ
     assert nodes["pkg.service.Service.run"].loc == 4
     assert nodes["pkg.service.Service.run"].region == "pkg.service"
     assert all(node.language == "python" for node in graph.nodes)
+
+
+def test_hash_and_parse_use_the_same_captured_source_bytes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "app.py"
+    source.write_text("def broken(:\n", encoding="utf-8")
+    captured = b"def ready() -> None:\n    pass\n"
+    read_bytes = Path.read_bytes
+
+    def capture_once(path: Path) -> bytes:
+        if path == source:
+            return captured
+        return read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", capture_once)
+
+    graph = PythonAstAdapter().parse(tmp_path)
+
+    assert graph.partial_files == ()
+    assert any(node.id == "app.ready" for node in graph.nodes)
+    assert graph.file_hashes == {"app.py": hashlib.sha256(captured).hexdigest()}
 
 
 def test_resolves_project_and_external_imports(graph) -> None:  # type: ignore[no-untyped-def]

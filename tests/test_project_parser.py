@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -10,10 +11,13 @@ import pytest
 import codemble.adapters.discovery as source_discovery
 from codemble.adapters.base import ConceptAnnotation, Graph, Node
 from codemble.adapters.discovery import discover_source_files
+from codemble.adapters.parse_progress import ParseCancelled
 from codemble.adapters.project import ProjectIntake, ProjectParseError, ProjectParser
 from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.graph import build_map
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+POLYGLOT_FIXTURE = Path(__file__).parent / "fixtures" / "polyglot"
 
 
 class _FixtureAdapter:
@@ -106,8 +110,307 @@ class _CollidingAdapter(_FixtureAdapter):
         )
 
 
+class _CountingFixtureAdapter(_FixtureAdapter):
+    def __init__(self) -> None:
+        self.parse_calls = 0
+
+    def parse_files(
+        self,
+        root: Path,
+        files: tuple[Path, ...],
+        *,
+        entrypoint: str | None = None,
+    ) -> Graph:
+        self.parse_calls += 1
+        return super().parse_files(root, files, entrypoint=entrypoint)
+
+
+class _CountingPythonAdapter(PythonAstAdapter):
+    def __init__(self) -> None:
+        self.parse_calls = 0
+
+    def parse_files(
+        self,
+        project_root: Path,
+        files: tuple[Path, ...],
+        *,
+        entrypoint: str | None = None,
+    ) -> Graph:
+        self.parse_calls += 1
+        return super().parse_files(project_root, files, entrypoint=entrypoint)
+
+
 def test_default_project_parser_preserves_the_python_graph() -> None:
     assert ProjectParser().parse(FIXTURE).to_json() == PythonAstAdapter().parse(FIXTURE).to_json()
+
+
+def test_unchanged_project_reuses_exact_derived_evidence(tmp_path: Path) -> None:
+    source = tmp_path / "main.ts"
+    source.write_text("export function main() {}\n", encoding="utf-8")
+    adapter = _CountingFixtureAdapter()
+    parser = ProjectParser((adapter,))
+
+    cold = parser.parse(tmp_path)
+    warm = parser.parse(tmp_path)
+
+    assert adapter.parse_calls == 1
+    assert warm.to_json() == cold.to_json()
+    assert json.dumps(
+        build_map(warm), separators=(",", ":"), ensure_ascii=False
+    ) == json.dumps(build_map(cold), separators=(",", ":"), ensure_ascii=False)
+
+
+def test_cache_retains_no_concept_snippet_source_text(tmp_path: Path) -> None:
+    marker = "CACHE_PRIVATE_MARKER_6f0c1b9d"
+    (tmp_path / "app.py").write_text(
+        f"def main() -> list[int]:  # {marker}\n    return []\n",
+        encoding="utf-8",
+    )
+    parser = ProjectParser((PythonAstAdapter(),))
+
+    cold = parser.parse(tmp_path)
+    assert marker in cold.to_json()
+    assert marker not in repr(parser._evidence_cache._entries)
+
+    warm = parser.parse(tmp_path)
+    assert warm.to_json() == cold.to_json()
+    assert json.dumps(
+        build_map(warm), separators=(",", ":"), ensure_ascii=False
+    ) == json.dumps(build_map(cold), separators=(",", ":"), ensure_ascii=False)
+
+
+def test_polyglot_cache_rehydrates_exact_graph_and_map_snippets() -> None:
+    parser = ProjectParser()
+
+    cold = parser.parse(POLYGLOT_FIXTURE)
+    warm = parser.parse(POLYGLOT_FIXTURE)
+
+    assert warm.to_json() == cold.to_json()
+    assert json.dumps(
+        build_map(warm), separators=(",", ":"), ensure_ascii=False
+    ) == json.dumps(build_map(cold), separators=(",", ":"), ensure_ascii=False)
+
+
+def test_fingerprint_cancellation_stops_before_later_files_and_does_not_poison_cache(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in ("a.ts", "b.ts", "c.ts"):
+        (tmp_path / name).write_text("export const value = 1;\n", encoding="utf-8")
+
+    class _CancelledProgress:
+        cancelled = False
+
+        def stage(self, _stage: str) -> None:
+            return
+
+        def files_total(self, _total: int) -> None:
+            return
+
+        def file_parsed(self) -> None:
+            return
+
+        def detail(self, _detail: str) -> None:
+            return
+
+    progress = _CancelledProgress()
+    original_read_bytes = Path.read_bytes
+    sources_read: list[str] = []
+
+    def read_then_cancel(path: Path) -> bytes:
+        raw = original_read_bytes(path)
+        if path.suffix == ".ts":
+            sources_read.append(path.name)
+            progress.cancelled = True
+        return raw
+
+    monkeypatch.setattr(Path, "read_bytes", read_then_cancel)
+    parser = ProjectParser((_FixtureAdapter(),))
+
+    with pytest.raises(ParseCancelled):
+        parser.parse(tmp_path, progress=progress)
+
+    assert sources_read == ["a.ts"]
+    assert parser.cache_info()["entries"] == 0
+    monkeypatch.setattr(Path, "read_bytes", original_read_bytes)
+    assert parser.parse(tmp_path).to_json() == ProjectParser(
+        (_FixtureAdapter(),)
+    ).parse(tmp_path).to_json()
+
+
+@pytest.mark.parametrize("change", ["edit", "delete", "rename"])
+def test_changed_source_rebuilds_and_matches_a_fresh_parser(
+    tmp_path: Path,
+    change: str,
+) -> None:
+    (tmp_path / "main.ts").write_text(
+        "export function main() {}\n", encoding="utf-8"
+    )
+    helper = tmp_path / "helper.ts"
+    helper.write_text("export const helper = 1;\n", encoding="utf-8")
+    adapter = _CountingFixtureAdapter()
+    parser = ProjectParser((adapter,))
+    parser.parse(tmp_path)
+    parser.parse(tmp_path)
+
+    if change == "edit":
+        helper.write_text("export function main() {}\n", encoding="utf-8")
+    elif change == "delete":
+        helper.unlink()
+    else:
+        helper.rename(tmp_path / "renamed.ts")
+
+    rebuilt = parser.parse(tmp_path)
+    fresh = ProjectParser((_FixtureAdapter(),)).parse(tmp_path)
+
+    assert adapter.parse_calls == 2
+    assert rebuilt.to_json() == fresh.to_json()
+    assert json.dumps(
+        build_map(rebuilt), separators=(",", ":"), ensure_ascii=False
+    ) == json.dumps(build_map(fresh), separators=(",", ":"), ensure_ascii=False)
+    assert parser.cache_info()["evictions"] == 1
+
+
+def test_changed_source_preserves_only_matching_file_evidence(
+    tmp_path: Path,
+) -> None:
+    for name in ("main.ts", "one.ts", "two.ts"):
+        (tmp_path / name).write_text(
+            f"export const {Path(name).stem} = 1;\n",
+            encoding="utf-8",
+        )
+    adapter = _CountingFixtureAdapter()
+    parser = ProjectParser((adapter,))
+
+    parser.parse(tmp_path)
+    before = parser.cache_info()
+    (tmp_path / "two.ts").write_text(
+        "export function changed() {}\n",
+        encoding="utf-8",
+    )
+    rebuilt = parser.parse(tmp_path)
+    after = parser.cache_info()
+
+    assert rebuilt.to_json() == ProjectParser((_FixtureAdapter(),)).parse(
+        tmp_path
+    ).to_json()
+    assert adapter.parse_calls == 2
+    assert before["file_entries"] == after["file_entries"] == 3
+    assert after["partial_file_matches"] - before["partial_file_matches"] == 2
+    assert after["file_invalidations"] - before["file_invalidations"] == 1
+
+
+def test_partial_file_recovery_removes_stale_evidence(tmp_path: Path) -> None:
+    source = tmp_path / "app.py"
+    source.write_text("def broken(:\n", encoding="utf-8")
+    adapter = _CountingPythonAdapter()
+    parser = ProjectParser((adapter,))
+
+    partial = parser.parse(tmp_path)
+    warm_partial = parser.parse(tmp_path)
+    source.write_text("def ready() -> None:\n    pass\n", encoding="utf-8")
+    recovered = parser.parse(tmp_path)
+    fresh = ProjectParser((PythonAstAdapter(),)).parse(tmp_path)
+
+    assert partial.partial_files == ("app.py",)
+    assert warm_partial.to_json() == partial.to_json()
+    assert recovered.partial_files == ()
+    assert recovered.to_json() == fresh.to_json()
+    assert adapter.parse_calls == 2
+
+
+def test_unsupported_sources_refresh_around_a_supported_cache_hit(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "main.ts").write_text(
+        "export function main() {}\n", encoding="utf-8"
+    )
+    adapter = _CountingFixtureAdapter()
+    parser = ProjectParser((adapter,))
+    parser.parse(tmp_path)
+    (tmp_path / "service.go").write_text("package main\n", encoding="utf-8")
+
+    refreshed = parser.parse(tmp_path)
+
+    assert adapter.parse_calls == 1
+    assert [row.extension for row in refreshed.unsupported_sources] == [".go"]
+
+
+def test_cache_identity_includes_project_root_and_adapter_version(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "first"
+    second_root = tmp_path / "second"
+    first_root.mkdir()
+    second_root.mkdir()
+    for root in (first_root, second_root):
+        (root / "main.ts").write_text(
+            "export function main() {}\n", encoding="utf-8"
+        )
+    adapter = _CountingFixtureAdapter()
+    parser = ProjectParser((adapter,))
+
+    first = parser.parse(first_root)
+    second = parser.parse(second_root)
+    adapter.evidence_version = "2"
+    versioned = parser.parse(second_root)
+
+    assert adapter.parse_calls == 3
+    assert first.project_root == str(first_root.resolve())
+    assert second.project_root == versioned.project_root == str(second_root.resolve())
+    assert versioned.to_json() == ProjectParser((_FixtureAdapter(),)).parse(
+        second_root
+    ).to_json()
+
+
+def test_dialect_change_rebuilds_and_matches_a_fresh_parser(tmp_path: Path) -> None:
+    source = tmp_path / "main.ts"
+    source.write_text("export function main() {}\n", encoding="utf-8")
+    adapter = _CountingFixtureAdapter()
+    adapter.file_extensions = frozenset({".js", ".ts"})
+    parser = ProjectParser((adapter,))
+    parser.parse(tmp_path)
+    source.rename(tmp_path / "main.js")
+
+    rebuilt = parser.parse(tmp_path)
+    fresh_adapter = _FixtureAdapter()
+    fresh_adapter.file_extensions = frozenset({".js", ".ts"})
+    fresh = ProjectParser((fresh_adapter,)).parse(tmp_path)
+
+    assert adapter.parse_calls == 2
+    assert rebuilt.to_json() == fresh.to_json()
+    assert json.dumps(
+        build_map(rebuilt), separators=(",", ":"), ensure_ascii=False
+    ) == json.dumps(build_map(fresh), separators=(",", ":"), ensure_ascii=False)
+
+
+def test_discovery_configuration_change_removes_stale_facts_and_matches_fresh(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "main.ts").write_text(
+        "export function main() {}\n", encoding="utf-8"
+    )
+    generated = tmp_path / "generated"
+    generated.mkdir()
+    (generated / "stale.ts").write_text(
+        "export const stale = true;\n", encoding="utf-8"
+    )
+    adapter = _CountingFixtureAdapter()
+    parser = ProjectParser((adapter,))
+    assert len(parser.parse(tmp_path).nodes) == 2
+    adapter.ignored_directories = frozenset({"generated"})
+
+    rebuilt = parser.parse(tmp_path)
+    fresh_adapter = _FixtureAdapter()
+    fresh_adapter.ignored_directories = frozenset({"generated"})
+    fresh = ProjectParser((fresh_adapter,)).parse(tmp_path)
+
+    assert adapter.parse_calls == 2
+    assert [node.file for node in rebuilt.nodes] == ["main.ts"]
+    assert rebuilt.to_json() == fresh.to_json()
+    assert json.dumps(
+        build_map(rebuilt), separators=(",", ":"), ensure_ascii=False
+    ) == json.dumps(build_map(fresh), separators=(",", ":"), ensure_ascii=False)
 
 
 def test_project_intake_reuses_discovered_file_evidence(monkeypatch: pytest.MonkeyPatch) -> None:

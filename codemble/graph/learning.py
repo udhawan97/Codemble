@@ -13,7 +13,7 @@ from collections import deque
 from pathlib import Path
 
 from codemble.adapters.base import Edge, Graph, Node, RoleEvidence
-from codemble.graph.impact import blast_radius
+from codemble.graph.impact import BlastRadiusIndex
 
 JOURNEY_SCHEMA_VERSION = 1
 MAX_PRESENTED_STEPS = 32
@@ -30,7 +30,12 @@ _ROLE_ORDER = {
 class LearningJourneyIndex:
     """Per-graph indexes for repeated local study requests."""
 
-    def __init__(self, graph: Graph) -> None:
+    def __init__(
+        self,
+        graph: Graph,
+        *,
+        impact_index: BlastRadiusIndex | None = None,
+    ) -> None:
         self.graph = graph
         self.nodes = {node.id: node for node in graph.nodes}
         self.modules_by_region: dict[str, Node] = {}
@@ -39,6 +44,29 @@ class LearningJourneyIndex:
                 self.modules_by_region.setdefault(node.region, node)
         self.certain_imports = _adjacency(graph.edges, self.nodes, "import", certain=True)
         self.certain_calls = _adjacency(graph.edges, self.nodes, "call", certain=True)
+        self.reverse_certain_imports = _reverse_adjacency(self.certain_imports)
+        self.reverse_certain_calls = _reverse_adjacency(self.certain_calls)
+        self.certain_pairs = frozenset(
+            (edge.src, edge.dst, edge.kind)
+            for edge in graph.edges
+            if edge.certain and not edge.external
+        )
+        self.possible_edges = tuple(
+            edge
+            for edge in graph.edges
+            if not edge.certain
+            and not edge.external
+            and edge.src in self.nodes
+            and edge.dst in self.nodes
+        )
+        external_by_source: dict[str, list[Edge]] = {}
+        for edge in graph.edges:
+            if edge.external and edge.src in self.nodes:
+                external_by_source.setdefault(edge.src, []).append(edge)
+        self.external_by_source = {
+            source: tuple(edges) for source, edges in external_by_source.items()
+        }
+        self.impact = impact_index or BlastRadiusIndex(graph)
         self.fingerprint_seed = {
             "schema": JOURNEY_SCHEMA_VERSION,
             "project_root": Path(graph.project_root).resolve().as_posix(),
@@ -235,9 +263,11 @@ class LearningJourneyIndex:
         return result
 
     def _possible_frontier(self, target: Node) -> tuple[list[dict[str, object]], int]:
-        call_ancestors = _reverse_reachable(target.id, self.certain_calls)
+        call_ancestors = _reverse_reachable(target.id, self.reverse_certain_calls)
         target_module = self._module_for(target)
-        import_ancestors = _reverse_reachable(target_module.id, self.certain_imports)
+        import_ancestors = _reverse_reachable(
+            target_module.id, self.reverse_certain_imports
+        )
         home = self.nodes.get(self.graph.selected_entrypoint or "")
         if home is None:
             return [], 0
@@ -250,16 +280,9 @@ class LearningJourneyIndex:
             if surface is None or self._module_for(surface).id not in certain_import_sources:
                 continue
             certain_runtime_sources.update(_reachable(surface.id, self.certain_calls))
-        certain_pairs = {
-            (edge.src, edge.dst, edge.kind)
-            for edge in self.graph.edges
-            if edge.certain and not edge.external
-        }
         entries: list[dict[str, object]] = []
-        for edge in self.graph.edges:
-            if edge.certain or edge.external or edge.src not in self.nodes or edge.dst not in self.nodes:
-                continue
-            if (edge.src, edge.dst, edge.kind) in certain_pairs:
+        for edge in self.possible_edges:
+            if (edge.src, edge.dst, edge.kind) in self.certain_pairs:
                 continue
             relevant = (
                 edge.kind == "call"
@@ -302,20 +325,21 @@ class LearningJourneyIndex:
     ) -> list[dict[str, object]]:
         route_nodes = {str(step["node_id"]) for step in canonical}
         entries = []
-        for edge in self.graph.edges:
-            if not edge.external or edge.src not in route_nodes or edge.src not in self.nodes:
+        for source_id in route_nodes:
+            source = self.nodes.get(source_id)
+            if source is None:
                 continue
-            source = self.nodes[edge.src]
-            entries.append(
-                {
-                    "source_node_id": edge.src,
-                    "external_target": edge.dst,
-                    "relation": edge.kind,
-                    "certain": edge.certain,
-                    "observation": _citation(source.file, edge.lineno),
-                    "declaration": None,
-                }
-            )
+            for edge in self.external_by_source.get(source_id, ()):
+                entries.append(
+                    {
+                        "source_node_id": edge.src,
+                        "external_target": edge.dst,
+                        "relation": edge.kind,
+                        "certain": edge.certain,
+                        "observation": _citation(source.file, edge.lineno),
+                        "declaration": None,
+                    }
+                )
         return sorted(
             entries,
             key=lambda item: (
@@ -327,7 +351,8 @@ class LearningJourneyIndex:
 
     def _verification_candidates(self, target_id: str) -> list[dict[str, object]]:
         affects = {
-            str(item["node_id"]): item for item in blast_radius(self.graph, target_id)["affects"]
+            str(item["node_id"]): item
+            for item in self.impact.build(target_id)["affects"]
         }
         candidates = []
         for evidence in self.graph.role_evidence:
@@ -407,11 +432,22 @@ def _path(start: str, target: str, adjacency: dict[str, tuple[Edge, ...]]) -> li
     return None
 
 
-def _reverse_reachable(target: str, adjacency: dict[str, tuple[Edge, ...]]) -> set[str]:
+def _reverse_adjacency(
+    adjacency: dict[str, tuple[Edge, ...]],
+) -> dict[str, tuple[str, ...]]:
     reverse: dict[str, set[str]] = {}
     for edges in adjacency.values():
         for edge in edges:
             reverse.setdefault(edge.dst, set()).add(edge.src)
+    return {
+        target: tuple(sorted(sources)) for target, sources in reverse.items()
+    }
+
+
+def _reverse_reachable(
+    target: str,
+    reverse: dict[str, tuple[str, ...]],
+) -> set[str]:
     reached = {target}
     queue = deque([target])
     while queue:

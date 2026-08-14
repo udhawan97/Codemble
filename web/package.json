@@ -12,6 +12,7 @@
     "check:space": "node scripts/check_space_budget.mjs",
     "check:escape": "node scripts/check_escape_surfaces.mjs",
     "check:userflows": "node scripts/check_userflow_repairs.mjs",
+    "check:large-project": "node scripts/check_large_project.mjs",
     "benchmark:projection": "node scripts/benchmark_learner_projection.mjs"
   },
   "dependencies": {

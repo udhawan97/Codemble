@@ -5,6 +5,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- A bounded, thread-safe, process-memory cache of source-free per-file graph
+  evidence behind one long-lived `ProjectParser`, with exact root, path,
+  content, dialect, adapter/parser/grammar version, and discovery-configuration
+  identity. Its byte budget uses deterministic canonical-JSON accounting rather
+  than claiming an exact RSS ceiling. It writes no disk cache and starts no
+  watcher or background parse. Bounded concept snippets are reconstructed
+  transiently from hash-verified current bytes rather than retained.
+- Private/source-free 1,000/5,000/10,000 cold, no-change, and one-file-change
+  benchmark receipts with exact fresh Graph/Map equivalence; a reproducible
+  10,000-node Study scan-control receipt with 20 exact payload digests; and a
+  seven-language and mixed-project semantic oracle that detects bounded
+  representative invented facts and omissions separately from throughput.
+- A repeatable complete 5,000-module Chromium/WebKit gate and a public parser
+  evidence/scale record with exact pinned open-source inspiration and license
+  credit. Chromium passed; WebKit missed the interaction budget, so the normal
+  cap intentionally remains 1,000.
+
+### Changed
+- Project activation now injects and reuses one parser across explicit release
+  and reactivation. Any changed adapter snapshot still takes the conservative
+  full-parse path before authoritative global resolution.
+- Deterministic layout/finalization route indexes replace repeated scans without
+  changing Graph or Map bytes. Study, impact, and learning journeys share
+  immutable indexes after a measured material latency improvement with exact
+  payload equivalence.
+- The next scale milestone is a canvas-backed complete Map followed by the same
+  two-engine gate; logical LOD that hides modules is not an accepted shortcut.
+
+### Fixed
+- Python hashing and AST parsing now consume the same captured file bytes, so a
+  mid-read edit cannot pair one digest with another source snapshot.
+- Fingerprinting checks cancellation between source reads without advancing the
+  visible adapter progress counter. Validated evidence remains unpublished
+  until the live project is accepted under the same lock, so a reset cannot
+  make the cache read the remaining project or retain a candidate cancelled
+  after extraction.
+- Successful folder navigation clears obsolete scale guidance; failed or stale
+  navigation preserves the last successful folder and its guidance.
+- Finder arrival focus now waits for the selected module context to commit and
+  for native dialog focus restoration, including on a complete 5,000-box Map.
+
 ## [0.18.0] - 2026-08-13
 
 ### Added

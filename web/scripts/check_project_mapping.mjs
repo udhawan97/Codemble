@@ -147,6 +147,87 @@ assert.equal(
   mapping.dispose();
 }
 
+for (const destination of [
+  "/home/u/demo/core",
+  "/home/u",
+  "/home/u/demo/typed",
+]) {
+  const mapping = createProjectMapping({
+    adapter: pickerAdapter({
+      selection: {
+        state: "scale",
+        root: "/home/u/demo",
+        count: 6,
+        cap: 3,
+        scopes: [
+          { path: "/home/u/demo/api", count: 4 },
+          { path: "/home/u/demo/core", count: 2 },
+        ],
+      },
+      browsePicker: async (path) => ({
+        path: path ?? "/home/u",
+        parent: "/home/u",
+        entries: [],
+      }),
+    }),
+  });
+
+  await mapping.start();
+  await mapping.select("/home/u/demo");
+  assert.equal(mapping.getSnapshot().picker.scale.count, 6);
+  await mapping.browse(destination);
+  assert.equal(
+    mapping.getSnapshot().picker.scale,
+    null,
+    `successful navigation to ${destination} retires obsolete scale guidance`,
+  );
+  mapping.dispose();
+}
+
+{
+  let resolveSlow;
+  const slow = new Promise((resolve) => {
+    resolveSlow = resolve;
+  });
+  const mapping = createProjectMapping({
+    adapter: pickerAdapter({
+      selection: {
+        state: "scale",
+        root: "/home/u/demo",
+        count: 6,
+        cap: 3,
+        scopes: [],
+      },
+      browsePicker: async (path) => {
+        if (path === "/slow") return slow;
+        if (path === "/failed") throw new TypeError("Failed to fetch");
+        return { path: path ?? "/home/u", parent: "/home/u", entries: [] };
+      },
+    }),
+  });
+
+  await mapping.start();
+  await mapping.select("/home/u/demo");
+  const scale = mapping.getSnapshot().picker.scale;
+  await mapping.browse("/failed");
+  assert.equal(
+    mapping.getSnapshot().picker.scale,
+    scale,
+    "a failed browse keeps the last successful scale guidance",
+  );
+
+  const staleBrowse = mapping.browse("/slow");
+  await mapping.browse("/failed");
+  resolveSlow({ path: "/slow", parent: "/", entries: [] });
+  await staleBrowse;
+  assert.equal(
+    mapping.getSnapshot().picker.scale,
+    scale,
+    "a stale successful response cannot retire current scale guidance",
+  );
+  mapping.dispose();
+}
+
 {
   const timers = createClock();
   const mapping = createProjectMapping({

@@ -3,9 +3,10 @@
 ``LanguageAdapter`` keeps its four public methods exactly as they are.  A
 parse that wants progress binds a hook for its own thread with
 ``reporting_files``; each adapter's private per-file helper calls
-``note_file_parsed`` once per source file it finishes reading.  That single
-call site is also the only cancellation check point, so "between files" means
-exactly one place in each adapter.
+``note_file_parsed`` once per source file it finishes reading. The cache's
+pre-parse fingerprint pass uses a separate cancellation-only checkpoint, so it
+cannot read the remaining project after a reset or inflate the visible file
+counter.
 """
 
 from __future__ import annotations
@@ -70,6 +71,28 @@ def note_file_parsed() -> None:
 
 
 @contextmanager
+def reporting_cancellation(
+    cancelled: Callable[[], bool] | None,
+) -> Iterator[None]:
+    """Bind a cancellation predicate without changing visible progress."""
+
+    previous = getattr(_local, "cancelled", None)
+    _local.cancelled = cancelled
+    try:
+        yield
+    finally:
+        _local.cancelled = previous
+
+
+def check_parse_cancelled() -> None:
+    """Stop at a private file boundary when the bound parse was cancelled."""
+
+    cancelled = getattr(_local, "cancelled", None)
+    if cancelled is not None and cancelled():
+        raise ParseCancelled("the learner reset the picker during this parse")
+
+
+@contextmanager
 def reporting_detail(on_detail: Callable[[str], None] | None) -> Iterator[None]:
     """Bind ``on_detail`` for this thread for the duration of one parse.
 
@@ -96,8 +119,10 @@ def note_detail(detail: str) -> None:
 __all__ = [
     "ParseCancelled",
     "ParseProgress",
+    "check_parse_cancelled",
     "note_detail",
     "note_file_parsed",
+    "reporting_cancellation",
     "reporting_detail",
     "reporting_files",
 ]

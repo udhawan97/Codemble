@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import builtins
 import hashlib
+import io
 import tokenize
 from collections import defaultdict
 from dataclasses import dataclass, replace
@@ -834,8 +835,8 @@ def _parse_file(path: Path, project_root: Path) -> _ParsedFile:
     digest = hashlib.sha256(raw).hexdigest()
     relative = path.relative_to(project_root)
     try:
-        with tokenize.open(path) as source_file:
-            source = source_file.read()
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
+        source = raw.decode(encoding)
         tree: ast.Module | None = ast.parse(source, filename=str(path))
     except (SyntaxError, UnicodeDecodeError):
         source = raw.decode("utf-8", errors="replace")

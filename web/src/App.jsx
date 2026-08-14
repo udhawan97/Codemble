@@ -41,6 +41,7 @@ export function App() {
   const modulesTriggerRef = useRef(null);
   const finderTriggerRef = useRef(null);
   const finderReturnRef = useRef(null);
+  const finderArrivalRef = useRef(false);
   const chartTriggerRef = useRef(null);
   // The control that opens the quiz. It stays on screen behind the panel, so
   // closing the quiz has somewhere obvious to put focus -- and every other
@@ -199,6 +200,26 @@ export function App() {
     studyError,
   } = state;
 
+  // A large complete Map can take longer than one animation frame to commit.
+  // Finder used to ask for focus in requestAnimationFrame immediately after
+  // dispatch, which raced that commit and left keyboard focus on <body>. A
+  // layout effect runs only after the selected module context and its ref are
+  // both in the DOM; its zero-delay task then lands after native dialog focus
+  // restoration, independent of project size or renderer frame rate.
+  useLayoutEffect(() => {
+    if (
+      !finderArrivalRef.current ||
+      finderOpen ||
+      level !== LEVELS.SYSTEM ||
+      !systemCopyRef.current
+    ) {
+      return;
+    }
+    setTimeout(() => systemCopyRef.current?.focus(), 0);
+    finderArrivalRef.current = false;
+    finderReturnRef.current = null;
+  }, [finderOpen, level, region?.id]);
+
   const firstFlightStops = useMemo(() => firstFlightPlan(graph), [graph]);
   const firstFlightStop = firstFlightStops[firstFlightIndex] ?? null;
   const firstFlightActive = firstFlightIndex !== null && firstFlightStop !== null;
@@ -262,14 +283,19 @@ export function App() {
   }
 
   function closeFinder() {
+    // Removing a selected modal can emit its native close event after
+    // GO_TO_REGION already committed the arrival. That is not a cancellation:
+    // preserving the flag lets the layout effect focus the new module context.
+    if (finderArrivalRef.current) return;
+    finderArrivalRef.current = false;
     session.dispatch({ type: "SET_FINDER_OPEN", open: false });
     restoreRailFocus(finderReturnRef.current, finderTriggerRef);
     finderReturnRef.current = null;
   }
 
   function goFromFinder(regionId) {
+    finderArrivalRef.current = true;
     session.dispatch({ type: "GO_TO_REGION", regionId });
-    requestAnimationFrame(() => systemCopyRef.current?.focus());
   }
 
   function followHint() {

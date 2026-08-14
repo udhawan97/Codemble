@@ -17,7 +17,11 @@ technical completion.
 
 ## NEXT — scale
 
-Level-of-detail rendering and clustering for larger repos.
+A canvas-backed complete Map that keeps every module represented, searchable,
+keyboard reachable, and recoverable. The public 1,000-file cap moves only after
+the complete 5,000-module view passes the same backend, Chromium, and WebKit
+budgets. The current evidence and failed WebKit gate are recorded in
+[Parser evidence and scale](../parser-scale/).
 
 ## LATER — reach
 

@@ -29,6 +29,59 @@ from codemble.adapters.base import Edge, Graph, Node
 DEFAULT_MAX_DEPTH = 3
 
 
+class BlastRadiusIndex:
+    """Immutable per-graph adjacency for repeated impact requests."""
+
+    def __init__(self, graph: Graph) -> None:
+        self._nodes = {node.id: node for node in graph.nodes}
+        inbound: dict[str, list[Edge]] = {}
+        outbound: dict[str, list[Edge]] = {}
+        for edge in graph.edges:
+            # An external edge leaves the project, so there is nothing beyond
+            # it to walk and no project source location to cite.
+            if (
+                edge.external
+                or edge.dst not in self._nodes
+                or edge.src not in self._nodes
+            ):
+                continue
+            inbound.setdefault(edge.dst, []).append(edge)
+            outbound.setdefault(edge.src, []).append(edge)
+        self._inbound = inbound
+        self._outbound = outbound
+
+    def build(
+        self,
+        node_id: str,
+        max_depth: int = DEFAULT_MAX_DEPTH,
+    ) -> dict[str, object]:
+        """Return the exact public impact payload from retained graph facts."""
+
+        if node_id not in self._nodes:
+            raise KeyError(node_id)
+        affects, affects_cut = _walk(
+            node_id,
+            self._inbound,
+            self._nodes,
+            max_depth,
+            follow=_source_of,
+        )
+        depends, depends_cut = _walk(
+            node_id,
+            self._outbound,
+            self._nodes,
+            max_depth,
+            follow=_target_of,
+        )
+        return {
+            "node_id": node_id,
+            "max_depth": max_depth,
+            "affects": affects,
+            "depends_on": depends,
+            "truncated": affects_cut or depends_cut,
+        }
+
+
 def blast_radius(
     graph: Graph, node_id: str, max_depth: int = DEFAULT_MAX_DEPTH
 ) -> dict[str, object]:
@@ -39,31 +92,7 @@ def blast_radius(
     what breaking would break it.
     """
 
-    nodes = {node.id: node for node in graph.nodes}
-    if node_id not in nodes:
-        raise KeyError(node_id)
-
-    inbound: dict[str, list[Edge]] = {}
-    outbound: dict[str, list[Edge]] = {}
-    for edge in graph.edges:
-        # An external edge leaves the project, so there is nothing beyond it to
-        # walk and no source file to cite. It is real, and it is reported in the
-        # study panel's own connections list -- just not here, where every entry
-        # has to be somewhere the learner can actually go.
-        if edge.external or edge.dst not in nodes or edge.src not in nodes:
-            continue
-        inbound.setdefault(edge.dst, []).append(edge)
-        outbound.setdefault(edge.src, []).append(edge)
-
-    affects, affects_cut = _walk(node_id, inbound, nodes, max_depth, follow=_source_of)
-    depends, depends_cut = _walk(node_id, outbound, nodes, max_depth, follow=_target_of)
-    return {
-        "node_id": node_id,
-        "max_depth": max_depth,
-        "affects": affects,
-        "depends_on": depends,
-        "truncated": affects_cut or depends_cut,
-    }
+    return BlastRadiusIndex(graph).build(node_id, max_depth)
 
 
 def _source_of(edge: Edge) -> str:
@@ -148,4 +177,4 @@ def _reach(
     return seen, truncated
 
 
-__all__ = ["DEFAULT_MAX_DEPTH", "blast_radius"]
+__all__ = ["DEFAULT_MAX_DEPTH", "BlastRadiusIndex", "blast_radius"]

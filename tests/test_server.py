@@ -473,10 +473,10 @@ def test_a_failed_parse_becomes_an_error_state_with_an_in_app_message(
     from codemble.adapters.project import ProjectParser
     from codemble.server.app import PickerConfig
 
-    def exploding_parse(self, source, **kwargs):  # type: ignore[no-untyped-def]
+    def exploding_parse_candidate(self, source, **kwargs):  # type: ignore[no-untyped-def]
         raise RuntimeError("tree-sitter exploded")
 
-    monkeypatch.setattr(ProjectParser, "parse", exploding_parse)
+    monkeypatch.setattr(ProjectParser, "parse_candidate", exploding_parse_candidate)
     client = TestClient(
         create_app(
             web_dist=tmp_path / "missing",

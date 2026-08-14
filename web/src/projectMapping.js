@@ -105,7 +105,13 @@ export function createProjectMapping({
         snapshot.phase === "picking"
       ) {
         commit({
-          picker: { ...snapshot.picker, ...listing, error: "", retryPath: null },
+          picker: {
+            ...snapshot.picker,
+            ...listing,
+            error: "",
+            retryPath: null,
+            scale: null,
+          },
         });
       }
     } catch (requestError) {

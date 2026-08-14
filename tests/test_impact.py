@@ -16,7 +16,7 @@ from pathlib import Path
 
 from codemble.adapters.base import Edge, Graph, Node
 from codemble.adapters.python_ast import PythonAstAdapter
-from codemble.graph.impact import blast_radius
+from codemble.graph.impact import BlastRadiusIndex, blast_radius
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 
@@ -182,6 +182,14 @@ def test_the_result_is_deterministic() -> None:
     graph = PythonAstAdapter().parse(FIXTURE)
 
     assert blast_radius(graph, "app.main") == blast_radius(graph, "app.main")
+
+
+def test_immutable_index_preserves_every_public_impact_payload() -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    index = BlastRadiusIndex(graph)
+
+    for node in graph.nodes:
+        assert index.build(node.id) == blast_radius(graph, node.id)
 
 
 def test_an_unknown_node_is_refused() -> None:

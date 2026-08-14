@@ -1,0 +1,304 @@
+{
+  "schema_version": 1,
+  "priority_policy": [
+    "invented-certain-facts",
+    "false-role-home-or-journey",
+    "missing-certain-journey-structure",
+    "bounded-precision-or-coverage"
+  ],
+  "cases": [
+    {
+      "id": "python",
+      "adapter": "python",
+      "fixture": "sampleproj",
+      "languages": ["python"],
+      "partial_files": ["broken.py"],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 4,
+        "selected": "app",
+        "required": [["app", 0], ["app.main", 1], ["runner.__main__", 3]]
+      },
+      "roles": {
+        "count": 1,
+        "required": [["app.main", "application-entry", "python.entrypoint.main", "app.py", 8, 8]]
+      },
+      "edge_sources": ["app.main"],
+      "edges": [
+        ["app.main", "external:builtins.print", "call", false, 12, true],
+        ["app.main", "external:json.dumps", "call", false, 12, true],
+        ["app.main", "pkg.helpers.log", "call", true, 11, false],
+        ["app.main", "pkg.service.Service", "call", true, 9, false],
+        ["app.main", "pkg.service.Service.run", "call", false, 13, false],
+        ["app.main", "pkg.util.greet", "call", true, 10, false]
+      ],
+      "concept_nodes": ["app.main"],
+      "concepts": [
+        ["app.main", "python", "type-hint", 8, 8, "def main() -> None:"]
+      ],
+      "journey": ["app.main", "complete", "complete", null],
+      "known_gaps": [
+        "Measure whether assignment from Service() can prove service.run() without new false-positive oracle failures."
+      ]
+    },
+    {
+      "id": "javascript",
+      "adapter": "javascript",
+      "fixture": "polyglot/src/legacy.js",
+      "languages": ["javascript"],
+      "partial_files": [],
+      "unsupported_sources": [],
+      "entrypoints": {"count": 0, "selected": null, "required": []},
+      "roles": {"count": 0, "required": []},
+      "edge_sources": ["javascript:legacy.js"],
+      "edges": [
+        ["javascript:legacy.js", "external:./local.js", "import", true, 1, true]
+      ],
+      "concept_nodes": ["javascript:legacy.js"],
+      "concepts": [
+        ["javascript:legacy.js", "javascript", "destructuring", 1, 1, "const { legacyHelper } = require(\"./local.js\");"],
+        ["javascript:legacy.js", "javascript", "module-syntax", 3, 5, "export function run(value) {"]
+      ],
+      "journey": ["javascript:legacy.js", "broken", "broken", "home-not-selected"],
+      "known_gaps": []
+    },
+    {
+      "id": "typescript",
+      "adapter": "javascript",
+      "fixture": "polyglot/src/main.ts",
+      "languages": ["typescript"],
+      "partial_files": [],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 2,
+        "selected": "typescript:main.ts",
+        "required": [["typescript:main.ts", 0], ["typescript:main.ts::main", 1]]
+      },
+      "roles": {
+        "count": 1,
+        "required": [["typescript:main.ts::main", "application-entry", "typescript.entrypoint.main", "main.ts", 4, 4]]
+      },
+      "edge_sources": ["typescript:main.ts::main"],
+      "edges": [
+        ["typescript:main.ts::main", "external:./util.js.helper", "call", false, 5, true],
+        ["typescript:main.ts::main", "external:./widget.Widget", "call", false, 6, true],
+        ["typescript:main.ts::main", "external:new Widget().run", "call", false, 6, true]
+      ],
+      "concept_nodes": ["typescript:main.ts::main"],
+      "concepts": [
+        ["typescript:main.ts::main", "typescript", "async-await", 4, 7, "export async function main(input: string): Promise<string> {"],
+        ["typescript:main.ts::main", "typescript", "generic", 4, 4, "export async function main(input: string): Promise<string> {"],
+        ["typescript:main.ts::main", "typescript", "type-annotation", 4, 4, "export async function main(input: string): Promise<string> {"],
+        ["typescript:main.ts::main", "typescript", "async-await", 5, 5, "const value = await helper(input);"]
+      ],
+      "journey": ["typescript:main.ts::main", "complete", "complete", null],
+      "known_gaps": []
+    },
+    {
+      "id": "go",
+      "adapter": "go",
+      "fixture": "go_sample",
+      "languages": ["go"],
+      "partial_files": ["internal/report/broken.go"],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 4,
+        "selected": "go:cmd/app/main.go",
+        "required": [["go:cmd/app/main.go", 0], ["go:internal/store/store_test.go::TestMain", 2]]
+      },
+      "roles": {
+        "count": 2,
+        "required": [
+          ["go:cmd/app/main.go::main", "application-entry", "go.entrypoint.main", "cmd/app/main.go", 10, 10],
+          ["go:internal/store/store_test.go::TestMain", "test", "go.test.function-name", "internal/store/store_test.go", 8, 8]
+        ]
+      },
+      "edge_sources": ["go:cmd/app/main.go::main"],
+      "edges": [
+        ["go:cmd/app/main.go::main", "external:fmt.Println", "call", false, 13, true],
+        ["go:cmd/app/main.go::main", "external:fmt.Println", "call", false, 15, true],
+        ["go:cmd/app/main.go::main", "go:internal/report/report.go::Render", "call", true, 15, false],
+        ["go:cmd/app/main.go::main", "go:internal/store/store.go::New", "call", true, 11, false],
+        ["go:cmd/app/main.go::main", "unresolved:go:cmd/app/main.go:s.Save", "call", false, 12, false]
+      ],
+      "concept_nodes": ["go:internal/report/report.go::collect"],
+      "concepts": [
+        ["go:internal/report/report.go::collect", "go", "channel", 16, 16, "out := make(chan string, 1)"],
+        ["go:internal/report/report.go::collect", "go", "goroutine", 17, 17, "go emit(out, s.Count())"],
+        ["go:internal/report/report.go::collect", "go", "channel", 18, 18, "value := <-out"]
+      ],
+      "journey": ["go:cmd/app/main.go::main", "complete", "complete", null],
+      "known_gaps": [
+        "Measure constructor-return binding for s := store.New() before resolving s.Save()."
+      ]
+    },
+    {
+      "id": "java",
+      "adapter": "java",
+      "fixture": "java_sample",
+      "languages": ["java"],
+      "partial_files": ["src/com/example/app/Broken.java"],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 5,
+        "selected": "java:src/com/example/app/App.java",
+        "required": [["java:src/com/example/app/App.java", 0], ["java:test/com/example/app/AppTest.java::AppTest", 4]]
+      },
+      "roles": {
+        "count": 2,
+        "required": [
+          ["java:src/com/example/app/App.java::App.main", "application-entry", "java.entrypoint.main", "src/com/example/app/App.java", 19, 19],
+          ["java:test/com/example/app/AppTest.java::AppTest.startsUp", "test", "java.junit.test", "test/com/example/app/AppTest.java", 7, 7]
+        ]
+      },
+      "edge_sources": ["java:src/com/example/app/App.java::App.start"],
+      "edges": [
+        ["java:src/com/example/app/App.java::App.start", "external:mystery.compute", "call", false, 29, true],
+        ["java:src/com/example/app/App.java::App.start", "java:src/com/example/app/App.java::App.tally", "call", true, 25, false],
+        ["java:src/com/example/app/App.java::App.start", "java:src/com/example/util/Formatter.java::Formatter.wrap", "call", false, 26, false],
+        ["java:src/com/example/app/App.java::App.start", "java:src/com/example/util/Helper.java::Helper.shout", "call", true, 27, false],
+        ["java:src/com/example/app/App.java::App.start", "java:src/com/example/util/Helper.java::Helper.shout", "call", true, 28, false],
+        ["java:src/com/example/app/App.java::App.start", "unresolved:java:src/com/example/app/App.java:super.toString", "call", false, 30, false]
+      ],
+      "concept_nodes": ["java:src/com/example/model/Catalog.java::Catalog.names"],
+      "concepts": [
+        ["java:src/com/example/model/Catalog.java::Catalog.names", "java", "annotation", 18, 18, "@Deprecated"],
+        ["java:src/com/example/model/Catalog.java::Catalog.names", "java", "generic", 19, 19, "public List<String> names() {"],
+        ["java:src/com/example/model/Catalog.java::Catalog.names", "java", "lambda", 20, 20, "return shapes.stream().map(shape -> shape.describe()).toList();"],
+        ["java:src/com/example/model/Catalog.java::Catalog.names", "java", "stream", 20, 20, "return shapes.stream().map(shape -> shape.describe()).toList();"]
+      ],
+      "journey": ["java:src/com/example/app/App.java::App.main", "complete", "complete", null],
+      "known_gaps": []
+    },
+    {
+      "id": "rust",
+      "adapter": "rust",
+      "fixture": "rust_sample",
+      "languages": ["rust"],
+      "partial_files": ["src/broken.rs"],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 4,
+        "selected": "rust:src/main.rs::main",
+        "required": [["rust:src/main.rs::main", 0], ["rust:src/main.rs::main_reports_failures", 3]]
+      },
+      "roles": {
+        "count": 2,
+        "required": [
+          ["rust:src/main.rs::main", "application-entry", "rust.entrypoint.main", "src/main.rs", 7, 7],
+          ["rust:src/main.rs::main_reports_failures", "test", "rust.attribute.test", "src/main.rs", 17, 17]
+        ]
+      },
+      "edge_sources": ["rust:src/main.rs::main"],
+      "edges": [
+        ["rust:src/main.rs::main", "rust:src/util.rs::Formatter#impl.new", "call", true, 8, false],
+        ["rust:src/main.rs::main", "rust:src/util.rs::helper", "call", true, 11, false],
+        ["rust:src/main.rs::main", "unresolved:rust:src/main.rs:render", "call", false, 9, false]
+      ],
+      "concept_nodes": ["rust:src/main.rs::main"],
+      "concepts": [
+        ["rust:src/main.rs::main", "rust", "macro", 10, 10, "println!(\"{}\", banner);"],
+        ["rust:src/main.rs::main", "rust", "borrowing", 11, 11, "match helper(&Mode::Loud) {"],
+        ["rust:src/main.rs::main", "rust", "pattern-matching", 11, 14, "match helper(&Mode::Loud) {"],
+        ["rust:src/main.rs::main", "rust", "macro", 12, 12, "Ok(text) => println!(\"{}\", text),"],
+        ["rust:src/main.rs::main", "rust", "macro", 13, 13, "Err(error) => eprintln!(\"{}\", error),"]
+      ],
+      "journey": ["rust:src/main.rs::main", "complete", "complete", null],
+      "known_gaps": [
+        "Measure constructed Formatter receiver resolution for formatter.render() with trait dispatch kept possible where required."
+      ]
+    },
+    {
+      "id": "csharp",
+      "adapter": "csharp",
+      "fixture": "csharp_sample",
+      "languages": ["csharp"],
+      "partial_files": ["src/Broken.cs"],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 2,
+        "selected": "csharp:src/Program.cs::Acme.App.Program.Main",
+        "required": [
+          ["csharp:src/Program.cs::Acme.App.Program.Main", 0],
+          ["csharp:src/Tests/StoreTests.cs::Acme.Tests.StoreTests", 9]
+        ]
+      },
+      "roles": {
+        "count": 2,
+        "required": [
+          ["csharp:src/Program.cs::Acme.App.Program.Main", "application-entry", "csharp.entrypoint.main", "src/Program.cs", 19, 19],
+          ["csharp:src/Tests/StoreTests.cs::Acme.Tests.StoreTests.SavesWithoutThrowing", "test", "csharp.attribute.fact", "src/Tests/StoreTests.cs", 8, 8]
+        ]
+      },
+      "edge_sources": ["csharp:src/Program.cs::Acme.App.Program.Main"],
+      "edges": [
+        ["csharp:src/Program.cs::Acme.App.Program.Main", "csharp:src/Core/Store.cs::Acme.Core.MemoryStore", "call", true, 21, false],
+        ["csharp:src/Program.cs::Acme.App.Program.Main", "csharp:src/Program.cs::Acme.App.Program.Program", "call", true, 21, false],
+        ["csharp:src/Program.cs::Acme.App.Program.Main", "csharp:src/Program.cs::Acme.App.Program.Run", "call", false, 22, false],
+        ["csharp:src/Program.cs::Acme.App.Program.Main", "external:Task.Delay", "call", false, 23, true]
+      ],
+      "concept_nodes": ["csharp:src/Program.cs::Acme.App.Program.Main"],
+      "concepts": [
+        ["csharp:src/Program.cs::Acme.App.Program.Main", "csharp", "async-await", 19, 24, "public static async Task Main(string[] args)"],
+        ["csharp:src/Program.cs::Acme.App.Program.Main", "csharp", "async-await", 23, 23, "await Task.Delay(1);"]
+      ],
+      "journey": ["csharp:src/Program.cs::Acme.App.Program.Main", "complete", "complete", null],
+      "known_gaps": []
+    },
+    {
+      "id": "mixed",
+      "adapter": "default",
+      "fixtures": ["go_sample", "java_sample", "rust_sample", "csharp_sample", "polyglot"],
+      "extra_files": [["main.py", "def main():\n    return 1\n"]],
+      "languages": ["csharp", "go", "java", "javascript", "python", "rust", "typescript"],
+      "partial_files": [
+        "csharp_sample/src/Broken.cs",
+        "go_sample/internal/report/broken.go",
+        "java_sample/src/com/example/app/Broken.java",
+        "polyglot/src/broken.ts",
+        "rust_sample/src/broken.rs"
+      ],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 19,
+        "selected": null,
+        "required": [
+          ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", 0],
+          ["go:go_sample/cmd/app/main.go", 0],
+          ["java:java_sample/src/com/example/app/App.java", 0],
+          ["polyglot.python_worker", 0],
+          ["rust:rust_sample/src/main.rs::main", 0],
+          ["typescript:polyglot/src/main.ts", 0]
+        ]
+      },
+      "roles": {
+        "count": 11,
+        "required": [
+          ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", "application-entry", "csharp.entrypoint.main", "csharp_sample/src/Program.cs", 19, 19],
+          ["go:go_sample/cmd/app/main.go::main", "application-entry", "go.entrypoint.main", "go_sample/cmd/app/main.go", 10, 10],
+          ["java:java_sample/src/com/example/app/App.java::App.main", "application-entry", "java.entrypoint.main", "java_sample/src/com/example/app/App.java", 19, 19],
+          ["main.main", "application-entry", "python.entrypoint.main", "main.py", 1, 1],
+          ["rust:rust_sample/src/main.rs::main", "application-entry", "rust.entrypoint.main", "rust_sample/src/main.rs", 7, 7],
+          ["typescript:polyglot/src/main.ts::main", "application-entry", "typescript.entrypoint.main", "polyglot/src/main.ts", 4, 4],
+          ["typescript:polyglot/src/widget.tsx::Card", "ui-renderer", "typescript.jsx.render", "polyglot/src/widget.tsx", 11, 11]
+        ]
+      },
+      "edge_sources": ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main"],
+      "edges": [
+        ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", "csharp:csharp_sample/src/Core/Store.cs::Acme.Core.MemoryStore", "call", true, 21, false],
+        ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", "csharp:csharp_sample/src/Program.cs::Acme.App.Program.Program", "call", true, 21, false],
+        ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", "csharp:csharp_sample/src/Program.cs::Acme.App.Program.Run", "call", false, 22, false],
+        ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", "external:Task.Delay", "call", false, 23, true]
+      ],
+      "concept_nodes": ["typescript:polyglot/src/widget.tsx::Card"],
+      "concepts": [
+        ["typescript:polyglot/src/widget.tsx::Card", "typescript", "arrow-function", 10, 12, "export const Card = ({ title }: { title: string }) => ("],
+        ["typescript:polyglot/src/widget.tsx::Card", "typescript", "destructuring", 10, 10, "export const Card = ({ title }: { title: string }) => ("],
+        ["typescript:polyglot/src/widget.tsx::Card", "typescript", "type-annotation", 10, 10, "export const Card = ({ title }: { title: string }) => ("],
+        ["typescript:polyglot/src/widget.tsx::Card", "typescript", "jsx", 11, 11, "<article>{title}</article>"]
+      ],
+      "journey": ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", "broken", "broken", "home-not-selected"],
+      "known_gaps": []
+    }
+  ]
+}

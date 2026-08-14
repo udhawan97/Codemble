@@ -109,10 +109,12 @@ class ProjectActivation:
         studies: StudyService | None = None,
         checks: CheckService | None = None,
         entrypoint: str | None = None,
+        parser: ProjectParser | None = None,
         parse_runner: ParseRunner | None = None,
     ) -> None:
         self._lock = threading.Lock()
         self._entrypoint = entrypoint
+        self._parser = parser or ProjectParser()
         self._parse_runner = parse_runner
         self._job = self._new_job()
         self._project = (
@@ -153,7 +155,6 @@ class ProjectActivation:
     def activate(self, path: Path) -> None:
         """Start parsing one selected folder and bind it only if still current."""
 
-        parser = ProjectParser()
         job = self._new_job()
         with self._lock:
             if self._project is not None or self._job.active:
@@ -161,7 +162,7 @@ class ProjectActivation:
             self._job = job
             job.begin()
         try:
-            intake = parser.intake(path)
+            intake = self._parser.intake(path)
         except Exception:
             with self._lock:
                 if self._job is job:
@@ -169,17 +170,22 @@ class ProjectActivation:
             raise
 
         def work(reporter: ParseJob) -> None:
-            graph = parser.parse(
+            parsed = self._parser.parse_candidate(
                 intake, entrypoint=self._entrypoint, progress=reporter
             )
             reporter.stage("checks")
-            candidate = LiveProject(graph)
+            candidate = LiveProject(parsed.graph)
             reporter.stage("layout")
             with self._lock:
                 if self._job is not job or reporter.cancelled:
                     raise ParseCancelled(
                         "the learner reset the picker during this parse"
                     )
+                # Evidence becomes visible under the same acceptance lock as
+                # the live project. Release therefore linearizes either before
+                # both publications or after a completed activation, never in
+                # the middle of a cancelled candidate.
+                parsed.publish_evidence()
                 self._project = candidate
             candidate.graph_json()
 

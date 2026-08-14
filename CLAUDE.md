@@ -209,11 +209,17 @@ refused on the evidence.** Recorded because the measurements are reusable:
   above 900, reveal, the label budget) are aimed exactly here. **Honest limit:
   framerate itself was not measured** — the in-app browser reports
   `document.hidden`, which throttles `requestAnimationFrame`, so the evidence
-  is structural rather than a frame count. LOD belongs with raising the
-  1,000-file cap, not before it.
+  is structural rather than a frame count. The later 2026-08-14 complete-Map
+  gate made the next constraint measurable: the backend and Chromium passed at
+  5,000 modules, but WebKit could not stabilize the first-run Skip control
+  within the 5 s interaction budget while 5,000 SVG boxes committed.
 
-What is genuinely next: raising the scale cap (with LOD as its prerequisite),
-and Phase 3 — the shareable read-only galaxy link and extra quest types.
+What is genuinely next: a canvas-backed **complete Map**, then the same 5,000-
+module Chromium and WebKit gate. Delivery may change, but every module remains
+represented, searchable, keyboard reachable, and recoverable; logical LOD that
+hides modules is not an acceptable shortcut. The ordinary cap stays 1,000
+until that gate passes. Phase 3 remains the shareable read-only galaxy link and
+extra quest types.
 
 **LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
 cloud touch). Extra quest types: trace-a-request, fix-the-failing-test.
@@ -221,20 +227,34 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M15 architecture deepening** · Last updated: 2026-08-13 ·
-Session note: the v0.18.0 release candidate adds one parser-owned learning
-journey shared by Easy and Expert, graph schema 11 role evidence across all
-seven supported languages, a visible break before target-relevant possible
-evidence, and role-backed verification candidates that never claim test
-coverage or a passing result. Study now leads with the journey and integrates
-Impact and Connections once; changing mode preserves the same content-derived
-step. Two complete council rounds now approve the candidate after exact
-annotation/macro binding, lexical shadow/rebinding, restored-Home
-synchronization, selected-feature scoping, and 320px reachability corrections.
-This commit is the v0.18.0 release candidate; its tag is stable only after the
-workflow proves PyPI, GitHub assets, checksum bytes, Pages, and a cold isolated
-install. The milestone does not advance because issue #13 still requires human
-tester evidence.
+**Current milestone: M16 parser evidence and scale gates** · Last updated:
+2026-08-14 · Session note: one `ProjectActivation` now injects a long-lived
+`ProjectParser` with a bounded, thread-safe, process-memory cache of source-free
+per-file graph evidence; concept snippets are reconstructed transiently from
+hash-verified current bytes. Exact root/path/content/dialect/version/config
+keys, deterministic invalidation, and safe full-adapter fallback preserve
+byte-exact Graph and Map results across no-change, edit, delete, rename,
+partial recovery, dialect/version/config changes, fingerprint cancellation,
+late pre-acceptance cancellation, and cross-root use. Prepared evidence becomes
+visible only under the same acceptance lock as the live project. Finalization/layout scans
+and Study/impact/journey queries now reuse immutable indexes only where exact
+payload equivalence holds. A hand-authored seven-language plus mixed oracle
+separately catches invented facts and omissions in bounded representative
+scopes. The 5,000-module backend and
+Chromium budgets passed, while WebKit failed the 5 s first-run interaction
+budget, so `scale_cap` remains 1,000 and the next renderer must be a complete
+canvas Map rather than hidden-module LOD. Project Mapping clears obsolete scale
+guidance only after successful navigation; Finder arrival focus now waits for
+the committed module context at large scale. Pinned Apache-2.0/MIT inspirations
+are credited; no code/assets, runtime dependency, provider, account, paid
+service, disk cache, watcher, or publication was added. Issue #13 still
+requires human tester evidence.
+
+Previously (2026-08-13):
+M15's v0.18.0 candidate added the shared parser-owned learning journey, graph
+schema 11 role evidence, visible proof breaks, role-backed verification
+candidates, and exact cross-mode step continuity. Its tag remains subject to
+the external publish and cold-install gates.
 
 Previously (2026-08-09):
 M15 is complete: Galaxy Runtime owns WebGL lifetime, Canvas
@@ -1473,6 +1493,36 @@ decisions remain in their existing deep modules; five tree-sitter adapters keep
 byte-identical canonical graph output and exact public signatures/errors; each
 wave passes focused and complete gates and lands as one reversible commit.
 
+### M16 — Parser evidence compiler and scale gates ✅ (2026-08-14)
+- [x] Inject one long-lived `ProjectParser` across explicit activation release
+      and reactivation
+- [x] Retain only bounded process-memory per-file graph evidence with exact
+      content/version/root/config identity; no captured source bytes, raw
+      source-line snippet, or syntax tree is retained, and no disk cache,
+      narration/LLM provider call, watcher, or background parse is added
+- [x] Preserve byte-exact Graph and Map payloads across cache hits and every
+      invalidation case, including dialect/config changes, cancelled
+      fingerprinting, and cancellation after extraction but before acceptance;
+      publish evidence and the live project under one acceptance lock
+- [x] Replace repeated layout/finalization scans and materially expensive
+      Study/impact/journey work with immutable indexes only under exact-output
+      equivalence
+- [x] Add private/source-free 1k/5k/10k benchmark receipts and a false-positive
+      plus omission-detecting seven-language/mixed semantic oracle over bounded
+      representative expectations, plus a reproducible Study scan control
+- [x] Run the predeclared complete 5k Map gate in Chromium and WebKit; retain
+      the 1,000-file cap because WebKit misses the interaction budget
+- [x] Clear stale scale guidance only after successful folder navigation and
+      make Finder focus wait for the committed large-Map arrival
+- [x] Credit exact pinned open-source inspirations and add no copied code,
+      assets, runtime dependency, account, paid service, or free-tier service
+
+**Acceptance:** 525 Python tests, Ruff, the complete frontend contract/build,
+docs check/build, the semantic oracle, and exact Graph/Map equivalence pass;
+Chromium's complete 5,000-module view passes every declared budget, WebKit's
+failure remains visible and prevents a cap increase, and the production SPA is
+rebuilt from the reviewed source.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
@@ -1666,6 +1716,14 @@ wave passes focused and complete gates and lands as one reversible commit.
 | 2026-08-13 | At Galaxy level, colour may connect a route only when the parser proves the import and both endpoints share the same coloured community; bridges stay neutral, possible routes keep uncertainty ink, and amber remains understanding-only | UD asked for subtle colour links that make the Galaxy easier to explore. Tinting every route by a source or destination would imply a shared grouping across a bridge, and tinting a possible route would let a grouping cue read as stronger evidence. A 32% family mix forms a corridor without overpowering node identity. The active pointer or keyboard subject and its one-hop neighbours on the current route mesh take label priority; keyboard selection persists while focus enters the Key, while pointer exit clears transient hover. The Key carries words plus solid/dashed styles at every width, so colour is redundant rather than exclusive |
 | 2026-08-13 | Release artifacts are reproducible manifest-owned bytes, published once to PyPI and mirrored with `SHA256SUMS.txt` on GitHub | The standing checklist required a wheel and checksum asset, while the workflow uploaded no GitHub assets and the public checker asserted that absence. `docs-site/release.json` now owns a UTC build epoch, predictable release URLs, and both digests; Hatchling is pinned, `docs-site` is excluded from the sdist to avoid a digest containing itself, and local plus CI builds must match the manifest before trusted publishing. The publish job attaches those exact bytes and the ledger, then re-downloads them and reconciles both registries. Structural checks remain usable before publication; the live check is a separate outside-in gate |
 | 2026-08-13 | Graph schema 11 carries parser-owned `RoleEvidence`, and Study derives one bounded, mode-neutral learning journey from certain directed import/call evidence | UD approved a guided Easy mode and change-oriented Expert mode only if both teach the same architecture truth. Roles therefore use a closed enum with stable rule, observation file, and exact span; framework roles require the exact annotation, macro, factory, and receiver binding at the observation site, with project type shadows, lexical locals, hoisted declarations, and rebinding revoking provenance; a partial file contributes no role. An observation may cite a route registration while its node cites the handler declaration. Generic containment and test roles never complete an application route. Missing proof produces a visible break before only target-relevant possible evidence. Connected test-role nodes are selected-feature verification candidates, never coverage or execution claims. Content-derived step IDs preserve place across mode changes, while Impact and Connections appear once as selected-feature facts and existing chart/check progress meanings remain separate |
+| 2026-08-14 | Explicit activation owns one long-lived parser with a bounded, source-free, process-memory evidence cache; a changed project takes the conservative full-adapter path before global resolution | No-change work was being thrown away at release, but persistence, watchers, and cached source/tree state would expand privacy and lifecycle authority. Exact root/path/byte/dialect/version/config identity plus per-file graph partitions make invalidation observable without weakening correctness. Matching partitions remain identifiable across one-file changes, but the implementation does not claim structural one-file speed: until adapters expose source-free extraction IR, any miss reparses safely and exact fresh Graph/Map bytes are the gate |
+| 2026-08-14 | Parser scale and semantic intelligence have separate executable gates | Faster indexing cannot prove better understanding. Disposable 1k/5k/10k receipts measure cold, no-change, and one-file-change throughput plus fresh equivalence; a hand-authored Python/JavaScript/TypeScript/Go/Java/Rust/C# and mixed oracle independently fails on invented certainty, false role/Home/journey claims, missing certain journey structure, and bounded coverage omissions. New semantic rules require a minimal regression fixture, no new false positive, and real-corpus corroboration |
+| 2026-08-14 | The normal cap stays 1,000 until a complete 5,000-module Map passes both Chromium and WebKit; the next renderer is complete canvas delivery, not logical hiding | The backend was ready in 5.13 s at 142 MB RSS and Chromium passed 5,000 boxes/4,999 routes, 35,102 DOM elements, 11.48 MB resources, 4.08 s usable, 31.5 ms Finder p95, recovery, keyboard final-module arrival, and 320 px overflow. WebKit could not stabilize the first-run Skip control inside the 5 s budget while the SVG committed. One-engine success cannot raise a public limit. A canvas renderer may reduce DOM work, but every module must stay represented, searchable, keyboard reachable, and recoverable |
+| 2026-08-14 | Graphify, Understand Anything, Archify, Headroom, Streamlit, and TensorFlow are credited only at verified pinned Apache-2.0/MIT revisions | Graphify informed conservative versioned cache identity; Understand Anything informed fingerprints/deletion/fallback while its cosmetic skip was rejected; Archify informed validate-before-replace; Headroom is future narration-only inspiration; Streamlit/TensorFlow are future corpora. Codemble independently reimplemented the selected concepts and added no copied code/assets, dependency, account, paid service, or provider authority |
+| 2026-08-14 | The schema-2 complete-Map receipt supersedes the earlier readiness snapshot without changing the 1,000-file decision | Council found that a single current-RSS sample and no warm activation could not prove the declared backend gate. The rerun measured a 4.976 s cold activation, 1.701 s no-change activation, and 151,420,928-byte peak RSS across the full server run; Chromium passed again at 5,000 boxes, while WebKit retained the same unstable Skip failure. The cap therefore remains 1,000 on complete evidence rather than on an incomplete backend claim |
+| 2026-08-14 | The schema-3 complete-Map receipt replaces RSS sampling with the server process's OS high-water mark and still keeps the cap at 1,000 | The earlier sampler observed intervals rather than the declared peak. The gate-only server now reports `ru_maxrss`: 4.888 s cold activation, 1.610 s no-change activation, and a 165,314,560-byte process high-water mark all pass the backend budgets; Chromium again passes the complete 5,000-module Map, while WebKit still cannot stabilize the first-run Skip control inside 5 s. The failed cross-engine gate remains visible and continues to block a public cap increase |
+| 2026-08-14 | Prepared parser evidence and the live project publish under one activation acceptance lock | A late reset could previously arrive after the last file checkpoint while cache sizing was in progress: binding would be rejected, but exact evidence could still enter the long-lived cache from the cancelled candidate. Validation and canonical-JSON sizing now produce an invisible prepared update; only a still-current, non-cancelled activation commits that update and the live project in one linearized critical section. A regression test pauses during evidence serialization, resets with zero wait, and proves neither project nor cache entry survives |
+| 2026-08-14 | The acceptance-locked candidate reruns every scale receipt before integration | Transactional cache publication changes the parser lifecycle even though its payload is byte-identical, so prior timings were not carried forward. The fresh 10k parser receipt is 12.834 s cold, 1.521 s no-change, and 13.062 s one-change with exact fresh Graph/Map equivalence; the fresh 10k Study scan/index medians are 11.308/1.503 ms with 20 exact payload digests; the schema-3 5k gate records 4.956 s cold, 1.666 s no-change, and a 166,789,120-byte OS process RSS high-water mark. Chromium passes and WebKit retains the unstable Skip failure, so the cap remains 1,000 |
 
 ## Non-Goals — do NOT build (point here when asked)
 
@@ -1724,7 +1782,8 @@ wave passes focused and complete gates and lands as one reversible commit.
 
 ## Edge cases & limits
 
-- >~1,000 supported source files → prompt to scope to a subdirectory (LOD arrives Phase 2)
+- >~1,000 supported source files → prompt to scope to a subdirectory; a complete
+  canvas Map plus the two-engine 5,000-module gate is required before this moves
 - No clear entrypoint → ranked candidates; user picks Home
 - Syntax errors / partial parses → parse what you can, flag the rest, never crash
 - Missing/invalid key → galaxy + structure + checks work; explanations show "add your key"

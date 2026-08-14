@@ -7,6 +7,7 @@ and decides nothing.  No clock, no RNG, and no set iteration reaches the output.
 
 from __future__ import annotations
 
+import heapq
 from collections import defaultdict
 from pathlib import PurePosixPath
 
@@ -95,17 +96,31 @@ def _architecture(graph: Graph) -> dict[str, object]:
         imported = {edge.dst for edge in routes if (edge.src, edge.dst) not in cut}
         roots = [region_id for region_id in region_ids if region_id not in imported]
 
+    active_routes = [
+        edge for edge in routes if (edge.src, edge.dst) not in cut
+    ]
+    dag_successors: dict[str, list[str]] = defaultdict(list)
+    indegree = dict.fromkeys(region_ids, 0)
+    for edge in active_routes:
+        dag_successors[edge.src].append(edge.dst)
+        indegree[edge.dst] += 1
+    ready = [region_id for region_id in region_ids if indegree[region_id] == 0]
+    heapq.heapify(ready)
+    topological: list[str] = []
+    while ready:
+        source = heapq.heappop(ready)
+        topological.append(source)
+        for target in dag_successors[source]:
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                heapq.heappush(ready, target)
+
     layers: dict[str, int] = dict.fromkeys(roots, 0)
-    for _ in range(len(region_ids)):
-        changed = False
-        for edge in routes:
-            if (edge.src, edge.dst) in cut or edge.src not in layers:
-                continue
-            if layers.get(edge.dst, -1) < layers[edge.src] + 1:
-                layers[edge.dst] = layers[edge.src] + 1
-                changed = True
-        if not changed:
-            break
+    for source in topological:
+        if source not in layers:
+            continue
+        for target in dag_successors[source]:
+            layers[target] = max(layers.get(target, -1), layers[source] + 1)
 
     unreachable = [region_id for region_id in region_ids if region_id not in layers]
     outer_layer = (max(layers.values()) + 1) if layers else 0

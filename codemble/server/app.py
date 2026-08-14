@@ -20,6 +20,7 @@ from codemble import __version__
 from codemble.adapters.base import Graph
 from codemble.adapters.project import (
     ProjectParseError,
+    ProjectParser,
     ProjectScaleError,
 )
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
@@ -121,6 +122,7 @@ def create_app(
     check_service: CheckService | None = None,
     *,
     picker: PickerConfig | None = None,
+    parser: ProjectParser | None = None,
     parse_runner: Callable[[Callable[[], None]], None] | None = None,
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "testserver"),
 ) -> FastAPI:
@@ -139,6 +141,7 @@ def create_app(
         studies=study_service,
         checks=check_service,
         entrypoint=picker.entrypoint if picker is not None else None,
+        parser=parser,
         parse_runner=parse_runner,
     )
     selector = ProjectSelector(picker.browse_root) if picker is not None else None

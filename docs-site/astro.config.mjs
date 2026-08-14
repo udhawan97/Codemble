@@ -69,6 +69,7 @@ export default defineConfig({
           items: [
             { label: "Architecture", slug: "architecture" },
             { label: "Correctness contract", slug: "correctness" },
+            { label: "Parser evidence & scale", slug: "parser-scale" },
           ],
         },
         {

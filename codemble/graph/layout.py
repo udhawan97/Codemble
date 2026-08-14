@@ -65,6 +65,21 @@ def layout_graph(graph: Graph) -> Graph:
 
     node_by_id = {node.id: node for node in graph.nodes}
 
+    call_edges_by_region: dict[str, list[Edge]] = defaultdict(list)
+    for edge in graph.edges:
+        if (
+            edge.kind != "call"
+            or edge.external
+            or not edge.certain
+            or edge.src == edge.dst
+        ):
+            continue
+        src_node = node_by_id.get(edge.src)
+        dst_node = node_by_id.get(edge.dst)
+        if src_node is None or dst_node is None or src_node.region != dst_node.region:
+            continue
+        call_edges_by_region[src_node.region].append(edge)
+
     routes: dict[tuple[str, str], list[bool]] = defaultdict(list)
     for edge in graph.edges:
         if edge.kind != "import" or edge.external:
@@ -159,7 +174,7 @@ def layout_graph(graph: Graph) -> Graph:
             )
         )
 
-        layers = _call_layers(members, graph.edges)
+        layers = _call_layers(members, tuple(call_edges_by_region[region_id]))
         orbits: dict[int, list[tuple[Node, _CallLayer]]] = defaultdict(list)
         for node in members:
             layer = layers[node.id]

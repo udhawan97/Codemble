@@ -210,6 +210,7 @@ pytest && ruff check .
 ```
 
 The [architecture](https://udhawan97.github.io/Codemble/architecture/),
+[parser evidence and scale record](https://udhawan97.github.io/Codemble/parser-scale/),
 [contributing guide](https://github.com/udhawan97/Codemble/blob/main/CONTRIBUTING.md),
 [design system](https://github.com/udhawan97/Codemble/blob/main/docs-site/design.md),
 and [agent operating guide](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md)
@@ -234,7 +235,7 @@ project:
 | Horizon | Work |
 | --- | --- |
 | **Now** | Collect unaided learner evidence and correctness reports on v0.18.0 |
-| **Next** | Level-of-detail rendering and clustering for larger repositories |
+| **Next** | A canvas-backed complete Map, then the same 5,000-module Chromium and WebKit gate |
 | **Later** | Read-only sharing, new quest types, and a coordinated public launch |
 
 Milestones move only when their acceptance evidence exists. See the
@@ -251,6 +252,9 @@ approach draws inspiration from [dagre](https://github.com/dagrejs/dagre),
 [Eclipse ELK](https://github.com/kieler/elkjs), and
 [archify](https://github.com/tt-a1i/archify); the community constellations were
 inspired by [Graphify](https://github.com/Graphify-Labs/graphify).
+The [parser evidence and scale record](https://udhawan97.github.io/Codemble/parser-scale/)
+credits the exact pinned open-source revisions behind the current cache and
+benchmark design; Codemble copied no source or assets from them.
 
 ---
 

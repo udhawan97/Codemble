@@ -24,7 +24,23 @@ assert.doesNotMatch(
   /requestAnimationFrame/,
   "focus handoffs wait for a React commit task, not a software-WebGL frame",
 );
-assert.match(app, /function goFromFinder[\s\S]*?systemCopyRef\.current\?\.focus/);
+assert.match(app, /const finderArrivalRef = useRef\(false\)/);
+assert.match(app, /function goFromFinder[\s\S]*?finderArrivalRef\.current = true/);
+assert.match(
+  app,
+  /function closeFinder\(\) \{[\s\S]*?if \(finderArrivalRef\.current\) return/,
+  "the dialog close event cannot turn a selected arrival into a cancellation",
+);
+assert.match(
+  app,
+  /useLayoutEffect\(\(\) => \{[\s\S]*?finderArrivalRef\.current[\s\S]*?systemCopyRef\.current\?\.focus/,
+  "Finder arrival focus waits for the committed module context",
+);
+assert.doesNotMatch(
+  app.slice(app.indexOf("  function goFromFinder"), app.indexOf("  function followHint")),
+  /requestAnimationFrame/,
+  "Finder arrival cannot race a large React commit on the next frame",
+);
 assert.match(app, /function dismissCoachmarks[\s\S]*?stageRef\.current\?\.focus/);
 assert.match(app, /modeChosen === true && entrypointOpen/);
 assert.match(app, /function IndexSidebar[\s\S]*?closeButtonRef/);

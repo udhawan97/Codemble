@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,9 +19,14 @@ from codemble.adapters.discovery import (
     SourceOwnership,
     discover_project_sources,
 )
+from codemble.adapters.evidence_cache import EvidenceCache, PreparedEvidence
 from codemble.adapters.parse_progress import (
+    ParseCancelled,
     ParseProgress,
+    check_parse_cancelled,
     note_detail,
+    note_file_parsed,
+    reporting_cancellation,
     reporting_detail,
     reporting_files,
 )
@@ -81,10 +86,33 @@ class ProjectIntake:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ProjectParseCandidate:
+    """A complete graph whose cache evidence is not published until acceptance."""
+
+    graph: Graph
+    _cache: EvidenceCache
+    _evidence: tuple[PreparedEvidence, ...]
+    _cancelled: Callable[[], bool] | None = None
+
+    def publish_evidence(self) -> None:
+        """Publish only while the owning activation still accepts this candidate."""
+
+        if self._cancelled is not None and self._cancelled():
+            raise ParseCancelled("the learner reset the picker during this parse")
+        for prepared in self._evidence:
+            self._cache.commit(prepared)
+
+
 class ProjectParser:
     """Discover supported languages and compose their graphs behind one interface."""
 
-    def __init__(self, adapters: Iterable[LanguageAdapter] | None = None) -> None:
+    def __init__(
+        self,
+        adapters: Iterable[LanguageAdapter] | None = None,
+        *,
+        evidence_cache: EvidenceCache | None = None,
+    ) -> None:
         if adapters is None:
             # The one place the supported language set is written down. Nothing
             # else above the seam names a language, which is what keeps adding
@@ -114,6 +142,7 @@ class ProjectParser:
         languages = [adapter.language for adapter in self._adapters]
         if len(languages) != len(set(languages)):
             raise ValueError("ProjectParser adapter languages must be unique")
+        self._evidence_cache = evidence_cache or EvidenceCache()
 
     @property
     def languages(self) -> tuple[str, ...]:
@@ -121,8 +150,15 @@ class ProjectParser:
 
         return tuple(adapter.language for adapter in self._adapters)
 
-    # Raised from 300 with the Phase C threaded parse and staged loading
-    # screen; LOD and clustering remain Phase 2.
+    def cache_info(self) -> dict[str, int]:
+        """Return source-free in-process evidence-cache counters."""
+
+        return self._evidence_cache.info()
+
+    # Raised from 300 with the Phase C threaded parse and staged loading screen.
+    # The 2026-08-14 complete 5k Map gate passed Chromium but failed WebKit's
+    # interaction budget, so explicit --path scopes may go larger while the
+    # ordinary picker stays here until a complete canvas Map passes both.
     scale_cap = 1000
 
     def intake(self, path: Path, *, explicit: bool = False) -> ProjectIntake:
@@ -176,6 +212,25 @@ class ProjectParser:
     ) -> Graph:
         """Parse every detected language and return one deterministic graph."""
 
+        candidate = self.parse_candidate(
+            source,
+            entrypoint=entrypoint,
+            explicit=explicit,
+            progress=progress,
+        )
+        candidate.publish_evidence()
+        return candidate.graph
+
+    def parse_candidate(
+        self,
+        source: Path | ProjectIntake,
+        *,
+        entrypoint: str | None = None,
+        explicit: bool = False,
+        progress: ParseProgress | None = None,
+    ) -> ProjectParseCandidate:
+        """Build a graph and validated evidence without publishing the evidence."""
+
         if isinstance(source, ProjectIntake):
             intake = source
         else:
@@ -194,28 +249,67 @@ class ProjectParser:
             progress.files_total(sum(len(files) for files in owned.values()))
             progress.stage("parsing")
         graphs: list[Graph] = []
+        evidence: list[PreparedEvidence] = []
         on_file = progress.file_parsed if progress is not None else None
         # ``detail`` outlives the file-read loop: the adapters narrate their
         # cross-file passes and composition narrates the merge, all under the
         # single ``resolving`` stage the design spec fixes.
         on_detail = getattr(progress, "detail", None) if progress is not None else None
-        with reporting_detail(on_detail), reporting_files(on_file):
+        is_cancelled = (
+            None
+            if progress is None
+            else lambda: bool(getattr(progress, "cancelled", False))
+        )
+        with (
+            reporting_cancellation(is_cancelled),
+            reporting_detail(on_detail),
+            reporting_files(on_file),
+        ):
             for adapter in self._adapters:
                 files = owned[adapter.language]
                 if not files:
                     continue
                 try:
-                    graphs.append(adapter.parse_files(intake.root, files))
+                    graph, prepared = self._parse_adapter(adapter, intake.root, files)
+                    graphs.append(graph)
+                    if prepared is not None:
+                        evidence.append(prepared)
                 except AdapterParseError as error:
                     raise ProjectParseError(str(error)) from error
             if progress is not None:
                 progress.stage("resolving")
-            return _compose_graphs(
+            graph = _compose_graphs(
                 tuple(graphs),
                 intake.root,
                 entrypoint,
                 intake.unsupported_sources,
             )
+            check_parse_cancelled()
+            return ProjectParseCandidate(
+                graph=graph,
+                _cache=self._evidence_cache,
+                _evidence=tuple(evidence),
+                _cancelled=is_cancelled,
+            )
+
+    def _parse_adapter(
+        self,
+        adapter: LanguageAdapter,
+        project_root: Path,
+        files: tuple[Path, ...],
+    ) -> tuple[Graph, PreparedEvidence | None]:
+        key = self._evidence_cache.key_for(adapter, project_root, files)
+        cached = self._evidence_cache.get(key)
+        if cached is not None:
+            note_detail(f"Reusing {adapter.language} parser evidence")
+            for _ in files:
+                note_file_parsed()
+            return cached, None
+        graph = adapter.parse_files(project_root, files)
+        # A file may change between discovery/fingerprinting and the adapter's
+        # own single-byte capture. Such a candidate is still a coherent graph,
+        # but it cannot be retained under a key for different bytes.
+        return graph, self._evidence_cache.prepare(key, graph)
 
 def _compose_graphs(
     graphs: tuple[Graph, ...],
@@ -271,6 +365,7 @@ def _compose_graphs(
 
 __all__ = [
     "ProjectIntake",
+    "ProjectParseCandidate",
     "ProjectParseError",
     "ProjectParser",
     "ProjectScaleError",
