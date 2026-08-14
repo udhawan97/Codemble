@@ -23,9 +23,9 @@ entrypoint is Home, and a flat **Map** that lays out architecture and workflow
 as a diagram. Every module is drawn, coloured and named from the first frame;
 every one of them starts dim.
 
-You explore, read what the parser knows before any model is asked, see what a
-change to a structure would reach, read explanations grounded in your actual
-source, learn the language idioms your code uses, and pass short **checks**
+You explore, follow a parser-proven feature journey from Home to the structure
+you selected, see what a change would reach, read explanations grounded in your
+actual source, learn the language idioms your code uses, and pass short **checks**
 whose answers come from the code's real structure. Each region you truly
 understand **lights up — permanently**. The goal state is a fully lit galaxy.
 
@@ -42,8 +42,11 @@ optional extra: bring your own Claude or OpenAI key, or run a local model
 through Ollama and send nothing anywhere.
 
 :::note[Status]
-Codemble **v0.17.0** is published on PyPI and maps Python, JavaScript,
-TypeScript, Go, Java, Rust, C#, and mixed projects. The downloadable package,
+Codemble **v0.18.0** is published on PyPI and maps Python, JavaScript,
+TypeScript, Go, Java, Rust, C#, and mixed projects. Easy guides one cited
+journey step at a time; Expert enriches that same step with parser evidence.
+Impact, dependencies, and verification candidates are selected-feature facts,
+not claims about every route step. The downloadable package,
 current source, screenshots, and these product guides match. The original
 unaided learner-acceptance issue remains open; technical completion does not
 substitute for human evidence. [Choose a run or download route](/Codemble/download/).

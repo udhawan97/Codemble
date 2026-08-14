@@ -3,7 +3,7 @@ title: Architecture
 description: The adapter seam, the render-ready graph, and why the LLM only narrates.
 ---
 
-:::note[v0.17.0 architecture]
+:::note[v0.18.0 architecture]
 This page describes the seven-language packaged app and current source tree.
 :::
 
@@ -12,7 +12,8 @@ This page describes the seven-language packaged app and current source tree.
 ### 1. Language adapters (the seam)
 
 Every language plugs in behind one interface: `parse()` produces the structural
-graph; `concepts()` produces idiom annotations for the lens. Python uses the
+graph; `concepts()` produces idiom annotations for the lens; and role evidence
+names parser-observed app entries, route handlers, UI renderers, and tests. Python uses the
 stdlib `ast` module; JavaScript/TypeScript, Go, Java, Rust, and C# use official
 tree-sitter grammar wheels. Nothing above the seam hardcodes a language, and the
 registry of adapters is a single tuple in `codemble/adapters/project.py` — that
@@ -39,16 +40,25 @@ centrality, entrypoint rank, region, understood-state — and the 3D frontend is
 **pure consumer**. No layout or game logic lives in the renderer. This is what
 keeps a future read-only share link (and any alternative renderer) cheap.
 
-Graph JSON is schema-versioned and byte-deterministic. It carries stable node
+Graph JSON is schema-versioned and byte-deterministic. Schema 11 carries stable node
 IDs, source spans, regions, entrypoint ranks, call in-degree, file hashes,
-parser-owned concept annotations, and explicit certainty/external flags on
-edges. It also separates parser-ranked entrypoint candidates from the explicit
+parser-owned concept annotations, parser-owned role evidence, and explicit
+certainty/external flags on edges. A role record has a closed role name, stable
+parser-rule ID, observation file, and exact line span. Framework roles also
+require matching import/factory/binding provenance; a familiar method or
+annotation name alone is not enough. Its observation may
+differ from the declaration it identifies—for example, a route registration
+that points at a handler declared in another file. Finalization rejects unknown
+roles, missing or partial nodes/files, invalid paths, and out-of-range spans.
+Adapters discard role candidates from a file the parser marked partial before
+that validation boundary, so safe partial graph evidence remains available.
+The graph also separates parser-ranked entrypoint candidates from the explicit
 Home selection, so ambiguous rank-zero candidates remain unselected until the
 learner chooses. Later revisions added the import community a region belongs to,
 its hop distance from Home, each node's call-depth orbit, a count of files in
 languages no adapter read, and which communities are large enough to be given a
 colour family — all of them facts the renderer would otherwise have to infer.
-Schema 10 also carries canonical **import cycle groups**: strongly connected groups
+Schema 11 retains canonical **import cycle groups**: strongly connected groups
 of regions computed only from imports whose certainty flag is true. Members and
 components are sorted only for stable bytes—not displayed as a direct arrow
 path—the field is replaced on every finalization pass, and a loop made only of
@@ -57,6 +67,17 @@ source snippet that the Lens is allowed to teach. Each annotation also carries
 its language, so identically named concepts stay separate in the star chart.
 Several of the supported languages have an `async/await`, and each keeps its own
 evidence rather than pooling it under one row. The file hashes are the cache and progress invalidation key.
+
+The learning-journey index is one bounded, model-free projection over this
+graph. A fingerprint of schema, root, sorted file hashes, Home, and target keys
+its result. A stable breadth-first walk can complete a route only with directed,
+certain imports and calls; generic containment is context, never traversal.
+When no complete route exists, the index reports the break separately and may
+offer only target-relevant possible edges as a bounded frontier. Test-role nodes
+inside the existing blast radius are verification candidates, never proof of
+coverage or a test result. The server sends this single mode-neutral payload to
+Study; Easy and Expert are presentations of the same step IDs, so changing mode
+does not create a second architecture truth.
 
 The mixed-project language focus is a pure frontend projection over that graph.
 It retains the original node and region records, coordinates, metadata,
@@ -77,7 +98,7 @@ job is prose: explaining code it is shown, teaching idioms the parser found.
 Every explanation links to real `file:line` so you can verify it yourself.
 
 The server exposes one deep study interface. It loads the selected source span,
-collects parser-proven neighbors, builds the correctness-contract prompt, calls
+collects the parser-owned journey and neighbors, builds the correctness-contract prompt, calls
 the configured provider, validates every returned line and relationship, and
 only then writes a local cache entry keyed by provider, model, node, and file
 hash. Invalid provider output is withheld rather than softened into a guess.

@@ -3,7 +3,7 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
-:::note[v0.17.0 product guide]
+:::note[v0.18.0 product guide]
 This page matches the packaged app, current source, and fresh product captures.
 [Choose a run or download route](/Codemble/download/).
 :::
@@ -12,7 +12,7 @@ This page matches the packaged app, current source, and fresh product captures.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.17.0 at galaxy level: 184 star systems across seven languages, with parser-owned names, community colour shared subtly by related proven routes, ranked labels, 30 charted systems, an unlit Home, and six unreadable test fixtures called out.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.18.0 at galaxy level: 190 star systems across seven languages, with parser-owned names, community colour shared subtly by related proven routes, ranked labels, 30 charted systems, an unlit Home, and six unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>

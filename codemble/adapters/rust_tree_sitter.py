@@ -19,8 +19,10 @@ from codemble.adapters.base import (
     Edge,
     Graph,
     Node,
+    RoleEvidence,
 )
 from codemble.adapters.parse_progress import note_file_parsed
+from codemble.adapters.role_rules import native_entrypoint_roles, roles_from_complete_files
 from codemble.adapters.tree_sitter_core import _TreeSitterAdapterCore
 
 _RUST_EXTENSIONS = frozenset({".rs"})
@@ -261,6 +263,11 @@ class RustAdapter(_TreeSitterAdapterCore):
             import_edges.update(edges)
             bindings_by_module[parsed.module_id].extend(bindings)
 
+        partial_files = tuple(
+            parsed.relative_path
+            for parsed in parsed_files
+            if parsed.tree.root_node.has_error
+        )
         return Graph(
             nodes=index.nodes,
             edges=(*import_edges, *_call_edges(index, bindings_by_module)),
@@ -268,11 +275,12 @@ class RustAdapter(_TreeSitterAdapterCore):
             project_root=str(project_root),
             file_hashes={parsed.relative_path: parsed.digest for parsed in parsed_files},
             concept_annotations=_concept_annotations(index),
-            partial_files=tuple(
-                parsed.relative_path
-                for parsed in parsed_files
-                if parsed.tree.root_node.has_error
+            role_evidence=roles_from_complete_files(
+                _role_evidence(index),
+                index.nodes,
+                partial_files,
             ),
+            partial_files=partial_files,
         )
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""
@@ -306,6 +314,107 @@ class RustAdapter(_TreeSitterAdapterCore):
             for annotation in _concept_annotations(index)
             if annotation.node_id == node.id
         ]
+
+
+def _role_evidence(index: _SyntaxEvidenceIndex) -> tuple[RoleEvidence, ...]:
+    roles = set(native_entrypoint_roles(index.nodes))
+    route_macros_by_module = {
+        module_id: _imported_rust_route_macros(parsed)
+        for module_id, parsed in index.parsed_by_module.items()
+    }
+    for definition in index.definitions:
+        parsed = index.parsed_by_module[definition.module_id]
+        node = index.node_by_id[definition.node_id]
+        imported_route_macros = route_macros_by_module[definition.module_id]
+        test_attribute = _named_attribute(definition.syntax, parsed.raw, {"test"})
+        if test_attribute is not None:
+            attribute, _, _ = test_attribute
+            lineno, end_lineno = _line_span(attribute)
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "test",
+                    "rust.attribute.test",
+                    node.file,
+                    lineno,
+                    end_lineno,
+                )
+            )
+        route_attribute = _named_attribute(
+            definition.syntax,
+            parsed.raw,
+            {
+                "get",
+                "post",
+                "put",
+                "patch",
+                "delete",
+                "route",
+                *imported_route_macros,
+            },
+        )
+        if route_attribute is not None:
+            attribute, leaf, path = route_attribute
+            canonical_leaf = (
+                path[-1]
+                if len(path) > 1
+                and path[0] in {"actix_web", "rocket"}
+                and path[-1] in {"get", "post", "put", "patch", "delete", "route"}
+                else imported_route_macros.get(leaf) if len(path) == 1 else None
+            )
+            if canonical_leaf is None:
+                continue
+            lineno, end_lineno = _line_span(attribute)
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "route-handler",
+                    f"rust.attribute.{canonical_leaf}",
+                    node.file,
+                    lineno,
+                    end_lineno,
+                )
+            )
+    return tuple(sorted(roles, key=lambda item: (item.file, item.lineno, item.node_id)))
+
+
+def _imported_rust_route_macros(parsed: _ParsedFile) -> dict[str, str]:
+    bindings: dict[str, list[tuple[str, ...]]] = defaultdict(list)
+    for syntax in _walk(parsed.tree.root_node):
+        if syntax.type != "use_declaration" or syntax.has_error:
+            continue
+        argument = syntax.child_by_field_name("argument")
+        if argument is None:
+            continue
+        for path, local_name in _use_leaves(argument, (), parsed.raw):
+            if local_name is not None:
+                bindings[local_name].append(path)
+    route_macros = {"get", "post", "put", "patch", "delete", "route"}
+    return {
+        local_name: paths[0][-1]
+        for local_name, paths in bindings.items()
+        if len(paths) == 1
+        and len(paths[0]) > 1
+        and paths[0][0] in {"actix_web", "rocket"}
+        and paths[0][-1] in route_macros
+    }
+
+
+def _named_attribute(
+    syntax: SyntaxNode,
+    raw: bytes,
+    allowed: set[str],
+) -> tuple[SyntaxNode, str, tuple[str, ...]] | None:
+    sibling = syntax.prev_named_sibling
+    while sibling is not None and sibling.type == "attribute_item":
+        for attribute in sibling.named_children:
+            if attribute.type != "attribute" or not attribute.named_child_count:
+                continue
+            path = _path_segments(attribute.named_children[0], raw)
+            if path is not None and path[-1] in allowed:
+                return sibling, path[-1], path
+        sibling = sibling.prev_named_sibling
+    return None
 
 
 def _parse_file(path: Path, project_root: Path) -> _ParsedFile:

@@ -1,3 +1,11 @@
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-500.css";
+@import "@fontsource/shippori-mincho/latin-500.css";
+@import "@fontsource/shippori-mincho/latin-700.css";
+@import "@fontsource/zen-kaku-gothic-new/latin-400.css";
+@import "@fontsource/zen-kaku-gothic-new/latin-500.css";
+@import "@fontsource/zen-kaku-gothic-new/latin-700.css";
+
 /* Hallmark · genre: atmospheric · macrostructure: Workbench
  * theme: Formal Edo (custom) · nav: N8 terminal command · footer: Ft4 colophon
  * signature: parser-proof workbench · product stage: authentic semantic zoom

@@ -20,8 +20,10 @@ from codemble.adapters.base import (
     Edge,
     Graph,
     Node,
+    RoleEvidence,
 )
 from codemble.adapters.parse_progress import note_file_parsed
+from codemble.adapters.role_rules import native_entrypoint_roles, roles_from_complete_files
 from codemble.adapters.tree_sitter_core import _TreeSitterAdapterCore
 
 _JAVASCRIPT_EXTENSIONS = frozenset({".js", ".jsx", ".mjs", ".cjs"})
@@ -301,6 +303,11 @@ class JavaScriptTypeScriptAdapter(_TreeSitterAdapterCore):
         call_edges = _call_edges(index, bindings_by_module)
         all_edges = [*import_edges, *call_edges]
         annotations = _concept_annotations(index)
+        partial_files = tuple(
+            parsed.relative_path
+            for parsed in parsed_files
+            if parsed.tree.root_node.has_error
+        )
         return Graph(
             nodes=index.nodes,
             edges=tuple(all_edges),
@@ -310,11 +317,12 @@ class JavaScriptTypeScriptAdapter(_TreeSitterAdapterCore):
                 parsed.relative_path: parsed.digest for parsed in parsed_files
             },
             concept_annotations=annotations,
-            partial_files=tuple(
-                parsed.relative_path
-                for parsed in parsed_files
-                if parsed.tree.root_node.has_error
+            role_evidence=roles_from_complete_files(
+                _role_evidence(index, bindings_by_module),
+                index.nodes,
+                partial_files,
             ),
+            partial_files=partial_files,
         )
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""
@@ -348,6 +356,330 @@ class JavaScriptTypeScriptAdapter(_TreeSitterAdapterCore):
             for annotation in _concept_annotations(index)
             if annotation.node_id == node.id
         ]
+
+
+_HTTP_REGISTRATION_METHODS = frozenset(
+    {"get", "post", "put", "patch", "delete", "options", "head", "all", "use"}
+)
+def _role_evidence(
+    index: _SyntaxEvidenceIndex,
+    bindings_by_module: dict[str, list[_ImportBinding]],
+) -> tuple[RoleEvidence, ...]:
+    """Persist JSX ownership, Express registration, and named test evidence."""
+
+    roles = set(native_entrypoint_roles(index.nodes))
+    for definition in index.definitions:
+        node = index.node_by_id[definition.node_id]
+        parsed = index.parsed_by_module[definition.module_id]
+        if node.kind == "function" and node.name.startswith("test_"):
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "test",
+                    f"{node.language}.test.function-name",
+                    node.file,
+                    node.lineno,
+                    node.lineno,
+                )
+            )
+        jsx = next(
+            (
+                syntax
+                for syntax in _walk_owned(
+                    definition.syntax,
+                    index.nested_ranges_by_owner.get(definition.node_id, frozenset()),
+                )
+                if syntax.type in {"jsx_element", "jsx_self_closing_element", "jsx_fragment"}
+                and not syntax.has_error
+            ),
+            None,
+        )
+        if node.kind == "function" and jsx is not None:
+            lineno, end_lineno = _line_span(jsx)
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "ui-renderer",
+                    f"{node.language}.jsx.render",
+                    parsed.relative_path,
+                    lineno,
+                    end_lineno,
+                )
+            )
+
+    for parsed in index.parsed_files:
+        binding_map = {
+            binding.local_name: binding
+            for binding in bindings_by_module.get(parsed.module_id, ())
+        }
+        express_route_sites = _express_route_sites(parsed, binding_map)
+        for syntax in _walk(parsed.tree.root_node):
+            if syntax.type != "call_expression" or syntax.has_error:
+                continue
+            function = syntax.child_by_field_name("function")
+            arguments = syntax.child_by_field_name("arguments")
+            if function is None or function.type != "member_expression" or arguments is None:
+                continue
+            object_node = function.child_by_field_name("object")
+            property_node = function.child_by_field_name("property")
+            if object_node is None or property_node is None:
+                continue
+            method = _node_text(property_node, parsed.raw)
+            if (
+                (syntax.start_byte, syntax.end_byte) not in express_route_sites
+                or method not in _HTTP_REGISTRATION_METHODS
+            ):
+                continue
+            arguments_list = list(arguments.named_children)
+            if len(arguments_list) < 2:
+                continue
+            handler_syntax = arguments_list[-1]
+            if handler_syntax.type != "identifier":
+                continue
+            handler_name = _node_text(handler_syntax, parsed.raw)
+            candidates = list(
+                index.nodes_by_module_name.get((parsed.module_id, handler_name), ())
+            )
+            binding = binding_map.get(handler_name)
+            if binding is not None and binding.imported_name is not None:
+                for target in binding.targets:
+                    candidates.extend(
+                        index.nodes_by_module_name.get(
+                            (target.module_id, binding.imported_name),
+                            (),
+                        )
+                    )
+            unique = {candidate.id: candidate for candidate in candidates}
+            if len(unique) != 1:
+                continue
+            handler = next(iter(unique.values()))
+            lineno, end_lineno = _line_span(syntax)
+            roles.add(
+                RoleEvidence(
+                    handler.id,
+                    "route-handler",
+                    f"{parsed.language}.express.{method}",
+                    parsed.relative_path,
+                    lineno,
+                    end_lineno,
+                )
+            )
+    return tuple(
+        sorted(
+            roles,
+            key=lambda item: (
+                item.file,
+                item.lineno,
+                item.role,
+                item.rule_id,
+                item.node_id,
+            ),
+        )
+    )
+
+
+_JAVASCRIPT_FUNCTION_SCOPES = frozenset(
+    {
+        "function_declaration",
+        "function_expression",
+        "generator_function_declaration",
+        "generator_function",
+        "arrow_function",
+        "method_definition",
+    }
+)
+
+
+def _express_route_sites(
+    parsed: _ParsedFile,
+    binding_map: dict[str, _ImportBinding],
+) -> frozenset[tuple[int, int]]:
+    """Return registration calls whose receiver is Express-bound at that site.
+
+    A file-wide receiver-name set is unsound: a local ``app`` can shadow a
+    proven outer app, and a later assignment can revoke the binding. This
+    small lexical interpreter keeps only binding provenance needed for route
+    observations; it never tries to evaluate general JavaScript.
+    """
+
+    express_bindings = {
+        name: binding
+        for name, binding in binding_map.items()
+        if binding.external_specifier == "express"
+    }
+    route_sites: set[tuple[int, int]] = set()
+
+    def is_factory_call(value: SyntaxNode | None, factories: set[str]) -> bool:
+        if value is None or value.type != "call_expression":
+            return False
+        function = value.child_by_field_name("function")
+        if function is None:
+            return False
+        if function.type == "identifier":
+            name = _node_text(function, parsed.raw)
+            binding = express_bindings.get(name)
+            return (
+                name in factories
+                and binding is not None
+                and binding.imported_name in {"default", "Router"}
+            )
+        if function.type == "member_expression":
+            object_node = function.child_by_field_name("object")
+            property_node = function.child_by_field_name("property")
+            if object_node is not None and property_node is not None:
+                name = _node_text(object_node, parsed.raw)
+                binding = express_bindings.get(name)
+                return (
+                    name in factories
+                    and binding is not None
+                    and binding.imported_name in {"default", None}
+                    and _node_text(property_node, parsed.raw) == "Router"
+                )
+        return False
+
+    def declared_names(container: SyntaxNode) -> set[str]:
+        names: set[str] = set()
+        for statement in container.named_children:
+            if statement.type in {"lexical_declaration", "variable_declaration"}:
+                for declaration in statement.named_children:
+                    if declaration.type != "variable_declarator":
+                        continue
+                    name = declaration.child_by_field_name("name")
+                    if name is not None and name.type == "identifier":
+                        names.add(_node_text(name, parsed.raw))
+            elif statement.type in {
+                "function_declaration",
+                "generator_function_declaration",
+                "class_declaration",
+            }:
+                name = statement.child_by_field_name("name")
+                if name is not None and name.type == "identifier":
+                    names.add(_node_text(name, parsed.raw))
+        return names
+
+    def hoisted_var_names(container: SyntaxNode) -> set[str]:
+        names: set[str] = set()
+
+        def visit(syntax: SyntaxNode) -> None:
+            if syntax.type in _JAVASCRIPT_FUNCTION_SCOPES:
+                return
+            if syntax.type == "variable_declaration":
+                for declaration in syntax.named_children:
+                    if declaration.type != "variable_declarator":
+                        continue
+                    name = declaration.child_by_field_name("name")
+                    if name is not None and name.type == "identifier":
+                        names.add(_node_text(name, parsed.raw))
+            for child in syntax.named_children:
+                visit(child)
+
+        for statement in container.named_children:
+            visit(statement)
+        return names
+
+    def parameter_names(function: SyntaxNode) -> set[str]:
+        parameters = function.child_by_field_name("parameters")
+        if parameters is None:
+            return set()
+        return {
+            _node_text(node, parsed.raw)
+            for node in _walk(parameters)
+            if node.type == "identifier"
+        }
+
+    def scan_container(
+        container: SyntaxNode,
+        inherited_receivers: set[str],
+        inherited_factories: set[str],
+        shadowed_parameters: set[str] | None = None,
+    ) -> None:
+        shadowed = (
+            declared_names(container)
+            | hoisted_var_names(container)
+            | (shadowed_parameters or set())
+        )
+        receivers = set(inherited_receivers) - shadowed
+        factories = set(inherited_factories) - shadowed
+
+        def scan_inline(syntax: SyntaxNode) -> None:
+            if syntax.type in _JAVASCRIPT_FUNCTION_SCOPES or syntax.type == "statement_block":
+                return
+            if syntax.type == "assignment_expression":
+                right = syntax.child_by_field_name("right")
+                if right is not None:
+                    scan_inline(right)
+                left = syntax.child_by_field_name("left")
+                if left is not None and left.type == "identifier":
+                    name = _node_text(left, parsed.raw)
+                    receivers.discard(name)
+                    factories.discard(name)
+                    if is_factory_call(right, factories):
+                        receivers.add(name)
+                return
+            if syntax.type == "call_expression" and not syntax.has_error:
+                function = syntax.child_by_field_name("function")
+                if function is not None and function.type == "member_expression":
+                    object_node = function.child_by_field_name("object")
+                    property_node = function.child_by_field_name("property")
+                    if object_node is not None and property_node is not None:
+                        receiver = _node_text(object_node, parsed.raw)
+                        method = _node_text(property_node, parsed.raw)
+                        if receiver in receivers and method in _HTTP_REGISTRATION_METHODS:
+                            route_sites.add((syntax.start_byte, syntax.end_byte))
+            for child in syntax.named_children:
+                scan_inline(child)
+
+        def scan_nested_scopes(syntax: SyntaxNode) -> None:
+            for child in syntax.named_children:
+                if child.type in _JAVASCRIPT_FUNCTION_SCOPES:
+                    body = child.child_by_field_name("body")
+                    if body is not None and body.type == "statement_block":
+                        scan_container(
+                            body,
+                            receivers,
+                            factories,
+                            parameter_names(child),
+                        )
+                elif child.type == "statement_block":
+                    scan_container(child, receivers, factories)
+                else:
+                    scan_nested_scopes(child)
+
+        for statement in container.named_children:
+            if statement.type in {"lexical_declaration", "variable_declaration"}:
+                for declaration in statement.named_children:
+                    if declaration.type != "variable_declarator":
+                        continue
+                    name_node = declaration.child_by_field_name("name")
+                    value = declaration.child_by_field_name("value")
+                    if name_node is not None and name_node.type == "identifier":
+                        name = _node_text(name_node, parsed.raw)
+                        receivers.discard(name)
+                        factories.discard(name)
+                        if is_factory_call(value, factories):
+                            receivers.add(name)
+                    if value is not None:
+                        scan_nested_scopes(value)
+                continue
+            if statement.type in _JAVASCRIPT_FUNCTION_SCOPES:
+                body = statement.child_by_field_name("body")
+                if body is not None and body.type == "statement_block":
+                    scan_container(
+                        body,
+                        receivers,
+                        factories,
+                        parameter_names(statement),
+                    )
+                continue
+            scan_inline(statement)
+            scan_nested_scopes(statement)
+
+    scan_container(
+        parsed.tree.root_node,
+        set(),
+        set(express_bindings),
+    )
+    return frozenset(route_sites)
 
 
 def _parse_file(path: Path, project_root: Path) -> _ParsedFile:

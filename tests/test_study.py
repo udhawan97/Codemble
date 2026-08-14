@@ -326,6 +326,7 @@ def test_study_never_calls_the_provider(tmp_path: Path) -> None:
 
     assert payload["structural"]["easy"]  # type: ignore[index]
     assert payload["structural"]["expert"]  # type: ignore[index]
+    assert payload["learning_journey"]["target"]["node_id"] == "app.main"  # type: ignore[index]
     assert "explanation" not in payload, (
         "the shipped SPA crashes on an unknown explanation status; omitting the "
         "key makes App.jsx:523 render nothing instead"

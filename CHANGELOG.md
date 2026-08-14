@@ -5,6 +5,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-13
+
+### Added
+- A deterministic, model-free learning journey from Home to the selected file
+  or structure, completed only by certain directed imports and calls, with an
+  explicit break before a bounded target-relevant possible frontier.
+- Graph schema 11 role evidence for application entries, route handlers, UI
+  renderers, and tests. Python, JavaScript, TypeScript, Go, Java, Rust, and C#
+  adapters require framework import/factory/binding provenance, then attach
+  stable parser rules and exact observation spans, including registrations
+  whose handler declaration lives in another file.
+- Role-backed verification candidates inside the existing impact radius, always
+  labelled as candidates rather than test coverage, commands, or pass results.
+
+### Changed
+- Easy Study now presents a short route overview and one cited current step;
+  Expert enriches that exact step with its parser evidence. Impact,
+  Connections, and verification candidates are explicitly labelled as facts
+  about the selected feature, not every route step. Switching modes preserves
+  the content-derived step ID.
+- Study leads with the shared journey and contains Impact and Connections once,
+  instead of stacking duplicate standalone sections below another explanation.
+- The README and public site now teach the feature-route workflow, evidence
+  boundary, seven-language role depth, and exact Easy/Expert relationship.
+
+### Fixed
+- The 320px Study gate now mechanically requires the journey position, current
+  citation, proof break ordering, Back/Next controls, single Impact/Connections
+  rendering, and step preservation across mode changes.
+- Cyclic, partial, missing-Home, module-target, shuffled-graph, and long-route
+  cases now have explicit deterministic journey contracts and honest bounds.
+- Partial tree-sitter files no longer let a valid-looking annotation before a
+  later syntax error become role evidence, and framework-named user code no
+  longer masquerades as FastAPI, Express, Spring, Actix/Rocket, or ASP.NET.
+- Framework roles now require the exact imported annotation, macro, or factory
+  binding rather than a package substring or unrelated framework import.
+  Project type shadows, receiver rebinding, compound-scope locals, and hoisted
+  JavaScript `var` declarations revoke provenance; provider scans remain
+  indexed once per parsed module.
+- Selecting a new Home refreshes Study's journey index atomically, and language
+  focus projections drop role evidence owned by filtered-out nodes.
+
 ## [0.17.0] - 2026-08-13
 
 ### Added

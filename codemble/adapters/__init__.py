@@ -7,6 +7,7 @@ from codemble.adapters.base import (
     Graph,
     LanguageAdapter,
     Node,
+    RoleEvidence,
 )
 from codemble.adapters.project import (
     ProjectIntake,
@@ -35,4 +36,5 @@ __all__ = [
     "ProjectScaleError",
     "PythonAstAdapter",
     "PythonParseError",
+    "RoleEvidence",
 ]

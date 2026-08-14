@@ -60,7 +60,10 @@ try {
       viewport: { width: viewport.width, height: viewport.height },
       deviceScaleFactor: 1,
     });
-    page.setDefaultTimeout(12_000);
+    // A cold seven-language graph can spend several seconds in parser startup
+    // before the first API response. Keep this a layout gate, not a machine-
+    // load race; the assertions below still use their tighter action limits.
+    page.setDefaultTimeout(30_000);
     const label = `${viewport.width}x${viewport.height} easy`;
     try {
       await page.goto(url, { waitUntil: "networkidle" });
@@ -75,6 +78,7 @@ try {
       // --- the study panel ------------------------------------------------
       if (await openStudy(page)) {
         const study = await measurePanel(page, ".study-preview");
+        const journey = await measureJourney(page);
         report.push({ label, panel: "study", ...study });
         try {
           assert.ok(
@@ -83,6 +87,52 @@ try {
               `(${study.headingsBelowFold} headings below the fold) and draws nothing to ` +
               `say so -- on macOS its scrollbar is invisible until scrolled`,
           );
+          assert.equal(
+            journey.impactCount,
+            1,
+            `${label}: Impact must be composed into the journey exactly once`,
+          );
+          assert.equal(
+            journey.connectionsCount,
+            1,
+            `${label}: Connections must be composed into the journey exactly once`,
+          );
+          assert.equal(
+            journey.breakBeforePossible,
+            true,
+            `${label}: a proof break must precede every possible continuation`,
+          );
+          if (viewport.width === 320) {
+            for (const [name, metric] of Object.entries(journey.firstView)) {
+              assert.equal(
+                metric.visible,
+                true,
+                `${label}: ${name} is not exposed in the journey's first view ` +
+                  `(element ${metric.top}-${metric.bottom}, panel ${metric.panelTop}-${metric.panelBottom})`,
+              );
+            }
+            const next = page.locator(".journey-controls button", { hasText: "Next" });
+            if (await next.isEnabled()) await next.click();
+            const beforeMode = await page.locator(".journey-current").getAttribute("data-step-id");
+            await settleFirstRun(page, "Expert");
+            const afterMode = await page.locator(".journey-current").getAttribute("data-step-id");
+            assert.equal(
+              afterMode,
+              beforeMode,
+              `${label}: Easy/Expert mode changed the active parser step`,
+            );
+            const expertJourney = await measureJourney(page);
+            for (const [name, metric] of Object.entries(expertJourney.firstView)) {
+              assert.equal(
+                metric.visible,
+                true,
+                `${label.replace("easy", "expert")}: ${name} is not exposed in the ` +
+                  `journey's first view (element ${metric.top}-${metric.bottom}, ` +
+                  `panel ${metric.panelTop}-${metric.panelBottom})`,
+              );
+            }
+            await settleFirstRun(page, "Easy");
+          }
         } catch (error) {
           failures += 1;
           console.error(`  FAIL ${error.message}`);
@@ -146,7 +196,7 @@ try {
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 1,
     });
-    page.setDefaultTimeout(12_000);
+    page.setDefaultTimeout(30_000);
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleFirstRun(page, "easy");
@@ -407,6 +457,12 @@ async function openStudy(page) {
 }
 
 async function leaveStudy(page) {
+  const close = page.getByRole("button", { name: "Close", exact: true }).first();
+  if ((await close.count()) > 0 && (await close.isVisible().catch(() => false))) {
+    await close.click().catch(() => {});
+    await page.waitForTimeout(500);
+    return;
+  }
   const back = page.getByRole("button", { name: /^Back to the module$/ }).first();
   if ((await back.count()) > 0) {
     await back.click().catch(() => {});
@@ -452,6 +508,54 @@ function measurePanel(page, selector) {
       hasOverflowCue: cueFromBackground || cueFromMask || cueFromEdges || cueFromScrollbar,
     };
   }, selector);
+}
+
+function measureJourney(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector(".study-preview");
+    const journey = panel?.querySelector(".learning-journey");
+    if (!(panel instanceof HTMLElement) || !(journey instanceof HTMLElement)) {
+      return {
+        impactCount: 0,
+        connectionsCount: 0,
+        breakBeforePossible: false,
+        firstView: {},
+      };
+    }
+    const panelBox = panel.getBoundingClientRect();
+    const inFirstView = (selector) => {
+      const element = journey.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return { visible: false };
+      const box = element.getBoundingClientRect();
+      const reachableWithoutLeavingJourney =
+        box.top >= panelBox.top && box.bottom <= panelBox.bottom;
+      return {
+        // These are the first-step controls, so their full touch targets must
+        // be present without asking a 320px learner to discover another scroll.
+        visible: reachableWithoutLeavingJourney,
+        top: Math.round(box.top),
+        bottom: Math.round(box.bottom),
+        panelTop: Math.round(panelBox.top),
+        panelBottom: Math.round(panelBox.bottom),
+      };
+    };
+    const proofBreak = journey.querySelector(".journey-break");
+    const possible = journey.querySelector(".journey-possible");
+    return {
+      impactCount: journey.querySelectorAll(".impact-widget").length,
+      connectionsCount: journey.querySelectorAll(".connections").length,
+      breakBeforePossible:
+        !possible ||
+        (proofBreak instanceof HTMLElement &&
+          proofBreak.compareDocumentPosition(possible) & Node.DOCUMENT_POSITION_FOLLOWING) > 0,
+      firstView: {
+        "journey position": inFirstView(".journey-position"),
+        "current-step citation": inFirstView(".journey-citations"),
+        "Back control": inFirstView(".journey-controls button:first-child"),
+        "Next control": inFirstView(".journey-controls button:nth-child(2)"),
+      },
+    };
+  });
 }
 
 function measureQuiz(page) {

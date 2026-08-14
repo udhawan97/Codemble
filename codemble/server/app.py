@@ -268,6 +268,7 @@ def create_app(
                 status_code=422,
                 detail="Choose one of the parser-ranked entrypoint candidates.",
             ) from error
+        project.studies.update_graph(selected)
         project.invalidate_views()
         return selected.to_dict()
 

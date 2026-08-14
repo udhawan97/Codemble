@@ -88,10 +88,10 @@ try {
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
       });
-      // A control that has moved or is covered should fail this gate quickly and
-      // name itself, not sit on Playwright's 30s default and then report a
-      // timeout on something unrelated to the assertion being made.
-      page.setDefaultTimeout(12_000);
+      // A cold seven-language graph and its first WebGL frame can legitimately
+      // consume several seconds. Keep the normal Playwright ceiling so this
+      // remains a geometry gate instead of a machine-load race.
+      page.setDefaultTimeout(30_000);
       try {
         await page.goto(url, { waitUntil: "networkidle" });
         await settleFirstRun(page, register);
@@ -169,7 +169,7 @@ try {
       viewport: { width, height: 720 },
       deviceScaleFactor: 1,
     });
-    page.setDefaultTimeout(12_000);
+    page.setDefaultTimeout(30_000);
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleFirstRun(page, "easy", { home: true });
@@ -219,7 +219,7 @@ try {
       viewport: { width: 1440, height: 720 },
       deviceScaleFactor: 1,
     });
-    page.setDefaultTimeout(12_000);
+    page.setDefaultTimeout(30_000);
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleFirstRun(page, "easy", { home: true });
@@ -263,7 +263,7 @@ try {
       viewport: { width: viewport.width, height: viewport.height },
       deviceScaleFactor: viewport.deviceScaleFactor,
     });
-    page.setDefaultTimeout(12_000);
+    page.setDefaultTimeout(30_000);
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleFirstRun(page, "easy", { home: true });

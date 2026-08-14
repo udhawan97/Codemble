@@ -101,9 +101,13 @@ def test_entrypoint_api_accepts_only_parser_ranked_candidates(tmp_path: Path) ->
             encoding="utf-8",
         )
     graph = PythonAstAdapter().parse(tmp_path)
-    client = TestClient(create_app(graph, tmp_path / "missing"))
+    studies = StudyService(graph, cache_root=tmp_path / "cache")
+    client = TestClient(create_app(graph, tmp_path / "missing", studies))
 
     assert client.get("/api/graph").json()["selected_entrypoint"] is None
+    initial_journey = client.get("/api/node/alpha/study").json()["learning_journey"]
+    assert initial_journey["home_context"] is None
+    assert initial_journey["break"]["reason"] == "home-not-selected"
     response = client.post("/api/entrypoint", json={"node_id": "beta"})
     assert response.status_code == 200
     assert response.json()["selected_entrypoint"] == "beta"
@@ -115,6 +119,11 @@ def test_entrypoint_api_accepts_only_parser_ranked_candidates(tmp_path: Path) ->
     assert beta_checks[0]["kind"] == "entrypoint"
     assert "selected as Home" in beta_checks[0]["prompt_voices"]["expert"]
     assert "prompt" not in beta_checks[0]
+    refreshed_journey = client.get("/api/node/alpha/study").json()[
+        "learning_journey"
+    ]
+    assert refreshed_journey["home_context"]["node_id"] == "beta"
+    assert refreshed_journey["home_context"]["citation"] == "beta.py:1"
     assert client.get("/api/regions/alpha/checks").json()["checks"] == []
     assert client.post("/api/entrypoint", json={"node_id": "missing"}).status_code == 422
 
@@ -877,6 +886,11 @@ def test_selected_home_is_restored_for_the_next_run_of_the_same_project(
     )
 
     assert restarted.get("/api/graph").json()["selected_entrypoint"] == "beta"
+    restored_journey = restarted.get("/api/node/alpha/study").json()[
+        "learning_journey"
+    ]
+    assert restored_journey["home_context"]["node_id"] == "beta"
+    assert restored_journey["home_context"]["citation"] == "beta.py:1"
 
 
 def test_map_endpoint_serves_both_deterministic_layouts(client) -> None:  # type: ignore[no-untyped-def]

@@ -36,10 +36,19 @@ class LiveProject:
         studies: StudyService | None = None,
         checks: CheckService | None = None,
     ) -> None:
-        self.studies = studies or StudyService.from_environment(graph)
         self.checks = checks or CheckService(graph)
+        self.studies = studies or StudyService.from_environment(graph)
+        # CheckService may restore a persisted, still parser-ranked Home while
+        # it starts. Study owns its own journey index, so synchronize it with
+        # that restored graph before either API surface can answer; otherwise
+        # /api/graph and /study tell two different startup truths.
+        initial_graph = self.checks.graph()
+        self.studies.update_graph(initial_graph)
         self._lock = threading.Lock()
-        self._graph: Graph | None = None
+        # Reuse the same hydration for the first graph/map response. Startup
+        # synchronization must not make a cold request pay the progress walk
+        # twice.
+        self._graph: Graph | None = initial_graph
         self._graph_json: str | None = None
         self._map_json: str | None = None
 

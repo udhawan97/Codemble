@@ -56,7 +56,9 @@ input:focus-visible {
 
 .instrument-rail {
   position: relative;
-  z-index: var(--cm-z-sticky);
+  /* The rail stays the outermost app control. Guidance deliberately clears a
+     Study panel, but must never cover Change Home or the compact More menu. */
+  z-index: calc(var(--cm-z-panel) + 2);
   display: grid;
   min-width: 0;
   max-width: 100%;
@@ -171,7 +173,7 @@ input:focus-visible {
 }
 
 .instrument-rail:has(.rail-overflow[data-open]) {
-  z-index: var(--cm-z-panel);
+  z-index: calc(var(--cm-z-panel) + 2);
 }
 
 /* Only while the panel is a real panel. Above the wide breakpoint it is
@@ -2446,7 +2448,23 @@ input:focus-visible {
 
 
 @media (max-width: 39.999rem) {
-  .study-preview,
+  .study-preview {
+    /* The Study surface owns the remaining compact viewport. As an absolute
+       child it stopped above the status/footer stack and had only 251px at
+       320x640, so even a compact current step began below its first view.
+       Keeping the 124px instrument rail exposed preserves the audience toggle
+       while the fixed panel uses the otherwise dead footer space. */
+    position: fixed;
+    inset-block-start: 7.75rem;
+    inset-block-end: 0;
+    max-height: none;
+    border-block-start: 1px solid var(--cm-hairline);
+  }
+
+  .app-shell:has(.study-preview) .instrument-rail {
+    z-index: calc(var(--cm-z-panel) + 2);
+  }
+
   .check-panel {
     inset: 0;
     max-height: none;
@@ -3036,7 +3054,11 @@ input:focus-visible {
 
 .hint-chip {
   position: static;
-  z-index: var(--cm-z-raised);
+  /* Guidance is the deliberate bridge out of Study. Study's source rows live
+     inside a z-panel child of the Map, so a merely raised grid item looked
+     clickable while those rows intercepted every pointer. Checks still hide
+     the chip in App; while Study is open this action must sit above its panel. */
+  z-index: calc(var(--cm-z-panel) + 1);
   display: flex;
   grid-row: 3;
   min-width: 0;
@@ -3587,6 +3609,275 @@ input:focus-visible {
 
 .progress-reset__error {
   color: var(--cm-error);
+}
+
+/* --- Feature journey ----------------------------------------------------
+   One evidence spine for both audience modes. The numbered rail is a compact
+   overview; only the active claim expands, so a 320px study panel exposes the
+   position, citation, and Back/Next controls without turning the whole graph
+   into a nineteen-screen document. */
+.learning-journey {
+  min-width: 0;
+}
+
+.journey-overview {
+  display: grid;
+  grid-auto-columns: minmax(4.5rem, 1fr);
+  grid-auto-flow: column;
+  gap: var(--cm-space-2xs);
+  margin: var(--cm-space-md) 0 0;
+  overflow-x: auto;
+  padding: 0 0 var(--cm-space-xs);
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.journey-overview button {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  align-content: center;
+  justify-items: start;
+  gap: 1px;
+  padding: var(--cm-space-xs);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-ink-2);
+  cursor: pointer;
+  text-align: start;
+}
+
+.journey-overview button[aria-current="step"] {
+  border-color: var(--cm-orbit);
+  background: var(--cm-orbit-low);
+  color: var(--cm-ink);
+}
+
+.journey-overview button > span,
+.journey-overview button > small,
+.journey-position,
+.journey-citations,
+.journey-expert-facts,
+.journey-controls,
+.journey-break code,
+.journey-possible span,
+.journey-candidate-note,
+.journey-support-scope {
+  font-family: var(--cm-font-mono);
+}
+
+.journey-overview button > span {
+  color: var(--cm-orbit);
+  font-size: var(--cm-text-sm);
+}
+
+.journey-overview button > small {
+  font-size: 0.625rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.journey-current {
+  display: grid;
+  gap: var(--cm-space-sm);
+  margin-block-start: var(--cm-space-sm);
+  padding: var(--cm-space-md);
+  border: 1px solid var(--cm-hairline);
+  border-inline-start: 3px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground);
+}
+
+.journey-position {
+  margin: 0 !important;
+  color: var(--cm-orbit) !important;
+  font-size: var(--cm-text-xs);
+  text-transform: uppercase;
+}
+
+.journey-current h3 {
+  margin: 0;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  font-style: normal;
+}
+
+.journey-current > p:not(.journey-position) {
+  margin: 0;
+  color: var(--cm-ink-2);
+}
+
+.journey-citations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-xs) var(--cm-space-md);
+  color: var(--cm-ink-3);
+  font-size: var(--cm-text-xs);
+}
+
+.journey-citations code,
+.journey-break code {
+  color: var(--cm-orbit);
+  overflow-wrap: anywhere;
+}
+
+.study-preview .journey-expert-facts {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--cm-space-sm);
+  margin: 0;
+}
+
+.journey-expert-facts dd {
+  overflow-wrap: anywhere;
+  font-size: var(--cm-text-xs);
+}
+
+.journey-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--cm-space-xs);
+}
+
+.journey-controls button {
+  min-height: 44px;
+  padding: var(--cm-space-xs);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: transparent;
+  color: var(--cm-ink);
+  cursor: pointer;
+}
+
+.journey-controls button:nth-child(2) {
+  border-color: var(--cm-orbit);
+  color: var(--cm-orbit);
+}
+
+.journey-controls button:disabled {
+  color: var(--cm-ink-3);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.journey-break,
+.journey-possible {
+  margin-block-start: var(--cm-space-md);
+  padding: var(--cm-space-md);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+}
+
+.journey-break {
+  border-inline-start: 3px solid var(--cm-error);
+}
+
+.journey-break p,
+.journey-possible p {
+  margin: var(--cm-space-xs) 0 0;
+  color: var(--cm-ink-2);
+}
+
+.journey-possible h3 {
+  margin: 0;
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-base);
+  font-style: normal;
+}
+
+.journey-possible ul {
+  display: grid;
+  gap: var(--cm-space-xs);
+  margin: var(--cm-space-md) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journey-possible li {
+  display: grid;
+  gap: var(--cm-space-2xs);
+  padding-block-start: var(--cm-space-xs);
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.journey-possible span,
+.journey-candidate-note {
+  color: var(--cm-ink-3);
+  font-size: var(--cm-text-xs);
+  overflow-wrap: anywhere;
+}
+
+.journey-support {
+  margin-block-start: var(--cm-space-lg);
+  border-block-start: 1px solid var(--cm-hairline);
+}
+
+.journey-support > summary {
+  min-height: 44px;
+  padding-block: var(--cm-space-sm);
+  color: var(--cm-orbit);
+  cursor: pointer;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+}
+
+.journey-support > section {
+  margin-block-start: var(--cm-space-lg);
+}
+
+.journey-support-scope {
+  margin: 0;
+}
+
+.journey-candidate-note {
+  margin-block-start: var(--cm-space-sm);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 20rem) {
+  .study-preview {
+    padding: var(--cm-space-sm) var(--cm-space-md)
+      max(var(--cm-space-sm), env(safe-area-inset-bottom));
+  }
+
+  .study-content {
+    gap: var(--cm-space-md);
+    margin-block-start: var(--cm-space-xs);
+  }
+
+  .study-preview dl {
+    gap: var(--cm-space-sm);
+    margin-block-start: var(--cm-space-md);
+  }
+
+  .journey-current {
+    gap: var(--cm-space-xs);
+    /* Easy mode enlarges --cm-space-sm to 1rem. The compact card uses the
+       unchanged xs token so its complete 44px navigation row stays visible. */
+    padding: var(--cm-space-xs);
+  }
+
+  .journey-overview {
+    margin-block-start: var(--cm-space-xs);
+  }
+
+  .journey-current > p:not(.journey-position) {
+    font-size: var(--cm-text-sm);
+    line-height: 1.45;
+  }
+
+  .journey-controls {
+    gap: var(--cm-space-2xs);
+  }
 }
 
 /* --- Impact widget -------------------------------------------------------

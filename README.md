@@ -11,11 +11,12 @@
 <p align="center">
   Codemble reads a project on your machine and turns its real structure into a
   galaxy you can explore or a diagram you can follow. Study any file, see what
-  a change reaches, and light only what you prove you understand.
+  a change reaches, follow one feature from Home to its application surface,
+  and light only what you prove you understand.
 </p>
 
 <p align="center">
-  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.17.0"><img src="https://img.shields.io/badge/stable-v0.17.0-2b4d96?style=flat-square" alt="Stable release v0.17.0"></a>
+  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.18.0"><img src="https://img.shields.io/badge/stable-v0.18.0-2b4d96?style=flat-square" alt="Stable release v0.18.0"></a>
   <a href="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml"><img src="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <img src="https://img.shields.io/badge/Python-3.11+-2b4d96?style=flat-square" alt="Python 3.11 or newer">
   <img src="https://img.shields.io/badge/maps-7_languages-3f6ac0?style=flat-square" alt="Maps seven languages">
@@ -31,26 +32,27 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble v0.17.0 showing 184 represented systems across seven languages, with community-tinted route corridors, ranked labels, 30 systems charted, six unreadable test fixtures called out, and Home still unlit." width="1000">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Codemble v0.18.0 showing 190 represented systems across seven languages, with community-tinted route corridors, ranked labels, 30 systems charted, six unreadable test fixtures called out, and Home still unlit." width="1000">
 </p>
 
 <p align="center"><sub>
-  Codemble v0.17.0 · every module is represented before the first lesson ·
+  Codemble v0.18.0 · every module is represented before the first lesson ·
   related systems and proven routes share a subtle colour cue ·
   visiting charts a route; passing checks lights a system amber
 </sub></p>
 
 > [!IMPORTANT]
-> **The screen above and the packaged app are both v0.17.0.** The PyPI release
+> **The screen above and the packaged app are both v0.18.0.** The PyPI release
 > maps Python, JavaScript, TypeScript, Go, Java, Rust, C#, and mixed projects;
 > it includes First Flight, the local project-brief export, proven import-cycle
-> facts, the explorer trail, parser-owned Impact, and automatic Home selection.
+> facts, parser-owned feature journeys, deeper application/test role detection
+> across all seven languages, Impact, and automatic Home selection.
 > The pinned command and direct downloads below resolve to the same verified
 > release.
 
 ## Start here
 
-### Run v0.17.0 — recommended
+### Run v0.18.0 — recommended
 
 Install [uv](https://docs.astral.sh/uv/) once, then open Codemble whenever you
 need it:
@@ -58,35 +60,35 @@ need it:
 | | Step | Command |
 | :---: | --- | --- |
 | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/install.svg" width="22" height="22" alt=""> | **Install uv** — a clean Python app runner | `brew install uv` |
-| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/run.svg" width="22" height="22" alt=""> | **Open this release** — pick a project in the browser | `uvx --from codemble==0.17.0 codemble` |
+| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/run.svg" width="22" height="22" alt=""> | **Open this release** — pick a project in the browser | `uvx --from codemble==0.18.0 codemble` |
 
 No Homebrew? Use uv's [official installer](https://docs.astral.sh/uv/getting-started/installation/),
-or install permanently with `pipx install codemble==0.17.0` and run `codemble`.
+or install permanently with `pipx install codemble==0.18.0` and run `codemble`.
 Pass a folder to skip the project picker:
-`uvx --from codemble==0.17.0 codemble ./my-project`.
+`uvx --from codemble==0.18.0 codemble ./my-project`.
 Use the shorter `uvx codemble` when you intentionally want whatever release is
 newest on PyPI.
 
 <p align="center">
-  <a href="https://pypi.org/project/codemble/0.17.0/#files">
+  <a href="https://pypi.org/project/codemble/0.18.0/#files">
     <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/download-codemble.svg" alt="Download Codemble — wheel, source archive, SHA256 digests, and release notes" width="760">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.17.0/codemble-0.17.0-py3-none-any.whl"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/download.svg" alt="" width="18"> Wheel</a> ·
-  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.17.0/codemble-0.17.0.tar.gz"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/package.svg" alt="" width="18"> Source archive</a> ·
-  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.17.0/SHA256SUMS.txt"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/shield.svg" alt="" width="18"> SHA256SUMS</a> ·
-  <a href="https://pypi.org/project/codemble/0.17.0/#files">PyPI files</a> ·
-  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.17.0"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/release.svg" alt="" width="18"> Release notes</a>
+  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.18.0/codemble-0.18.0-py3-none-any.whl"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/download.svg" alt="" width="18"> Wheel</a> ·
+  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.18.0/codemble-0.18.0.tar.gz"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/package.svg" alt="" width="18"> Source archive</a> ·
+  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.18.0/SHA256SUMS.txt"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/shield.svg" alt="" width="18"> SHA256SUMS</a> ·
+  <a href="https://pypi.org/project/codemble/0.18.0/#files">PyPI files</a> ·
+  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.18.0"><img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/release.svg" alt="" width="18"> Release notes</a>
 </p>
 
-### Build the same v0.17.0 app from source
+### Build the same v0.18.0 app from source
 
 Use this route when you want an editable checkout:
 
 ```bash
-git clone --branch v0.17.0 --depth 1 https://github.com/udhawan97/Codemble.git
+git clone --branch v0.18.0 --depth 1 https://github.com/udhawan97/Codemble.git
 cd Codemble
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
@@ -104,6 +106,7 @@ the verification commands.
 | :---: | --- |
 | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/compass.svg" width="24" height="24" alt=""> | **Explore first.** Every module is represented on the first frame. Subtle colour joins systems inside the same import community, while proven bridges stay neutral and possible routes stay dashed. First Flight gives Home a short, repeatable orientation path. |
 | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/map.svg" width="24" height="24" alt=""> | **See how it fits together.** Switch between a 3D galaxy, an import architecture map, and the call workflow from Home. |
+| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/compass.svg" width="24" height="24" alt=""> | **Follow one feature end to end.** Study lays out a parser-proven route from Home through files and calls to the selected feature. Easy guides one step at a time; Expert adds the current step's parser evidence and clearly scoped selected-feature impact and verification candidates. |
 | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/impact.svg" width="24" height="24" alt=""> | **Know what a change touches.** Impact traces what depends on a structure and what it depends on, with real file locations and certainty labels. |
 | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/check.svg" width="24" height="24" alt=""> | **Prove what you understand.** Graph-derived checks—not a narrator—are the only way to light a system amber. |
 | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/brand/icons/shield.svg" width="24" height="24" alt=""> | **Keep the project local.** Parsing, maps, source, Impact, checks, and progress stay on your machine. |
@@ -132,20 +135,25 @@ compilers, or tests.
 | **Map · Architecture** | Modules grouped by folder and layered by proven imports from Home | See how parts fit together |
 | **Map · Workflow** | Certain calls from the selected entrypoint, depth by depth | See what runs first |
 | **Star chart** | Project overview, proven import cycles, progress, and a local Markdown export | Carry parser-owned facts into a handoff |
-| **Study** | Real source, Impact, relationships, Lens notes, and optional narration | Understand one structure in context |
+| **Study** | One feature journey, real source, integrated Impact and Connections, Lens notes, and optional narration | Understand how one structure reaches the application |
 
 The Map is plain SVG, so it remains usable on a machine that cannot render the
-WebGL galaxy. Easy mode uses plainer labels and lower density; Expert mode shows
-more graph detail. Neither changes the underlying evidence or scoring.
+WebGL galaxy. Easy mode shows an overview and guides one cited journey step at a
+time. Expert mode keeps that exact step selected and adds its parser rule and
+observation evidence. Impact, Connections, and bounded test candidates describe
+the selected feature as a whole, not the current route step. Neither mode
+changes the underlying evidence, route certainty, or scoring.
 
 ## What Codemble can prove
 
 Codemble is built for readers who may not yet spot a confident mistake, so its
 limits are part of the interface:
 
-- Nodes, routes, language concepts, and Home candidates come from parsers.
+- Nodes, routes, language concepts, Home candidates, and application/test roles
+  come from parsers with exact source evidence.
 - Unproven relationships are labelled **possible** and drawn differently on
-  both the galaxy and the map; colour never upgrades their certainty.
+  both the galaxy and the map. A feature journey stops at the proof break before
+  showing a target-relevant possible frontier; colour never upgrades certainty.
 - Impact and check answers come from the graph and need no API key.
 - Unsupported or broken source is counted and named instead of silently hidden.
 - Charting records where you went. Only a passed check records understanding.
@@ -160,7 +168,7 @@ bug—[report it](https://github.com/udhawan97/Codemble/issues/new/choose).
 | Stays on your machine | Leaves only when Study opens with a configured narrator |
 | --- | --- |
 | Project discovery and parsing | A bounded Study excerpt sent to your configured narrator |
-| Graph, maps, source, structural summary, Impact, Lens, and checks | A request triggered when you open Study |
+| Graph, maps, feature journeys, source, structural summary, Impact, Lens, and checks | A request triggered when you open Study |
 | Progress and narration cache in `~/.codemble/` | No background requests |
 | Narration too, when you choose local Ollama | No accounts, telemetry, or Codemble cloud |
 
@@ -225,7 +233,7 @@ project:
 
 | Horizon | Work |
 | --- | --- |
-| **Now** | Collect unaided learner evidence and correctness reports on v0.17.0 |
+| **Now** | Collect unaided learner evidence and correctness reports on v0.18.0 |
 | **Next** | Level-of-detail rendering and clustering for larger repositories |
 | **Later** | Read-only sharing, new quest types, and a coordinated public launch |
 

@@ -19,8 +19,10 @@ from codemble.adapters.base import (
     Edge,
     Graph,
     Node,
+    RoleEvidence,
 )
 from codemble.adapters.parse_progress import note_file_parsed
+from codemble.adapters.role_rules import native_entrypoint_roles, roles_from_complete_files
 from codemble.adapters.tree_sitter_core import _TreeSitterAdapterCore
 
 _JAVA_EXTENSIONS = frozenset({".java"})
@@ -302,6 +304,11 @@ class JavaAdapter(_TreeSitterAdapterCore):
             import_edges.update(_import_edges(parsed, references, index))
 
         call_edges = _call_edges(index, references_by_module)
+        partial_files = tuple(
+            parsed.relative_path
+            for parsed in parsed_files
+            if parsed.tree.root_node.has_error
+        )
         return Graph(
             nodes=index.nodes,
             edges=(*import_edges, *call_edges),
@@ -311,11 +318,12 @@ class JavaAdapter(_TreeSitterAdapterCore):
                 parsed.relative_path: parsed.digest for parsed in parsed_files
             },
             concept_annotations=_concept_annotations(index),
-            partial_files=tuple(
-                parsed.relative_path
-                for parsed in parsed_files
-                if parsed.tree.root_node.has_error
+            role_evidence=roles_from_complete_files(
+                _role_evidence(index),
+                index.nodes,
+                partial_files,
             ),
+            partial_files=partial_files,
         )
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""
@@ -349,6 +357,159 @@ class JavaAdapter(_TreeSitterAdapterCore):
             for annotation in _concept_annotations(index)
             if annotation.node_id == node.id
         ]
+
+
+_SPRING_ANNOTATION_PACKAGE = "org.springframework.web.bind.annotation"
+_JAVA_ROLE_TYPES = {
+    "Test": frozenset({"org.junit.Test", "org.junit.jupiter.api.Test"}),
+    **{
+        name: frozenset({f"{_SPRING_ANNOTATION_PACKAGE}.{name}"})
+        for name in (
+            "RequestMapping",
+            "GetMapping",
+            "PostMapping",
+            "PutMapping",
+            "PatchMapping",
+            "DeleteMapping",
+        )
+    },
+}
+
+
+def _role_evidence(index: _SyntaxEvidenceIndex) -> tuple[RoleEvidence, ...]:
+    roles = set(native_entrypoint_roles(index.nodes))
+    project_type_names = _declared_java_type_names(index)
+    imported_roles_by_module = {
+        module_id: _imported_java_role_symbols(parsed)
+        for module_id, parsed in index.parsed_by_module.items()
+    }
+    for definition in index.definitions:
+        if definition.is_type:
+            continue
+        node = index.node_by_id[definition.node_id]
+        parsed = index.parsed_by_module[definition.module_id]
+        imported_roles = imported_roles_by_module[definition.module_id]
+        test_annotation = _annotation_syntax(definition.syntax, parsed.raw, "Test")
+        if test_annotation is not None and _java_role_binding_is_proven(
+            test_annotation,
+            parsed.raw,
+            "Test",
+            imported_roles,
+            project_type_names,
+        ):
+            lineno, end_lineno = _line_span(test_annotation)
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "test",
+                    "java.junit.test",
+                    node.file,
+                    lineno,
+                    end_lineno,
+                )
+            )
+        for annotation_name in (
+            "RequestMapping",
+            "GetMapping",
+            "PostMapping",
+            "PutMapping",
+            "PatchMapping",
+            "DeleteMapping",
+        ):
+            route_annotation = _annotation_syntax(
+                definition.syntax,
+                parsed.raw,
+                annotation_name,
+            )
+            if route_annotation is None or not _java_role_binding_is_proven(
+                route_annotation,
+                parsed.raw,
+                annotation_name,
+                imported_roles,
+                project_type_names,
+            ):
+                continue
+            lineno, end_lineno = _line_span(route_annotation)
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "route-handler",
+                    f"java.spring.{annotation_name.casefold()}",
+                    node.file,
+                    lineno,
+                    end_lineno,
+                )
+            )
+    return tuple(sorted(roles, key=lambda item: (item.file, item.lineno, item.node_id)))
+
+
+def _imported_java_role_symbols(parsed: _ParsedFile) -> frozenset[str]:
+    imported_roles: set[str] = set()
+    for syntax in _walk(parsed.tree.root_node):
+        if syntax.type != "import_declaration":
+            continue
+        written = _node_text(syntax, parsed.raw).strip()
+        if not written.startswith("import "):
+            continue
+        imported = written.removeprefix("import ").strip()
+        if imported.startswith("static "):
+            continue
+        imported = imported.rstrip(";").strip()
+        for symbol, qualified_names in _JAVA_ROLE_TYPES.items():
+            if imported in qualified_names:
+                imported_roles.add(symbol)
+    return frozenset(imported_roles)
+
+
+def _declared_java_type_names(index: _SyntaxEvidenceIndex) -> frozenset[str]:
+    declaration_types = {*_TYPE_DECLARATIONS, "annotation_type_declaration"}
+    return frozenset(
+        _node_text(name, parsed.raw)
+        for parsed in index.parsed_files
+        for syntax in _walk(parsed.tree.root_node)
+        if syntax.type in declaration_types
+        if (name := syntax.child_by_field_name("name")) is not None
+    )
+
+
+def _java_role_binding_is_proven(
+    annotation: SyntaxNode,
+    raw: bytes,
+    symbol: str,
+    imported_roles: frozenset[str],
+    project_type_names: frozenset[str],
+) -> bool:
+    name = annotation.child_by_field_name("name")
+    if name is None:
+        return False
+    written = _node_text(name, raw)
+    if written in _JAVA_ROLE_TYPES[symbol]:
+        return True
+    return (
+        written == symbol
+        and symbol in imported_roles
+        and symbol not in project_type_names
+    )
+
+
+def _annotation_syntax(
+    syntax: SyntaxNode,
+    raw: bytes,
+    expected: str,
+) -> SyntaxNode | None:
+    modifiers = next(
+        (child for child in syntax.named_children if child.type == "modifiers"),
+        None,
+    )
+    if modifiers is None:
+        return None
+    for child in modifiers.named_children:
+        if child.type not in {"annotation", "marker_annotation"}:
+            continue
+        name = child.child_by_field_name("name")
+        if name is not None and _node_text(name, raw).rsplit(".", 1)[-1] == expected:
+            return child
+    return None
 
 
 def _parse_file(path: Path, project_root: Path) -> _ParsedFile:

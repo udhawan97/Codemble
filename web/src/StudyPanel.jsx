@@ -1,6 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { conceptTitle } from "./graphData.js";
+import {
+  moveJourneyStep,
+  projectJourneyStep,
+  reconcileJourneyStep,
+} from "./learningJourney.js";
 
 export function StudyPanel({
   node,
@@ -18,6 +23,8 @@ export function StudyPanel({
 }) {
   const sourceRef = useRef(null);
   const revealedFor = useRef(null);
+  const journey = study?.learning_journey ?? null;
+  const [activeJourneyStepId, setActiveJourneyStepId] = useState(null);
   const sourceReady = Boolean(study?.source);
   // A control named "Read the source" has to land on the source. The panel
   // opens at the top, and above the source sit the summary, the impact widget
@@ -30,6 +37,14 @@ export function StudyPanel({
     revealedFor.current = node.id;
     sourceRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
   }, [revealSource, sourceReady, node.id]);
+  // Step identity is content-derived by the graph layer. Mode is deliberately
+  // absent from this effect, so Easy/Expert changes detail without moving the
+  // learner. A refreshed payload preserves the exact ID when it still exists;
+  // if parser evidence removed it, reconciliation returns to the first claim
+  // instead of clamping a numeric position onto a different statement.
+  useEffect(() => {
+    setActiveJourneyStepId((active) => reconcileJourneyStep(journey, active));
+  }, [journey]);
 
   return (
     <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
@@ -47,32 +62,6 @@ export function StudyPanel({
         ) : null}
         <p className="study-preview__path">{node.file}:{node.lineno}</p>
         <h1>{node.name}</h1>
-        <dl>
-          {/* Easy reads its own register end to end: "Kind/Span/Resolution"
-              are parser vocabulary the coach-marks never taught. The facts
-              are identical; only the labels change. */}
-          <div><dt>{mode === "easy" ? "What it is" : "Kind"}</dt><dd>{node.kind}</dd></div>
-          <div><dt>{mode === "easy" ? "Length" : "Span"}</dt><dd>{node.loc} {node.loc === 1 ? "line" : "lines"}</dd></div>
-          <div>
-            {/* "Callers", not "Calls in": centrality counts the distinct
-                structures that call this one, not the call sites they contain.
-                The easy label says "Called by" and not "Used by" because the
-                summary right below counts *imports* when it says five other
-                parts use this file -- one panel showing "Used by 0" above
-                "five other parts use it" is a contradiction a learner cannot
-                resolve, and "use"/"brings this in" is import vocabulary. */}
-            <dt>{mode === "easy" ? "Called by" : "Callers"}</dt>
-            <dd>{node.centrality}</dd>
-          </div>
-          <div>
-            <dt>{mode === "easy" ? "Evidence" : "Resolution"}</dt>
-            <dd>
-              {node.partial
-                ? mode === "easy" ? "Could not be fully read" : "Partial parse"
-                : mode === "easy" ? "Proven from your code" : "Parser-proven"}
-            </dd>
-          </div>
-        </dl>
       </header>
 
       {error ? (
@@ -92,14 +81,20 @@ export function StudyPanel({
           also erased a narration that had already succeeded -- and gating
           narration on the parser payload made one failure look like five. */}
       <div className="study-content">
-        {study ? <StructuralSummary structural={study.structural} mode={mode} /> : null}
-        {/* Expert leads with impact. Someone onboarding onto a codebase is
-            asking "what does this control, and what can break it" before they
-            are asking for prose -- and this answer is parser truth, so it is
-            the one part of the panel that is always there, key or no key. */}
-        {study && mode !== "easy" ? (
-          <ImpactWidget impact={study.impact} mode={mode} onSelectNode={onSelectNode} />
+        {study ? (
+          <LearningJourney
+            journey={journey}
+            activeStepId={activeJourneyStepId}
+            onActiveStepChange={setActiveJourneyStepId}
+            impact={study.impact}
+            neighbors={study.neighbors}
+            node={node}
+            mode={mode}
+            onSelectNode={onSelectNode}
+          />
         ) : null}
+        {study ? <StudyFacts node={node} mode={mode} /> : null}
+        {study ? <StructuralSummary structural={study.structural} mode={mode} /> : null}
         <Explanation
           explanation={explanation}
           loading={explanationLoading}
@@ -110,23 +105,216 @@ export function StudyPanel({
           onSelectNode={onSelectNode}
           onRetry={onRetryNarration}
         />
-        {study && mode === "easy" ? (
-          <ImpactWidget impact={study.impact} mode={mode} onSelectNode={onSelectNode} />
-        ) : null}
         {study ? (
           <>
-            <Connections
-              neighbors={study.neighbors}
-              node={node}
-              mode={mode}
-              onSelectNode={onSelectNode}
-            />
             <SourceExcerpt source={study.source} anchorRef={sourceRef} />
             <LensNotes lens={study.lens} language={node.language} mode={mode} />
           </>
         ) : null}
       </div>
     </aside>
+  );
+}
+
+function StudyFacts({ node, mode }) {
+  return (
+    <section className="study-facts" aria-label="Selected structure facts">
+      <dl>
+        <div><dt>{mode === "easy" ? "What it is" : "Kind"}</dt><dd>{node.kind}</dd></div>
+        <div><dt>{mode === "easy" ? "Length" : "Span"}</dt><dd>{node.loc} {node.loc === 1 ? "line" : "lines"}</dd></div>
+        <div>
+          <dt>{mode === "easy" ? "Called by" : "Callers"}</dt>
+          <dd>{node.centrality}</dd>
+        </div>
+        <div>
+          <dt>{mode === "easy" ? "Evidence" : "Resolution"}</dt>
+          <dd>
+            {node.partial
+              ? mode === "easy" ? "Could not be fully read" : "Partial parse"
+              : mode === "easy" ? "Proven from your code" : "Parser-proven"}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function LearningJourney({
+  journey,
+  activeStepId,
+  onActiveStepChange,
+  impact,
+  neighbors,
+  node,
+  mode,
+  onSelectNode,
+}) {
+  const [announcement, setAnnouncement] = useState("");
+  const active = projectJourneyStep(journey, activeStepId, mode);
+  const steps = journey?.steps ?? [];
+  const possible = journey?.possible_frontier ?? [];
+  const verification = journey?.verification_candidates ?? [];
+
+  useEffect(() => setAnnouncement(""), [journey?.fingerprint]);
+
+  function choose(stepId) {
+    onActiveStepChange(stepId);
+    const projected = projectJourneyStep(journey, stepId, mode);
+    if (projected) setAnnouncement(`Journey step ${projected.position}: ${projected.heading}`);
+  }
+
+  function move(direction) {
+    const next = moveJourneyStep(journey, activeStepId, direction);
+    if (next) choose(next);
+  }
+
+  return (
+    <section className="learning-journey" aria-labelledby="learning-journey-heading">
+      <div className="study-section-heading">
+        <h2 id="learning-journey-heading">Feature journey</h2>
+        <span>Parser evidence</span>
+      </div>
+      {steps.length ? (
+        <>
+          <ol className="journey-overview" aria-label="Feature journey steps">
+            {steps.map((step, index) => (
+              <li key={step.id}>
+                <button
+                  type="button"
+                  aria-current={step.id === active?.id ? "step" : undefined}
+                  aria-label={`Step ${index + 1}: ${projectJourneyStep(journey, step.id, mode)?.heading}`}
+                  onClick={() => choose(step.id)}
+                >
+                  <span>{index + 1}</span>
+                  <small>{step.layer.replaceAll("-", " ")}</small>
+                </button>
+              </li>
+            ))}
+          </ol>
+          {active ? (
+            <article className="journey-current" data-step-id={active.id}>
+              <p className="journey-position">Step {active.position}</p>
+              <h3>{active.heading}</h3>
+              <p>{active.summary}</p>
+              <div className="journey-citations">
+                {active.observationCitation ? (
+                  <span>Observed at <code>{active.observationCitation}</code></span>
+                ) : null}
+                <span>Declaration <code>{active.citation}</code></span>
+              </div>
+              <div className="journey-controls" aria-label="Journey controls">
+                <button type="button" onClick={() => move(-1)} disabled={active.isFirst}>
+                  Back
+                </button>
+                <button type="button" onClick={() => move(1)} disabled={active.isLast}>
+                  Next
+                </button>
+                <button type="button" onClick={() => choose(steps[0].id)} disabled={active.isFirst}>
+                  Replay
+                </button>
+              </div>
+              {active.expertDetails ? (
+                <dl className="journey-expert-facts">
+                  <div><dt>Layer</dt><dd>{active.expertDetails.layer}</dd></div>
+                  <div><dt>Relation</dt><dd>{active.expertDetails.relation}</dd></div>
+                  <div><dt>Node ID</dt><dd>{active.expertDetails.nodeId}</dd></div>
+                  {active.expertDetails.ruleId ? (
+                    <div><dt>Parser rule</dt><dd>{active.expertDetails.ruleId}</dd></div>
+                  ) : null}
+                </dl>
+              ) : null}
+            </article>
+          ) : null}
+        </>
+      ) : null}
+      <span className="visually-hidden" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </span>
+
+      {/* The proof break precedes every possible continuation in DOM and visual
+          order. A possible edge can suggest where to inspect; it can never
+          quietly complete the canonical route. */}
+      {journey?.break ? (
+        <div className="journey-break" role="note">
+          <strong>Proof stops here</strong>
+          <p>{journey.break.message}</p>
+          {journey.break.citation ? <code>{journey.break.citation}</code> : null}
+        </div>
+      ) : null}
+      {possible.length ? (
+        <div className="journey-possible">
+          <h3>Possible next evidence</h3>
+          <p>These parser observations are not part of the proven route.</p>
+          <ul>
+            {possible.map((item) => (
+              <li key={`${item.relation}-${item.source_node_id}-${item.target_node_id}-${item.observation.citation}`}>
+                <strong>Possible {item.relation}</strong>
+                <span>{item.observation.citation} → {item.declaration.citation}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <details className="journey-support" open={mode === "expert"}>
+        <summary>
+          {mode === "easy"
+            ? "Explore selected feature impact and connections"
+            : "Selected feature impact, connections, and verification"}
+        </summary>
+        <p className="journey-support-scope">
+          These facts belong to {node.name}, the selected feature. They stay fixed while you
+          move between journey steps.
+        </p>
+        <ImpactWidget impact={impact} mode={mode} onSelectNode={onSelectNode} />
+        <Connections
+          neighbors={neighbors}
+          node={node}
+          mode={mode}
+          onSelectNode={onSelectNode}
+        />
+        {mode === "expert" ? (
+          <VerificationCandidates items={verification} onSelectNode={onSelectNode} />
+        ) : null}
+      </details>
+    </section>
+  );
+}
+
+function VerificationCandidates({ items, onSelectNode }) {
+  return (
+    <section className="journey-verification" aria-labelledby="journey-verification-heading">
+      <div className="study-section-heading">
+        <h2 id="journey-verification-heading">Selected feature verification candidates</h2>
+        <span>Parser-linked</span>
+      </div>
+      {items.length ? (
+        <ul className="impact-list">
+          {items.map((item) => (
+            <li key={item.node_id}>
+              <button
+                type="button"
+                aria-label={`Open verification candidate ${item.name}; ${
+                  item.certain ? "certain route" : "possible route"
+                }; depth ${item.depth}; ${item.declaration.citation}`}
+                onClick={() => onSelectNode(item.node_id)}
+              >
+                <span className="impact-name">{item.name}</span>
+                <span className="impact-meta">
+                  depth {item.depth}{item.certain ? " · certain route" : " · possible route"}
+                </span>
+                <span className="impact-citation">{item.declaration.citation}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="study-loading">No connected test evidence was found.</p>
+      )}
+      <p className="journey-candidate-note">
+        These are parser-linked candidate verification points, not proof that a test passes.
+      </p>
+    </section>
   );
 }
 
@@ -163,7 +351,9 @@ function ImpactWidget({ impact, mode, onSelectNode }) {
   return (
     <section className="impact-widget" aria-labelledby="impact-heading">
       <div className="study-section-heading">
-        <h2 id="impact-heading">{easy ? "What this touches" : "Impact"}</h2>
+        <h2 id="impact-heading">
+          {easy ? "What the selected feature touches" : "Selected feature impact"}
+        </h2>
         <span>No model needed</span>
       </div>
       <div className="impact-columns">
@@ -255,7 +445,9 @@ function Connections({ neighbors, node, mode, onSelectNode }) {
     <section className="connections" aria-labelledby="connections-heading">
       <div className="study-section-heading">
         <h2 id="connections-heading">
-          {mode === "easy" ? "What this connects to" : "Parser connections"}
+          {mode === "easy"
+            ? "What the selected feature connects to"
+            : "Selected feature connections"}
         </h2>
         <span>
           {items.length} parser {items.length === 1 ? "relationship" : "relationships"}

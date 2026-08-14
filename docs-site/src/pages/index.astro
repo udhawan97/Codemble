@@ -4,7 +4,7 @@
  *
  * Macrostructure: Hallmark Workbench. Real product captures lead; the Formal
  * Edo system supplies material and typography without turning the site into a
- * decorative atlas. The current product and packaged release are both v0.17.0.
+ * decorative atlas. The current product and packaged release are both v0.18.0.
  */
 import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
@@ -33,8 +33,8 @@ const capabilities = [
   },
   {
     icon: "map",
-    title: "See architecture and workflow",
-    body: "Switch from the galaxy to a flat diagram of imports or the call tree from Home. Both views read the same parser-owned graph.",
+    title: "Follow one feature end to end",
+    body: "Study orders a parser-proven route from Home through files and calls to the selected feature. Easy guides one cited step; Expert adds that step’s parser evidence and clearly scoped selected-feature impact and checks.",
   },
   {
     icon: "impact",
@@ -49,7 +49,7 @@ const capabilities = [
   {
     icon: "shield",
     title: "Keep the project local",
-    body: "Parsing, maps, source, Impact, checks, and progress stay on your machine. Optional narration goes only to the provider you configure.",
+    body: "Parsing, maps, feature journeys, source, Impact, checks, and progress stay on your machine. Optional narration goes only to the provider you configure.",
   },
   {
     icon: "languages",
@@ -59,8 +59,8 @@ const capabilities = [
 ];
 
 const contract = [
-  "Nodes, routes, concepts, and Home candidates come from parsers—not generated prose.",
-  "A relationship the parser cannot prove stays visibly possible on every layer.",
+  "Nodes, routes, concepts, Home candidates, and application roles come from parsers—not generated prose.",
+  "A feature journey stops where proof stops, before showing a visibly possible frontier.",
   "Impact and checks are graph-derived and work without any API key.",
   "Narration may name only supplied identifiers and cite real source lines.",
   "Changing a file re-dims only the proof attached to that file.",
@@ -91,13 +91,6 @@ const contract = [
       content="https://udhawan97.github.io/Codemble/brand/social-card.png"
     />
     <meta name="twitter:card" content="summary_large_image" />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
-    />
 
     <script is:inline>
       (() => {
@@ -157,8 +150,8 @@ const contract = [
           <p class="hero-lede">
             Codemble reads a project on your machine and turns its real structure
             into a galaxy you can fly through or a diagram you can follow. Study
-            any file, see what a change reaches, and light only what you prove you
-            understand.
+            any feature from Home to its application surface, see what a change
+            reaches, and light only what you prove you understand.
           </p>
           <div class="hero-actions">
             <a class="button button-primary" href="#download">
@@ -191,7 +184,7 @@ const contract = [
           >
             <img
               src={shot("galaxy.png")}
-              alt="Codemble v0.17.0 showing 184 represented systems across Python, JavaScript, TypeScript, Go, Java, Rust, and C#, with community-tinted route corridors, ranked labels, 30 systems charted, six unreadable test fixtures called out, and Home still unlit."
+              alt="Codemble v0.18.0 showing 190 represented systems across Python, JavaScript, TypeScript, Go, Java, Rust, and C#, with community-tinted route corridors, ranked labels, 30 systems charted, six unreadable test fixtures called out, and Home still unlit."
               width="1440"
               height="720"
               fetchpriority="high"
@@ -200,7 +193,7 @@ const contract = [
           </div>
           <figcaption>
             <span>Current app · Easy galaxy</span>
-            <span>184 systems · seven languages · local only</span>
+            <span>190 systems · seven languages · local only</span>
           </figcaption>
         </figure>
       </section>
@@ -357,9 +350,9 @@ codemble</code></pre>
           <aside class="privacy-ledger">
             <h3>Your machine is the boundary.</h3>
             <dl>
-              <div><dt>Parsed locally</dt><dd>source · graph · maps</dd></div>
+              <div><dt>Parsed locally</dt><dd>source · graph · maps · feature journeys</dd></div>
               <div><dt>Saved locally</dt><dd>progress · narration cache</dd></div>
-              <div><dt>Works without AI</dt><dd>Impact · Lens · checks</dd></div>
+              <div><dt>Works without AI</dt><dd>journeys · Impact · Lens · checks</dd></div>
               <div><dt>Optional network</dt><dd>opening Study sends bounded context to your chosen narrator</dd></div>
               <div><dt>Never present</dt><dd>accounts · telemetry · Codemble cloud</dd></div>
             </dl>
@@ -379,7 +372,7 @@ codemble</code></pre>
           </details>
           <details>
             <summary>Do I need an Anthropic or OpenAI key?</summary>
-            <p>No. The galaxy, maps, source, structural summary, Impact, Lens, checks, and saved progress all work without a model. If you configure a narrator, opening Study automatically requests grounded prose with bounded context.</p>
+            <p>No. The galaxy, maps, feature journeys, source, structural summary, Impact, Lens, checks, and saved progress all work without a model. If you configure a narrator, opening Study automatically requests grounded prose with bounded context.</p>
           </details>
           <details>
             <summary>Are these screenshots from the downloadable app?</summary>
@@ -387,7 +380,7 @@ codemble</code></pre>
           </details>
           <details>
             <summary>What happens when Codemble cannot prove a relationship?</summary>
-            <p>It labels the route possible and draws it differently. Broken or unsupported source stays counted instead of vanishing from the picture.</p>
+            <p>It ends the proven route at a visible break, then shows only the possible frontier that can still lead toward your selected feature. Broken or unsupported source stays counted instead of vanishing from the picture.</p>
           </details>
         </div>
       </section>

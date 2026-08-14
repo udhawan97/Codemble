@@ -3,7 +3,7 @@ title: Quickstart
 description: From one command to your first lit star system.
 ---
 
-:::note[This quickstart matches v0.17.0]
+:::note[This quickstart matches v0.18.0]
 The one-command package, current source, and screenshots all cover the same
 seven-language app. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
 :::
@@ -22,12 +22,12 @@ No Homebrew? Use the official installer — `curl -LsSf
 https://astral.sh/uv/install.sh | sh` on macOS and Linux, or `powershell
 -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` on
 Windows. If you would rather install Codemble permanently, `pipx install
-codemble==0.17.0` needs no uv at all.
+codemble==0.18.0` needs no uv at all.
 
 ## 2. Point it at your project
 
 ```bash
-uvx --from codemble==0.17.0 codemble
+uvx --from codemble==0.18.0 codemble
 ```
 
 Codemble opens your browser to an in-app picker: browse your home folders or
@@ -36,7 +36,7 @@ TypeScript, Go, Java, Rust, C#, and mixtures of those languages. To skip the
 picker, pass a path directly:
 
 ```bash
-uvx --from codemble==0.17.0 codemble ./my-project
+uvx --from codemble==0.18.0 codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -49,7 +49,7 @@ busiest-first subdirectories as buttons and accepts a typed path, right in the
 UI. From the CLI, select the scope yourself:
 
 ```bash
-uvx --from codemble==0.17.0 codemble --path ./my-project/src
+uvx --from codemble==0.18.0 codemble --path ./my-project/src
 ```
 
 ## 3. Find Home
@@ -91,7 +91,7 @@ only views: neither alters coordinates, progress, or graph evidence.
 | --- | --- | --- |
 | **Galaxy** | Source modules as star systems, imports as routes | Orientation |
 | **System** | Functions and classes in call-depth orbits — the inner ring runs first | Structure |
-| **Study** | Real source with line numbers, what a change here reaches, and a validated, cached explanation | Learning |
+| **Study** | A parser-proven route from Home, real source, integrated Impact and Connections, and optional grounded narration | Learning one feature in application context |
 
 | Map tab | What you see | What it's for |
 | --- | --- | --- |
@@ -103,7 +103,7 @@ and the tabs are **How it fits together** and **What runs first**. The views are
 identical; only the wording follows the audience.
 
 Click a box and the Map offers both halves of a step: **Read the source** opens
-that module's real source, lens notes and relationships without leaving the
+that module's feature journey, real source, lens notes and relationships without leaving the
 layer, and **Prove understanding** starts its checks. Escape steps back a level,
 as it does in the Galaxy.
 
@@ -112,11 +112,16 @@ selected parser-backed target. Use **Fit** when you want the whole diagram as an
 overview, and press the percentage button to return to 100%. Codemble keeps your
 zoom and pan when fresh Map data arrives or you briefly switch layers.
 
-No API key is required to inspect source, parser relationships, Lens notes, or
-checks. With a key, Codemble sends only the selected source context directly to
-your configured provider when you open Study; it does not run narration in the
-background. Model-free **Impact** lists show what a change would reach and what
-it depends on.
+No API key is required to follow the journey or inspect source, parser
+relationships, Lens notes, or checks. Easy shows one cited current step;
+Expert keeps that step and adds its parser-rule evidence. The selected
+feature's Impact, dependencies, and bounded verification candidates remain
+clearly separate from that moving step. With a key, Codemble sends
+only the selected source context directly to your configured provider when you
+open Study; it does not run narration in the background. Model-free **Impact**
+lists show what a change would reach and what it depends on. When proof cannot
+reach the selected feature, the journey stops before a separate possible
+frontier instead of turning that evidence into fact.
 
 ## 5. Study, then light it up
 

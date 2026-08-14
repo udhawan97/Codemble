@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
-from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
+from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node, RoleEvidence
 from codemble.graph.layout import layout_graph
 
 
@@ -22,6 +23,8 @@ class GraphFinalizationError(ValueError):
 _UNRANKED = 1 << 30
 
 _TEST_DIRECTORIES = frozenset({"tests", "test", "testing", "__tests__", "spec", "__specs__"})
+_ROLE_KINDS = frozenset({"application-entry", "route-handler", "ui-renderer", "test"})
+_RULE_ID = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$")
 
 
 def _is_test_scoped(file: str) -> bool:
@@ -112,12 +115,70 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
         concept_annotations=tuple(
             sorted(set(graph.concept_annotations), key=_annotation_key)
         ),
+        role_evidence=_finalize_role_evidence(graph, node_by_id),
         regions=(),
         region_edges=(),
         import_cycles=(),
         partial_files=tuple(sorted(set(graph.partial_files))),
     )
     return layout_graph(finalized)
+
+
+def _finalize_role_evidence(
+    graph: Graph,
+    node_by_id: dict[str, Node],
+) -> tuple[RoleEvidence, ...]:
+    """Validate the separate role channel before any journey can consume it."""
+
+    root = Path(graph.project_root).resolve()
+    validated: set[RoleEvidence] = set()
+    line_counts: dict[str, int] = {}
+    for evidence in graph.role_evidence:
+        node = node_by_id.get(evidence.node_id)
+        if node is None:
+            raise GraphFinalizationError(
+                f"role evidence references an unknown node: {evidence.node_id}"
+            )
+        if node.partial:
+            raise GraphFinalizationError(
+                f"role evidence references a partial node: {evidence.node_id}"
+            )
+        if evidence.role not in _ROLE_KINDS:
+            raise GraphFinalizationError(f"unknown role evidence kind: {evidence.role}")
+        if not _RULE_ID.fullmatch(evidence.rule_id):
+            raise GraphFinalizationError(
+                f"role evidence rule ID is not stable: {evidence.rule_id}"
+            )
+        if evidence.file not in graph.file_hashes:
+            raise GraphFinalizationError(
+                f"role evidence file was not hashed: {evidence.file}"
+            )
+        if evidence.file in graph.partial_files:
+            raise GraphFinalizationError(
+                f"role evidence file was only partially parsed: {evidence.file}"
+            )
+        if evidence.lineno < 1 or evidence.end_lineno < evidence.lineno:
+            raise GraphFinalizationError(
+                f"role evidence has an invalid span: {evidence.file}:{evidence.lineno}"
+            )
+        if evidence.file not in line_counts:
+            observation = (root / evidence.file).resolve()
+            if not observation.is_relative_to(root) or not observation.is_file():
+                raise GraphFinalizationError(
+                    f"role evidence file is unavailable: {evidence.file}"
+                )
+            try:
+                line_counts[evidence.file] = max(1, len(observation.read_bytes().splitlines()))
+            except OSError as error:
+                raise GraphFinalizationError(
+                    f"role evidence file could not be read: {evidence.file}"
+                ) from error
+        if evidence.end_lineno > line_counts[evidence.file]:
+            raise GraphFinalizationError(
+                f"role evidence span is outside its file: {evidence.file}:{evidence.lineno}"
+            )
+        validated.add(evidence)
+    return tuple(sorted(validated, key=_role_key))
 
 
 def _candidate_order(node: Node) -> tuple[int, int, str]:
@@ -155,6 +216,17 @@ def _annotation_key(
         annotation.lineno,
         annotation.concept,
         annotation.end_lineno,
+    )
+
+
+def _role_key(evidence: RoleEvidence) -> tuple[str, str, str, str, int, int]:
+    return (
+        evidence.node_id,
+        evidence.role,
+        evidence.rule_id,
+        evidence.file,
+        evidence.lineno,
+        evidence.end_lineno,
     )
 
 

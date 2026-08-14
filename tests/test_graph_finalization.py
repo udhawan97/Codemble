@@ -8,7 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node, UnsupportedSource
+from codemble.adapters.base import (
+    ConceptAnnotation,
+    Edge,
+    Graph,
+    Node,
+    RoleEvidence,
+    UnsupportedSource,
+)
 from codemble.adapters.project import ProjectParser
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.graph import GraphFinalizationError, finalize_graph
@@ -81,6 +88,67 @@ def test_finalization_owns_canonical_graph_truth_and_layout() -> None:
     assert [(edge.src, edge.dst, edge.weight) for edge in graph.region_edges] == [
         ("app", "lib", 1)
     ]
+
+
+def test_role_evidence_is_validated_deduplicated_and_serialized(tmp_path: Path) -> None:
+    source = tmp_path / "app.py"
+    source.write_text("def main():\n    return 1\n", encoding="utf-8")
+    role = RoleEvidence(
+        node_id="app.main",
+        role="application-entry",
+        rule_id="python.function.main",
+        file="app.py",
+        lineno=1,
+        end_lineno=1,
+    )
+    draft = Graph(
+        nodes=(
+            _node("app", region="app", rank=0, file="app.py"),
+            _node("app.main", region="app", rank=0, file="app.py"),
+        ),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root=str(tmp_path),
+        file_hashes={"app.py": "observed"},
+        role_evidence=(role, role),
+    )
+
+    graph = finalize_graph(draft)
+
+    assert graph.schema_version == 11
+    assert graph.role_evidence == (role,)
+    assert graph.to_dict()["role_evidence"] == [
+        {
+            "node_id": "app.main",
+            "role": "application-entry",
+            "rule_id": "python.function.main",
+            "file": "app.py",
+            "lineno": 1,
+            "end_lineno": 1,
+        }
+    ]
+    assert finalize_graph(graph).to_json() == graph.to_json()
+
+
+def test_role_evidence_refuses_unhashed_or_out_of_range_observations(tmp_path: Path) -> None:
+    source = tmp_path / "app.py"
+    source.write_text("def main():\n    return 1\n", encoding="utf-8")
+    node = _node("app.main", region="app", rank=0, file="app.py")
+
+    for role in (
+        RoleEvidence("app.main", "application-entry", "python.function.main", "other.py", 1, 1),
+        RoleEvidence("app.main", "application-entry", "python.function.main", "app.py", 3, 3),
+    ):
+        draft = Graph(
+            nodes=(node,),
+            edges=(),
+            entrypoint_candidates=(),
+            project_root=str(tmp_path),
+            file_hashes={"app.py": "observed"},
+            role_evidence=(role,),
+        )
+        with pytest.raises(GraphFinalizationError):
+            finalize_graph(draft)
 
 
 def test_centrality_counts_distinct_callers_not_call_sites() -> None:
@@ -527,7 +595,7 @@ def test_hops_from_home_is_deterministic_and_serialized_in_the_render_schema() -
     payload = finalize_graph(draft).to_dict()
 
     assert finalize_graph(draft).to_json() == finalize_graph(draft).to_json()
-    assert payload["schema_version"] == 10
+    assert payload["schema_version"] == 11
     assert {region["id"]: region["hops_from_home"] for region in payload["regions"]} == {
         "app": 0,
         "mid": 1,
@@ -639,7 +707,7 @@ def test_unsupported_sources_are_carried_and_serialized_in_canonical_order() -> 
 
     payload = graph.to_dict()
 
-    assert payload["schema_version"] == 10
+    assert payload["schema_version"] == 11
     assert payload["unsupported_sources"] == [
         {"extension": ".go", "language": "Go", "count": 12},
         {"extension": ".h", "language": None, "count": 3},

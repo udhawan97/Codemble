@@ -80,8 +80,9 @@ human-approved only; never self-promote.
 - **Semantic zoom, three levels, no free flight:** 1) **Galaxy** — modules =
   star systems, imports = routes, entrypoint = Home; camera on rails. 2)
   **System** — functions/classes as planets in deterministic orbits, call
-  edges. 3) **Study** — panel with real source, grounded explanation, language
-  lens note, checks; scene dims behind it. Scripted fly-to transitions.
+  edges. 3) **Study** — one parser-owned journey from Home to the selected
+  feature, then real source, grounded explanation, language lens, and checks;
+  scene dims behind it. Scripted fly-to transitions.
 - **Illumination is the game:** nodes start dim; passing a region's checks
   lights them permanently. **A region = one star system = one module** — the
   unit of checks, lighting, and invalidation. Star chart tracks language
@@ -96,12 +97,15 @@ human-approved only; never self-promote.
 
 1. **LanguageAdapter seam:** every language implements `discover(path)`,
    `parse(path) -> Graph`, `parse_files(root, files) -> Graph`, and
-   `concepts(node) -> [ConceptAnnotation]`. Python first via stdlib `ast`; all
+   `concepts(node) -> [ConceptAnnotation]`; adapters also emit closed-enum
+   `RoleEvidence` for app entries, route handlers, UI renderers, and tests.
+   Python first via stdlib `ast`; all
    later languages via tree-sitter. Nothing above the seam hardcodes a language.
    The JS/TS adapter reuses one internal syntax-evidence index across entrypoint,
    call, binding, and concept passes without widening this public seam.
 2. **The graph is render-ready:** graph layer computes language, LOC,
-   centrality, entrypoint rank, region id, understood-state. `LearnerSession`
+   centrality, entrypoint rank, region id, understood-state, and one bounded
+   mode-neutral learning journey over certain imports/calls. `LearnerSession`
    owns session transitions and local HTTP sequencing behind one external-store
    interface. React is a pure renderer of those truths — **no layout or game
    logic in React/the renderer.** This keeps the Phase-3 share-link viewer and
@@ -122,8 +126,13 @@ The audience cannot detect when the tool is wrong. Therefore:
    the code"* rather than guess.
 3. **Lens claims attach only to parser-detected constructs.**
 4. **Every explanation links to a real `file:line`.**
-5. **Check answers come from the graph, never the model.**
-6. **Approximate call edges are labeled "possible call."**
+5. **Application and test roles require parser-owned rule and line evidence.**
+   Framework roles also require matching import/factory/binding provenance;
+   familiar method or annotation names alone are not evidence.
+6. **A journey completes only over directed, certain imports and calls;**
+   possible evidence remains beyond a visible proof break.
+7. **Check answers come from the graph, never the model.**
+8. **Approximate call edges are labeled "possible call."**
 
 ## Repo, docs & website ops
 
@@ -146,10 +155,10 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** packaged stable remains v0.16.0 while current source
-  is the v0.17.0 release candidate. Its public copy and manifest may become the
-  stable claim only after the tagged publish workflow proves PyPI, the mirrored
-  GitHub wheel/sdist, `SHA256SUMS.txt`, and fresh downloaded bytes.
+- **Public release truth:** this source describes v0.18.0, but the tag becomes
+  packaged stable only after the publish workflow proves PyPI, the mirrored
+  GitHub wheel/sdist, `SHA256SUMS.txt`, and fresh downloaded bytes. Until that
+  outside-in proof exists, v0.17.0 remains the last verified stable release.
 - **Site search is Pagefind**, which only exists after `npm run build` — the
   field says so in `npm run dev` rather than failing silently.
 - **Public browser proof is a pre-push gate:** build and preview `docs-site/`,
@@ -213,18 +222,19 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M15 architecture deepening** · Last updated: 2026-08-13 ·
-Session note: the v0.17.0 release candidate integrates the three approved
-orientation/handoff features (First Flight, proven import cycles, and the local
-Markdown project brief), the renderer and adapter deepening, and the current
-user-flow repairs. Galaxy exploration now forms restrained colour corridors
-only where a proven route stays inside one import community; bridges remain
-neutral and possible routes remain dashed. Pointer or keyboard selection raises
-the active system and its one-hop neighbours on the current route mesh into the label budget, the Key is
-an opaque compact-screen reference, and the overview opens at a steeper angle.
-The public docs and real captures are being synchronized to that exact surface.
-Packaged stable remains v0.16.0 until the v0.17.0 workflow proves PyPI, GitHub
-assets, checksum bytes, Pages, and a cold isolated install. The milestone does
-not advance because issue #13 still requires human tester evidence.
+Session note: the v0.18.0 release candidate adds one parser-owned learning
+journey shared by Easy and Expert, graph schema 11 role evidence across all
+seven supported languages, a visible break before target-relevant possible
+evidence, and role-backed verification candidates that never claim test
+coverage or a passing result. Study now leads with the journey and integrates
+Impact and Connections once; changing mode preserves the same content-derived
+step. Two complete council rounds now approve the candidate after exact
+annotation/macro binding, lexical shadow/rebinding, restored-Home
+synchronization, selected-feature scoping, and 320px reachability corrections.
+This commit is the v0.18.0 release candidate; its tag is stable only after the
+workflow proves PyPI, GitHub assets, checksum bytes, Pages, and a cold isolated
+install. The milestone does not advance because issue #13 still requires human
+tester evidence.
 
 Previously (2026-08-09):
 M15 is complete: Galaxy Runtime owns WebGL lifetime, Canvas
@@ -1655,6 +1665,7 @@ wave passes focused and complete gates and lands as one reversible commit.
 | 2026-08-09 | First Flight is a frontend-only, stateless and re-runnable route: Home, then at most five direct proven imports sorted by region centrality and id | Approved by UD as bounded orientation, not progression. A pure sequencer owns the order and never invents Home; React owns only ephemeral stop position. Every stop dispatches the existing `GO_TO_REGION` travel action, so the one `recordVisit` path charts it exactly like manual travel. The chip reuses galaxy region-route degree for its used-by/uses facts, Easy and Expert change words rather than behavior, and the camera uses the existing frame machinery with zero-duration jump cuts under reduced motion. One `firstFlight` entry joins the ordered Escape arbiter and existing task-deferred focus return. No API, layout mutation, persistence, completion reward, or new check family is added |
 | 2026-08-13 | At Galaxy level, colour may connect a route only when the parser proves the import and both endpoints share the same coloured community; bridges stay neutral, possible routes keep uncertainty ink, and amber remains understanding-only | UD asked for subtle colour links that make the Galaxy easier to explore. Tinting every route by a source or destination would imply a shared grouping across a bridge, and tinting a possible route would let a grouping cue read as stronger evidence. A 32% family mix forms a corridor without overpowering node identity. The active pointer or keyboard subject and its one-hop neighbours on the current route mesh take label priority; keyboard selection persists while focus enters the Key, while pointer exit clears transient hover. The Key carries words plus solid/dashed styles at every width, so colour is redundant rather than exclusive |
 | 2026-08-13 | Release artifacts are reproducible manifest-owned bytes, published once to PyPI and mirrored with `SHA256SUMS.txt` on GitHub | The standing checklist required a wheel and checksum asset, while the workflow uploaded no GitHub assets and the public checker asserted that absence. `docs-site/release.json` now owns a UTC build epoch, predictable release URLs, and both digests; Hatchling is pinned, `docs-site` is excluded from the sdist to avoid a digest containing itself, and local plus CI builds must match the manifest before trusted publishing. The publish job attaches those exact bytes and the ledger, then re-downloads them and reconciles both registries. Structural checks remain usable before publication; the live check is a separate outside-in gate |
+| 2026-08-13 | Graph schema 11 carries parser-owned `RoleEvidence`, and Study derives one bounded, mode-neutral learning journey from certain directed import/call evidence | UD approved a guided Easy mode and change-oriented Expert mode only if both teach the same architecture truth. Roles therefore use a closed enum with stable rule, observation file, and exact span; framework roles require the exact annotation, macro, factory, and receiver binding at the observation site, with project type shadows, lexical locals, hoisted declarations, and rebinding revoking provenance; a partial file contributes no role. An observation may cite a route registration while its node cites the handler declaration. Generic containment and test roles never complete an application route. Missing proof produces a visible break before only target-relevant possible evidence. Connected test-role nodes are selected-feature verification candidates, never coverage or execution claims. Content-derived step IDs preserve place across mode changes, while Impact and Connections appear once as selected-feature facts and existing chart/check progress meanings remain separate |
 
 ## Non-Goals — do NOT build (point here when asked)
 

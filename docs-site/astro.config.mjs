@@ -38,29 +38,6 @@ export default defineConfig({
       },
       head: [
         {
-          tag: "link",
-          attrs: { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        },
-        {
-          tag: "link",
-          attrs: {
-            rel: "preconnect",
-            href: "https://fonts.gstatic.com",
-            crossorigin: true,
-          },
-        },
-        // Shippori Mincho is a formal Japanese mincho (display); Zen Kaku
-        // Gothic New is its gothic counterpart (body). Google serves both with
-        // unicode-range subsets, so pages without kana download Latin only.
-        // The landing page loads these itself in its own <head>.
-        {
-          tag: "link",
-          attrs: {
-            rel: "stylesheet",
-            href: "https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap",
-          },
-        },
-        {
           tag: "meta",
           attrs: { name: "theme-color", content: "#070b1c" },
         },

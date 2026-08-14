@@ -19,8 +19,10 @@ from codemble.adapters.base import (
     Edge,
     Graph,
     Node,
+    RoleEvidence,
 )
 from codemble.adapters.parse_progress import note_file_parsed
+from codemble.adapters.role_rules import native_entrypoint_roles, roles_from_complete_files
 from codemble.adapters.tree_sitter_core import _TreeSitterAdapterCore
 
 _EXTENSIONS = frozenset({".go"})
@@ -303,6 +305,11 @@ class GoAdapter(_TreeSitterAdapterCore):
             import_edges.update(edges)
             bindings_by_module[parsed.module_id].extend(bindings)
 
+        partial_files = tuple(
+            parsed.relative_path
+            for parsed in parsed_files
+            if parsed.tree.root_node.has_error
+        )
         return Graph(
             nodes=index.nodes,
             edges=(*import_edges, *_call_edges(index, bindings_by_module)),
@@ -310,11 +317,12 @@ class GoAdapter(_TreeSitterAdapterCore):
             project_root=str(project_root),
             file_hashes={parsed.relative_path: parsed.digest for parsed in parsed_files},
             concept_annotations=_concept_annotations(index),
-            partial_files=tuple(
-                parsed.relative_path
-                for parsed in parsed_files
-                if parsed.tree.root_node.has_error
+            role_evidence=roles_from_complete_files(
+                _role_evidence(index, bindings_by_module),
+                index.nodes,
+                partial_files,
             ),
+            partial_files=partial_files,
         )
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""
@@ -337,6 +345,97 @@ class GoAdapter(_TreeSitterAdapterCore):
             for annotation in _concept_annotations(index)
             if annotation.node_id == node.id
         ]
+
+
+def _role_evidence(
+    index: _GoIndex,
+    bindings_by_module: dict[str, list[_ImportBinding]],
+) -> tuple[RoleEvidence, ...]:
+    roles = set(native_entrypoint_roles(index.nodes))
+    for definition in index.definitions:
+        node = index.node_by_id[definition.node_id]
+        parsed = index.parsed_by_module[definition.module_id]
+        is_test_name = node.name == "TestMain" or (
+            node.name.startswith("Test") and node.name[4:5].isupper()
+        )
+        if node.kind != "function" or not parsed.is_test_file or not is_test_name:
+            continue
+        roles.add(
+            RoleEvidence(
+                node.id,
+                "test",
+                "go.test.function-name",
+                node.file,
+                node.lineno,
+                node.lineno,
+            )
+        )
+    for definition in index.definitions:
+        parsed = index.parsed_by_module[definition.module_id]
+        bindings = {
+            binding.local_name: binding
+            for binding in bindings_by_module.get(definition.module_id, ())
+        }
+        for syntax in _walk_owned(
+            definition.syntax,
+            index.nested_ranges_by_owner.get(definition.node_id, frozenset()),
+        ):
+            if syntax.type != "call_expression" or syntax.has_error:
+                continue
+            function = syntax.child_by_field_name("function")
+            arguments = syntax.child_by_field_name("arguments")
+            if function is None or function.type != "selector_expression" or arguments is None:
+                continue
+            operand = function.child_by_field_name("operand")
+            field = function.child_by_field_name("field")
+            if operand is None or field is None or operand.type != "identifier":
+                continue
+            qualifier = _node_text(operand, parsed.raw)
+            method = _node_text(field, parsed.raw)
+            registration = bindings.get(qualifier)
+            if (
+                registration is None
+                or registration.external_path != "net/http"
+                or method not in {"Handle", "HandleFunc"}
+            ):
+                continue
+            passed = list(arguments.named_children)
+            if len(passed) < 2:
+                continue
+            handler_syntax = passed[-1]
+            candidates: tuple[Node, ...] = ()
+            if handler_syntax.type == "identifier":
+                candidates = index.functions_by_package.get(
+                    (definition.package_dir, _node_text(handler_syntax, parsed.raw)),
+                    (),
+                )
+            elif handler_syntax.type == "selector_expression":
+                handler_qualifier = handler_syntax.child_by_field_name("operand")
+                handler_field = handler_syntax.child_by_field_name("field")
+                if handler_qualifier is not None and handler_field is not None:
+                    imported = bindings.get(_node_text(handler_qualifier, parsed.raw))
+                    if imported is not None and imported.target is not None:
+                        candidates = index.functions_by_package.get(
+                            (
+                                imported.target.package_dir,
+                                _node_text(handler_field, parsed.raw),
+                            ),
+                            (),
+                        )
+            if len(candidates) != 1:
+                continue
+            lineno, end_lineno = _line_span(syntax)
+            roles.add(
+                RoleEvidence(
+                    candidates[0].id,
+                    "route-handler",
+                    f"go.net-http.{method.casefold()}",
+                    parsed.relative_path,
+                    lineno,
+                    end_lineno,
+                )
+            )
+    return tuple(sorted(roles, key=lambda item: (item.file, item.lineno, item.node_id)))
 
 
 def _parse_file(path: Path, project_root: Path) -> _ParsedFile:

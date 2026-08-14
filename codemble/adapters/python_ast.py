@@ -10,12 +10,26 @@ from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from codemble.adapters.base import AdapterParseError, ConceptAnnotation, Edge, Graph, Node
+from codemble.adapters.base import (
+    AdapterParseError,
+    ConceptAnnotation,
+    Edge,
+    Graph,
+    Node,
+    RoleEvidence,
+)
 from codemble.adapters.discovery import SourceDiscoveryError, discover_source_files
 from codemble.adapters.parse_progress import note_detail, note_file_parsed
+from codemble.adapters.role_rules import native_entrypoint_roles, roles_from_complete_files
 from codemble.graph.finalize import GraphFinalizationError, finalize_graph
 
 _APP_FACTORIES = {"FastAPI", "Flask", "Typer"}
+_ROUTE_FACTORY_MODULES = {
+    "fastapi": frozenset({"FastAPI", "APIRouter"}),
+    "flask": frozenset({"Flask", "Blueprint"}),
+    "sanic": frozenset({"Sanic", "Blueprint"}),
+    "starlette": frozenset({"Starlette"}),
+}
 _BUILTIN_NAMES = frozenset(dir(builtins))
 
 
@@ -499,6 +513,9 @@ class PythonAstAdapter:
                     ].source,
                 )
             )
+        partial_files = tuple(
+            parsed.relative_path for parsed in parsed_files if parsed.tree is None
+        )
         draft = Graph(
             nodes=tuple(nodes),
             edges=tuple(all_edges),
@@ -506,9 +523,12 @@ class PythonAstAdapter:
             project_root=str(project_root),
             file_hashes={parsed.relative_path: parsed.digest for parsed in parsed_files},
             concept_annotations=tuple(annotations),
-            partial_files=tuple(
-                parsed.relative_path for parsed in parsed_files if parsed.tree is None
+            role_evidence=roles_from_complete_files(
+                _role_evidence(parsed_files, definitions, nodes),
+                nodes,
+                partial_files,
             ),
+            partial_files=partial_files,
         )
         note_detail("Building the galaxy map")
         try:
@@ -543,6 +563,257 @@ class PythonAstAdapter:
                 None,
             )
         return _concepts_for_target(node, target, source) if target is not None else []
+
+
+_ROUTE_DECORATORS = frozenset(
+    {"route", "get", "post", "put", "patch", "delete", "options", "head", "websocket"}
+)
+
+
+def _role_evidence(
+    parsed_files: tuple[_ParsedFile, ...],
+    definitions: list[_Definition],
+    nodes: list[Node],
+) -> tuple[RoleEvidence, ...]:
+    """Persist Python framework and test roles while AST evidence is present."""
+
+    roles = set(native_entrypoint_roles(nodes))
+    node_by_id = {node.id: node for node in nodes}
+    route_receivers = _python_route_receivers(parsed_files)
+    for definition in definitions:
+        syntax = definition.syntax
+        if not isinstance(syntax, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        node = node_by_id[definition.node_id]
+        if syntax.name.startswith("test_"):
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "test",
+                    "python.test.function-name",
+                    node.file,
+                    syntax.lineno,
+                    syntax.lineno,
+                )
+            )
+        for decorator in syntax.decorator_list:
+            target = decorator.func if isinstance(decorator, ast.Call) else decorator
+            written = _dotted_name(target)
+            if not written:
+                continue
+            leaf = written.rsplit(".", 1)[-1]
+            receiver, separator, _ = written.rpartition(".")
+            # Method names and conventional variable names are not framework
+            # provenance. The receiver must be assigned from an imported,
+            # recognized web-framework factory in the declaration's lexical
+            # scope (including an enclosing application factory).
+            if (
+                leaf not in _ROUTE_DECORATORS
+                or not separator
+                or receiver
+                not in route_receivers.get((node.file, id(syntax)), frozenset())
+            ):
+                continue
+            lineno = getattr(decorator, "lineno", syntax.lineno)
+            end_lineno = getattr(decorator, "end_lineno", lineno)
+            roles.add(
+                RoleEvidence(
+                    node.id,
+                    "route-handler",
+                    f"python.decorator.{leaf}",
+                    node.file,
+                    lineno,
+                    end_lineno,
+                )
+            )
+    return tuple(
+        sorted(
+            roles,
+            key=lambda item: (
+                item.file,
+                item.lineno,
+                item.role,
+                item.rule_id,
+                item.node_id,
+            ),
+        )
+    )
+
+
+def _python_route_receivers(
+    parsed_files: tuple[_ParsedFile, ...],
+) -> dict[tuple[str, int], frozenset[str]]:
+    """Return framework receivers visible where each function is declared.
+
+    Framework apps are commonly created inside ``create_app`` and captured by
+    nested route handlers. A file-wide name set misses that real pattern and
+    can also cross-contaminate unrelated local scopes. Walking each lexical
+    body in execution order preserves both the factory import and the exact
+    receiver binding available when a decorated function is declared.
+    """
+
+    by_definition: dict[tuple[str, int], frozenset[str]] = {}
+    for parsed in parsed_files:
+        if parsed.tree is None:
+            continue
+
+        def scan_scope(
+            relative_path: str,
+            body: list[ast.stmt],
+            inherited_factories: set[str],
+            inherited_modules: dict[str, str],
+            inherited_receivers: set[str],
+        ) -> None:
+            factory_aliases = set(inherited_factories)
+            module_aliases = dict(inherited_modules)
+            receivers = set(inherited_receivers)
+
+            for statement in body:
+                if isinstance(statement, ast.ImportFrom) and statement.module:
+                    root = statement.module.split(".", 1)[0]
+                    allowed = _ROUTE_FACTORY_MODULES.get(root)
+                    for alias in statement.names:
+                        local_name = alias.asname or alias.name
+                        receivers.discard(local_name)
+                        factory_aliases.discard(local_name)
+                        module_aliases.pop(local_name, None)
+                        if allowed is not None and alias.name in allowed:
+                            factory_aliases.add(local_name)
+                elif isinstance(statement, ast.Import):
+                    for alias in statement.names:
+                        root = alias.name.split(".", 1)[0]
+                        local_name = alias.asname or root
+                        receivers.discard(local_name)
+                        factory_aliases.discard(local_name)
+                        module_aliases.pop(local_name, None)
+                        if root in _ROUTE_FACTORY_MODULES:
+                            module_aliases[local_name] = root
+
+                target: ast.expr | None = None
+                value: ast.expr | None = None
+                if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
+                    target, value = statement.targets[0], statement.value
+                elif isinstance(statement, ast.AnnAssign):
+                    target, value = statement.target, statement.value
+                if isinstance(target, ast.Name):
+                    # A proven receiver is a binding fact, not a permanent
+                    # property of a spelling. Any later assignment revokes it
+                    # before a framework factory may prove the new value.
+                    receivers.discard(target.id)
+                    factory_aliases.discard(target.id)
+                    module_aliases.pop(target.id, None)
+                    if isinstance(value, ast.Call):
+                        factory = value.func
+                        proven = (
+                            isinstance(factory, ast.Name)
+                            and factory.id in factory_aliases
+                        )
+                        if isinstance(factory, ast.Attribute) and isinstance(
+                            factory.value,
+                            ast.Name,
+                        ):
+                            root = module_aliases.get(factory.value.id)
+                            proven = bool(
+                                root
+                                and factory.attr
+                                in _ROUTE_FACTORY_MODULES.get(root, frozenset())
+                            )
+                        if proven:
+                            receivers.add(target.id)
+
+                if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    by_definition[(relative_path, id(statement))] = frozenset(receivers)
+                    local_names = _python_parameter_names(
+                        statement.args
+                    ) | _python_direct_bound_names(statement.body)
+                    scan_scope(
+                        relative_path,
+                        statement.body,
+                        factory_aliases - local_names,
+                        {
+                            name: module
+                            for name, module in module_aliases.items()
+                            if name not in local_names
+                        },
+                        receivers - local_names,
+                    )
+                    receivers.discard(statement.name)
+                    factory_aliases.discard(statement.name)
+                    module_aliases.pop(statement.name, None)
+                elif isinstance(statement, ast.ClassDef):
+                    scan_scope(
+                        relative_path,
+                        statement.body,
+                        factory_aliases,
+                        module_aliases,
+                        receivers,
+                    )
+                    receivers.discard(statement.name)
+                    factory_aliases.discard(statement.name)
+                    module_aliases.pop(statement.name, None)
+
+        scan_scope(parsed.relative_path, parsed.tree.body, set(), {}, set())
+    return by_definition
+
+
+def _python_parameter_names(arguments: ast.arguments) -> set[str]:
+    names = {
+        argument.arg
+        for argument in (
+            *arguments.posonlyargs,
+            *arguments.args,
+            *arguments.kwonlyargs,
+        )
+    }
+    if arguments.vararg is not None:
+        names.add(arguments.vararg.arg)
+    if arguments.kwarg is not None:
+        names.add(arguments.kwarg.arg)
+    return names
+
+
+def _python_direct_bound_names(body: list[ast.stmt]) -> set[str]:
+    """Names made local anywhere in one Python function's lexical body."""
+
+    collector = _PythonFunctionBindings()
+    for statement in body:
+        collector.visit(statement)
+    return collector.bound - collector.external
+
+
+class _PythonFunctionBindings(ast.NodeVisitor):
+    """Collect function-local bindings without entering nested scopes."""
+
+    def __init__(self) -> None:
+        self.bound: set[str] = set()
+        self.external: set[str] = set()
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, (ast.Store, ast.Del)):
+            self.bound.add(node.id)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            self.bound.add(alias.asname or alias.name.split(".", 1)[0])
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        for alias in node.names:
+            self.bound.add(alias.asname or alias.name)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self.bound.add(node.name)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.bound.add(node.name)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.bound.add(node.name)
+
+    def visit_Global(self, node: ast.Global) -> None:
+        self.external.update(node.names)
+
+    def visit_Nonlocal(self, node: ast.Nonlocal) -> None:
+        self.external.update(node.names)
 
 
 def _discover_python_files(requested: Path) -> tuple[Path, tuple[Path, ...]]:

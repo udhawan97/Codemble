@@ -227,6 +227,7 @@ def _compose_graphs(
     nodes: list[Node] = []
     edges = []
     annotations = []
+    role_evidence = []
     partial_files: set[str] = set()
     file_hashes: dict[str, str] = {}
     node_ids: set[str] = set()
@@ -241,6 +242,7 @@ def _compose_graphs(
             nodes.append(node)
         edges.extend(graph.edges)
         annotations.extend(graph.concept_annotations)
+        role_evidence.extend(graph.role_evidence)
         partial_files.update(graph.partial_files)
         for file, digest in graph.file_hashes.items():
             existing = file_hashes.get(file)
@@ -257,6 +259,7 @@ def _compose_graphs(
         project_root=str(project_root),
         file_hashes=file_hashes,
         concept_annotations=tuple(annotations),
+        role_evidence=tuple(role_evidence),
         partial_files=tuple(partial_files),
         unsupported_sources=unsupported_sources,
     )

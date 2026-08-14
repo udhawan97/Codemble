@@ -50,6 +50,10 @@ const graph = {
     { node_id: "py", language: "python", concept: "async-await" },
     { node_id: "ts", language: "typescript", concept: "async-await" },
   ],
+  role_evidence: [
+    { node_id: "py", role: "application-entry" },
+    { node_id: "ts", role: "ui-renderer" },
+  ],
   regions: [
     { id: "py", language: "python", x: 1, community: 4, community_family: 2 },
     { id: "ts", language: "typescript", x: 2, community: 9, community_family: 0 },
@@ -70,6 +74,7 @@ assert.deepEqual(typescript.edges.map((edge) => edge.dst), ["external:react", "u
 assert.deepEqual(typescript.entrypoint_candidates, ["ts"]);
 assert.equal(typescript.selected_entrypoint, null);
 assert.deepEqual(typescript.file_hashes, { "ts.ts": "t" });
+assert.deepEqual(typescript.role_evidence, [{ node_id: "ts", role: "ui-renderer" }]);
 assert.deepEqual(typescript.regions.map((region) => region.id), ["ts"]);
 assert.deepEqual(typescript.region_edges, []);
 assert.deepEqual(typescript.partial_files, []);

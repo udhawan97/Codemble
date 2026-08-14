@@ -13,6 +13,7 @@ from typing import Literal, Protocol
 
 NodeKind = Literal["module", "class", "function"]
 EdgeKind = Literal["import", "call"]
+RoleKind = Literal["application-entry", "route-handler", "ui-renderer", "test"]
 SystemOrbitKind = Literal["origin", "call-root", "certain-call", "unreached"]
 
 
@@ -95,6 +96,24 @@ class ConceptAnnotation:
 
 
 @dataclass(frozen=True, slots=True)
+class RoleEvidence:
+    """A parser-proven application or test role at an exact observation span.
+
+    ``file`` is where the role was observed and can differ from the node's
+    declaration file. That distinction is required for registrations such as
+    ``app.get('/users', users)`` where the route and its handler live in
+    different files.
+    """
+
+    node_id: str
+    role: RoleKind
+    rule_id: str
+    file: str
+    lineno: int
+    end_lineno: int
+
+
+@dataclass(frozen=True, slots=True)
 class Region:
     """A render-ready star system derived from parser-proven nodes."""
 
@@ -169,12 +188,13 @@ class Graph:
     file_hashes: dict[str, str]
     selected_entrypoint: str | None = None
     concept_annotations: tuple[ConceptAnnotation, ...] = ()
+    role_evidence: tuple[RoleEvidence, ...] = ()
     regions: tuple[Region, ...] = ()
     region_edges: tuple[RegionEdge, ...] = ()
     import_cycles: tuple[tuple[str, ...], ...] = ()
     partial_files: tuple[str, ...] = ()
     unsupported_sources: tuple[UnsupportedSource, ...] = ()
-    schema_version: int = field(default=10, init=False)
+    schema_version: int = field(default=11, init=False)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation in canonical collection order."""
@@ -208,6 +228,20 @@ class Graph:
                         item.node_id,
                         item.lineno,
                         item.concept,
+                        item.end_lineno,
+                    ),
+                )
+            ],
+            "role_evidence": [
+                asdict(evidence)
+                for evidence in sorted(
+                    self.role_evidence,
+                    key=lambda item: (
+                        item.node_id,
+                        item.role,
+                        item.rule_id,
+                        item.file,
+                        item.lineno,
                         item.end_lineno,
                     ),
                 )

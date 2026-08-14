@@ -27,6 +27,7 @@ export function languageFocusGraph(graph, language) {
     concept_annotations: graph.concept_annotations.filter(
       (annotation) => annotation.language === language && nodeIds.has(annotation.node_id),
     ),
+    role_evidence: (graph.role_evidence ?? []).filter((role) => nodeIds.has(role.node_id)),
     regions: graph.regions.filter((region) => regionIds.has(region.id)),
     region_edges: graph.region_edges.filter(
       (edge) => regionIds.has(edge.src) && regionIds.has(edge.dst),

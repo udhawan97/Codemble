@@ -1,6 +1,6 @@
 ---
 title: Correctness contract
-description: The six rules that outrank every feature.
+description: The eight rules that outrank every feature.
 ---
 
 Codemble's audience often **cannot detect when a tool is wrong** — that is
@@ -15,16 +15,23 @@ worse than no tool. So these rules outrank every feature request:
    the code"* rather than guess.
 3. **Lens claims attach only to parser-detected constructs.**
 4. **Every explanation links to a real `file:line`** so you can check it.
-5. **Check answers come from the graph, never the model.**
-6. **Approximate call edges are labeled "possible call"** — never stated as fact.
+5. **Application and test roles require parser evidence.** Every role has a
+   closed name, stable parser rule, observation file, and exact line span.
+   Framework roles additionally require import/factory/binding provenance; a
+   familiar annotation or method name is not proof.
+6. **A journey completes only over certain, directed imports and calls.** A
+   folder relationship cannot bridge a gap, and possible evidence stays below
+   a visible proof break.
+7. **Check answers come from the graph, never the model.**
+8. **Approximate call edges are labeled "possible call"** — never stated as fact.
 
-Rule 6 travels. When the study panel traces what a change would reach, a chain
+Rule 8 travels. When the study panel traces what a change would reach, a chain
 that passes through one unproven relationship is labelled possible for its whole
 length — an uncertain first step cannot be laundered into a certain third one.
 
 ## Hedging less by proving more
 
-Rule 6 governs what Codemble refuses to claim. It is not a licence to stop
+Rule 8 governs what Codemble refuses to claim. It is not a licence to stop
 trying, and a call matched on nothing but its name is a weak thing to draw. A
 call to `.parse()` used to reach *every* class in the project that declared a
 method by that name.
@@ -65,7 +72,7 @@ wrong lesson about both.
 
 ## A boundary is not a gap
 
-Rule 6 makes Codemble honest about what it could not prove. It also has to be
+Rule 8 makes Codemble honest about what it could not prove. It also has to be
 honest about what was never its to prove. `new Set()`, `new AbortController()`
 and `requestAnimationFrame(...)` are supplied by the language or the host, not
 by your files — but in JavaScript and TypeScript they were reported as

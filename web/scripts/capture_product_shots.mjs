@@ -186,7 +186,14 @@ await page.locator(".study-preview").evaluate((scroller) => {
 });
 await capture("study-panel.png");
 
-const impactHeading = page.getByRole("heading", { name: "Impact", exact: true });
+const supportDisclosure = page.locator("details.journey-support");
+if (!(await supportDisclosure.evaluate((details) => details.open))) {
+  await supportDisclosure.locator("summary").click();
+}
+const impactHeading = page.getByRole("heading", {
+  name: "Selected feature impact",
+  exact: true,
+});
 await impactHeading.evaluate((heading) => {
   const scroller = heading.closest(".study-preview");
   if (!(scroller instanceof HTMLElement)) {

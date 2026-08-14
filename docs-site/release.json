@@ -1,21 +1,21 @@
 {
-  "version": "0.17.0",
-  "tag": "v0.17.0",
+  "version": "0.18.0",
+  "tag": "v0.18.0",
   "sourceDateEpoch": 1786579200,
-  "releaseUrl": "https://github.com/udhawan97/Codemble/releases/tag/v0.17.0",
-  "pypiFilesUrl": "https://pypi.org/project/codemble/0.17.0/#files",
+  "releaseUrl": "https://github.com/udhawan97/Codemble/releases/tag/v0.18.0",
+  "pypiFilesUrl": "https://pypi.org/project/codemble/0.18.0/#files",
   "checksums": {
     "filename": "SHA256SUMS.txt",
-    "url": "https://github.com/udhawan97/Codemble/releases/download/v0.17.0/SHA256SUMS.txt"
+    "url": "https://github.com/udhawan97/Codemble/releases/download/v0.18.0/SHA256SUMS.txt"
   },
   "wheel": {
-    "filename": "codemble-0.17.0-py3-none-any.whl",
-    "url": "https://github.com/udhawan97/Codemble/releases/download/v0.17.0/codemble-0.17.0-py3-none-any.whl",
-    "sha256": "cc02fad6e4ec20635ebce338bef7abbcaed3a3ed6925a6d4db8e58641eeecab5"
+    "filename": "codemble-0.18.0-py3-none-any.whl",
+    "url": "https://github.com/udhawan97/Codemble/releases/download/v0.18.0/codemble-0.18.0-py3-none-any.whl",
+    "sha256": "7f17284a08a5cc3b0a5514972db49ae91b1c735643c9abc1d9ba243e96998a4f"
   },
   "sdist": {
-    "filename": "codemble-0.17.0.tar.gz",
-    "url": "https://github.com/udhawan97/Codemble/releases/download/v0.17.0/codemble-0.17.0.tar.gz",
-    "sha256": "97000d11932240fb4d3cae0a6707564390912f801606339bc5d7bbe234dae203"
+    "filename": "codemble-0.18.0.tar.gz",
+    "url": "https://github.com/udhawan97/Codemble/releases/download/v0.18.0/codemble-0.18.0.tar.gz",
+    "sha256": "283aa004f326a569a8aa3735c1be99958c08a14ee5e44009b7a4db2148dfcf96"
   }
 }

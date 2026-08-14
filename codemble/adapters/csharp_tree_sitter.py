@@ -19,8 +19,10 @@ from codemble.adapters.base import (
     Edge,
     Graph,
     Node,
+    RoleEvidence,
 )
 from codemble.adapters.parse_progress import note_file_parsed
+from codemble.adapters.role_rules import native_entrypoint_roles, roles_from_complete_files
 from codemble.adapters.tree_sitter_core import _TreeSitterAdapterCore
 
 _EXTENSIONS = frozenset({".cs"})
@@ -308,6 +310,11 @@ class CSharpAdapter(_TreeSitterAdapterCore):
             edges.extend(_import_edges(parsed, index))
         edges.extend(_call_edges(index))
 
+        partial_files = tuple(
+            parsed.relative_path
+            for parsed in parsed_files
+            if parsed.tree.root_node.has_error
+        )
         return Graph(
             nodes=index.nodes,
             edges=tuple(edges),
@@ -317,11 +324,12 @@ class CSharpAdapter(_TreeSitterAdapterCore):
                 parsed.relative_path: parsed.digest for parsed in parsed_files
             },
             concept_annotations=_concept_annotations(index),
-            partial_files=tuple(
-                parsed.relative_path
-                for parsed in parsed_files
-                if parsed.tree.root_node.has_error
+            role_evidence=roles_from_complete_files(
+                _role_evidence(index),
+                index.nodes,
+                partial_files,
             ),
+            partial_files=partial_files,
         )
     def concepts(self, node: Node, source: str) -> list[ConceptAnnotation]:
         """Return only tree-sitter-proven concepts owned by ``node``."""
@@ -354,6 +362,116 @@ class CSharpAdapter(_TreeSitterAdapterCore):
             for annotation in _concept_annotations(index)
             if annotation.node_id == node.id
         ]
+
+
+def _role_evidence(index: _CSharpIndex) -> tuple[RoleEvidence, ...]:
+    roles = set(native_entrypoint_roles(index.nodes))
+    project_type_names = {
+        index.node_by_id[definition.node_id].name
+        for definition in index.definitions
+        if definition.declaration in _TYPE_DECLARATIONS
+    }
+    providers_by_module = {
+        module_id: _csharp_role_providers(parsed)
+        for module_id, parsed in index.parsed_by_module.items()
+    }
+    for definition in index.definitions:
+        if definition.declaration != "method_declaration":
+            continue
+        node = index.node_by_id[definition.node_id]
+        providers = providers_by_module[definition.module_id]
+        test_attribute = _matching_attribute(definition.syntax, _TEST_ATTRIBUTE_BYTES)
+        if test_attribute is not None:
+            name = test_attribute.child_by_field_name("name")
+            rule_leaf = "fact" if name is not None and name.text == b"Fact" else "testmethod"
+            required = "xunit" if rule_leaf == "fact" else "mstest"
+            written_name = "Fact" if rule_leaf == "fact" else "TestMethod"
+            shadowed = (
+                written_name in project_type_names
+                or f"{written_name}Attribute" in project_type_names
+            )
+            if required in providers and not shadowed:
+                lineno, end_lineno = _line_span(test_attribute)
+                roles.add(
+                    RoleEvidence(
+                        node.id,
+                        "test",
+                        f"csharp.attribute.{rule_leaf}",
+                        node.file,
+                        lineno,
+                        end_lineno,
+                    )
+                )
+        route_attribute = _matching_attribute(
+            definition.syntax,
+            frozenset(
+                {
+                    b"Route",
+                    b"HttpGet",
+                    b"HttpPost",
+                    b"HttpPut",
+                    b"HttpPatch",
+                    b"HttpDelete",
+                }
+            ),
+        )
+        if route_attribute is not None and "aspnet" in providers:
+            name = route_attribute.child_by_field_name("name")
+            written_name = name.text.decode("ascii") if name is not None else ""
+            shadowed = (
+                written_name in project_type_names
+                or f"{written_name}Attribute" in project_type_names
+            )
+            if name is not None and not shadowed:
+                lineno, end_lineno = _line_span(route_attribute)
+                roles.add(
+                    RoleEvidence(
+                        node.id,
+                        "route-handler",
+                        f"csharp.aspnet.{name.text.decode('ascii').casefold()}",
+                        node.file,
+                        lineno,
+                        end_lineno,
+                    )
+                )
+    return tuple(sorted(roles, key=lambda item: (item.file, item.lineno, item.node_id)))
+
+
+def _csharp_role_providers(parsed: _ParsedFile) -> frozenset[str]:
+    providers: set[str] = set()
+    for syntax in _walk(parsed.tree.root_node):
+        if syntax.type != "using_directive":
+            continue
+        written = _node_text(syntax, parsed.raw).strip()
+        written = written.removeprefix("global ").removeprefix("using ").strip()
+        written = written.removeprefix("static ").rstrip(";").strip()
+        if "=" in written:
+            # An alias binds only the alias spelling. It does not make
+            # unqualified `[Fact]` or `[HttpGet]` a framework attribute.
+            continue
+        if written == "Microsoft.AspNetCore.Mvc":
+            providers.add("aspnet")
+        if written == "Microsoft.VisualStudio.TestTools.UnitTesting":
+            providers.add("mstest")
+        if written == "Xunit":
+            providers.add("xunit")
+    return frozenset(providers)
+
+
+def _matching_attribute(
+    syntax: SyntaxNode,
+    allowed: frozenset[bytes],
+) -> SyntaxNode | None:
+    for child in syntax.named_children:
+        if child.type != "attribute_list":
+            continue
+        for attribute in child.named_children:
+            if attribute.type != "attribute":
+                continue
+            name = attribute.child_by_field_name("name")
+            if name is not None and name.text in allowed:
+                return attribute
+    return None
 
 
 def _source_lines(source: str) -> tuple[str, ...]:

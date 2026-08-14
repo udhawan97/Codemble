@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 import tomllib
 from collections.abc import Mapping
 from dataclasses import asdict
@@ -14,6 +15,7 @@ from typing import NamedTuple
 from codemble.adapters.base import Edge, Graph, Node
 from codemble.adapters.source_text import read_source_text
 from codemble.graph.impact import blast_radius
+from codemble.graph.learning import LearningJourneyIndex
 from codemble.lens import lens_notes
 from codemble.llm.providers import (
     RECOMMENDED_MODEL,
@@ -64,9 +66,11 @@ class StudyService:
         cache_root: Path | None = None,
         setup_message: str | None = None,
     ) -> None:
+        self._lock = threading.RLock()
         self._graph = graph
         self._project_root = Path(graph.project_root).resolve()
         self._nodes = {node.id: node for node in graph.nodes}
+        self._journeys = LearningJourneyIndex(graph)
         self._provider = provider
         self._cache_root = cache_root or data_dir() / "cache" / "explanations"
         self._setup_message = setup_message or (
@@ -162,6 +166,15 @@ class StudyService:
 
         return self._provider
 
+    def update_graph(self, graph: Graph) -> None:
+        """Atomically replace parser truth after an explicit Home selection."""
+
+        with self._lock:
+            self._graph = graph
+            self._project_root = Path(graph.project_root).resolve()
+            self._nodes = {node.id: node for node in graph.nodes}
+            self._journeys = LearningJourneyIndex(graph)
+
     def study(self, node_id: str) -> dict[str, object]:
         """Return real source, parser neighbors, and the local structural summary.
 
@@ -169,39 +182,46 @@ class StudyService:
         opening a node in the study panel cannot block on a network round trip.
         """
 
-        node = self._nodes.get(node_id)
-        if node is None:
-            raise UnknownNodeError(node_id)
-        source, neighbors, lens = self._prepare(node)
-        return {
-            "node": asdict(node),
-            "source": source,
-            "neighbors": neighbors,
-            "lens": lens,
-            "structural": structural_summary(node, neighbors, lens),
-            # Parser truth, so it arrives with the rest of the local payload and
-            # never waits on a provider. This is what lets the Expert panel lead
-            # with something useful when no key is configured at all.
-            "impact": blast_radius(self._graph, node.id),
-        }
+        with self._lock:
+            node = self._nodes.get(node_id)
+            if node is None:
+                raise UnknownNodeError(node_id)
+            source, neighbors, lens = self._prepare(node)
+            return {
+                "node": asdict(node),
+                "source": source,
+                "neighbors": neighbors,
+                "lens": lens,
+                "structural": structural_summary(node, neighbors, lens),
+                # Parser truth, so it arrives with the rest of the local payload and
+                # never waits on a provider. This is what lets the Expert panel lead
+                # with something useful when no key is configured at all.
+                "impact": blast_radius(self._graph, node.id),
+                # One mode-neutral, parser-owned route. Easy and Expert project
+                # different detail from these exact steps instead of maintaining
+                # separate explanations of how the feature reaches the app.
+                "learning_journey": self._journeys.build(node.id),
+            }
 
     def explain(self, node_id: str, mode: str = "easy") -> dict[str, object]:
         """Return only the narration state for one node in one audience voice."""
 
-        node = self._nodes.get(node_id)
-        if node is None:
-            raise UnknownNodeError(node_id)
-        if node.partial:
-            return {
-                "status": "partial",
-                "message": (
-                    "Narration is unavailable because the language parser reported "
-                    "syntax errors in this file. The raw source remains visible."
-                ),
-                "cached": False,
-            }
-        source, neighbors, lens = self._prepare(node)
-        return self._explain(node, source, neighbors, lens, mode)
+        with self._lock:
+            node = self._nodes.get(node_id)
+            if node is None:
+                raise UnknownNodeError(node_id)
+            if node.partial:
+                return {
+                    "status": "partial",
+                    "message": (
+                        "Narration is unavailable because the language parser reported "
+                        "syntax errors in this file. The raw source remains visible."
+                    ),
+                    "cached": False,
+                }
+            source, neighbors, lens = self._prepare(node)
+            file_hash = self._graph.file_hashes.get(node.file, "")
+        return self._explain(node, source, neighbors, lens, mode, file_hash)
 
     def _prepare(
         self, node: Node
@@ -286,6 +306,7 @@ class StudyService:
         neighbors: list[dict[str, object]],
         lens: list[dict[str, object]],
         mode: str,
+        file_hash: str,
     ) -> dict[str, object]:
         if self._provider is None:
             return {
@@ -294,7 +315,6 @@ class StudyService:
                 "cached": False,
             }
 
-        file_hash = self._graph.file_hashes.get(node.file, "")
         cache_key = _cache_key(self._provider, node, file_hash, mode)
         cached = self._read_cache(cache_key)
         if cached is not None:
