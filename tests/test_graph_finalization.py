@@ -978,3 +978,134 @@ def test_the_test_bias_survives_being_finalized_twice(tmp_path: Path) -> None:
         "tests.test_thing"
     ), "the project's own entry must sort above the fixture"
     assert twice.selected_entrypoint == "main"
+
+
+def _tie(tmp_path: Path) -> Graph:
+    """Two non-test rank-0 modules: without stronger evidence, a genuine tie."""
+
+    return Graph(
+        nodes=(
+            _node("pkg.cli", region="pkg.cli", rank=0, file="pkg/cli.py"),
+            _node("scripts.tool", region="scripts.tool", rank=0, file="scripts/tool.py"),
+        ),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root=str(tmp_path),
+        file_hashes={"pkg/cli.py": "a", "scripts/tool.py": "b"},
+    )
+
+
+def test_a_declared_console_script_resolves_a_rank_tie_without_a_question(
+    tmp_path: Path,
+) -> None:
+    """pyproject's [project.scripts] is decisive evidence, not a heuristic.
+
+    Five rank-0 candidates tied on this repository -- codemble.cli plus four
+    maintenance scripts, each carrying an ordinary __main__ guard -- so a
+    first-run learner met a 34-candidate picker while pyproject.toml already
+    declared exactly which module the installed program runs. The manifest is
+    the project's own statement of where it starts; reading it asks nothing
+    and invents nothing.
+    """
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "pkg"\n\n[project.scripts]\npkg = "pkg.cli:main"\n',
+        encoding="utf-8",
+    )
+
+    graph = finalize_graph(_tie(tmp_path))
+
+    assert graph.entrypoint_candidates[0] == "pkg.cli"
+    assert graph.selected_entrypoint == "pkg.cli"
+    ranks = {n.id: n.entrypoint_rank for n in graph.nodes if n.entrypoint_rank is not None}
+    assert ranks == {"pkg.cli": 0, "scripts.tool": 0}, (
+        "manifest evidence biases the order, never the stored rank"
+    )
+
+
+def test_without_a_manifest_a_genuine_tie_still_opens_the_picker(
+    tmp_path: Path,
+) -> None:
+    graph = finalize_graph(_tie(tmp_path))
+
+    assert graph.selected_entrypoint is None
+
+
+def test_a_broken_manifest_contributes_nothing_rather_than_failing_the_parse(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project\nscripts = not toml", encoding="utf-8"
+    )
+
+    graph = finalize_graph(_tie(tmp_path))
+
+    assert graph.selected_entrypoint is None
+
+
+def test_manifest_evidence_never_invents_a_candidate(tmp_path: Path) -> None:
+    """A declared module the parser never saw must not become Home."""
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "pkg"\n\n[project.scripts]\nghost = "ghost.mod:main"\n',
+        encoding="utf-8",
+    )
+
+    graph = finalize_graph(_tie(tmp_path))
+
+    assert graph.selected_entrypoint is None
+    assert "ghost.mod" not in graph.entrypoint_candidates
+
+
+def test_a_gui_script_declaration_counts_the_same_as_a_console_one(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "pkg"\n\n[project.gui-scripts]\npkg = "pkg.cli:run"\n',
+        encoding="utf-8",
+    )
+
+    graph = finalize_graph(_tie(tmp_path))
+
+    assert graph.selected_entrypoint == "pkg.cli"
+
+
+def test_a_manifest_named_function_is_evidence_when_only_it_is_ranked(
+    tmp_path: Path,
+) -> None:
+    """"pkg.cli:main" names the module and its function; either may be the
+    parser's candidate, and the declaration should settle a tie for both."""
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "pkg"\n\n[project.scripts]\npkg = "pkg.cli:main"\n',
+        encoding="utf-8",
+    )
+    graph = Graph(
+        nodes=(
+            _node("pkg.cli.main", region="pkg.cli", rank=1, file="pkg/cli.py"),
+            _node("scripts.tool", region="scripts.tool", rank=1, file="scripts/tool.py"),
+        ),
+        edges=(),
+        entrypoint_candidates=(),
+        project_root=str(tmp_path),
+        file_hashes={"pkg/cli.py": "a", "scripts/tool.py": "b"},
+    )
+
+    finalized = finalize_graph(graph)
+
+    assert finalized.selected_entrypoint == "pkg.cli.main"
+
+
+def test_manifest_selection_is_idempotent_across_double_finalization(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "pkg"\n\n[project.scripts]\npkg = "pkg.cli:main"\n',
+        encoding="utf-8",
+    )
+
+    once = finalize_graph(_tie(tmp_path))
+    twice = finalize_graph(once)
+
+    assert twice.selected_entrypoint == once.selected_entrypoint == "pkg.cli"
+    assert twice.entrypoint_candidates == once.entrypoint_candidates

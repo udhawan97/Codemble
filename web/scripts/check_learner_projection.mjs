@@ -273,6 +273,60 @@ const allLanguages = projection.derive({ ...state, languageFocus: "all" });
 assert.equal(allLanguages.focusedGraph, graph);
 assert.notEqual(allLanguages.moduleIndex, first.moduleIndex);
 
+// "Is a Home chosen?" is a fact about the PROJECT, so it may not be answered
+// from the language-focused projection. Home is Python here, so a TypeScript
+// focus filters it out of `graph.regions` entirely -- and the guidance chip
+// then told the learner "No Home is chosen" two rows under a breadcrumb
+// reading "Home app.py". Same root-cause shape as the v0.16.0 Map defect: a
+// whole-project question answered from a filtered view.
+{
+  const focused = projection.derive({ ...state, languageFocus: "typescript" });
+  assert.equal(
+    focused.focusedGraph.regions.some((region) => region.home),
+    false,
+    "the fixture must actually filter Home out, or this proves nothing",
+  );
+  assert.equal(
+    focused.hint.regionId,
+    "main.ts",
+    "guidance still recommends the focused language's unlit region",
+  );
+  assert.notEqual(
+    focused.hint.reason,
+    "No Home is chosen, so there is no route to measure from.",
+    "a chosen Home must never be reported as unchosen because of a focus",
+  );
+  assert.equal(
+    focused.hint.reason,
+    "Home is not written in TypeScript.",
+    "the honest reason names the focus, in one clause like every sibling",
+  );
+  assert.ok(
+    focused.hint.reason.length <= 55,
+    "guidance reasons stay one clause: the long form cost 106px of strip against 62px",
+  );
+}
+
+// The genuine no-Home case keeps its original copy: with nothing chosen there
+// really is no route to measure, and blaming the project would be wrong.
+{
+  const homeless = {
+    ...graph,
+    regions: graph.regions.map((region) => ({ ...region, home: false })),
+  };
+  const focused = projection.derive({
+    ...state,
+    graph: homeless,
+    region: homeless.regions[0],
+    languageFocus: "all",
+  });
+  assert.equal(
+    focused.hint.reason,
+    "No Home is chosen, so there is no route to measure from.",
+    "a project with no Home at all still says so",
+  );
+}
+
 console.log("learner-projection contracts passed");
 
 function makeGraph() {

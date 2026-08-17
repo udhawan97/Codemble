@@ -5,6 +5,7 @@ import {
   isTestScopedPath,
   languageFocusGraph,
   languageFocusMap,
+  languageLabel,
   moduleIndex,
   projectName as graphProjectName,
   projectLanguageOptions,
@@ -64,7 +65,17 @@ export function createLearnerProjection() {
         ? studiedCountFor(focusedGraph, studiedNodeIds)
         : 0,
       hint: focusedGraph
-        ? hintFor(focusedGraph, state.mode, level, region?.id ?? null, state.layer)
+        ? hintFor(
+            focusedGraph,
+            state.mode,
+            level,
+            region?.id ?? null,
+            state.layer,
+            // Unfocused, because "has the learner chosen a Home?" is a fact
+            // about the project and must not change with a filter.
+            graph,
+            state.languageFocus,
+          )
         : null,
       revealedRegionIds: focusedGraph
         ? revealFor(
@@ -164,14 +175,16 @@ export function createLearnerProjection() {
     return studiedCountCache.value;
   }
 
-  function hintFor(graph, mode, level, regionId, layer) {
+  function hintFor(graph, mode, level, regionId, layer, projectGraph, languageFocus) {
     if (
       !hintCache ||
       hintCache.graph !== graph ||
       hintCache.mode !== mode ||
       hintCache.level !== level ||
       hintCache.regionId !== regionId ||
-      hintCache.layer !== layer
+      hintCache.layer !== layer ||
+      hintCache.projectGraph !== projectGraph ||
+      hintCache.languageFocus !== languageFocus
     ) {
       hintCache = {
         graph,
@@ -179,7 +192,16 @@ export function createLearnerProjection() {
         level,
         regionId,
         layer,
-        value: nextStudyHint(graph, { mode, level, regionId, layer }),
+        projectGraph,
+        languageFocus,
+        value: nextStudyHint(graph, {
+          mode,
+          level,
+          regionId,
+          layer,
+          projectGraph,
+          languageFocus,
+        }),
       };
     }
     return hintCache.value;
@@ -219,13 +241,43 @@ export function createLearnerProjection() {
 // truth: the BFS hop count and the region's recorded file path.
 const TEST_SCOPE_HOP_PENALTY = 1.5;
 
-function nextStudyHint(graph, { mode, level, regionId, layer }) {
+// Why the recommended region sits where it does. Four distinct situations,
+// and telling them apart is the whole job: a project with no Home, a Home the
+// current focus cannot see, a Home that is itself the target, and a real hop
+// count. Collapsing any two of them tells the learner something untrue.
+function distanceReason({ homeChosen, homeOutsideFocus, languageFocus, hops }) {
+  // Without a Home there is no route to measure, so the unreachable copy would
+  // blame the project for something the learner has simply not chosen yet.
+  if (!homeChosen) return "No Home is chosen, so there is no route to measure from.";
+  // One clause, like every sibling reason: the long form measured 106px of
+  // guidance strip against 62px, and this strip is already the tightest thing
+  // on a 320px screen. Naming the language is the whole fact; "so there is no
+  // route" is what the missing distance already says.
+  if (homeOutsideFocus) return `Home is not written in ${languageLabel(languageFocus)}.`;
+  if (hops === 0) return "Home is not lit yet.";
+  if (!Number.isFinite(hops)) return "No import route reaches it from Home.";
+  return `${hops} ${hops === 1 ? "route" : "routes"} from Home.`;
+}
+
+function nextStudyHint(
+  graph,
+  { mode, level, regionId, layer, projectGraph, languageFocus },
+) {
   if (mode !== "easy") return null;
   const unlit = graph.regions.filter((region) => !region.understood);
   if (!unlit.length) return null;
   // Asked of the graph, not of how the choice was made: a region flagged home
-  // is what makes hops mean anything at all.
-  const homeChosen = graph.regions.some((region) => region.home);
+  // is what makes hops mean anything at all. Asked of the PROJECT graph, not
+  // the focused one: Home is written in one language, so any focus on another
+  // filters it out of `graph.regions` and a focus-derived answer would report
+  // a chosen Home as unchosen -- which it did, two rows under a breadcrumb
+  // naming that very Home.
+  const homeChosen = (projectGraph ?? graph).regions.some((region) => region.home);
+  // Home exists but this focus cannot see it. That is a fact about the filter
+  // the learner applied, not about their code, and the Map's own empty state
+  // already words it this way.
+  const homeOutsideFocus =
+    homeChosen && !graph.regions.some((region) => region.home);
   const files = regionFiles(graph);
   const nearest = unlit
     .map((region) => {
@@ -258,16 +310,7 @@ function nextStudyHint(graph, { mode, level, regionId, layer }) {
   const hint = {
     ...nearestFacts,
     message: `Study ${nearest.regionId} next`,
-    reason: !homeChosen
-      ? // Without a Home there is no route to measure, so the unreachable
-        // copy would blame the project for something the learner has simply
-        // not chosen yet.
-        "No Home is chosen, so there is no route to measure from."
-      : nearest.hops === 0
-        ? "Home is not lit yet."
-        : Number.isFinite(nearest.hops)
-          ? `${nearest.hops} ${nearest.hops === 1 ? "route" : "routes"} from Home.`
-          : "No import route reaches it from Home.",
+    reason: distanceReason({ homeChosen, homeOutsideFocus, languageFocus, hops: nearest.hops }),
   };
   // Study level used to return null outright, so guidance went quiet at the
   // exact moment the learner finished reading -- the deepest step of the loop

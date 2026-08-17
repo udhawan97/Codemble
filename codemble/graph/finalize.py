@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import tomllib
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
 
@@ -25,6 +26,47 @@ _UNRANKED = 1 << 30
 _TEST_DIRECTORIES = frozenset({"tests", "test", "testing", "__tests__", "spec", "__specs__"})
 _ROLE_KINDS = frozenset({"application-entry", "route-handler", "ui-renderer", "test"})
 _RULE_ID = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$")
+
+
+def _manifest_entry_ids(project_root: str) -> frozenset[str]:
+    """Modules and functions the project's own packaging manifest declares
+    as programs.
+
+    `[project.scripts]` and `[project.gui-scripts]` entries have the form
+    ``pkg.mod:func`` (function optional): the manifest literally states which
+    code the installed command runs, which is stronger evidence than any
+    ``__main__`` guard -- four maintenance scripts tied this repository's real
+    entry at rank 0 while pyproject.toml already named it. Only ranking uses
+    this; a declared module the parser never saw contributes nothing, so no
+    structure is invented. A missing or broken manifest also contributes
+    nothing rather than failing the parse.
+    """
+
+    manifest = Path(project_root) / "pyproject.toml"
+    try:
+        data = tomllib.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return frozenset()
+    project = data.get("project")
+    if not isinstance(project, dict):
+        return frozenset()
+    ids: set[str] = set()
+    for table in ("scripts", "gui-scripts"):
+        entries = project.get(table)
+        if not isinstance(entries, dict):
+            continue
+        for target in entries.values():
+            if not isinstance(target, str):
+                continue
+            module, _, attribute = target.partition(":")
+            module = module.strip()
+            if not module:
+                continue
+            ids.add(module)
+            first_attribute = attribute.strip().split(".", 1)[0]
+            if first_attribute:
+                ids.add(f"{module}.{first_attribute}")
+    return frozenset(ids)
 
 
 def _is_test_scoped(file: str) -> bool:
@@ -76,11 +118,16 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
     # inside `ProjectParser` composition -- so adding a penalty to the field
     # applied it twice (measured: rank 4 became rank 8); and the rank is shown
     # to the learner, who is promised it is the parser's real one.
+    manifest_ids = _manifest_entry_ids(graph.project_root)
+
+    def candidate_order(node: Node) -> tuple[int, int, int, str]:
+        return _candidate_order(node, manifest_ids)
+
     candidates = tuple(
         node.id
         for node in sorted(
             (node for node in nodes if node.entrypoint_rank is not None),
-            key=_candidate_order,
+            key=candidate_order,
         )
     )
     if entrypoint is not None and entrypoint not in candidates:
@@ -98,11 +145,11 @@ def finalize_graph(graph: Graph, *, entrypoint: str | None = None) -> Graph:
     # means what the learner sees at the top: a test-scoped candidate only wins
     # when nothing outside the test tree is ranked at all, which keeps a project
     # that IS a test suite explorable.
-    keys = [_candidate_order(node_by_id[candidate]) for candidate in candidates]
+    keys = [candidate_order(node_by_id[candidate]) for candidate in candidates]
     best = [
         candidate
         for candidate in candidates
-        if keys and _candidate_order(node_by_id[candidate])[:2] == min(keys)[:2]
+        if keys and candidate_order(node_by_id[candidate])[:3] == min(keys)[:3]
     ]
     selected_entrypoint = entrypoint or (best[0] if len(best) == 1 else None)
     finalized = replace(
@@ -181,8 +228,9 @@ def _finalize_role_evidence(
     return tuple(sorted(validated, key=_role_key))
 
 
-def _candidate_order(node: Node) -> tuple[int, int, str]:
-    """Order entrypoint candidates: real code first, then rank, then id.
+def _candidate_order(node: Node, manifest_ids: frozenset[str]) -> tuple[int, int, int, str]:
+    """Order entrypoint candidates: manifest-declared first, then real code
+    ahead of test-scoped, then rank, then id.
 
     Idempotent by construction — it reads the node and returns a sort key
     rather than editing a field, so running finalization twice (which the
@@ -190,6 +238,7 @@ def _candidate_order(node: Node) -> tuple[int, int, str]:
     """
 
     return (
+        0 if node.id in manifest_ids else 1,
         1 if _is_test_scoped(node.file) else 0,
         node.entrypoint_rank if node.entrypoint_rank is not None else _UNRANKED,
         node.id,
