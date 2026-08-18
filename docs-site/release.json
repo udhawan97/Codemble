@@ -11,11 +11,11 @@
   "wheel": {
     "filename": "codemble-0.19.0-py3-none-any.whl",
     "url": "https://github.com/udhawan97/Codemble/releases/download/v0.19.0/codemble-0.19.0-py3-none-any.whl",
-    "sha256": "96b712a93f18778165c2327456c98a93b1b22490082a261040c516472d388982"
+    "sha256": "654a1db771a2315f0217a6ef9ce0b5693254b9ff14d43e3bca89966973cf6891"
   },
   "sdist": {
     "filename": "codemble-0.19.0.tar.gz",
     "url": "https://github.com/udhawan97/Codemble/releases/download/v0.19.0/codemble-0.19.0.tar.gz",
-    "sha256": "dcbe7d3c34f4d667786292d9f61973828d5265e3120a59a3600bec237ecaab2d"
+    "sha256": "762e7ceeda6ea1f2d304d61d0aeaf8b153941327a0dc74f43cee600176a54fba"
   }
 }

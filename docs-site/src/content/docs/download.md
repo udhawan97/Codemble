@@ -59,15 +59,15 @@ The same SHA256 digests are published in `SHA256SUMS.txt`, the GitHub asset
 ledger, and PyPI metadata:
 
 ```text
-96b712a93f18778165c2327456c98a93b1b22490082a261040c516472d388982  codemble-0.19.0-py3-none-any.whl
-dcbe7d3c34f4d667786292d9f61973828d5265e3120a59a3600bec237ecaab2d  codemble-0.19.0.tar.gz
+654a1db771a2315f0217a6ef9ce0b5693254b9ff14d43e3bca89966973cf6891  codemble-0.19.0-py3-none-any.whl
+762e7ceeda6ea1f2d304d61d0aeaf8b153941327a0dc74f43cee600176a54fba  codemble-0.19.0.tar.gz
 ```
 
 To check the wheel on macOS or Linux:
 
 ```bash
 printf '%s  %s\n' \
-  96b712a93f18778165c2327456c98a93b1b22490082a261040c516472d388982 \
+  654a1db771a2315f0217a6ef9ce0b5693254b9ff14d43e3bca89966973cf6891 \
   codemble-0.19.0-py3-none-any.whl | shasum -a 256 -c -
 ```
 
