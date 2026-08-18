@@ -155,13 +155,24 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** this source describes v0.19.0, but the tag becomes
-  packaged stable only after the publish workflow proves PyPI, the mirrored
-  GitHub wheel/sdist, `SHA256SUMS.txt`, and fresh downloaded bytes. Until that
-  outside-in proof exists, v0.17.0 remains the last verified stable release.
-  `docs-site/release.json` carries v0.19.0's pinned build epoch and the SHA256
-  digests of a local reproducible build; `check:release --dist dist` passed
-  against those exact bytes before the tag.
+- **Public release truth:** **v0.19.0 is the verified stable release** — the
+  first tag in this project's history whose outside-in proof was completed in
+  the same session that cut it. The publish workflow's three jobs passed,
+  `check:release --live` reconciled PyPI metadata, the mirrored GitHub
+  wheel/sdist, `SHA256SUMS.txt` and freshly downloaded bytes, and a cold
+  `pip install codemble==0.19.0` into an empty venv reported `codemble 0.19.0`
+  and carried the exact packaged SPA bundle (`index-DbqGWC1q.js`) built here.
+  A later tag is not stable until it repeats all of that.
+- **Digests are taken from the tree you are about to tag, never earlier.**
+  `readme = "README.md"` embeds the README in the wheel's own METADATA, so a
+  dist/ built before a README edit describes a wheel that no longer exists —
+  which is exactly how v0.19.0's first publish attempt failed. The build itself
+  was never at fault: rebuilding from the tagged tree reproduced CI's wheel
+  byte-for-byte, which is the pinned hatchling and `SOURCE_DATE_EPOCH` working.
+  Recording the digests cannot invalidate them, because the two files that
+  carry them (`release.json`, the download guide) are both outside the wheel
+  and `docs-site` is excluded from the sdist — proven by rebuilding after the
+  edit and getting the same digests back.
 - **Site search is Pagefind**, which only exists after `npm run build` — the
   field says so in `npm run dev` rather than failing silently.
 - **Public browser proof is a pre-push gate:** build and preview `docs-site/`,
