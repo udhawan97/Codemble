@@ -155,10 +155,13 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** this source describes v0.18.0, but the tag becomes
+- **Public release truth:** this source describes v0.19.0, but the tag becomes
   packaged stable only after the publish workflow proves PyPI, the mirrored
   GitHub wheel/sdist, `SHA256SUMS.txt`, and fresh downloaded bytes. Until that
   outside-in proof exists, v0.17.0 remains the last verified stable release.
+  `docs-site/release.json` carries v0.19.0's pinned build epoch and the SHA256
+  digests of a local reproducible build; `check:release --dist dist` passed
+  against those exact bytes before the tag.
 - **Site search is Pagefind**, which only exists after `npm run build` — the
   field says so in `npm run dev` rather than failing silently.
 - **Public browser proof is a pre-push gate:** build and preview `docs-site/`,
@@ -228,7 +231,74 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M16 parser evidence and scale gates** · Last updated:
-2026-08-14 · Session note: one `ProjectActivation` now injects a long-lived
+2026-08-18 · Session note: three evidence-led user-flow loops against the served
+build found two real gaps, both fixed and re-verified live, and released as
+**v0.19.0** together with the previously unreleased M16 parser work.
+
+**Home never resolved on this project, and the evidence was sitting in
+`pyproject.toml` the whole time.** Five candidates tied at rank 0 — `codemble.cli`
+plus four maintenance scripts, each carrying an ordinary `__main__` guard — so
+`selected_entrypoint` was `None` and a first-run learner met a 34-candidate
+picker in four scopes *before seeing the galaxy at all*. The manifest already
+declared which module the installed command runs, which is strictly stronger
+evidence than a `__main__` guard: the guard says a file *can* be run, the
+manifest says this one *is* the program. `[project.scripts]` and
+`[project.gui-scripts]` now order candidates ahead of every other signal.
+Ranking only, and the three guardrails are what keep it inside the Correctness
+Contract: the stored `entrypoint_rank` is untouched so the picker still shows
+the parser's own number, a declared module the parser never saw contributes
+nothing so no structure is invented, and a missing or malformed manifest is
+ignored rather than failing the parse. It biases the **sort key**, not the
+field, so the double finalization the normal path performs cannot compound it —
+the lesson `finalize_graph`'s own history already taught. Measured in both
+directions: `None` + 34 candidates before, `codemble.cli` with no question
+asked after. The recaptured hero screenshot now shows a resolved Home.
+
+**The guidance chip then contradicted the breadcrumb, and it is the v0.16.0 bug
+wearing different clothes.** "Is a Home chosen?" was asked of the
+*language-focused* projection. Home is written in one language, so focusing
+another filtered it out of `graph.regions` entirely and the chip read "No Home
+is chosen" two rows under a breadcrumb reading "Home codemble.cli". Same
+root-cause shape as the Map defect that broke 5 of 7 languages: a whole-project
+question answered from a filtered view. The fact now comes from the unfocused
+graph, and a Home outside the current focus gets its own honest reason naming
+the language. **The first version of that copy was wrong for a reason worth
+recording**: written as a full explanatory sentence it measured 106px of
+guidance strip against 62px, and that strip is already the tightest thing on a
+320px screen — so it now reads in one clause like every sibling reason, which
+costs nothing and says the same thing. The four distance reasons also moved out
+of a five-deep nested ternary into one named helper; telling them apart is the
+whole job, and collapsing any two tells the learner something untrue.
+
+**The third loop found nothing, and that is recorded as-is.** It swept the
+Expert register, the study panel, the impact widget, the v0.18 journey stepper
+(Back disabled at step 1, Next disabled at step 5, Replay available — no dead
+end), the module index and both recovery controls. Sixteen language×tab
+combinations on the Map and eight register×focus combinations on the Galaxy all
+drew correctly, and the non-Python Workflow empty states name their cause and
+offer "Show all languages". Inflating something into a finding would have been
+worse than reporting a clean sweep.
+
+**Two measurement traps were avoided rather than fallen into.** A rapid
+selector-sweep probe reported the galaxy canvas at 0×0 and an empty stage; a
+clean-path screenshot rendered it perfectly, and the canvas measured 2880×1270
+with a live WebGL context — the probe was reading a throttled, hidden pane
+(`document.hidden === true`), the same trap this file already records twice. And
+a 256px guidance chip at 320px under a Rust focus turned out to be driven by the
+long fixture region ID printed twice, not by the new copy, which is 8 characters
+longer than the baseline.
+
+The three requested architecture loops were **not run**: `/improve-codebase-architecture`
+is explicit-invocation-only and cannot be called on the agent's behalf. UD chose
+to release the two verified user-flow fixes rather than wait.
+
+532 pytest, Ruff clean, 21 frontend contract checks, reproducible bundle and
+reproducible wheel/sdist matching the release manifest, space budget green at 28
+width/level rows, 104 escape assertions across 4 widths, panel reach green, all
+nine product screenshots recaptured from current source. The milestone does not
+advance: issue #13 still requires human tester evidence.
+
+Previously (2026-08-14) · Session note: one `ProjectActivation` now injects a long-lived
 `ProjectParser` with a bounded, thread-safe, process-memory cache of source-free
 per-file graph evidence; concept snippets are reconstructed transiently from
 hash-verified current bytes. Exact root/path/content/dialect/version/config
@@ -1724,6 +1794,9 @@ rebuilt from the reviewed source.
 | 2026-08-14 | The schema-3 complete-Map receipt replaces RSS sampling with the server process's OS high-water mark and still keeps the cap at 1,000 | The earlier sampler observed intervals rather than the declared peak. The gate-only server now reports `ru_maxrss`: 4.888 s cold activation, 1.610 s no-change activation, and a 165,314,560-byte process high-water mark all pass the backend budgets; Chromium again passes the complete 5,000-module Map, while WebKit still cannot stabilize the first-run Skip control inside 5 s. The failed cross-engine gate remains visible and continues to block a public cap increase |
 | 2026-08-14 | Prepared parser evidence and the live project publish under one activation acceptance lock | A late reset could previously arrive after the last file checkpoint while cache sizing was in progress: binding would be rejected, but exact evidence could still enter the long-lived cache from the cancelled candidate. Validation and canonical-JSON sizing now produce an invisible prepared update; only a still-current, non-cancelled activation commits that update and the live project in one linearized critical section. A regression test pauses during evidence serialization, resets with zero wait, and proves neither project nor cache entry survives |
 | 2026-08-14 | The acceptance-locked candidate reruns every scale receipt before integration | Transactional cache publication changes the parser lifecycle even though its payload is byte-identical, so prior timings were not carried forward. The fresh 10k parser receipt is 12.834 s cold, 1.521 s no-change, and 13.062 s one-change with exact fresh Graph/Map equivalence; the fresh 10k Study scan/index medians are 11.308/1.503 ms with 20 exact payload digests; the schema-3 5k gate records 4.956 s cold, 1.666 s no-change, and a 166,789,120-byte OS process RSS high-water mark. Chromium passes and WebKit retains the unstable Skip failure, so the cap remains 1,000 |
+| 2026-08-18 | A project's own packaging manifest outranks every other entrypoint signal: `[project.scripts]` and `[project.gui-scripts]` order candidates first in `_candidate_order` | Home never resolved on this repository — five candidates tied at rank 0 (`codemble.cli` plus four maintenance scripts, each with an ordinary `__main__` guard), so `selected_entrypoint` was `None` and a first-run learner met a **34-candidate picker in four scopes before seeing the galaxy**. The evidence was already in the repo: a `__main__` guard says a file *can* be run, while the manifest says which module the installed command *is*. That is stronger evidence, not a heuristic, which is why it may outrank the existing signals rather than merely break their ties. Three guardrails keep it inside the Correctness Contract, and each closes a specific way this could have lied: the stored `entrypoint_rank` is untouched, so the picker still shows the parser's own number as promised; a declared module the parser never saw contributes **nothing**, so a manifest can never invent a candidate; and a missing or malformed manifest is ignored rather than raising, so a broken TOML file cannot take down a parse. It biases the **sort key** rather than the field — the lesson `finalize_graph` already learned the hard way, since the normal path finalizes twice and a field mutation compounds. Proven in both directions on this repository: `None` + 34 candidates before, `codemble.cli` with no question asked after |
+| 2026-08-18 | "Is a Home chosen?" is answered from the **unfocused** graph; a Home outside the current language focus gets its own reason naming the language, in one clause | The guidance chip told the learner "No Home is chosen, so there is no route to measure from." two rows under a breadcrumb reading "Home codemble.cli". `homeChosen` was computed from `graph.regions` — the *language-focused projection* — and Home is written in one language, so focusing another filtered it out and the whole-project fact flipped. Exactly the root-cause shape of the v0.16.0 Map defect that broke 5 of the 7 languages shipped here, and the same principle the 2026-07-29 `community_family` row records: a question about the whole project must not be derived from a filtered view, or the answer changes with the filter. **The first fix was itself wrong and the measurement is the reason it changed**: written as a full explanatory sentence matching the Map's empty state, the copy measured **106px of guidance strip against 62px** — and that strip is already the tightest thing on a 320px screen, where this project has had to defend it before. Naming the language is the entire fact; "so there is no route to measure" is what the missing distance already says. The four distance reasons also moved out of a five-deep nested ternary into one named helper, because telling them apart is the whole job and collapsing any two tells the learner something untrue |
+
 
 ## Non-Goals — do NOT build (point here when asked)
 

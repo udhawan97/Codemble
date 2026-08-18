@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-08-18
+
 ### Added
 - A bounded, thread-safe, process-memory cache of source-free per-file graph
   evidence behind one long-lived `ProjectParser`, with exact root, path,
@@ -35,6 +37,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   two-engine gate; logical LOD that hides modules is not an accepted shortcut.
 
 ### Fixed
+- Home now resolves on projects whose packaging manifest declares a program.
+  Five candidates tied at rank 0 on this repository, so `selected_entrypoint`
+  was `None` and a first-run learner met a 34-candidate picker in four scopes
+  before seeing anything, while `pyproject.toml` already named the module the
+  installed command runs. `[project.scripts]` and `[project.gui-scripts]` now
+  order candidates ahead of every other signal. Ranking only: the stored
+  `entrypoint_rank` is untouched, a declared module the parser never saw
+  contributes nothing, and a missing or malformed manifest is ignored rather
+  than failing the parse. It biases the sort key rather than the field, so the
+  double finalization the normal path performs cannot compound it.
+- Easy guidance no longer contradicts the breadcrumb under a language focus.
+  "Is a Home chosen?" was asked of the language-focused projection, but Home is
+  written in one language, so focusing another filtered it out and the chip read
+  "No Home is chosen" two rows under a breadcrumb naming that very Home. The
+  fact now comes from the unfocused graph, and a Home outside the current focus
+  gets its own reason naming the language, in one clause like every sibling.
 - Python hashing and AST parsing now consume the same captured file bytes, so a
   mid-read edit cannot pair one digest with another source snapshot.
 - Fingerprinting checks cancellation between source reads without advancing the
