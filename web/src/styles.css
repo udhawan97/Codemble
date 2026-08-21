@@ -20,6 +20,12 @@ body,
   overflow-x: clip;
 }
 
+html {
+  /* Keep native inputs, scrollbars, and dialogs in the same dark instrument
+     palette before custom CSS paints them. */
+  color-scheme: dark;
+}
+
 body {
   background: var(--cm-ground);
   color: var(--cm-ink);
@@ -1596,7 +1602,8 @@ input:focus-visible {
 .star-chart-screen,
 .module-finder ul,
 .index-sidebar__scroll,
-.map-legend {
+.map-legend,
+.map-view {
   --cm-scroll-cover: var(--cm-ground-2);
   background-image:
     linear-gradient(var(--cm-scroll-cover) 30%, transparent),
@@ -2726,7 +2733,10 @@ input:focus-visible {
   flex-direction: column;
   gap: var(--cm-space-sm);
   padding: var(--cm-space-md);
-  background: var(--cm-ground);
+  --cm-scroll-cover: var(--cm-ground);
+  /* Preserve the shared scroll-shadow image above; a background shorthand
+     here used to erase the only cue that compact Map notes continue. */
+  background-color: var(--cm-ground);
   /* The column scrolls when it is over-subscribed instead of clipping one
      child. `hidden` here meant the copy above had to cap and inner-scroll
      itself to survive, which hid the end of the region's own description

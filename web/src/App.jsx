@@ -1456,9 +1456,12 @@ function PathEntry({ busy, onBrowse }) {
       <label htmlFor="picker-path-input">Or type a folder path</label>
       <input
         id="picker-path-input"
+        name="project-path"
         type="text"
         value={typed}
         disabled={busy}
+        autoComplete="off"
+        spellCheck={false}
         placeholder="/Users/you/project/src"
         onChange={(event) => setTyped(event.target.value)}
       />
@@ -1586,10 +1589,13 @@ function ModuleFinder({ index, onGo, onClose }) {
     >
       <input
         ref={inputRef}
+        name="module-search"
         type="search"
         value={query}
         placeholder="Find a module…"
         aria-label="Find a module by name or path"
+        autoComplete="off"
+        spellCheck={false}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={handleKeyDown}
       />

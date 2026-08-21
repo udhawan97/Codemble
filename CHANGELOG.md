@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-08-21
+
+### Changed
+- The public README and documentation site now point to one v0.19.1 release
+  manifest, use fresh disposable-data product captures, and consistently report
+  the parser's current 199 represented systems instead of a stale 190-system
+  caption.
+
 ### Fixed
 - Study now hands keyboard focus to the surface that actually opened: the
   module heading for ordinary navigation and the `Real source` heading for the
@@ -19,6 +27,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   source heading stays intact while a long file coordinate truncates. The
   persistent guidance strip drops from 185.8px to 125.7px on the measured
   320×640 Easy journey, with no horizontal overflow.
+- The Map percentage control now names both its reset action and current zoom,
+  so `80%` is no longer an unexplained button to assistive technology.
+- First Flight's final stop now offers one unambiguous `Finish` action instead
+  of rendering `Finish` and `Exit` buttons that performed the same operation.
+- Local path and module-search inputs now opt out of credential autofill and
+  spellchecking while exposing stable control names. Native controls also
+  inherit the app's dark colour scheme.
+- The compact Map column now uses the same scroll continuation cue as the Study,
+  checks, chart, finder, modules, and legend surfaces, so a long folded-module
+  note no longer appears to end where the viewport clips it.
 
 ## [0.19.0] - 2026-08-18
 

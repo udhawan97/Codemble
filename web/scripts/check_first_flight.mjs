@@ -83,6 +83,7 @@ assert.equal(flightCameraDuration(650, { active: false, reducedMotion: true }), 
 
 const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 const canvasSource = readFileSync(new URL("../src/GalaxyCanvas.jsx", import.meta.url), "utf8");
+const guidanceSource = readFileSync(new URL("../src/GuidanceLayer.jsx", import.meta.url), "utf8");
 assert.match(
   appSource,
   /function visitFirstFlightStop[\s\S]*?GO_TO_REGION/,
@@ -108,6 +109,11 @@ assert.match(
   runtimeSource,
   /flightCameraDuration\(CAMERA_DURATION,[\s\S]*?next\.firstFlightActive[\s\S]*?reducedMotion/,
   "the refactored runtime still owns First Flight's reduced-motion jump cut",
+);
+assert.doesNotMatch(
+  guidanceSource,
+  /Finish\s*<\/button>[\s\S]*?<button[^>]*onClick={firstFlight\.onExit}>\s*Exit/,
+  "the final stop offers one clear completion action instead of duplicate Finish and Exit buttons",
 );
 
 console.log("first-flight contracts passed");

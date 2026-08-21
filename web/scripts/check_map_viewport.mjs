@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   MIN_READABLE_FIT,
@@ -119,5 +120,12 @@ assert.deepEqual(
 );
 store.clear();
 assert.equal(store.read("architecture"), null, "a project lifecycle reset clears view state");
+
+const mapViewSource = readFileSync(new URL("../src/MapView.jsx", import.meta.url), "utf8");
+assert.match(
+  mapViewSource,
+  /aria-label={`Reset zoom to 100%\. Current zoom \${zoomPercent}%\.`}/,
+  "the percentage control names its reset action as well as its current state",
+);
 
 console.log("map viewport contracts passed");

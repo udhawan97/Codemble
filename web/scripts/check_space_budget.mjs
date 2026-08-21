@@ -131,6 +131,11 @@ try {
             [],
             `${label}: header controls sit on top of each other -- ${measured.overlaps.join("; ")}`,
           );
+          assert.equal(
+            measured.mapScrollCue,
+            true,
+            `${label}: the Map column scrolls without a visible continuation cue`,
+          );
           // The breakpoint pair: which shell rendered, not just how much it
           // spent. A budget alone cannot catch the breakpoint moving, because
           // the compact shell is *cheaper* -- that is why it was extended down
@@ -198,6 +203,11 @@ try {
             [],
             `${width}x720 easy at ${level} level: header controls sit on top of ` +
               `each other -- ${measured.overlaps.join("; ")}`,
+          );
+          assert.equal(
+            measured.mapScrollCue,
+            true,
+            `${width}x720 easy at ${level} level: the Map column scrolls without a visible continuation cue`,
           );
         } catch (error) {
           failures += 1;
@@ -542,6 +552,11 @@ function measure(page) {
     const guidance = height(".hint-chip");
     const footer = height("footer");
     const viewportHeight = window.innerHeight;
+    const mapView = document.querySelector(".map-view");
+    const mapScrollCue =
+      !mapView ||
+      mapView.scrollHeight <= mapView.clientHeight + 1 ||
+      getComputedStyle(mapView).backgroundImage.includes("radial-gradient");
 
     // Anything that scrolls a *child* rather than the column it sits in. The
     // scrollbar is invisible until scrolled, so this reads as a rendering bug
@@ -627,6 +642,7 @@ function measure(page) {
       header,
       guidance,
       footer,
+      mapScrollCue,
       overlaps,
       chromeShare: (header + guidance + footer) / viewportHeight,
       // The Map's drawing. Absent on the Galaxy layer, where the canvas fills

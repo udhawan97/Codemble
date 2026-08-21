@@ -242,7 +242,27 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M16 parser evidence and scale gates** · Last updated:
-2026-08-21 · Session note: a bounded live-app polish pass repaired Study's
+2026-08-21 · Session note: five bounded app-polish loops prepared the v0.19.1
+patch candidate without changing parser, graph, checks, progress, or release
+scale truth.
+
+**The five loops close interaction ambiguity rather than add capability.** The
+Map percentage control now names its reset action and current value; First
+Flight's final stop has one completion action; local path and module search
+inputs opt out of credential autofill and code-token spellchecking; native
+controls inherit the dark instrument palette; and the compact Map column now
+shows the same scroll-continuation cue as every other long app surface. Focus,
+Escape, reduced-motion, uncertainty, and amber-understanding contracts remain
+unchanged and executable.
+
+**The public surface follows the same release ledger.** All nine product shots
+were recaptured from the current worktree with disposable progress and no
+provider configuration. README, landing, current guides, download routes, and
+release manifest now agree on v0.19.1 and 199 represented systems; the stale
+190-system landing caption and v0.18 journey caption were removed. Issue #13
+still requires unaided human learner evidence, so M16 does not advance.
+
+Previously (2026-08-21) · Session note: a bounded live-app polish pass repaired Study's
 arrival and the narrowest supported learning loop without changing parser,
 game, graph layout, palette, or Galaxy truth.
 
@@ -1845,6 +1865,7 @@ rebuilt from the reviewed source.
 | 2026-08-18 | A project's own packaging manifest outranks every other entrypoint signal: `[project.scripts]` and `[project.gui-scripts]` order candidates first in `_candidate_order` | Home never resolved on this repository — five candidates tied at rank 0 (`codemble.cli` plus four maintenance scripts, each with an ordinary `__main__` guard), so `selected_entrypoint` was `None` and a first-run learner met a **34-candidate picker in four scopes before seeing the galaxy**. The evidence was already in the repo: a `__main__` guard says a file *can* be run, while the manifest says which module the installed command *is*. That is stronger evidence, not a heuristic, which is why it may outrank the existing signals rather than merely break their ties. Three guardrails keep it inside the Correctness Contract, and each closes a specific way this could have lied: the stored `entrypoint_rank` is untouched, so the picker still shows the parser's own number as promised; a declared module the parser never saw contributes **nothing**, so a manifest can never invent a candidate; and a missing or malformed manifest is ignored rather than raising, so a broken TOML file cannot take down a parse. It biases the **sort key** rather than the field — the lesson `finalize_graph` already learned the hard way, since the normal path finalizes twice and a field mutation compounds. Proven in both directions on this repository: `None` + 34 candidates before, `codemble.cli` with no question asked after |
 | 2026-08-18 | "Is a Home chosen?" is answered from the **unfocused** graph; a Home outside the current language focus gets its own reason naming the language, in one clause | The guidance chip told the learner "No Home is chosen, so there is no route to measure from." two rows under a breadcrumb reading "Home codemble.cli". `homeChosen` was computed from `graph.regions` — the *language-focused projection* — and Home is written in one language, so focusing another filtered it out and the whole-project fact flipped. Exactly the root-cause shape of the v0.16.0 Map defect that broke 5 of the 7 languages shipped here, and the same principle the 2026-07-29 `community_family` row records: a question about the whole project must not be derived from a filtered view, or the answer changes with the filter. **The first fix was itself wrong and the measurement is the reason it changed**: written as a full explanatory sentence matching the Map's empty state, the copy measured **106px of guidance strip against 62px** — and that strip is already the tightest thing on a 320px screen, where this project has had to defend it before. Naming the language is the entire fact; "so there is no route to measure" is what the missing distance already says. The four distance reasons also moved out of a five-deep nested ternary into one named helper, because telling them apart is the whole job and collapsing any two tells the learner something untrue |
 | 2026-08-21 | A Study arrival focuses the evidence surface it opened; ordinary navigation owns the module heading and `Read the source` owns `Real source` | Both launch controls are removed by the route transition, so leaving focus to the browser dropped a keyboard learner onto `<body>` with no announced destination. The two routes make different promises and therefore need different focus targets. Connection navigation also resets the panel before focusing the new module, preventing a stale scroll position from presenting the middle of a different file as its beginning. A failed source request promotes its visible failure heading, while ordinary data readiness does not refocus anything — completion is not a second arrival and cannot steal a learner's chosen control. Retry is separate from navigation so a recovered explicit source request preserves its destination; ordinary Study and narration retries focus the persistent heading before their buttons unmount. This is presentation ownership only: no parser evidence, learning state, or graph navigation changed |
+| 2026-08-21 | v0.19.1 is a five-loop interaction-polish patch; current public release copy and captures follow its one manifest | The five findings are all presentation or browser-semantics defects: an action named only as state, duplicate completion controls, code/path inputs inviting irrelevant browser services, native controls without a declared dark scheme, and a scrollable compact Map with no continuation cue. None authorizes a second parser truth, new progression, hidden module delivery, or a scale-cap change. Recapturing the nine product frames and replacing stale 190-system/v0.18 captions keeps public evidence aligned with the same current self-parse rather than inventing a marketing count; the fresh capture's 199 systems include the new executable interface contract itself |
 
 
 ## Non-Goals — do NOT build (point here when asked)

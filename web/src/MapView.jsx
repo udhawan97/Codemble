@@ -47,6 +47,7 @@ function MapCanvas({
   const [panning, setPanning] = useState(false);
   const drag = useRef(null);
   const initialized = useRef(false);
+  const zoomPercent = Math.round(scale * 100);
 
   const rememberViewport = useCallback(() => {
     const scroller = scrollRef.current;
@@ -207,8 +208,13 @@ function MapCanvas({
           −
         </button>
         <button type="button" onClick={fit}>Fit</button>
-        <button type="button" onClick={() => setScale(1)}>
-          {Math.round(scale * 100)}%
+        <button
+          type="button"
+          aria-label={`Reset zoom to 100%. Current zoom ${zoomPercent}%.`}
+          title="Reset zoom to 100%"
+          onClick={() => setScale(1)}
+        >
+          {zoomPercent}%
         </button>
         <button
           type="button"

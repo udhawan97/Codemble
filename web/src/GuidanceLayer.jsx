@@ -37,17 +37,19 @@ export function HintChip({ hint, onFollow, firstFlight }) {
             Back
           </button>
           {index + 1 < total ? (
-            <button ref={advanceRef} type="button" onClick={firstFlight.onNext}>
-              Next
-            </button>
+            <>
+              <button ref={advanceRef} type="button" onClick={firstFlight.onNext}>
+                Next
+              </button>
+              <button type="button" onClick={firstFlight.onExit}>
+                Exit
+              </button>
+            </>
           ) : (
             <button ref={advanceRef} type="button" onClick={firstFlight.onExit}>
               Finish
             </button>
           )}
-          <button type="button" onClick={firstFlight.onExit}>
-            Exit
-          </button>
         </span>
       </output>
     );

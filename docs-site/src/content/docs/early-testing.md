@@ -4,29 +4,29 @@ description: A ten-minute, privacy-safe first-run test for Codemble.
 ---
 
 Codemble needs learners who built a small project with AI and want to understand
-it better. v0.19.0 reads Python, JavaScript, TypeScript, Go, Java, Rust, C#, or
+it better. v0.19.1 reads Python, JavaScript, TypeScript, Go, Java, Rust, C#, or
 any mix.
 Success is simple: without maintainer help, light one system and confirm it
 stays lit after restart.
 
 ## Install
 
-The command below runs packaged v0.19.0. An editable checkout produces the same
+The command below runs packaged v0.19.1. An editable checkout produces the same
 app; state which [run or download route](/Codemble/download/) you used.
 
 Install [uv](https://docs.astral.sh/uv/) once, then run Codemble through it:
 
 ```bash
 brew install uv         # once per machine; or the installer at docs.astral.sh/uv
-uvx --from codemble==0.19.0 codemble
+uvx --from codemble==0.19.1 codemble
 ```
 
-Prefer a permanent install? `pipx install codemble==0.19.0`, then run `codemble` — no
+Prefer a permanent install? `pipx install codemble==0.19.1`, then run `codemble` — no
 uv needed.
 
 Codemble opens your browser to an in-app picker — pick your project folder
 there, or pass one directly:
-`uvx --from codemble==0.19.0 codemble ./path-to-your-project`.
+`uvx --from codemble==0.19.1 codemble ./path-to-your-project`.
 
 An API key is optional. Do not read the rest of the docs before the first run;
 the product should teach the loop itself.

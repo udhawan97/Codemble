@@ -4,7 +4,7 @@ description: The game loop — prove you understand a region, light it up foreve
 ---
 
 :::note[Version]
-The check-and-light loop, explorer trail, and capture below match v0.19.0.
+The check-and-light loop, explorer trail, and capture below match v0.19.1.
 :::
 
 ## Why checks exist

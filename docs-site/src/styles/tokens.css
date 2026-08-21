@@ -133,7 +133,7 @@
    -------------------------------------------------------------------------- */
 :root[data-theme="light"] {
   --cm-ground: #faf7f0;      /* gofun — never pure white */
-  --cm-ground-2: #ffffff;
+  --cm-ground-2: #fffdf8;    /* raised gofun — warm shell-white, never pure white */
   --cm-ground-3: #f2eee4;
   --cm-hairline: #e6e2d6;
   --cm-hairline-soft: #efece3;
@@ -157,5 +157,5 @@
   --cm-on-fill: #faf7f0;
 
   --cm-sky: #e9edf7;
-  --cm-sky-glow: #ffffff;
+  --cm-sky-glow: #fffdf8;
 }
