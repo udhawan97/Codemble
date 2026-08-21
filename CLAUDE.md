@@ -155,14 +155,18 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** **v0.19.0 is the verified stable release** — the
-  first tag in this project's history whose outside-in proof was completed in
-  the same session that cut it. The publish workflow's three jobs passed,
-  `check:release --live` reconciled PyPI metadata, the mirrored GitHub
-  wheel/sdist, `SHA256SUMS.txt` and freshly downloaded bytes, and a cold
-  `pip install codemble==0.19.0` into an empty venv reported `codemble 0.19.0`
-  and carried the exact packaged SPA bundle (`index-DbqGWC1q.js`) built here.
-  A later tag is not stable until it repeats all of that.
+- **Public release truth:** **v0.19.1 is the verified stable release.** Annotated
+  tag `v0.19.1` (`d0571fc`) peels to exact release commit `198c0d7`. Main CI
+  run `32504359987`, Pages run `32504360042`, and the trusted publish run
+  `32505026702` passed; the latter built, published, mirrored, and verified the
+  wheel (`777f53e0d9f2d0da3ad2832f043afde595b72d134d5805b11c911e0df403818b`)
+  and sdist (`d24c567fd2d0b609b82dcf8a95cd1fc9ef81e1187dad9ff814877bd9b1e23510`).
+  `check:release --live` reconciled PyPI, GitHub assets, `SHA256SUMS.txt`, and
+  fresh downloaded bytes. A cold Python 3.11 install reported
+  `codemble 0.19.1` and carried the tagged SPA assets `index-r9nFEgOG.js` and
+  `index-Dtb10tPf.css`; Obscura independently rendered the deployed Pages
+  surface with v0.19.1 and the current 199-system evidence. A later tag is not
+  stable until it repeats all of that.
 - **Digests are taken from the tree you are about to tag, never earlier.**
   `readme = "README.md"` embeds the README in the wheel's own METADATA, so a
   dist/ built before a README edit describes a wheel that no longer exists —
@@ -242,9 +246,16 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M16 parser evidence and scale gates** · Last updated:
-2026-08-21 · Session note: five bounded app-polish loops prepared the v0.19.1
-patch candidate without changing parser, graph, checks, progress, or release
+2026-08-21 · Session note: five bounded app-polish loops shipped as verified
+stable v0.19.1 without changing parser, graph, checks, progress, or release
 scale truth.
+
+**v0.19.1 completed the exact release gate.** The annotated tag peels to
+`198c0d7`; main CI, Pages, and all three trusted publish jobs are green. Fresh
+GitHub downloads match the manifest and `SHA256SUMS.txt`, PyPI reports the same
+bytes, and a cold Python 3.11 install includes the tagged SPA. Issue #13 remains
+open and the normal cap remains 1,000, so release proof does not advance M16 or
+claim unaided learner acceptance.
 
 **The five loops close interaction ambiguity rather than add capability.** The
 Map percentage control now names its reset action and current value; First
@@ -1866,6 +1877,7 @@ rebuilt from the reviewed source.
 | 2026-08-18 | "Is a Home chosen?" is answered from the **unfocused** graph; a Home outside the current language focus gets its own reason naming the language, in one clause | The guidance chip told the learner "No Home is chosen, so there is no route to measure from." two rows under a breadcrumb reading "Home codemble.cli". `homeChosen` was computed from `graph.regions` — the *language-focused projection* — and Home is written in one language, so focusing another filtered it out and the whole-project fact flipped. Exactly the root-cause shape of the v0.16.0 Map defect that broke 5 of the 7 languages shipped here, and the same principle the 2026-07-29 `community_family` row records: a question about the whole project must not be derived from a filtered view, or the answer changes with the filter. **The first fix was itself wrong and the measurement is the reason it changed**: written as a full explanatory sentence matching the Map's empty state, the copy measured **106px of guidance strip against 62px** — and that strip is already the tightest thing on a 320px screen, where this project has had to defend it before. Naming the language is the entire fact; "so there is no route to measure" is what the missing distance already says. The four distance reasons also moved out of a five-deep nested ternary into one named helper, because telling them apart is the whole job and collapsing any two tells the learner something untrue |
 | 2026-08-21 | A Study arrival focuses the evidence surface it opened; ordinary navigation owns the module heading and `Read the source` owns `Real source` | Both launch controls are removed by the route transition, so leaving focus to the browser dropped a keyboard learner onto `<body>` with no announced destination. The two routes make different promises and therefore need different focus targets. Connection navigation also resets the panel before focusing the new module, preventing a stale scroll position from presenting the middle of a different file as its beginning. A failed source request promotes its visible failure heading, while ordinary data readiness does not refocus anything — completion is not a second arrival and cannot steal a learner's chosen control. Retry is separate from navigation so a recovered explicit source request preserves its destination; ordinary Study and narration retries focus the persistent heading before their buttons unmount. This is presentation ownership only: no parser evidence, learning state, or graph navigation changed |
 | 2026-08-21 | v0.19.1 is a five-loop interaction-polish patch; current public release copy and captures follow its one manifest | The five findings are all presentation or browser-semantics defects: an action named only as state, duplicate completion controls, code/path inputs inviting irrelevant browser services, native controls without a declared dark scheme, and a scrollable compact Map with no continuation cue. None authorizes a second parser truth, new progression, hidden module delivery, or a scale-cap change. Recapturing the nine product frames and replacing stale 190-system/v0.18 captions keeps public evidence aligned with the same current self-parse rather than inventing a marketing count; the fresh capture's 199 systems include the new executable interface contract itself |
+| 2026-08-21 | v0.19.1 becomes stable only after exact-tag outside-in proof; the evidence-only truth commit follows the fixed tag | Two council rounds found and closed a polluted-sdist digest, an overstated cross-engine claim, and stale Architecture alt text before unanimously passing the rebuilt candidate. Tag `v0.19.1` (`d0571fc`) peels to `198c0d7`; main CI `32504359987`, Pages `32504360042`, and trusted publish `32505026702` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `777f53e0…3818b` and sdist `d24c567f…3510`; a cold Python 3.11 install reports 0.19.1 and carries `index-r9nFEgOG.js` plus `index-Dtb10tPf.css`. The follow-up changes only this operating truth and must never move the release tag |
 
 
 ## Non-Goals — do NOT build (point here when asked)
