@@ -17,15 +17,41 @@ export function StudyPanel({
   explanationError,
   llmStatus,
   onSelectNode,
+  onRetryStudy,
   onRetryNarration,
   onClose,
   revealSource = false,
 }) {
+  const panelRef = useRef(null);
+  const headingRef = useRef(null);
+  const errorHeadingRef = useRef(null);
   const sourceRef = useRef(null);
+  const sourceHeadingRef = useRef(null);
   const revealedFor = useRef(null);
   const journey = study?.learning_journey ?? null;
   const [activeJourneyStepId, setActiveJourneyStepId] = useState(null);
   const sourceReady = Boolean(study?.source);
+  // Study replaces the control that opens it. Without an explicit arrival
+  // target the browser drops keyboard focus onto <body>, so the learner has to
+  // rediscover the panel from the top of the document. Ordinary arrivals own
+  // the module heading and reset the panel; the Read-the-source route below
+  // owns the exact section it promised once that evidence exists. Every route
+  // begins at the stable module heading; the source/error effects below may
+  // refine that destination. Data readiness is intentionally not a dependency:
+  // an ordinary response finishing must not steal focus after the learner has
+  // already moved it to Close or another control.
+  useEffect(() => {
+    panelRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    headingRef.current?.focus({ preventScroll: true });
+  }, [node.id, revealSource]);
+  // A failed request has a more precise destination than the loading fallback.
+  // Announce the visible failure once it mounts; Retry remains the next control
+  // in reading order and the module heading remains the fallback before this.
+  useEffect(() => {
+    if (!error) return;
+    panelRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    errorHeadingRef.current?.focus({ preventScroll: true });
+  }, [error, node.id]);
   // A control named "Read the source" has to land on the source. The panel
   // opens at the top, and above the source sit the summary, the impact widget
   // and the connections list -- measured at 4144px on this project's own Home
@@ -36,6 +62,7 @@ export function StudyPanel({
     if (revealedFor.current === node.id) return;
     revealedFor.current = node.id;
     sourceRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    sourceHeadingRef.current?.focus({ preventScroll: true });
   }, [revealSource, sourceReady, node.id]);
   // Step identity is content-derived by the graph layer. Mode is deliberately
   // absent from this effect, so Easy/Expert changes detail without moving the
@@ -46,8 +73,24 @@ export function StudyPanel({
     setActiveJourneyStepId((active) => reconcileJourneyStep(journey, active));
   }, [journey]);
 
+  function retryStudy() {
+    panelRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    headingRef.current?.focus({ preventScroll: true });
+    onRetryStudy();
+  }
+
+  function retryNarration() {
+    headingRef.current?.focus({ preventScroll: true });
+    onRetryNarration();
+  }
+
   return (
-    <aside className="study-preview" aria-label="Selected source structure" aria-busy={!study && !error}>
+    <aside
+      ref={panelRef}
+      className="study-preview"
+      aria-label="Selected source structure"
+      aria-busy={!study && !error}
+    >
       <header className="study-preview__header">
         {/* The panel's own dismissal. It had none: its only exit was "Back to
             the module" in the header rail, a different region of the screen
@@ -61,14 +104,14 @@ export function StudyPanel({
           </button>
         ) : null}
         <p className="study-preview__path">{node.file}:{node.lineno}</p>
-        <h1>{node.name}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>{node.name}</h1>
       </header>
 
       {error ? (
         <section className="study-notice" role="alert">
-          <h2>Study data did not load.</h2>
+          <h2 ref={errorHeadingRef} tabIndex={-1}>Study data did not load.</h2>
           <p>{error} The parser map is still available.</p>
-          <button className="check-primary" type="button" onClick={() => onSelectNode(node.id)}>
+          <button className="check-primary" type="button" onClick={retryStudy}>
             Try again
           </button>
         </section>
@@ -103,11 +146,15 @@ export function StudyPanel({
           mode={mode}
           node={node}
           onSelectNode={onSelectNode}
-          onRetry={onRetryNarration}
+          onRetry={retryNarration}
         />
         {study ? (
           <>
-            <SourceExcerpt source={study.source} anchorRef={sourceRef} />
+            <SourceExcerpt
+              source={study.source}
+              anchorRef={sourceRef}
+              headingRef={sourceHeadingRef}
+            />
             <LensNotes lens={study.lens} language={node.language} mode={mode} />
           </>
         ) : null}
@@ -634,12 +681,14 @@ function LensNotes({ lens, language, mode }) {
   );
 }
 
-function SourceExcerpt({ source, anchorRef }) {
+function SourceExcerpt({ source, anchorRef, headingRef }) {
   return (
     <section className="source-study" aria-labelledby="source-heading" ref={anchorRef}>
       <div className="study-section-heading">
-        <h2 id="source-heading">Real source</h2>
-        <span>{source.file}:{source.start_line}–{source.end_line}</span>
+        <h2 ref={headingRef} id="source-heading" tabIndex={-1}>Real source</h2>
+        <span title={`${source.file}:${source.start_line}–${source.end_line}`}>
+          {source.file}:{source.start_line}–{source.end_line}
+        </span>
       </div>
       <ol className="source-code" start={source.start_line} aria-label={`Source excerpt from ${source.file}`}>
         {source.lines.map((line) => (

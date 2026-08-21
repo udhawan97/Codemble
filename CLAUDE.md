@@ -242,7 +242,44 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M16 parser evidence and scale gates** · Last updated:
-2026-08-18 · Session note: three evidence-led user-flow loops against the served
+2026-08-21 · Session note: a bounded live-app polish pass repaired Study's
+arrival and the narrowest supported learning loop without changing parser,
+game, graph layout, palette, or Galaxy truth.
+
+**Study now owns the focus handoff its trigger used to abandon.** Opening the
+panel removes the button or graph control that launched it, which left keyboard
+focus on `<body>` even though the new evidence surface was visible. Ordinary
+arrivals now reset the panel and focus the selected module heading; the explicit
+"Read the source" route scrolls to and focuses `Real source`, the exact section
+it promised. Following an Impact or Connection row was verified separately:
+the prior panel scroll is cleared and the new module heading owns focus. A
+failed source request moves from the interim module heading to its visible
+failure heading, while ordinary data readiness is not an arrival and may not
+steal focus back from a control the learner has already chosen. Study retry is
+separate from navigation, so a recovered explicit source request retains that
+intent and lands on `Real source` rather than silently returning to panel top.
+Ordinary Study and narration retry focus the persistent module heading before
+their transient retry controls unmount.
+
+**The 320px source loop gives the code back a visible row.** The two full
+guidance actions missed fitting by 10px under Easy density, so they stacked into
+two separate rows and made the persistent strip 185.8px tall — 29.0% of a
+320×640 viewport. Only Study's local gap and button padding yield through the
+measured 320-350px failure band;
+the labels and meaning stay intact. The strip now measures 125.7px (19.6%), the
+buttons share one row, `Real source` stays on one line while the coordinate
+ellipsises, and document horizontal overflow remains zero.
+
+**Acceptance:** the complete frontend contract/build passes; the disposable
+Chromium/WebKit user-flow gate passes 16 journeys including the new focus and
+compact-layout assertions; the space budget passes all 29 width/level rows;
+the Escape sweep passes 104 assertions across four widths; and the panel-reach
+sweep passes all nine study/check/chart measurements. Live Chromium inspection
+at 320×640 confirmed the exact focus target and geometry. The milestone does
+not advance and no release is implied: issue #13 still requires human tester
+evidence.
+
+Previously (2026-08-18) · Session note: three evidence-led user-flow loops against the served
 build found two real gaps, both fixed and re-verified live, and released as
 **v0.19.0** together with the previously unreleased M16 parser work.
 
@@ -1807,6 +1844,7 @@ rebuilt from the reviewed source.
 | 2026-08-14 | The acceptance-locked candidate reruns every scale receipt before integration | Transactional cache publication changes the parser lifecycle even though its payload is byte-identical, so prior timings were not carried forward. The fresh 10k parser receipt is 12.834 s cold, 1.521 s no-change, and 13.062 s one-change with exact fresh Graph/Map equivalence; the fresh 10k Study scan/index medians are 11.308/1.503 ms with 20 exact payload digests; the schema-3 5k gate records 4.956 s cold, 1.666 s no-change, and a 166,789,120-byte OS process RSS high-water mark. Chromium passes and WebKit retains the unstable Skip failure, so the cap remains 1,000 |
 | 2026-08-18 | A project's own packaging manifest outranks every other entrypoint signal: `[project.scripts]` and `[project.gui-scripts]` order candidates first in `_candidate_order` | Home never resolved on this repository — five candidates tied at rank 0 (`codemble.cli` plus four maintenance scripts, each with an ordinary `__main__` guard), so `selected_entrypoint` was `None` and a first-run learner met a **34-candidate picker in four scopes before seeing the galaxy**. The evidence was already in the repo: a `__main__` guard says a file *can* be run, while the manifest says which module the installed command *is*. That is stronger evidence, not a heuristic, which is why it may outrank the existing signals rather than merely break their ties. Three guardrails keep it inside the Correctness Contract, and each closes a specific way this could have lied: the stored `entrypoint_rank` is untouched, so the picker still shows the parser's own number as promised; a declared module the parser never saw contributes **nothing**, so a manifest can never invent a candidate; and a missing or malformed manifest is ignored rather than raising, so a broken TOML file cannot take down a parse. It biases the **sort key** rather than the field — the lesson `finalize_graph` already learned the hard way, since the normal path finalizes twice and a field mutation compounds. Proven in both directions on this repository: `None` + 34 candidates before, `codemble.cli` with no question asked after |
 | 2026-08-18 | "Is a Home chosen?" is answered from the **unfocused** graph; a Home outside the current language focus gets its own reason naming the language, in one clause | The guidance chip told the learner "No Home is chosen, so there is no route to measure from." two rows under a breadcrumb reading "Home codemble.cli". `homeChosen` was computed from `graph.regions` — the *language-focused projection* — and Home is written in one language, so focusing another filtered it out and the whole-project fact flipped. Exactly the root-cause shape of the v0.16.0 Map defect that broke 5 of the 7 languages shipped here, and the same principle the 2026-07-29 `community_family` row records: a question about the whole project must not be derived from a filtered view, or the answer changes with the filter. **The first fix was itself wrong and the measurement is the reason it changed**: written as a full explanatory sentence matching the Map's empty state, the copy measured **106px of guidance strip against 62px** — and that strip is already the tightest thing on a 320px screen, where this project has had to defend it before. Naming the language is the entire fact; "so there is no route to measure" is what the missing distance already says. The four distance reasons also moved out of a five-deep nested ternary into one named helper, because telling them apart is the whole job and collapsing any two tells the learner something untrue |
+| 2026-08-21 | A Study arrival focuses the evidence surface it opened; ordinary navigation owns the module heading and `Read the source` owns `Real source` | Both launch controls are removed by the route transition, so leaving focus to the browser dropped a keyboard learner onto `<body>` with no announced destination. The two routes make different promises and therefore need different focus targets. Connection navigation also resets the panel before focusing the new module, preventing a stale scroll position from presenting the middle of a different file as its beginning. A failed source request promotes its visible failure heading, while ordinary data readiness does not refocus anything — completion is not a second arrival and cannot steal a learner's chosen control. Retry is separate from navigation so a recovered explicit source request preserves its destination; ordinary Study and narration retries focus the persistent heading before their buttons unmount. This is presentation ownership only: no parser evidence, learning state, or graph navigation changed |
 
 
 ## Non-Goals — do NOT build (point here when asked)

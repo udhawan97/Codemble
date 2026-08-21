@@ -3878,6 +3878,43 @@ input:focus-visible {
   .journey-controls {
     gap: var(--cm-space-2xs);
   }
+
+}
+
+/* The failure band extends past 320px: at 321-330px the actions still stacked,
+   and the source title wrapped through 350px. Keep this Study-only so First
+   Flight and ordinary Map/Galaxy guidance retain their established rhythm. */
+@media (max-width: 22.5rem) {
+  /* The two exits from Study missed sharing a row by 10px, so the persistent
+     guidance became four rows and covered almost a third of the source it was
+     meant to help with. The labels stay in full; only their instrument padding
+     and the flex gap yield. */
+  .app-shell[data-level="study"] .hint-chip {
+    gap: var(--cm-space-xs);
+  }
+
+  .app-shell[data-level="study"] .hint-chip button {
+    padding-inline: var(--cm-space-xs);
+  }
+
+  /* The file coordinate was allowed to squeeze the section title one word at
+     a time ("Real" / "source"). Keep the destination legible and let the
+     coordinate ellipsise; its full value remains in the title and source
+     excerpt label. */
+  .source-study .study-section-heading {
+    gap: var(--cm-space-xs);
+  }
+
+  .source-study .study-section-heading h2 {
+    flex: 0 0 auto;
+    overflow-wrap: normal;
+  }
+
+  .source-study .study-section-heading span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* --- Impact widget -------------------------------------------------------

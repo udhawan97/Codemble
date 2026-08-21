@@ -1027,6 +1027,12 @@ export function App() {
               setRevealSource(false);
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId });
             }}
+            // Retry is not navigation. In particular, a failed explicit
+            // Read-the-source route must retain that intent so recovery lands
+            // on the source it promised rather than resetting to panel top.
+            onRetryStudy={() =>
+              session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: selectedNode.id })
+            }
             onRetryNarration={() =>
               session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: selectedNode.id })
             }

@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed
+- Study now hands keyboard focus to the surface that actually opened: the
+  module heading for ordinary navigation and the `Real source` heading for the
+  explicit read-source route. Following a connection also resets the panel to
+  its new module instead of retaining the previous scroll position. A failed
+  source request focuses its visible failure heading, while an ordinary late
+  response no longer steals focus from a control the learner already chose.
+  Retrying a failed Read-source request preserves that explicit intent and
+  returns to `Real source` after recovery; ordinary Study and narration retries
+  keep focus on the persistent module heading while their buttons unmount.
+- At 320px, the two complete Study guidance actions share one row and the
+  source heading stays intact while a long file coordinate truncates. The
+  persistent guidance strip drops from 185.8px to 125.7px on the measured
+  320×640 Easy journey, with no horizontal overflow.
+
 ## [0.19.0] - 2026-08-18
 
 ### Added

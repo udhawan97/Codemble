@@ -129,24 +129,105 @@ async function checkGuidanceFocus(browser, engine, url) {
   for (const viewport of [
     { width: 1440, height: 900 },
     { width: 320, height: 720 },
+    { width: 330, height: 720 },
+    { width: 360, height: 720 },
   ]) {
     const page = await browser.newPage({ viewport });
     page.setDefaultTimeout(15_000);
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleApp(page);
+      const label = `${engine} ${viewport.width}x${viewport.height}`;
+
+      // The explicit source route begins before its evidence request finishes.
+      // If that request fails, the promised section never mounts, so the
+      // module heading is the stable interim target and the visible failure
+      // heading becomes the final target rather than <body>.
+      await page.route("**/api/node/*/study", (route) =>
+        route.fulfill({ status: 500, contentType: "application/json", body: '{"detail":"test outage"}' }),
+      );
       await openStudy(page);
+      await assertFailedStudyArrival(page, label);
+      await page.unroute("**/api/node/*/study");
+      await page.locator(".study-preview").getByRole("button", { name: "Try again", exact: true }).click();
+      await assertStudyArrival(page, label, viewport);
+      await closeStudy(page);
+
+      // Ordinary Study failure has the same-node retry shape but a different
+      // destination: recovery stays at the module heading, not source.
+      await page.route("**/api/node/*/study", (route) =>
+        route.fulfill({ status: 500, contentType: "application/json", body: '{"detail":"test outage"}' }),
+      );
+      await openStudyNormally(page);
+      await assertFailedStudyArrival(page, label);
+      await page.unroute("**/api/node/*/study");
+      await page.locator(".study-preview").getByRole("button", { name: "Try again", exact: true }).click();
+      await page.locator(".source-study").waitFor();
+      await assertModuleStudyArrival(page, `${label} ordinary retry`);
+      await closeStudy(page);
+
+      // Exercise the ordinary Map-tree path separately from Read the source.
+      // Its destination is the module heading, at the top of a reset panel.
+      // Hold the response after the panel mounts so moving focus to Close can
+      // prove that ordinary data readiness does not steal it back. Fail the
+      // independent narration request in the same visit so its retry can prove
+      // the persistent module heading receives focus before that button unmounts.
+      let releaseStudy;
+      const heldStudy = new Promise((resolve) => { releaseStudy = resolve; });
+      await page.route("**/api/node/*/study", async (route) => {
+        const response = await route.fetch();
+        await heldStudy;
+        await route.fulfill({ response });
+      });
+      await page.route("**/api/node/*/explanation**", (route) =>
+        route.fulfill({ status: 500, contentType: "application/json", body: '{"detail":"test outage"}' }),
+      );
+      await openStudyNormally(page);
+      await assertModuleStudyArrival(page, label);
+      const close = page.locator(".study-preview").getByRole("button", { name: "Close", exact: true });
+      await close.focus();
+      releaseStudy();
+      await page.locator(".source-study").waitFor();
+      assert.equal(
+        await close.evaluate((button) => document.activeElement === button),
+        true,
+        `${label}: ordinary Study completion stole user-selected focus`,
+      );
+      await page.unroute("**/api/node/*/study");
+      const narrationFailure = page.getByRole("heading", {
+        name: "The explanation request failed.",
+        exact: true,
+      });
+      await narrationFailure.waitFor();
+      await page.unroute("**/api/node/*/explanation**");
+      await narrationFailure.locator("..").getByRole("button", { name: "Try again", exact: true }).click();
+      await page.getByText("Everything else on this panel is parser evidence and works without any model at all.").waitFor();
+      assert.equal(
+        await page.locator(".study-preview h1").evaluate((heading) => document.activeElement === heading),
+        true,
+        `${label}: narration retry drops focus from the persistent module heading`,
+      );
+      await closeStudy(page);
+
+      await openStudy(page);
+      await assertStudyArrival(page, label, viewport);
+      await followStudyConnection(page, label);
+      await closeStudy(page);
+      await returnToHomeModule(page);
+      await openStudy(page);
+      await assertStudyArrival(page, label, viewport);
       await followStudyGuidance(page);
-      await assertChecksHeadingFocus(page, `${engine} ${viewport.width}x${viewport.height}`);
+      await assertChecksHeadingFocus(page, label);
 
       await page.keyboard.press("Escape");
-      await assertReturnedToProve(page, `${engine} ${viewport.width}x${viewport.height} Escape`);
+      await assertReturnedToProve(page, `${label} Escape`);
 
       await openStudy(page);
+      await assertStudyArrival(page, label, viewport);
       await followStudyGuidance(page);
-      await assertChecksHeadingFocus(page, `${engine} ${viewport.width}x${viewport.height}`);
+      await assertChecksHeadingFocus(page, label);
       await page.locator(".check-panel").getByRole("button", { name: "Close", exact: true }).click();
-      await assertReturnedToProve(page, `${engine} ${viewport.width}x${viewport.height} Close`);
+      await assertReturnedToProve(page, `${label} Close`);
       results.push(`${engine} guidance focus ${viewport.width}x${viewport.height}`);
     } finally {
       await page.close();
@@ -256,6 +337,101 @@ async function openStudy(page) {
   }
   await read.first().click();
   await page.locator(".study-preview").waitFor();
+}
+
+async function openStudyNormally(page) {
+  const workflow = page.getByRole("button", { name: "What runs first", exact: true });
+  await workflow.click();
+  const row = page.locator(".workflow-tree__row").first();
+  await row.waitFor();
+  await row.click({ force: true });
+  await page.locator(".study-preview").waitFor();
+}
+
+async function closeStudy(page) {
+  const panel = page.locator(".study-preview");
+  await panel.getByRole("button", { name: "Close", exact: true }).click();
+  await panel.waitFor({ state: "detached" });
+}
+
+async function returnToHomeModule(page) {
+  await page.getByRole("button", { name: "All modules", exact: true }).click();
+  await page.getByRole("button", { name: "codemble.cli", exact: true }).click();
+  await page.getByRole("button", { name: "Read the source", exact: true }).waitFor();
+}
+
+async function assertFailedStudyArrival(page, label) {
+  const failure = page.getByRole("heading", { name: "Study data did not load.", exact: true });
+  await failure.waitFor();
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Study data did not load.");
+  const focused = await failure.evaluate(
+    (heading) => document.activeElement === heading,
+  );
+  assert.equal(focused, true, `${label}: failed source request drops Study focus`);
+}
+
+async function assertModuleStudyArrival(page, label) {
+  await page.waitForFunction(() => document.activeElement?.matches(".study-preview h1"));
+  const measured = await page.locator(".study-preview").evaluate((panel) => ({
+    focused: document.activeElement === panel.querySelector("h1"),
+    scrollTop: panel.scrollTop,
+  }));
+  assert.equal(measured.focused, true, `${label}: ordinary Study heading does not own focus`);
+  assert.ok(measured.scrollTop <= 1, `${label}: ordinary Study opens at scrollTop ${measured.scrollTop}`);
+}
+
+async function assertStudyArrival(page, label, viewport) {
+  await page.waitForFunction(() => document.activeElement?.id === "source-heading");
+  const measured = await page.evaluate(() => {
+    const heading = document.querySelector("#source-heading");
+    const hint = document.querySelector(".hint-chip");
+    const actions = [...document.querySelectorAll(".hint-chip > button")];
+    if (!heading || !hint || actions.length < 2) return null;
+    const headingRect = heading.getBoundingClientRect();
+    const headingLineHeight = Number.parseFloat(getComputedStyle(heading).lineHeight);
+    const actionRects = actions.map((button) => button.getBoundingClientRect());
+    return {
+      focused: document.activeElement === heading,
+      headingIsOneLine: headingRect.height <= headingLineHeight * 1.2,
+      actionsShareRow: Math.abs(actionRects[0].top - actionRects[1].top) <= 1,
+      guidanceShare: hint.getBoundingClientRect().height / innerHeight,
+    };
+  });
+  assert.ok(measured, `${label}: Study arrival surface did not render`);
+  assert.equal(measured.focused, true, `${label}: source heading does not own arrival focus`);
+  if (viewport.width <= 360) {
+    assert.equal(measured.headingIsOneLine, true, `${label}: Real source wraps in the compact range`);
+    assert.equal(measured.actionsShareRow, true, `${label}: Study guidance actions stack in the compact range`);
+    assert.ok(
+      measured.guidanceShare < 0.25,
+      `${label}: Study guidance consumes ${(measured.guidanceShare * 100).toFixed(1)}% of the viewport`,
+    );
+  }
+}
+
+async function followStudyConnection(page, label) {
+  const panel = page.locator(".study-preview");
+  const support = panel.locator(".journey-support");
+  if (!(await support.getAttribute("open"))) await support.locator("summary").click();
+  const connection = panel.locator(".connection-list button").first();
+  await connection.waitFor();
+  await connection.scrollIntoViewIfNeeded();
+  const before = await panel.evaluate((node) => node.scrollTop);
+  assert.ok(before > 1, `${label}: connection test did not begin from a scrolled panel`);
+  const previous = await panel.locator("h1").innerText();
+  await connection.click();
+  await page.waitForFunction(
+    (oldHeading) =>
+      document.activeElement?.matches(".study-preview h1") &&
+      document.activeElement.textContent.trim() !== oldHeading,
+    previous,
+  );
+  const measured = await panel.evaluate((node) => ({
+    focused: document.activeElement === node.querySelector("h1"),
+    scrollTop: node.scrollTop,
+  }));
+  assert.equal(measured.focused, true, `${label}: connection arrival heading does not own focus`);
+  assert.ok(measured.scrollTop <= 1, `${label}: connection arrival retained scrollTop ${measured.scrollTop}`);
 }
 
 async function followStudyGuidance(page) {
