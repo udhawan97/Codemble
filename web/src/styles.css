@@ -2473,7 +2473,17 @@ input:focus-visible {
   }
 
   .check-panel {
-    inset: 0;
+    /* The quiz owns the compact viewport below the instrument rail, including
+       the footer row. As an absolute child of `.map-stage` it ended above the
+       footer with only 437px at 320x640; aligning the question to the top then
+       left the fourth answer under the sticky submit bar through 405px wide.
+       Study already uses this same fixed surface boundary. Keeping the rail
+       exposed preserves global navigation while the otherwise redundant
+       status row becomes the clearance the answer list needs. */
+    position: fixed;
+    inset-block-start: 7.75rem;
+    inset-block-end: 0;
+    inset-inline: 0;
     max-height: none;
     border-block-start: 0;
   }

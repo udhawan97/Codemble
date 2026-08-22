@@ -41,6 +41,8 @@ try {
     const browser = await browserType.launch({ headless: true });
     try {
       await checkHomeGeometry(browser, engine, project.url);
+      await checkCompactRailEscape(browser, engine, project.url);
+      await checkCompactQuizVisibility(browser, engine, project.url);
       await checkGuidanceFocus(browser, engine, project.url);
       await checkPickerRecovery(browser, engine, picker.url);
     } finally {
@@ -54,6 +56,95 @@ try {
 
 for (const result of results) console.log(`PASS  ${result}`);
 console.log(`user-flow repair contracts passed (${results.length} assertions)`);
+
+async function checkCompactRailEscape(browser, engine, url) {
+  const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
+  page.setDefaultTimeout(15_000);
+  try {
+    await page.goto(url, { waitUntil: "networkidle" });
+    await settleApp(page);
+    const menu = page.getByRole("button", { name: "Menu", exact: true });
+    const breadcrumbBefore = await page.locator("nav[aria-label='Breadcrumb']").innerText();
+
+    // A real pointer activation matters here. WebKit does not necessarily
+    // focus a button after clicking it, so a subtree key handler can miss the
+    // Escape entirely even though Chromium happens to keep focus on Menu.
+    await menu.click();
+    assert.equal(await menu.getAttribute("aria-expanded"), "true", `${engine} Menu did not open`);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => {
+      const trigger = document.querySelector(".mobile-menu-trigger");
+      return trigger?.getAttribute("aria-expanded") === "false" && document.activeElement === trigger;
+    });
+
+    assert.equal(
+      await page.locator("nav[aria-label='Breadcrumb']").innerText(),
+      breadcrumbBefore,
+      `${engine} compact Menu Escape also navigated away`,
+    );
+    results.push(`${engine} compact pointer Menu Escape`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function checkCompactQuizVisibility(browser, engine, url) {
+  // These are the measured failure boundary, not a comfortable sample: the
+  // final option was almost wholly behind the sticky action at 320-331px,
+  // partly covered through 405px, and first clear at 406px before this repair.
+  for (const width of [320, 331, 332, 405, 406, 414]) {
+    const page = await browser.newPage({ viewport: { width, height: 640 } });
+    page.setDefaultTimeout(15_000);
+    try {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await settleApp(page);
+      const box = page.locator("[role='button'][aria-label*='structure']").first();
+      await box.click({ force: true });
+      const prove = page.getByRole("button", {
+        name: /^(Prove understanding|Review understanding|Check availability)$/,
+      }).first();
+      await prove.click();
+      await page.locator(".check-panel .active-check").waitFor();
+
+      const measured = await page.locator(".check-panel").evaluate((panel) => {
+        const options = [...panel.querySelectorAll(".check-options label")];
+        const bar = panel.querySelector(".check-submit-bar");
+        const submit = bar?.querySelector("button");
+        if (!(bar instanceof HTMLElement) || !(submit instanceof HTMLElement)) return null;
+        const panelBox = panel.getBoundingClientRect();
+        const barBox = bar.getBoundingClientRect();
+        const optionBoxes = options.map((option) => {
+          const box = option.getBoundingClientRect();
+          return { top: box.top, bottom: box.bottom, height: box.height };
+        });
+        return {
+          optionCount: options.length,
+          allOptionsClear: optionBoxes.every(
+            (box) => box.top >= panelBox.top - 1 && box.bottom <= barBox.top + 1,
+          ),
+          lastOption: optionBoxes.at(-1),
+          panel: { top: panelBox.top, bottom: panelBox.bottom, height: panelBox.height },
+          barTop: barBox.top,
+          barBottom: barBox.bottom,
+          submitVisible: barBox.top >= panelBox.top && barBox.bottom <= panelBox.bottom + 1,
+        };
+      });
+
+      const label = `${engine} quiz ${width}x640`;
+      assert.ok(measured, `${label}: submit bar did not render`);
+      assert.equal(measured.optionCount, 4, `${label}: regression fixture no longer has four options`);
+      assert.equal(
+        measured.allOptionsClear,
+        true,
+        `${label}: an answer remains behind the sticky action (${JSON.stringify(measured)})`,
+      );
+      assert.equal(measured.submitVisible, true, `${label}: sticky submit action left the panel`);
+      results.push(label);
+    } finally {
+      await page.close();
+    }
+  }
+}
 
 async function checkHomeGeometry(browser, engine, url) {
   for (const viewport of [

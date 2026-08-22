@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-08-21
+
+### Changed
+- All nine product screenshots were recaptured from the v0.19.2 source tree
+  with disposable progress and no provider configuration. Public install,
+  download, guide, and screenshot labels now follow the v0.19.2 manifest.
+
+### Fixed
+- Compact Menu now closes on one Escape press in WebKit even after a pointer
+  activation leaves focus on the document body. The existing window-level
+  Escape arbiter owns the dismissal and returns focus to Menu without also
+  navigating away.
+- At 320–414px widths, a four-answer quiz opens with every option fully above
+  the sticky submit action. The compact checks surface now uses the viewport
+  below the instrument rail, including the otherwise redundant footer row,
+  while keeping the submit action visible.
+
 ## [0.19.1] - 2026-08-21
 
 ### Changed

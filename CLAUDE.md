@@ -246,9 +246,31 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M16 parser evidence and scale gates** · Last updated:
-2026-08-21 · Session note: five bounded app-polish loops shipped as verified
-stable v0.19.1 without changing parser, graph, checks, progress, or release
-scale truth.
+2026-08-21 · Session note: two compact user-flow repairs are prepared as the
+v0.19.2 candidate without changing parser, graph, checks, progress, providers,
+or release-scale truth.
+
+**The candidate closes two measured P2 gaps.** WebKit may leave focus on
+`<body>` after a pointer activates Menu, so the disclosure's subtree handler
+never received Escape; the existing window arbiter now owns that dismissal and
+returns focus without retreating a level. At 320–405px widths, the sticky quiz
+action covered the final answer on first paint; the compact checks surface now
+uses the footer row below the instrument rail, keeping all four options clear
+while the action stays visible. The disposable Chromium/WebKit gate covers the
+pointer path and exact 320, 331, 332, 405, 406, and 414px boundary widths.
+All nine public product frames were recaptured from the exact candidate with
+disposable progress and provider configuration removed; the self-parse remains
+199 systems and now contains 2,227 nodes and 14,204 edges.
+
+**v0.19.1 remains the verified stable release until v0.19.2 repeats the full
+outside-in gate.** The candidate may not be called stable before exact-main CI,
+Pages, trusted publishing, fresh asset and registry reconciliation, and a cold
+Python 3.11 install all pass. Issue #13 remains open and the normal cap remains
+1,000, so this patch does not advance M16 or claim unaided learner acceptance.
+
+Previously (2026-08-21) · Session note: five bounded app-polish loops shipped
+as verified stable v0.19.1 without changing parser, graph, checks, progress, or
+release scale truth.
 
 **v0.19.1 completed the exact release gate.** The annotated tag peels to
 `198c0d7`; main CI, Pages, and all three trusted publish jobs are green. Fresh
@@ -1878,6 +1900,7 @@ rebuilt from the reviewed source.
 | 2026-08-21 | A Study arrival focuses the evidence surface it opened; ordinary navigation owns the module heading and `Read the source` owns `Real source` | Both launch controls are removed by the route transition, so leaving focus to the browser dropped a keyboard learner onto `<body>` with no announced destination. The two routes make different promises and therefore need different focus targets. Connection navigation also resets the panel before focusing the new module, preventing a stale scroll position from presenting the middle of a different file as its beginning. A failed source request promotes its visible failure heading, while ordinary data readiness does not refocus anything — completion is not a second arrival and cannot steal a learner's chosen control. Retry is separate from navigation so a recovered explicit source request preserves its destination; ordinary Study and narration retries focus the persistent heading before their buttons unmount. This is presentation ownership only: no parser evidence, learning state, or graph navigation changed |
 | 2026-08-21 | v0.19.1 is a five-loop interaction-polish patch; current public release copy and captures follow its one manifest | The five findings are all presentation or browser-semantics defects: an action named only as state, duplicate completion controls, code/path inputs inviting irrelevant browser services, native controls without a declared dark scheme, and a scrollable compact Map with no continuation cue. None authorizes a second parser truth, new progression, hidden module delivery, or a scale-cap change. Recapturing the nine product frames and replacing stale 190-system/v0.18 captions keeps public evidence aligned with the same current self-parse rather than inventing a marketing count; the fresh capture's 199 systems include the new executable interface contract itself |
 | 2026-08-21 | v0.19.1 becomes stable only after exact-tag outside-in proof; the evidence-only truth commit follows the fixed tag | Two council rounds found and closed a polluted-sdist digest, an overstated cross-engine claim, and stale Architecture alt text before unanimously passing the rebuilt candidate. Tag `v0.19.1` (`d0571fc`) peels to `198c0d7`; main CI `32504359987`, Pages `32504360042`, and trusted publish `32505026702` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `777f53e0…3818b` and sdist `d24c567f…3510`; a cold Python 3.11 install reports 0.19.1 and carries `index-r9nFEgOG.js` plus `index-Dtb10tPf.css`. The follow-up changes only this operating truth and must never move the release tag |
+| 2026-08-21 | Compact Menu dismissal is owned by the window Escape arbiter, and the compact quiz owns the footer row below the rail | WebKit does not guarantee that a pointer-clicked button receives focus, so the rail subtree could not hear Escape when focus stayed on body; one ordered window owner closes it and restores Menu focus without navigation. The quiz's absolute panel ended above the footer with 437px at 320x640, so top-aligning the question still put the final answer under the sticky action through 405px. Using the same fixed below-rail boundary as Study gains the otherwise redundant status row while preserving the rail, sticky action, parser-owned question, and all four complete answer targets |
 
 
 ## Non-Goals — do NOT build (point here when asked)

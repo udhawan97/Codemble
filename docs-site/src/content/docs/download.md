@@ -1,10 +1,10 @@
 ---
 title: Download
-description: Run Codemble, download its verified release artifacts, or build v0.19.1 from source.
+description: Run Codemble, download its verified release artifacts, or build v0.19.2 from source.
 ---
 
 The one-command route, direct downloads, current source, and screenshots all
-match **Codemble v0.19.1**.
+match **Codemble v0.19.2**.
 
 <div class="cm-version-ledger" role="list" aria-label="Codemble download routes">
   <section class="cm-version-route cm-version-route--recommended" role="listitem">
@@ -12,22 +12,22 @@ match **Codemble v0.19.1**.
       <img src="/Codemble/brand/icons/run.svg" alt="" width="30" height="30">
       <div><p>Recommended</p><h2>Run without installing</h2></div>
     </div>
-    <p>uv fetches the published v0.19.1 wheel in an isolated environment, opens Codemble, and leaves your system Python alone.</p>
-    <pre><code>uvx --from codemble==0.19.1 codemble</code></pre>
-    <p class="cm-version-route__note">Pass a folder to skip the picker: <code>uvx --from codemble==0.19.1 codemble ./your-project</code>. Use <code>uvx codemble</code> when you intentionally want the newest PyPI release.</p>
+    <p>uv fetches the published v0.19.2 wheel in an isolated environment, opens Codemble, and leaves your system Python alone.</p>
+    <pre><code>uvx --from codemble==0.19.2 codemble</code></pre>
+    <p class="cm-version-route__note">Pass a folder to skip the picker: <code>uvx --from codemble==0.19.2 codemble ./your-project</code>. Use <code>uvx codemble</code> when you intentionally want the newest PyPI release.</p>
   </section>
   <section class="cm-version-route" role="listitem" id="direct-artifacts">
     <div class="cm-version-route__title">
       <img src="/Codemble/brand/icons/package.svg" alt="" width="30" height="30">
-      <div><p>Direct</p><h2>Download v0.19.1</h2></div>
+      <div><p>Direct</p><h2>Download v0.19.2</h2></div>
     </div>
     <p>GitHub mirrors the exact wheel and source archive published to PyPI, beside one plain-text SHA256 ledger.</p>
     <div class="cm-artifact-links">
-      <a class="cm-artifact-primary" href="https://github.com/udhawan97/Codemble/releases/download/v0.19.1/codemble-0.19.1-py3-none-any.whl"><img src="/Codemble/brand/icons/download-on-fill.svg" alt="" width="20" height="20">Download wheel</a>
-      <a href="https://github.com/udhawan97/Codemble/releases/download/v0.19.1/codemble-0.19.1.tar.gz"><img src="/Codemble/brand/icons/code.svg" alt="" width="20" height="20">Source archive</a>
-      <a href="https://github.com/udhawan97/Codemble/releases/download/v0.19.1/SHA256SUMS.txt"><img src="/Codemble/brand/icons/shield.svg" alt="" width="20" height="20">SHA256SUMS</a>
-      <a href="https://pypi.org/project/codemble/0.19.1/#files">PyPI files</a>
-      <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.19.1"><img src="/Codemble/brand/icons/release.svg" alt="" width="20" height="20">Release notes</a>
+      <a class="cm-artifact-primary" href="https://github.com/udhawan97/Codemble/releases/download/v0.19.2/codemble-0.19.2-py3-none-any.whl"><img src="/Codemble/brand/icons/download-on-fill.svg" alt="" width="20" height="20">Download wheel</a>
+      <a href="https://github.com/udhawan97/Codemble/releases/download/v0.19.2/codemble-0.19.2.tar.gz"><img src="/Codemble/brand/icons/code.svg" alt="" width="20" height="20">Source archive</a>
+      <a href="https://github.com/udhawan97/Codemble/releases/download/v0.19.2/SHA256SUMS.txt"><img src="/Codemble/brand/icons/shield.svg" alt="" width="20" height="20">SHA256SUMS</a>
+      <a href="https://pypi.org/project/codemble/0.19.2/#files">PyPI files</a>
+      <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.19.2"><img src="/Codemble/brand/icons/release.svg" alt="" width="20" height="20">Release notes</a>
     </div>
   </section>
 </div>
@@ -37,11 +37,11 @@ match **Codemble v0.19.1**.
 <dl class="cm-choice-list">
   <div>
     <dt>Try this exact release</dt>
-    <dd><code>uvx --from codemble==0.19.1 codemble</code><span>One isolated command, pinned to the screens on this site.</span></dd>
+    <dd><code>uvx --from codemble==0.19.2 codemble</code><span>One isolated command, pinned to the screens on this site.</span></dd>
   </div>
   <div>
     <dt>Keep the command</dt>
-    <dd><code>pipx install codemble==0.19.1</code><span>An isolated app environment with <code>codemble</code> on your path.</span></dd>
+    <dd><code>pipx install codemble==0.19.2</code><span>An isolated app environment with <code>codemble</code> on your path.</span></dd>
   </div>
   <div>
     <dt>Install from a local file</dt>
@@ -59,31 +59,31 @@ The same SHA256 digests are published in `SHA256SUMS.txt`, the GitHub asset
 ledger, and PyPI metadata:
 
 ```text
-777f53e0d9f2d0da3ad2832f043afde595b72d134d5805b11c911e0df403818b  codemble-0.19.1-py3-none-any.whl
-d24c567fd2d0b609b82dcf8a95cd1fc9ef81e1187dad9ff814877bd9b1e23510  codemble-0.19.1.tar.gz
+3c25fd9e8bcef6edc12c283288e09746f2a84d812408edb07e76cbd1070d6bbb  codemble-0.19.2-py3-none-any.whl
+793045d8260c12a86f4588b142549b95304d39db2cce8e71039fecdb5163b27e  codemble-0.19.2.tar.gz
 ```
 
 To check the wheel on macOS or Linux:
 
 ```bash
 printf '%s  %s\n' \
-  777f53e0d9f2d0da3ad2832f043afde595b72d134d5805b11c911e0df403818b \
-  codemble-0.19.1-py3-none-any.whl | shasum -a 256 -c -
+  3c25fd9e8bcef6edc12c283288e09746f2a84d812408edb07e76cbd1070d6bbb \
+  codemble-0.19.2-py3-none-any.whl | shasum -a 256 -c -
 ```
 
 Then install it into an isolated app environment:
 
 ```bash
-pipx install ./codemble-0.19.1-py3-none-any.whl
+pipx install ./codemble-0.19.2-py3-none-any.whl
 codemble --version
 ```
 
-The expected version is `0.19.1`.
+The expected version is `0.19.2`.
 
 ## Build from source
 
 ```bash
-git clone --branch v0.19.1 --depth 1 https://github.com/udhawan97/Codemble.git
+git clone --branch v0.19.2 --depth 1 https://github.com/udhawan97/Codemble.git
 cd Codemble
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
@@ -91,7 +91,7 @@ pip install -e .
 codemble
 ```
 
-This checks out and runs the same v0.19.1 app with an editable Python environment. Continue
+This checks out and runs the same v0.19.2 app with an editable Python environment. Continue
 with [Installation](/Codemble/installation/) for provider setup and failure
 boundaries, or [Build from source](/Codemble/build-from-source/) for the full
 contributor gates.

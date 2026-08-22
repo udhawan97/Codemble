@@ -4,7 +4,7 @@ description: Language concepts you've met and mastered, tracked across your gala
 ---
 
 :::note[Version]
-The star chart and its separate **Systems explored** row match v0.19.1.
+The star chart and its separate **Systems explored** row match v0.19.2.
 :::
 
 ## Concepts, not just code

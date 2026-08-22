@@ -110,6 +110,10 @@ export function App() {
   // What "dismiss this surface" means, one entry per dismissible owner in
   // `ESCAPE_OWNERS`. Each returns focus to the control that opened it.
   const DISMISS = {
+    railDisclosure: () => {
+      setMobileMenuOpen(false);
+      restoreRailFocus(mobileMenuRef);
+    },
     checks: () => closeChecks(),
     sidebar: () => closeModules(),
     chart: () => {
@@ -552,16 +556,9 @@ export function App() {
         <div
           className="rail-overflow"
           data-open={mobileMenuOpen || undefined}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && mobileMenuOpen) {
-              event.preventDefault();
-              setMobileMenuOpen(false);
-              mobileMenuRef.current?.focus();
-            }
-          }}
         >
           {/* One disclosure serves both breakpoints, so there is one open
-              state, one Escape handler and one focus return. Only its contents
+              state, one Escape owner and one focus return. Only its contents
               differ: compact holds every secondary control, desktop holds the
               occasional ones the permanent row has no width for. The label
               follows, as two spans the media query switches -- a hidden span

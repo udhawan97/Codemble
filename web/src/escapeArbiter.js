@@ -23,9 +23,8 @@
  *
  * `dismissible` says whether the *caller* closes it. The rest own Escape
  * themselves -- a native `<dialog>` closes itself, a field's Escape belongs to
- * the field, and the finder, rail disclosure and entrypoint picker each carry
- * their own handler -- so the only thing the window handler does for them is
- * stand down.
+ * the field, and the finder and entrypoint picker each carry their own handler
+ * -- so the only thing the window handler does for them is stand down.
  *
  * The checks panel and the module index are dismissible because neither ever
  * claimed the key from its own subtree: Escape there did nothing at all, while
@@ -38,7 +37,7 @@
 export const ESCAPE_OWNERS = Object.freeze([
   { id: "editableField", open: (facts) => facts.editableFocus === true, dismissible: false },
   { id: "nativeDialog", open: (facts) => facts.nativeDialogOpen === true, dismissible: false },
-  { id: "railDisclosure", open: (facts) => facts.railDisclosureOpen === true, dismissible: false },
+  { id: "railDisclosure", open: (facts) => facts.railDisclosureOpen === true, dismissible: true },
   { id: "checks", open: (facts) => facts.showChecks === true, dismissible: true },
   { id: "sidebar", open: (facts) => facts.sidebarOpen === true, dismissible: true },
   { id: "finder", open: (facts) => facts.finderOpen === true, dismissible: false },

@@ -25,12 +25,13 @@ assert.equal(escapeAction({}), null);
 // This is the regression the arbiter exists for. Each of these was a term in
 // the disjunction, and `railDisclosureOpen` is the one that was missing: it
 // closed the Menu *and* retreated a level on one keypress.
-const standDown = ["editableFocus", "nativeDialogOpen", "railDisclosureOpen", "finderOpen", "entrypointOpen"];
+const standDown = ["editableFocus", "nativeDialogOpen", "finderOpen", "entrypointOpen"];
 
 // The checks panel and the module index never claimed the key from their own
 // subtree, so Escape there did nothing at all while the coach marks teach
 // "Escape to come back". The window handler closes them.
 const dismissed = [
+  ["railDisclosureOpen", "railDisclosure"],
   ["showChecks", "checks"],
   ["sidebarOpen", "sidebar"],
   ["showChart", "chart"],
@@ -123,7 +124,7 @@ assert.deepEqual(
 
 assert.deepEqual(
   ESCAPE_OWNERS.filter((owner) => owner.dismissible).map((owner) => owner.id),
-  ["checks", "sidebar", "chart", "firstFlight"],
+  ["railDisclosure", "checks", "sidebar", "chart", "firstFlight"],
   "every dismissible surface needs an entry in App's DISMISS map",
 );
 
