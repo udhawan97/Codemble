@@ -1983,17 +1983,43 @@ function CheckPanel({ suite, error, mode, overviewNoun, onClose, onSubmit }) {
   // Open the quiz at the question rather than at the panel's own masthead. The
   // preamble -- caption, region name, "Check n of m" -- cost 141px of a 437px
   // panel at 320x640, and the answer options paid for it: zero of four were
-  // reachable without scrolling at 1280x720, 375x720 and 320x640 alike. Only
-  // when the panel actually overflows, so a window with room to spare keeps
-  // showing the whole panel from the top, and only on a change of question, so
-  // it never fights the learner's own scrolling mid-answer.
+  // reachable without scrolling at 1280x720, 375x720 and 320x640 alike.
+  //
+  // Set the panel's scroll position directly. Linux WebKit can ignore
+  // `scrollIntoView({ behavior: "instant" })` during this panel's entrance,
+  // leaving the fieldset almost 300px below its intended start even though the
+  // same call works in Chromium and macOS WebKit. Repeating once after fonts
+  // settle also makes wrapping self-hosted identifiers part of the alignment,
+  // rather than a late layout change that moves the question back down.
+  // Wide panels with room to spare still show the whole panel from the top.
   useLayoutEffect(() => {
     if (!current) return;
     const panel = panelRef.current;
     const question = questionRef.current;
     if (!panel || !question) return;
-    if (panel.scrollHeight <= panel.clientHeight + 1) return;
-    question.scrollIntoView({ block: "start", behavior: "instant" });
+
+    let cancelled = false;
+    let frame = 0;
+    const alignQuestion = () => {
+      if (cancelled) return;
+      const compact = window.matchMedia("(max-width: 39.999rem)").matches;
+      if (!compact && panel.scrollHeight <= panel.clientHeight + 1) return;
+      const distance = question.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+      panel.scrollTop += distance;
+    };
+
+    alignQuestion();
+    frame = window.requestAnimationFrame(alignQuestion);
+    document.fonts?.ready.then(() => {
+      if (cancelled) return;
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(alignQuestion);
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
   }, [current?.id]);
 
   function choose(optionId, multiple) {

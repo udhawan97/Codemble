@@ -105,6 +105,10 @@ async function checkCompactQuizVisibility(browser, engine, url) {
       }).first();
       await prove.click();
       await page.locator(".check-panel .active-check").waitFor();
+      // The panel enters over 420ms and the question realigns once its local
+      // fonts settle. Measure the learner's actual contract after both rather
+      // than racing the first animation frame on a slower CI runner.
+      await page.waitForTimeout(500);
 
       const measured = await page.locator(".check-panel").evaluate((panel) => {
         const options = [...panel.querySelectorAll(".check-options label")];
@@ -122,6 +126,16 @@ async function checkCompactQuizVisibility(browser, engine, url) {
           allOptionsClear: optionBoxes.every(
             (box) => box.top >= panelBox.top - 1 && box.bottom <= barBox.top + 1,
           ),
+          options: optionBoxes,
+          legend: (() => {
+            const box = panel.querySelector("legend")?.getBoundingClientRect();
+            return box ? { top: box.top, bottom: box.bottom, height: box.height } : null;
+          })(),
+          optionText: (() => {
+            const style = options[0] ? getComputedStyle(options[0].querySelector("span")) : null;
+            return style ? { fontFamily: style.fontFamily, fontSize: style.fontSize, lineHeight: style.lineHeight } : null;
+          })(),
+          scrollTop: panel.scrollTop,
           lastOption: optionBoxes.at(-1),
           panel: { top: panelBox.top, bottom: panelBox.bottom, height: panelBox.height },
           barTop: barBox.top,

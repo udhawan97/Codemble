@@ -258,9 +258,16 @@ action covered the final answer on first paint; the compact checks surface now
 uses the footer row below the instrument rail, keeping all four options clear
 while the action stays visible. The disposable Chromium/WebKit gate covers the
 pointer path and exact 320, 331, 332, 405, 406, and 414px boundary widths.
+The first exact-main candidate exposed one additional engine boundary rather
+than being waved through: Ubuntu WebKit ignored the question's
+`scrollIntoView({behavior: "instant"})` during panel entry and left the final
+answer below the action at 320px. The follow-up sets the panel's scroll position
+directly, realigns after local fonts settle, and measures after the declared
+420ms entrance. This preserves the rail and every full identifier and 44px
+target; it does not compress, truncate, or hide quiz evidence to satisfy CI.
 All nine public product frames were recaptured from the exact candidate with
 disposable progress and provider configuration removed; the self-parse remains
-199 systems and now contains 2,227 nodes and 14,204 edges.
+199 systems and now contains 2,228 nodes and 14,219 edges.
 
 **v0.19.1 remains the verified stable release until v0.19.2 repeats the full
 outside-in gate.** The candidate may not be called stable before exact-main CI,
@@ -1901,6 +1908,7 @@ rebuilt from the reviewed source.
 | 2026-08-21 | v0.19.1 is a five-loop interaction-polish patch; current public release copy and captures follow its one manifest | The five findings are all presentation or browser-semantics defects: an action named only as state, duplicate completion controls, code/path inputs inviting irrelevant browser services, native controls without a declared dark scheme, and a scrollable compact Map with no continuation cue. None authorizes a second parser truth, new progression, hidden module delivery, or a scale-cap change. Recapturing the nine product frames and replacing stale 190-system/v0.18 captions keeps public evidence aligned with the same current self-parse rather than inventing a marketing count; the fresh capture's 199 systems include the new executable interface contract itself |
 | 2026-08-21 | v0.19.1 becomes stable only after exact-tag outside-in proof; the evidence-only truth commit follows the fixed tag | Two council rounds found and closed a polluted-sdist digest, an overstated cross-engine claim, and stale Architecture alt text before unanimously passing the rebuilt candidate. Tag `v0.19.1` (`d0571fc`) peels to `198c0d7`; main CI `32504359987`, Pages `32504360042`, and trusted publish `32505026702` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `777f53e0…3818b` and sdist `d24c567f…3510`; a cold Python 3.11 install reports 0.19.1 and carries `index-r9nFEgOG.js` plus `index-Dtb10tPf.css`. The follow-up changes only this operating truth and must never move the release tag |
 | 2026-08-21 | Compact Menu dismissal is owned by the window Escape arbiter, and the compact quiz owns the footer row below the rail | WebKit does not guarantee that a pointer-clicked button receives focus, so the rail subtree could not hear Escape when focus stayed on body; one ordered window owner closes it and restores Menu focus without navigation. The quiz's absolute panel ended above the footer with 437px at 320x640, so top-aligning the question still put the final answer under the sticky action through 405px. Using the same fixed below-rail boundary as Study gains the otherwise redundant status row while preserving the rail, sticky action, parser-owned question, and all four complete answer targets |
+| 2026-08-21 | Compact quiz arrival sets the panel scroll position directly and repeats alignment after local fonts settle; its browser gate measures after the 420ms panel entrance | The first v0.19.2 exact-main CI run proved that Ubuntu WebKit could ignore `scrollIntoView({behavior: "instant"})` during panel entry even though Chromium and macOS WebKit accepted it: at 320x640 all four 84px answer rows existed, but the last sat at 779-863px behind an action beginning at 588px. Direct scroll ownership removes that engine-dependent request, and the post-font alignment makes late identifier wrapping explicit. The repair preserves the 124px navigation rail, complete parser-owned identifiers, and 44px targets rather than passing by truncating or shrinking the choices |
 
 
 ## Non-Goals — do NOT build (point here when asked)
