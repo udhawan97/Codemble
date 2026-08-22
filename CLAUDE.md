@@ -155,17 +155,17 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** **v0.19.1 is the verified stable release.** Annotated
-  tag `v0.19.1` (`d0571fc`) peels to exact release commit `198c0d7`. Main CI
-  run `32504359987`, Pages run `32504360042`, and the trusted publish run
-  `32505026702` passed; the latter built, published, mirrored, and verified the
-  wheel (`777f53e0d9f2d0da3ad2832f043afde595b72d134d5805b11c911e0df403818b`)
-  and sdist (`d24c567fd2d0b609b82dcf8a95cd1fc9ef81e1187dad9ff814877bd9b1e23510`).
+- **Public release truth:** **v0.19.2 is the verified stable release.** Annotated
+  tag `v0.19.2` (`af33aa0`) peels to exact release commit `466c130`. Main CI
+  run `32547669499`, Pages run `32547669498`, and the trusted publish run
+  `32548094677` passed; the latter built, published, mirrored, and verified the
+  wheel (`8d6183d2d7166bb6f84490026f9057e12acbbe6361ebbcc43727bc8f5e7492a6`)
+  and sdist (`b570ecc329e4aca79cbf34bca60674130b71470e02c049320e5021f533e50ad7`).
   `check:release --live` reconciled PyPI, GitHub assets, `SHA256SUMS.txt`, and
   fresh downloaded bytes. A cold Python 3.11 install reported
-  `codemble 0.19.1` and carried the tagged SPA assets `index-r9nFEgOG.js` and
-  `index-Dtb10tPf.css`; Obscura independently rendered the deployed Pages
-  surface with v0.19.1 and the current 199-system evidence. A later tag is not
+  `codemble 0.19.2` and carried the tagged SPA assets `index-BpwjRXVi.js` and
+  `index-DgSklSeG.css`; Obscura independently rendered the deployed Pages
+  surface with v0.19.2 and the current 199-system evidence. A later tag is not
   stable until it repeats all of that.
 - **Digests are taken from the tree you are about to tag, never earlier.**
   `readme = "README.md"` embeds the README in the wheel's own METADATA, so a
@@ -246,8 +246,8 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M16 parser evidence and scale gates** · Last updated:
-2026-08-21 · Session note: two compact user-flow repairs are prepared as the
-v0.19.2 candidate without changing parser, graph, checks, progress, providers,
+2026-08-21 · Session note: two compact user-flow repairs shipped as verified
+stable v0.19.2 without changing parser, graph, checks, progress, providers,
 or release-scale truth.
 
 **The candidate closes two measured P2 gaps.** WebKit may leave focus on
@@ -269,11 +269,13 @@ All nine public product frames were recaptured from the exact candidate with
 disposable progress and provider configuration removed; the self-parse remains
 199 systems and now contains 2,228 nodes and 14,219 edges.
 
-**v0.19.1 remains the verified stable release until v0.19.2 repeats the full
-outside-in gate.** The candidate may not be called stable before exact-main CI,
-Pages, trusted publishing, fresh asset and registry reconciliation, and a cold
-Python 3.11 install all pass. Issue #13 remains open and the normal cap remains
-1,000, so this patch does not advance M16 or claim unaided learner acceptance.
+**v0.19.2 completed the full outside-in gate.** The annotated tag peels to
+`466c130`; exact-main CI, Pages, and all three trusted publish jobs are green.
+Fresh GitHub downloads match the manifest and `SHA256SUMS.txt`, PyPI reports
+the same bytes, and a cold Python 3.11 install includes the tagged SPA. Obscura
+rendered live Pages with 27 intact images, zero horizontal overflow, and no
+console errors. Issue #13 remains open and the normal cap remains 1,000, so
+release proof does not advance M16 or claim unaided learner acceptance.
 
 Previously (2026-08-21) · Session note: five bounded app-polish loops shipped
 as verified stable v0.19.1 without changing parser, graph, checks, progress, or
@@ -1909,6 +1911,7 @@ rebuilt from the reviewed source.
 | 2026-08-21 | v0.19.1 becomes stable only after exact-tag outside-in proof; the evidence-only truth commit follows the fixed tag | Two council rounds found and closed a polluted-sdist digest, an overstated cross-engine claim, and stale Architecture alt text before unanimously passing the rebuilt candidate. Tag `v0.19.1` (`d0571fc`) peels to `198c0d7`; main CI `32504359987`, Pages `32504360042`, and trusted publish `32505026702` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `777f53e0…3818b` and sdist `d24c567f…3510`; a cold Python 3.11 install reports 0.19.1 and carries `index-r9nFEgOG.js` plus `index-Dtb10tPf.css`. The follow-up changes only this operating truth and must never move the release tag |
 | 2026-08-21 | Compact Menu dismissal is owned by the window Escape arbiter, and the compact quiz owns the footer row below the rail | WebKit does not guarantee that a pointer-clicked button receives focus, so the rail subtree could not hear Escape when focus stayed on body; one ordered window owner closes it and restores Menu focus without navigation. The quiz's absolute panel ended above the footer with 437px at 320x640, so top-aligning the question still put the final answer under the sticky action through 405px. Using the same fixed below-rail boundary as Study gains the otherwise redundant status row while preserving the rail, sticky action, parser-owned question, and all four complete answer targets |
 | 2026-08-21 | Compact quiz arrival sets the panel scroll position directly and repeats alignment after local fonts settle; its browser gate measures after the 420ms panel entrance | The first v0.19.2 exact-main CI run proved that Ubuntu WebKit could ignore `scrollIntoView({behavior: "instant"})` during panel entry even though Chromium and macOS WebKit accepted it: at 320x640 all four 84px answer rows existed, but the last sat at 779-863px behind an action beginning at 588px. Direct scroll ownership removes that engine-dependent request, and the post-font alignment makes late identifier wrapping explicit. The repair preserves the 124px navigation rail, complete parser-owned identifiers, and 44px targets rather than passing by truncating or shrinking the choices |
+| 2026-08-21 | v0.19.2 becomes stable only after the failed first candidate is repaired and the replacement tag passes exact-SHA outside-in proof | The first main candidate correctly remained unreleased when Ubuntu WebKit exposed the hidden fourth quiz answer. Replacement tag `v0.19.2` (`af33aa0`) peels to `466c130`; main CI `32547669499`, Pages `32547669498`, and trusted publish `32548094677` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `8d6183d2…7492a6` and sdist `b570ecc3…50ad7`; a cold Python 3.11 install reports 0.19.2 and carries `index-BpwjRXVi.js` plus `index-DgSklSeG.css`. The follow-up changes only this operating truth and must never move the release tag |
 
 
 ## Non-Goals — do NOT build (point here when asked)
