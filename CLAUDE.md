@@ -155,18 +155,23 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** **v0.19.2 is the verified stable release.** Annotated
-  tag `v0.19.2` (`af33aa0`) peels to exact release commit `466c130`. Main CI
-  run `32547669499`, Pages run `32547669498`, and the trusted publish run
-  `32548094677` passed; the latter built, published, mirrored, and verified the
-  wheel (`8d6183d2d7166bb6f84490026f9057e12acbbe6361ebbcc43727bc8f5e7492a6`)
-  and sdist (`b570ecc329e4aca79cbf34bca60674130b71470e02c049320e5021f533e50ad7`).
+- **Public release truth:** **v0.20.0 is the verified stable release.** Annotated
+  tag `v0.20.0` (`9abf14a`) peels to exact release commit `436cbee`. Candidate
+  PR CI run `32769180402`, main CI run `32770203502`, Pages run `32770203426`,
+  and trusted publish run `32770056876` passed; the latter built, published,
+  mirrored, and verified the wheel
+  (`15e42dee6b06d4569a969767cfae7556b2b642a15092e6801c924fcda692cf61`)
+  and sdist (`466e5f5bdad022730abd4b0c4228e1079bf88645ad3700af6cdc2e5ebc78b008`).
   `check:release --live` reconciled PyPI, GitHub assets, `SHA256SUMS.txt`, and
   fresh downloaded bytes. A cold Python 3.11 install reported
-  `codemble 0.19.2` and carried the tagged SPA assets `index-BpwjRXVi.js` and
-  `index-DgSklSeG.css`; Obscura independently rendered the deployed Pages
-  surface with v0.19.2 and the current 199-system evidence. A later tag is not
-  stable until it repeats all of that.
+  `codemble 0.20.0` and carried the tagged SPA assets `index-DzCSIcHk.js` and
+  `index-R8cZVoqz.css`; Obscura independently rendered the deployed Pages
+  surface with v0.20.0, the current 203-system evidence, complete images,
+  working tagged download links, zero 1280 px overflow, and no console errors.
+  Native Safari acceptance remained unavailable because the Mac was locked;
+  WebKit and Chromium acceptance passed without being mislabeled as Safari.
+  Issue #13's unaided-learner gate remains open. A later tag is not stable until
+  it repeats all of that.
 - **Digests are taken from the tree you are about to tag, never earlier.**
   `readme = "README.md"` embeds the README in the wheel's own METADATA, so a
   dist/ built before a README edit describes a wheel that no longer exists —
@@ -247,11 +252,11 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M17 complete canvas Map and 5,000-file scale** · Last updated:
-2026-08-24 · Session note: the v0.20.0 candidate replaces per-item Map SVG DOM
+2026-08-24 · Session note: verified stable v0.20.0 replaces per-item Map SVG DOM
 with complete viewport canvas delivery, improves keyboard/pointer/readout flow,
 and promotes the ordinary supported-file cap only after the full gate passes.
 
-**The v0.20.0 candidate completes the next measured phase.** Architecture and
+**The verified v0.20.0 release completes the next measured phase.** Architecture and
 Workflow retain backend coordinates and every module/route in one complete
 prepared scene for the current language projection while drawing only the
 native-scroll viewport. The default all-language projection retains the entire
@@ -266,7 +271,11 @@ direct final-module keyboard/Finder arrival, visible recovery in 76–82 ms,
 and zero page overflow at 320 px. The semantic oracle retains zero regressions.
 Native Safari visual acceptance was unavailable because the Mac was locked;
 WebKit engine acceptance and inspected 1440/320 captures passed without being
-misreported as Safari.
+misreported as Safari. Exact release commit `436cbee`, annotated tag object
+`9abf14a`, candidate PR CI `32769180402`, trusted publish `32770056876`, main CI
+`32770203502`, and Pages `32770203426` are green; downloaded public bytes and a
+cold Python 3.11 install match the committed ledger. Main's later evidence-only
+follow-up does not move the release tag. Issue #13 remains open.
 
 Previously (2026-08-21) · Session note: two compact user-flow repairs shipped
 as verified stable v0.19.2 without changing parser, graph, checks, progress,
@@ -1957,6 +1966,7 @@ evidence are rebuilt from the reviewed source.
 | 2026-08-24 | Pages proves the live release ledger before deploying release copy | A main version-bump commit can land before trusted publishing finishes, while the site already says the new version is stable and PyPI-published. The Pages workflow now retries the outside-in release check for a bounded ten minutes before building: ordinary docs changes pass immediately, and a release transition waits until PyPI metadata, GitHub release assets, downloaded hashes, and `SHA256SUMS.txt` match the committed manifest. This preserves exact-main CI and tag ordering without briefly publishing a future version as stable |
 | 2026-08-24 | A release candidate proves hosted CI on a PR, then publishes its exact local-main tag before moving origin/main | GitHub renders default-branch README copy independently of Pages, so pushing a version-bump commit to main before PyPI would still label an unpublished version stable. The candidate branch and PR give the exact commit hosted CI; local main then fast-forwards to that reviewed commit and owns the annotated tag while origin/main remains on the prior stable release. Only after trusted publishing and outside-in artifact proof does that same commit move origin/main. README media is tag-pinned, so PyPI never borrows older default-branch screenshots during the transition |
 | 2026-08-24 | Source archives exclude and reject parser-fixture outputs that are intentionally ignored by the fixture repository | Hatch's sdist selection could include `sampleproj/generated/` and `sampleproj/ignored.py` after the local parser tests exercised that fixture, even though a clean checkout of the same commit had neither file. The exact-tree gate stopped publication when the two archives differed. Explicit build exclusions now make exercised and clean checkouts byte-identical, while the release-fact gate rejects either path if it ever returns; developer/runtime marker exclusions remain independently enforced |
+| 2026-08-24 | v0.20.0 becomes stable only after candidate CI, exact-tag publication, outside-in artifact proof, main CI, Pages, and a cold install agree | Annotated tag `v0.20.0` (`9abf14a`) peels to release commit `436cbee`; candidate PR CI `32769180402`, trusted publish `32770056876`, main CI `32770203502`, and Pages `32770203426` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `15e42dee…cf61` and sdist `466e5f5b…b008`; a cold Python 3.11 install reports 0.20.0 and carries `index-DzCSIcHk.js` plus `index-R8cZVoqz.css`. Obscura rendered the deployed 203-system surface without failed images, overflow, or console errors. Native Safari remained unavailable on the locked Mac and is not claimed; issue #13 remains open. The follow-up changes only this operating truth and must never move the release tag |
 
 
 ## Non-Goals — do NOT build (point here when asked)
