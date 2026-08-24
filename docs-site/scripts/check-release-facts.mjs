@@ -92,12 +92,12 @@ if (distDirectory) {
     encoding: "utf8",
   }).trim().split("\n");
   const forbiddenArchiveEntry = archiveEntries.find((entry) =>
-    /(?:^|\/)(?:\.git(?:\/|$)|\.git-backup-remote$|\.last-git-backup-ts$|\.playwright-cli(?:\/|$)|\.env(?:\.(?!example$)[^/]+)?$|\.DS_Store$)/.test(entry),
+    /(?:^|\/)(?:\.git(?:\/|$)|\.git-backup-remote$|\.last-git-backup-ts$|\.playwright-cli(?:\/|$)|\.env(?:\.(?!example$)[^/]+)?$|\.DS_Store$|tests\/fixtures\/sampleproj\/(?:generated(?:\/|$)|ignored\.py$))/.test(entry),
   );
   assert.equal(
     forbiddenArchiveEntry,
     undefined,
-    `source archive contains developer or sensitive state: ${forbiddenArchiveEntry}`,
+    `source archive contains developer, ignored fixture, or sensitive state: ${forbiddenArchiveEntry}`,
   );
   process.stdout.write(`release artifact build passed (${release.tag}; local dist)\n`);
   process.exit(0);

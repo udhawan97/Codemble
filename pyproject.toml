@@ -98,6 +98,11 @@ exclude = [
   ".git-backup-remote",
   ".last-git-backup-ts",
   ".playwright-cli",
+  # These files are deliberately generated/ignored by the parser fixture. Hatch
+  # otherwise includes them when a developer builds from an exercised worktree,
+  # making that sdist differ from the same commit built in a clean checkout.
+  "tests/fixtures/sampleproj/generated",
+  "tests/fixtures/sampleproj/ignored.py",
   # The public site has its own Pages artifact. Keeping it out of the Python
   # source archive also lets release.json record the archive's own digest
   # without creating a self-referential build.
