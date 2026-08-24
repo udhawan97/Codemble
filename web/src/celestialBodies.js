@@ -12,7 +12,7 @@ import * as THREE from "three";
  * parser truth and is passed in here as a finished value.
  *
  * Level-of-detail is the reason this module exists at all rather than being
- * folded into `galaxyMaterials`. A galaxy draws up to ~1,000 systems and cannot
+ * folded into `galaxyMaterials`. A galaxy draws up to ~5,000 systems and cannot
  * afford a four-octave noise loop per fragment, so it keeps the cheap halo
  * sprites. A system draws a few dozen members at close range, which is both
  * where the cost is affordable and where the learner is actually looking.
@@ -166,7 +166,7 @@ export function createBodyGeometry(segments = 32) {
  *
  * Deliberately per-node rather than shared: the surface varies by seed, and a
  * System level holds a few dozen members, so a material each is affordable
- * where it would not be for a 1,000-system galaxy. These are NOT registered as
+ * where it would not be for a 5,000-system galaxy. These are NOT registered as
  * shared resources, so three-forcegraph's deallocator freeing them with their
  * node object is exactly right.
  */

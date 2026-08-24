@@ -425,9 +425,10 @@ async function settleFirstRun(page, register) {
 }
 
 async function descendToRegion(page) {
-  const box = page.locator("[role='button'][aria-label*='structure']").first();
-  if ((await box.count()) === 0) return false;
-  await box.click({ timeout: 8000 }).catch(() => {});
+  const map = page.locator(".architecture-map-canvas").first();
+  if ((await map.count()) === 0) return false;
+  await map.focus();
+  await page.keyboard.press("Enter");
   await page.waitForTimeout(700);
   // Confirm the level from the breadcrumb, not from the "Back to map" action.
   // At compact widths that action lives inside the Menu disclosure, which is

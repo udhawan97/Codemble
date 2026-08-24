@@ -1,6 +1,6 @@
 ---
 title: Parser evidence and scale
-description: What Codemble caches, how semantic quality is measured, and why the public limit remains 1,000 files.
+description: What Codemble caches, how semantic quality is measured, and how the complete Map proved the 5,000-file limit.
 ---
 
 Codemble now keeps one `ProjectParser` alive across explicit project release and
@@ -79,9 +79,9 @@ certainty first, false roles/Home/journeys second, missing certain journey
 structure third, and bounded precision or coverage improvements last. No
 narrator or provider decides those facts.
 
-## Why the public limit is still 1,000
+## Why the public limit is now 5,000
 
-The public cap can move to 5,000 only when the complete Map passes the same
+The public cap moved to 5,000 only after the complete Map passed the same
 predeclared gate in Chromium and WebKit:
 
 ```bash
@@ -90,23 +90,29 @@ CODEMBLE_PYTHON=python3.12 npm run check:large-project -- \
   --output /tmp/codemble-browser-scale.json
 ```
 
-The 5,000-module backend passed a 4.956 s cold activation, a 1.666 s no-change
-activation, and a 166,789,120-byte process RSS high-water mark reported by the
-operating system. Chromium passed 5,000 boxes and 4,999 routes, 35,102 DOM
-elements, 11.48 MB of resources, 4.161 s to usable, 29.1 ms Finder input p95,
-0.960 s maximum event-loop lag, successful Map retry, zero page overflow at
-320 px, and keyboard arrival at the final module.
+The v0.20.0 renderer changes delivery, not truth: the source scene retains all
+5,000 modules and 4,999 routes while the viewport draws only the intersecting
+slice. Finder and End-key navigation both reach the final module directly;
+recovery restores a visible complete Map; and the compact page keeps zero
+horizontal overflow. The DOM no longer grows with the number of boxes, so the
+same gate now passes in both Chromium and WebKit. The exact schema-4 receipt is
+recorded with the release candidate and checks backend cold/no-change
+activation, process RSS high-water mark, usable time, DOM and resource budgets,
+event-loop lag, Finder input latency, canvas keyboard arrival, recovery, and
+320 px geometry.
 
-WebKit did not pass. While the complete 5,000-box Map committed, the first-run
-**Skip** control did not become stable within the 5 s interaction budget. The
-gate therefore exits non-zero and the ordinary picker remains capped at 1,000
-supported files. `--path` still allows an explicit larger scope, but the
-cross-engine result is why that is not the default.
+The final macOS candidate receipt measured 8.476 s cold activation, 2.475 s
+no-change activation, and a 170,541,056-byte process RSS high-water mark.
+Chromium reached usable in 3.748 s with 99 DOM elements, six visible boxes,
+38.1 ms canvas End-key arrival, 32.7 ms Finder input p95, 55.7 ms recovery, and
+zero compact overflow. WebKit reached usable in 2.433 s with the same 99 DOM
+elements, five visible boxes, 24.7 ms canvas arrival, 34.0 ms Finder input p95,
+55.9 ms recovery, and zero compact overflow. Both retained all 5,000 boxes and
+4,999 routes in the complete source scene.
 
-The next scale milestone is a canvas-backed **complete Map** renderer followed
-by the same two-engine gate. It may change delivery, not truth: every module
-must remain represented, searchable, keyboard reachable, and recoverable. A
-logical LOD that hides modules is not an acceptable shortcut.
+Above 5,000 supported files, the picker still asks for a smaller scope. That is
+an explicit verified limit, not a claim of unbounded rendering. Logical LOD
+that hides modules remains outside the correctness contract.
 
 ## Open-source inspiration and credit
 

@@ -28,10 +28,11 @@ const BUDGETS = Object.freeze({
   coldActivationMs: 12_000,
   noChangeActivationMs: 2_500,
   serverPeakRssBytes: 512 * 1024 * 1024,
-  domElements: 40_000,
+  domElements: 2_000,
   resourceBytes: 16 * 1024 * 1024,
   usableMs: 5_000,
   inputP95Ms: 200,
+  canvasKeyboardMs: 200,
   eventLoopLagMs: 2_000,
   pageOverflowPx: 1,
 });
@@ -120,7 +121,7 @@ try {
   }
 
   const receipt = {
-    schema_version: 3,
+    schema_version: 4,
     status: gateError ? "fail" : "pass",
     fixture_kind: "deterministic-sparse-python-import-chain",
     files: FILES,
@@ -202,29 +203,37 @@ async function checkCompleteMap(browser, engine, url) {
     const started = performance.now();
     await page.goto(url, { waitUntil: "domcontentloaded" });
     await settleAppOnMap(page);
-    await page.locator(".architecture-map").waitFor();
+    await page.locator(".architecture-map-canvas canvas").waitFor();
     await page.evaluate(() => document.fonts.ready);
     const usableMs = performance.now() - started;
     await page.waitForTimeout(250);
 
-    const measurements = await page.evaluate(() => ({
-      domElements: document.getElementsByTagName("*").length,
-      boxes: document.querySelectorAll(".architecture-map__box").length,
-      edges: document.querySelectorAll(".architecture-map__edge").length,
-      maxEventLoopLagMs: Math.max(0, ...(window.__codembleLoopLag || [0])),
-      maxLongTaskMs: Math.max(0, ...(window.__codembleLongTasks || [0])),
-      pageOverflowPx: Math.max(
-        document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        document.body.scrollWidth - document.body.clientWidth,
-      ),
-      performanceResourceBytes: [
-        ...performance.getEntriesByType("navigation"),
-        ...performance.getEntriesByType("resource"),
-      ].reduce(
-        (total, entry) => total + (entry.encodedBodySize || entry.transferSize || 0),
-        0,
-      ),
-    }));
+    const measurements = await page.evaluate(() => {
+      const surface = document.querySelector(".architecture-map-canvas");
+      const canvas = surface?.querySelector("canvas");
+      const scroller = surface?.closest(".map-scroll");
+      return {
+        domElements: document.getElementsByTagName("*").length,
+        boxes: Number(surface?.dataset.itemCount || 0),
+        edges: Number(surface?.dataset.edgeCount || 0),
+        visibleBoxes: Number(canvas?.dataset.visibleItems || 0),
+        visibleEdges: Number(canvas?.dataset.visibleEdges || 0),
+        scrollExtentHeight: scroller?.scrollHeight || 0,
+        maxEventLoopLagMs: Math.max(0, ...(window.__codembleLoopLag || [0])),
+        maxLongTaskMs: Math.max(0, ...(window.__codembleLongTasks || [0])),
+        pageOverflowPx: Math.max(
+          document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          document.body.scrollWidth - document.body.clientWidth,
+        ),
+        performanceResourceBytes: [
+          ...performance.getEntriesByType("navigation"),
+          ...performance.getEntriesByType("resource"),
+        ].reduce(
+          (total, entry) => total + (entry.encodedBodySize || entry.transferSize || 0),
+          0,
+        ),
+      };
+    });
     const resourceBytes = Math.max(
       responseBytes.reduce((total, value) => total + value, 0),
       measurements.performanceResourceBytes,
@@ -232,6 +241,15 @@ async function checkCompleteMap(browser, engine, url) {
 
     assert.equal(problems.length, 0, `${engine}: ${problems.join("; ")}`);
     assert.equal(measurements.boxes, FILES, `${engine}: incomplete Map`);
+    assert.equal(measurements.edges, FILES - 1, `${engine}: incomplete route mesh`);
+    assert.ok(
+      measurements.visibleBoxes > 0 && measurements.visibleBoxes < FILES,
+      `${engine}: canvas delivery did not virtualize the complete Map`,
+    );
+    assert.ok(
+      measurements.scrollExtentHeight > 100_000,
+      `${engine}: complete backend geometry did not reach the native scroll surface`,
+    );
     assert.ok(
       measurements.domElements <= BUDGETS.domElements,
       `${engine}: ${measurements.domElements} DOM elements exceed ${BUDGETS.domElements}`,
@@ -257,6 +275,11 @@ async function checkCompleteMap(browser, engine, url) {
       `${engine}: desktop page overflow ${measurements.pageOverflowPx}px`,
     );
 
+    const canvasKeyboardMs = await reachFinalCanvasModule(page, engine);
+    assert.ok(
+      canvasKeyboardMs <= BUDGETS.canvasKeyboardMs,
+      `${engine}: canvas End-key arrival ${canvasKeyboardMs.toFixed(1)}ms exceeds ${BUDGETS.canvasKeyboardMs}ms`,
+    );
     const inputP95Ms = await findFinalModuleByKeyboard(page, engine);
     assert.ok(
       inputP95Ms <= BUDGETS.inputP95Ms,
@@ -268,6 +291,10 @@ async function checkCompleteMap(browser, engine, url) {
       dom_elements: measurements.domElements,
       architecture_boxes: measurements.boxes,
       architecture_edges: measurements.edges,
+      visible_architecture_boxes: measurements.visibleBoxes,
+      visible_architecture_edges: measurements.visibleEdges,
+      map_scroll_extent_height: measurements.scrollExtentHeight,
+      canvas_keyboard_ms: round(canvasKeyboardMs),
       resource_bytes: resourceBytes,
       input_p95_ms: round(inputP95Ms),
       max_event_loop_lag_ms: round(measurements.maxEventLoopLagMs),
@@ -293,16 +320,27 @@ async function checkRecoveryAndNarrowLayout(browser, engine, url) {
     await page.unroute("**/api/map");
     const started = performance.now();
     await page.getByRole("button", { name: "Try again", exact: true }).click();
-    await page.locator(".architecture-map").waitFor();
+    await page.locator(".architecture-map-canvas canvas").waitFor();
+    await page.waitForFunction(
+      () =>
+        Number(
+          document.querySelector(".architecture-map-canvas canvas")?.dataset
+            .visibleItems || 0,
+        ) > 0,
+      undefined,
+      { timeout: BUDGETS.usableMs },
+    );
     const recoveryMs = performance.now() - started;
     const narrow = await page.evaluate(() => ({
-      boxes: document.querySelectorAll(".architecture-map__box").length,
+      boxes: Number(document.querySelector(".architecture-map-canvas")?.dataset.itemCount || 0),
+      visibleBoxes: Number(document.querySelector(".architecture-map-canvas canvas")?.dataset.visibleItems || 0),
       pageOverflowPx: Math.max(
         document.documentElement.scrollWidth - document.documentElement.clientWidth,
         document.body.scrollWidth - document.body.clientWidth,
       ),
     }));
     assert.equal(narrow.boxes, FILES, `${engine}: recovery returned an incomplete Map`);
+    assert.ok(narrow.visibleBoxes > 0, `${engine}: recovery left the canvas blank`);
     assert.ok(
       recoveryMs <= BUDGETS.usableMs,
       `${engine}: Map recovery took ${recoveryMs.toFixed(1)}ms`,
@@ -318,6 +356,52 @@ async function checkRecoveryAndNarrowLayout(browser, engine, url) {
   } finally {
     await context.close();
   }
+}
+
+async function reachFinalCanvasModule(page, engine) {
+  const surface = page.locator(".architecture-map-canvas");
+  await surface.focus();
+  await surface.evaluate((node) => {
+    window.__codembleCanvasKeys = [];
+    node.addEventListener("keydown", (event) => {
+      window.__codembleCanvasKeys.push(event.key);
+    });
+  });
+  const initialDescendant = await surface.getAttribute("aria-activedescendant");
+  const initialLabel = await surface.locator(".map-canvas-active-option").innerText();
+  const started = performance.now();
+  await surface.press("End");
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  const active = surface.locator(".map-canvas-active-option");
+  const diagnostic = await surface.evaluate((node) => ({
+    activeDescendant: node.getAttribute("aria-activedescendant"),
+    activeElementClass: document.activeElement?.className,
+    keys: window.__codembleCanvasKeys,
+    scrollTop: node.closest(".map-scroll")?.scrollTop,
+  }));
+  assert.notEqual(
+    await active.innerText(),
+    initialLabel,
+    `${engine}: End did not reach the final canvas module (${JSON.stringify(diagnostic)})`,
+  );
+  const accessibility = await active.evaluate((option) => ({
+    id: option.id,
+    position: option.getAttribute("aria-posinset"),
+    size: option.getAttribute("aria-setsize"),
+  }));
+  assert.notEqual(
+    accessibility.id,
+    initialDescendant,
+    `${engine}: active-descendant identity did not move with the final module`,
+  );
+  assert.deepEqual(
+    { position: accessibility.position, size: accessibility.size },
+    { position: String(FILES), size: String(FILES) },
+    `${engine}: active canvas option does not announce its position in the complete set`,
+  );
+  return performance.now() - started;
 }
 
 async function findFinalModuleByKeyboard(page, engine) {

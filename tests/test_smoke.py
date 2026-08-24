@@ -67,10 +67,10 @@ def test_production_web_app_is_part_of_the_python_package() -> None:
     assert any((distribution / "assets").iterdir())
 
 
-def test_the_v1_scale_cap_is_one_thousand_supported_files() -> None:
+def test_the_public_scale_cap_matches_the_complete_cross_engine_receipt() -> None:
     from codemble.adapters.project import ProjectParser
 
-    assert ProjectParser.scale_cap == 1000
+    assert ProjectParser.scale_cap == 5000
 
 
 def test_large_project_requires_an_explicit_or_interactive_scope(

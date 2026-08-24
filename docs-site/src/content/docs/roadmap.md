@@ -7,21 +7,21 @@ The authoritative roadmap lives in the repo's
 [CLAUDE.md](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md) and moves
 only when milestones actually complete. The shape:
 
-## NOW — learner evidence and the next packaged stable
+## NOW — learner evidence and the 5,000-file stable
 
-Packaged v0.19.2 and current source map Python, JavaScript, TypeScript, Go,
+Packaged v0.20.0 and current source map Python, JavaScript, TypeScript, Go,
 Java, Rust, C#, and mixed projects through one local parser-proven learning
-loop. The current work is learner evidence and correctness reports. The
+loop. v0.20.0 adds a complete canvas Map and moves the ordinary supported-file
+cap to 5,000 after the full backend, Chromium, and WebKit gate passed. The
+current work is learner evidence and correctness reports. The
 original learner-acceptance issue remains open and is not treated as passed by
 technical completion.
 
-## NEXT — scale
+## NEXT — read-only sharing design
 
-A canvas-backed complete Map that keeps every module represented, searchable,
-keyboard reachable, and recoverable. The public 1,000-file cap moves only after
-the complete 5,000-module view passes the same backend, Chromium, and WebKit
-budgets. The current evidence and failed WebKit gate are recorded in
-[Parser evidence and scale](../parser-scale/).
+Define the privacy, provenance, expiry, and deletion boundary for the planned
+shareable read-only galaxy link before building its only cloud touch. The
+completed scale evidence is recorded in [Parser evidence and scale](../parser-scale/).
 
 ## LATER — reach
 

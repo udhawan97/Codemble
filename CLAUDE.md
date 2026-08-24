@@ -203,13 +203,15 @@ evidence continues in parallel — exercise the loop on real learner projects.
 The v0.1.0 Python learner-acceptance issue stays open; technical completion
 does not claim those external runs passed.
 
-**NEXT — scale, and the deepening that is genuinely left.** The slate is now
-mostly done: Python's call resolution and lens (v0.11.0), and JS/TS builtin
-classification plus test-demoted entrypoint ranking (v0.12.0). **The
-TypeScript "deepening" was measured and largely refused** — see the Decision
-Log; TS's unproven edges are 80% honest boundaries and 1% fan-out, so copying
-Python's receiver resolution would have been work against a problem that is not
-there. What actually remains:
+**NEXT — the privacy boundary for read-only sharing.** The parser and scale
+slate is now complete through the v0.20.0 candidate: Python's call resolution
+and lens (v0.11.0), JS/TS builtin classification and entrypoint ranking
+(v0.12.0), bounded parser evidence (v0.19.0), and a complete canvas Map that
+passes the 5,000-module backend, Chromium, and WebKit gate. The next build phase
+must define provenance, expiry, deletion, and source-exclusion for the planned
+shareable read-only galaxy link before adding its only cloud touch.
+
+The prior scale decisions remain recorded because the measurements are reusable:
 
 **All three items previously listed here were measured, and two of them were
 refused on the evidence.** Recorded because the measurements are reusable:
@@ -232,12 +234,11 @@ refused on the evidence.** Recorded because the measurements are reusable:
   5,000 modules, but WebKit could not stabilize the first-run Skip control
   within the 5 s interaction budget while 5,000 SVG boxes committed.
 
-What is genuinely next: a canvas-backed **complete Map**, then the same 5,000-
-module Chromium and WebKit gate. Delivery may change, but every module remains
-represented, searchable, keyboard reachable, and recoverable; logical LOD that
-hides modules is not an acceptable shortcut. The ordinary cap stays 1,000
-until that gate passes. Phase 3 remains the shareable read-only galaxy link and
-extra quest types.
+The canvas Map changes delivery only: every module remains represented,
+searchable, keyboard reachable, and recoverable; logical LOD that hides modules
+is still not acceptable. The ordinary cap is 5,000 after the schema-4 candidate
+gate passed both engines. Phase 3 remains the shareable read-only galaxy link
+and extra quest types.
 
 **LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
 cloud touch). Extra quest types: trace-a-request, fix-the-failing-test.
@@ -245,12 +246,33 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M16 parser evidence and scale gates** · Last updated:
-2026-08-21 · Session note: two compact user-flow repairs shipped as verified
-stable v0.19.2 without changing parser, graph, checks, progress, providers,
-or release-scale truth.
+**Current milestone: M17 complete canvas Map and 5,000-file scale** · Last updated:
+2026-08-24 · Session note: the v0.20.0 candidate replaces per-item Map SVG DOM
+with complete viewport canvas delivery, improves keyboard/pointer/readout flow,
+and promotes the ordinary supported-file cap only after the full gate passes.
 
-**The candidate closes two measured P2 gaps.** WebKit may leave focus on
+**The v0.20.0 candidate completes the next measured phase.** Architecture and
+Workflow retain backend coordinates and every module/route in one complete
+prepared scene for the current language projection while drawing only the
+native-scroll viewport. The default all-language projection retains the entire
+Map; an explicit language focus remains a named learner-controlled filter. One
+listbox focus target replaces thousands of tab stops; arrows, Home/End, and
+Enter/Space remain direct, clipped canvas labels get a complete wrapping
+contextual readout, and empty space alone owns drag-to-pan. The revised schema-4
+5,000-module receipt passes at 4.870 s cold, 1.668 s no-change, and 170,606,592
+bytes process RSS.
+Chromium/WebKit each hold 99 DOM elements, all 5,000 boxes and 4,999 routes,
+direct final-module keyboard/Finder arrival, visible recovery in 76–82 ms,
+and zero page overflow at 320 px. The semantic oracle retains zero regressions.
+Native Safari visual acceptance was unavailable because the Mac was locked;
+WebKit engine acceptance and inspected 1440/320 captures passed without being
+misreported as Safari.
+
+Previously (2026-08-21) · Session note: two compact user-flow repairs shipped
+as verified stable v0.19.2 without changing parser, graph, checks, progress,
+providers, or then-current release-scale truth.
+
+**The v0.19.2 candidate closed two measured P2 gaps.** WebKit may leave focus on
 `<body>` after a pointer activates Menu, so the disclosure's subtree handler
 never received Escape; the existing window arbiter now owns that dismissal and
 returns focus without retreating a level. At 320–405px widths, the sticky quiz
@@ -1703,6 +1725,24 @@ Chromium's complete 5,000-module view passes every declared budget, WebKit's
 failure remains visible and prevents a cap increase, and the production SPA is
 rebuilt from the reviewed source.
 
+### M17 — Complete canvas Map and 5,000-file scale ✅ (2026-08-24)
+- [x] Replace per-module/per-route SVG DOM with complete viewport-rendered
+      Architecture and Workflow canvas scenes while preserving backend layout
+- [x] Keep every module represented, searchable, keyboard reachable, and
+      recoverable; add no logical LOD or second source of truth
+- [x] Provide one focusable Map surface with directional, Home/End, and
+      Enter/Space navigation plus a full-label readout
+- [x] Preserve native scroll extent, zoom, fit, empty-space drag-to-pan,
+      parser-owned pointer hits, responsive geometry, and reduced motion
+- [x] Pass the schema-4 complete 5,000-module backend, Chromium, and WebKit gate
+      before moving the ordinary cap from 1,000 to 5,000
+
+**Acceptance:** 532 Python tests, Ruff, the complete frontend contract/build,
+the semantic oracle, and exact 5,000-module source-scene counts pass; both
+engines remain below the DOM, resource, usable-time, input, keyboard, recovery,
+event-loop, memory, and 320 px overflow budgets; the production SPA and public
+evidence are rebuilt from the reviewed source.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
@@ -1912,6 +1952,10 @@ rebuilt from the reviewed source.
 | 2026-08-21 | Compact Menu dismissal is owned by the window Escape arbiter, and the compact quiz owns the footer row below the rail | WebKit does not guarantee that a pointer-clicked button receives focus, so the rail subtree could not hear Escape when focus stayed on body; one ordered window owner closes it and restores Menu focus without navigation. The quiz's absolute panel ended above the footer with 437px at 320x640, so top-aligning the question still put the final answer under the sticky action through 405px. Using the same fixed below-rail boundary as Study gains the otherwise redundant status row while preserving the rail, sticky action, parser-owned question, and all four complete answer targets |
 | 2026-08-21 | Compact quiz arrival sets the panel scroll position directly and repeats alignment after local fonts settle; its browser gate measures after the 420ms panel entrance | The first v0.19.2 exact-main CI run proved that Ubuntu WebKit could ignore `scrollIntoView({behavior: "instant"})` during panel entry even though Chromium and macOS WebKit accepted it: at 320x640 all four 84px answer rows existed, but the last sat at 779-863px behind an action beginning at 588px. Direct scroll ownership removes that engine-dependent request, and the post-font alignment makes late identifier wrapping explicit. The repair preserves the 124px navigation rail, complete parser-owned identifiers, and 44px targets rather than passing by truncating or shrinking the choices |
 | 2026-08-21 | v0.19.2 becomes stable only after the failed first candidate is repaired and the replacement tag passes exact-SHA outside-in proof | The first main candidate correctly remained unreleased when Ubuntu WebKit exposed the hidden fourth quiz answer. Replacement tag `v0.19.2` (`af33aa0`) peels to `466c130`; main CI `32547669499`, Pages `32547669498`, and trusted publish `32548094677` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `8d6183d2…7492a6` and sdist `b570ecc3…50ad7`; a cold Python 3.11 install reports 0.19.2 and carries `index-BpwjRXVi.js` plus `index-DgSklSeG.css`. The follow-up changes only this operating truth and must never move the release tag |
+| 2026-08-24 | The complete Map uses one complete prepared scene per explicit language projection and a native-scroll viewport canvas; culling is draw delivery only, never logical LOD | A 5,000-box SVG created 35,102 DOM elements and destabilized WebKit before first-run interaction. The default all-language canvas retains all 5,000 boxes and 4,999 routes while drawing five or six visible boxes with 99 DOM elements; language focus remains a named learner-controlled projection. Backend coordinates, certainty, language, progress, Finder, recovery, and accessibility remain authoritative; one position-aware active descendant replaces thousands of tab stops, and hit testing accepts only emitted box coordinates plus renderer-owned painted-row bounds. Removing the canvas still leaves the complete current projection and every navigation target in data |
+| 2026-08-24 | The ordinary supported-file cap moves from 1,000 to 5,000 only after the schema-4 backend, Chromium, and WebKit receipt passes | The final candidate records 4.870 s cold, 1.668 s no-change, 170,606,592-byte process RSS high-water, complete 5,000/4,999 source-scene counts, 99 DOM elements per engine, 32.9–40.9 ms canvas arrival with item-specific active-descendant identity and 5,000-of-5,000 set position, 30.9–31.0 ms Finder p95, 76.0–81.1 ms recovery, and zero 320 px overflow. The previous one-engine result did not authorize promotion; this cross-engine result does. Above 5,000 remains an explicit scope prompt, not a hidden or unbounded claim |
+| 2026-08-24 | Pages proves the live release ledger before deploying release copy | A main version-bump commit can land before trusted publishing finishes, while the site already says the new version is stable and PyPI-published. The Pages workflow now retries the outside-in release check for a bounded ten minutes before building: ordinary docs changes pass immediately, and a release transition waits until PyPI metadata, GitHub release assets, downloaded hashes, and `SHA256SUMS.txt` match the committed manifest. This preserves exact-main CI and tag ordering without briefly publishing a future version as stable |
+| 2026-08-24 | A release candidate proves hosted CI on a PR, then publishes its exact local-main tag before moving origin/main | GitHub renders default-branch README copy independently of Pages, so pushing a version-bump commit to main before PyPI would still label an unpublished version stable. The candidate branch and PR give the exact commit hosted CI; local main then fast-forwards to that reviewed commit and owns the annotated tag while origin/main remains on the prior stable release. Only after trusted publishing and outside-in artifact proof does that same commit move origin/main. README media is tag-pinned, so PyPI never borrows older default-branch screenshots during the transition |
 
 
 ## Non-Goals — do NOT build (point here when asked)
@@ -1933,7 +1977,7 @@ rebuilt from the reviewed source.
   2026-07-29** (see Decision Log): deterministic procedural celestial art is
   approved **at the System tier only**. Bodies there carry an fBm crust, a rim
   atmosphere and slow surface rotation. What remains OUT: procedural surfaces
-  at Galaxy range (a level-of-detail limit, not a taste one — up to ~1,000
+  at Galaxy range (a level-of-detail limit, not a taste one — up to ~5,000
   systems draw there), and any decoration that is not seeded purely by node id.
   Decoration may never encode a fact; every semantic channel stays parser-owned
 
@@ -1971,13 +2015,12 @@ rebuilt from the reviewed source.
 
 ## Edge cases & limits
 
-- >~1,000 supported source files → prompt to scope to a subdirectory; a complete
-  canvas Map plus the two-engine 5,000-module gate is required before this moves
+- >~5,000 supported source files → prompt to scope to a subdirectory
 - No clear entrypoint → ranked candidates; user picks Home
 - Syntax errors / partial parses → parse what you can, flag the rest, never crash
 - Missing/invalid key → galaxy + structure + checks work; explanations show "add your key"
 - Unsupported-language files → outside the graph and never guessed
-- No WebGL → the plain-SVG Map remains available; the 3D Galaxy does not
+- No WebGL → the complete Canvas 2D Map remains available; the 3D Galaxy does not
 
 ## Definition of done — Phase 0
 

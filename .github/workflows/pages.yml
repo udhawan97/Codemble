@@ -26,10 +26,28 @@ jobs:
         with:
           node-version: "22"
       - uses: actions/configure-pages@v6
-      - name: Build Astro site
+      # A version-bump commit can reach main before trusted publishing has
+      # finished. Never deploy copy that says "PyPI published" until PyPI,
+      # GitHub assets, and the checksum ledger already agree with the manifest.
+      # Ordinary docs-only updates pass on the first attempt; a release
+      # transition waits for the release-published workflow instead of briefly
+      # making a future version look stable.
+      - name: Wait for the public release ledger
         run: |
           cd docs-site
           npm install
+          for attempt in $(seq 1 30); do
+            if npm run check:release:live; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 30 ]; then
+              sleep 20
+            fi
+          done
+          exit 1
+      - name: Build Astro site
+        run: |
+          cd docs-site
           npm run build
       - uses: actions/upload-pages-artifact@v5
         with:

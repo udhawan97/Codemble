@@ -155,11 +155,12 @@ class ProjectParser:
 
         return self._evidence_cache.info()
 
-    # Raised from 300 with the Phase C threaded parse and staged loading screen.
-    # The 2026-08-14 complete 5k Map gate passed Chromium but failed WebKit's
-    # interaction budget, so explicit --path scopes may go larger while the
-    # ordinary picker stays here until a complete canvas Map passes both.
-    scale_cap = 1000
+    # Raised from 1,000 only after the complete canvas Map kept every one of
+    # 5,000 modules and 4,999 routes represented while the same backend,
+    # Chromium, WebKit, Finder, direct-keyboard, recovery, and 320px budgets
+    # passed. Explicit --path scopes may still go larger; the ordinary picker
+    # stops at the largest complete cross-engine receipt.
+    scale_cap = 5000
 
     def intake(self, path: Path, *, explicit: bool = False) -> ProjectIntake:
         """Resolve one project scope and every adapter's owned files."""

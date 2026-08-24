@@ -110,8 +110,18 @@ async function capture(name) {
 }
 
 async function selectAppModule() {
-  const moduleButton = page.getByRole("button").filter({ hasText: appModulePath });
-  await moduleButton.first().click();
+  await page.keyboard.press("Meta+K");
+  const finder = page.locator(".module-finder[open]");
+  await finder.waitFor();
+  const input = finder.getByRole("searchbox", {
+    name: "Find a module by name or path",
+  });
+  await input.fill(appModulePath);
+  const option = finder.getByRole("option").first();
+  await option.waitFor();
+  await page.keyboard.press("Enter");
+  await finder.waitFor({ state: "detached" });
+  await page.locator(".orientation-copy--system").waitFor();
   await page.waitForTimeout(500);
 }
 

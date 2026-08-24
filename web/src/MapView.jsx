@@ -1,10 +1,31 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   importCycleSummary,
-  nebulaTintPaint,
   unsupportedSummary,
 } from "./graphData.js";
+import {
+  MAP_CANVAS_GEOMETRY,
+  architectureBoxLabel,
+  architectureKeyboardTarget,
+  canvasMapPalette,
+  drawArchitectureCanvas,
+  drawWorkflowCanvas,
+  hitArchitectureCanvas,
+  hitWorkflowCanvas,
+  prepareArchitectureCanvas,
+  prepareWorkflowCanvas,
+  workflowKeyboardTarget,
+  workflowRowLabel,
+} from "./mapCanvasRenderer.js";
 import {
   centerMapPoint,
   clampMapZoom,
@@ -29,8 +50,8 @@ const ZOOM_STEP = 1.25;
  * Panning rides the container's own scroll rather than a transform, so native
  * scrollbars, wheel scrolling, keyboard scrolling and screen-reader behaviour
  * all keep working. Zoom only scales the rendered size -- every coordinate
- * inside the SVG is still the backend's, untouched, so this stays a pure
- * renderer of graph-owned geometry.
+ * painted into the viewport canvas is still the backend's, untouched, so this
+ * stays a pure renderer of graph-owned geometry.
  */
 function MapCanvas({
   contentWidth,
@@ -39,6 +60,7 @@ function MapCanvas({
   viewKey,
   viewportStore,
   focusPoint,
+  centerInline = false,
   children,
 }) {
   const scrollRef = useRef(null);
@@ -47,7 +69,43 @@ function MapCanvas({
   const [panning, setPanning] = useState(false);
   const drag = useRef(null);
   const initialized = useRef(false);
+  const viewportFrame = useRef(0);
+  const [viewport, setViewport] = useState({
+    width: 0,
+    height: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
   const zoomPercent = Math.round(scale * 100);
+
+  const publishViewport = useCallback(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const next = {
+      width: scroller.clientWidth,
+      height: scroller.clientHeight,
+      scrollLeft: scroller.scrollLeft,
+      scrollTop: scroller.scrollTop,
+    };
+    setViewport((current) =>
+      current.width === next.width &&
+      current.height === next.height &&
+      current.scrollLeft === next.scrollLeft &&
+      current.scrollTop === next.scrollTop
+        ? current
+        : next,
+    );
+  }, []);
+
+  const queueViewport = useCallback(() => {
+    cancelAnimationFrame(viewportFrame.current);
+    viewportFrame.current = requestAnimationFrame(publishViewport);
+  }, [publishViewport]);
+
+  useEffect(
+    () => () => cancelAnimationFrame(viewportFrame.current),
+    [],
+  );
 
   const rememberViewport = useCallback(() => {
     const scroller = scrollRef.current;
@@ -119,15 +177,19 @@ function MapCanvas({
       }
       initialized.current = true;
       rememberViewport();
+      publishViewport();
     });
     return () => cancelAnimationFrame(frame);
-  }, [focusPoint, rememberViewport, scale]);
+  }, [focusPoint, publishViewport, rememberViewport, scale]);
 
   useEffect(() => {
     if (!initialized.current) return undefined;
-    const frame = requestAnimationFrame(rememberViewport);
+    const frame = requestAnimationFrame(() => {
+      rememberViewport();
+      publishViewport();
+    });
     return () => cancelAnimationFrame(frame);
-  }, [rememberViewport]);
+  }, [publishViewport, rememberViewport]);
 
   // The mount-time honesty check has a live twin: a window RESIZE never
   // remounts this component, so shrinking a desktop window to phone width
@@ -162,14 +224,34 @@ function MapCanvas({
       scroller.scrollLeft = position.scrollLeft;
       scroller.scrollTop = position.scrollTop;
       rememberViewport();
+      queueViewport();
     });
     observer.observe(scroller);
     return () => observer.disconnect();
-  }, [focusPoint, rememberViewport, scale]);
+  }, [focusPoint, queueViewport, rememberViewport, scale]);
+
+  const offsetX = centerInline
+    ? Math.max(0, (viewport.width - contentWidth * scale) / 2)
+    : 0;
+
+  const revealPoint = useCallback(
+    (point, inlineOffset = 0) => {
+      const scroller = scrollRef.current;
+      if (!scroller || !point) return;
+      const x = point.x * scale + inlineOffset;
+      const y = point.y * scale;
+      scroller.scrollLeft = Math.max(0, x - scroller.clientWidth / 2);
+      scroller.scrollTop = Math.max(0, y - scroller.clientHeight / 2);
+      rememberViewport();
+      queueViewport();
+    },
+    [queueViewport, rememberViewport, scale],
+  );
 
   function onPointerDown(event) {
-    // Left button on empty diagram space only: boxes and rows are buttons, and
-    // stealing their pointer would make the map look interactive but inert.
+    // Left button on empty diagram space only. The canvas surface stops this
+    // event when its backend-geometry hit test finds a box or row; empty pixels
+    // bubble here and retain the native scroll-backed drag-to-pan path.
     if (event.button !== 0 || event.target.closest("[role='button']")) return;
     const scroller = scrollRef.current;
     drag.current = {
@@ -234,59 +316,240 @@ function MapCanvas({
         onPointerUp={endPan}
         onPointerCancel={endPan}
         onScroll={() => {
-          if (initialized.current) rememberViewport();
+          if (initialized.current) {
+            rememberViewport();
+            queueViewport();
+          }
         }}
       >
         <div
           className="map-canvas__sized"
           style={{ width: contentWidth * scale, height: contentHeight * scale }}
         >
-          {children}
+          {typeof children === "function"
+            ? children({
+                offsetX,
+                revealPoint,
+                scale,
+                viewport: { ...viewport, offsetX, scale },
+              })
+            : children}
         </div>
       </div>
     </div>
   );
 }
 
+function CanvasMapSurface({
+  ariaLabel,
+  canvasClassName,
+  drawScene,
+  edgeCount,
+  fallbackItem,
+  hitTarget,
+  itemForKey,
+  itemIdentity,
+  itemKey,
+  itemLabel,
+  itemPoint,
+  itemReadout,
+  keyboardTarget,
+  onActivate,
+  preferredKey,
+  revealPoint,
+  scene,
+  viewport,
+}) {
+  const canvasRef = useRef(null);
+  const pressedKeyRef = useRef(null);
+  const optionBaseId = useId();
+  const previousPreferredKeyRef = useRef(preferredKey);
+  const [activeKey, setActiveKey] = useState(
+    preferredKey ?? (fallbackItem ? itemKey(fallbackItem) : null),
+  );
+  const [hoverKey, setHoverKey] = useState(null);
+  const [keyboardFocused, setKeyboardFocused] = useState(false);
+  const [fontRevision, setFontRevision] = useState(0);
+  const palette = useMemo(
+    () => canvasMapPalette(getComputedStyle(document.documentElement)),
+    [],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    document.fonts?.ready?.then(() => {
+      if (!cancelled) setFontRevision((value) => value + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const preferredChanged = previousPreferredKeyRef.current !== preferredKey;
+    previousPreferredKeyRef.current = preferredKey;
+    setActiveKey((current) => {
+      if (
+        preferredChanged &&
+        preferredKey !== null &&
+        preferredKey !== undefined &&
+        itemForKey(preferredKey)
+      ) {
+        return preferredKey;
+      }
+      if (itemForKey(current)) return current;
+      if (
+        preferredKey !== null &&
+        preferredKey !== undefined &&
+        itemForKey(preferredKey)
+      ) {
+        return preferredKey;
+      }
+      return fallbackItem ? itemKey(fallbackItem) : null;
+    });
+  }, [fallbackItem, itemForKey, itemKey, preferredKey]);
+
+  const activeItem = activeKey === null ? null : itemForKey(activeKey);
+  const hoverItem = hoverKey === null ? null : itemForKey(hoverKey);
+  const activeLabel = activeItem ? itemLabel(activeItem) : "";
+  const readoutItem = hoverItem ?? (keyboardFocused ? activeItem : null);
+  const items = scene.kind === "architecture" ? scene.boxes : scene.rows;
+  const activePosition = activeItem
+    ? items.findIndex((item) => itemKey(item) === itemKey(activeItem)) + 1
+    : 0;
+  const activeIdentity = activeItem
+    ? [...new TextEncoder().encode(String(itemIdentity(activeItem)))]
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("")
+    : "";
+  const optionId = activePosition && activeIdentity
+    ? `${optionBaseId}-active-${activePosition}-${activeIdentity}`
+    : undefined;
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || viewport.width < 1 || viewport.height < 1) return;
+    const ratio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    const pixelWidth = Math.max(1, Math.round(viewport.width * ratio));
+    const pixelHeight = Math.max(1, Math.round(viewport.height * ratio));
+    if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+    if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+    canvas.style.width = `${viewport.width}px`;
+    canvas.style.height = `${viewport.height}px`;
+    const context = canvas.getContext("2d");
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, viewport.width, viewport.height);
+    const stats = drawScene(context, {
+      activeKey,
+      hoverKey,
+      keyboardFocused,
+      palette,
+      viewport,
+    });
+    canvas.dataset.visibleItems = String(stats.visibleItems);
+    canvas.dataset.visibleEdges = String(stats.visibleEdges);
+  }, [
+    activeKey,
+    drawScene,
+    fontRevision,
+    hoverKey,
+    keyboardFocused,
+    palette,
+    viewport,
+  ]);
+
+  function logicalPoint(event) {
+    const rect = canvasRef.current.getBoundingClientRect();
+    return {
+      x:
+        (event.clientX - rect.left + viewport.scrollLeft - (viewport.offsetX || 0)) /
+        viewport.scale,
+      y: (event.clientY - rect.top + viewport.scrollTop) / viewport.scale,
+    };
+  }
+
+  function reveal(item) {
+    revealPoint(itemPoint(item), viewport.offsetX || 0);
+  }
+
+  function onKeyDown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      if (!activeItem) return;
+      event.preventDefault();
+      onActivate(activeItem);
+      return;
+    }
+    if (!/^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End)$/.test(event.key)) return;
+    event.preventDefault();
+    const target = keyboardTarget(scene, activeKey, event.key);
+    if (!target) return;
+    setActiveKey(itemKey(target));
+    reveal(target);
+  }
+
+  function pointerTarget(event) {
+    return hitTarget(scene, logicalPoint(event));
+  }
+
+  return (
+    <div
+      className={`map-canvas-surface ${canvasClassName}`}
+      role="listbox"
+      tabIndex={0}
+      aria-label={`${ariaLabel}. Use arrow keys to move, Home or End to jump, and Enter or Space to open.`}
+      aria-activedescendant={optionId}
+      data-item-count={items.length}
+      data-edge-count={edgeCount}
+      onFocus={() => setKeyboardFocused(true)}
+      onBlur={() => setKeyboardFocused(false)}
+      onKeyDown={onKeyDown}
+      style={{ width: viewport.width, height: viewport.height }}
+    >
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        title={readoutItem ? itemReadout(readoutItem) : activeLabel}
+        onPointerDown={(event) => {
+          const target = pointerTarget(event);
+          pressedKeyRef.current = target ? itemKey(target) : null;
+          if (target) event.stopPropagation();
+        }}
+        onPointerMove={(event) => {
+          if (event.buttons) return;
+          const target = pointerTarget(event);
+          setHoverKey(target ? itemKey(target) : null);
+        }}
+        onPointerLeave={() => setHoverKey(null)}
+        onClick={(event) => {
+          const target = pointerTarget(event);
+          if (!target || itemKey(target) !== pressedKeyRef.current) return;
+          setActiveKey(itemKey(target));
+          onActivate(target);
+        }}
+      />
+      {readoutItem ? (
+        <span className="map-canvas-readout" aria-hidden="true">
+          {itemReadout(readoutItem)}
+        </span>
+      ) : null}
+      {activeItem ? (
+        <span
+          id={optionId}
+          role="option"
+          aria-selected="true"
+          aria-posinset={activePosition}
+          aria-setsize={items.length}
+          className="map-canvas-active-option"
+        >
+          {activeLabel}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 // Every coordinate here comes from GET /api/map. This file draws numbers and
 // decides nothing: no layout, no ordering, no layering happens client-side.
-
-function tintFor(language) {
-  return nebulaTintPaint(language) ?? "var(--cm-hairline)";
-}
-
-function architectureEdgePath(points) {
-  return points
-    .map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
-    .join(" ");
-}
-
-function architectureEdgeWidth(weight) {
-  return 1 + Math.min(2.5, (Math.max(1, weight) - 1) * 0.5);
-}
-
-// Box geometry (box.width) is backend-computed and fixed regardless of label
-// length (codemble/graph/mapview.py: _BOX_WIDTH is a constant) -- this only
-// decides how much of the label fits inside that width, the way CSS
-// text-overflow would if SVG <text> supported it. 0.62em matches the
-// monospace advance width WorkflowTree already assumes for row.label below.
-const BOX_LABEL_FONT_PX = 13;
-const BOX_LABEL_CHAR_EM = 0.62;
-const BOX_LABEL_X = 14;
-// 6, not 10: at 13px monospace those four pixels are half a character, and the
-// difference decides whether `server/runtime.py` fits whole or loses its
-// extension to an ellipsis. The box outline is still clear of the glyphs.
-const BOX_LABEL_RIGHT_PAD = 6;
-
-function fitBoxLabel(label, boxWidth) {
-  const available = boxWidth - BOX_LABEL_X - BOX_LABEL_RIGHT_PAD;
-  const maxChars = Math.max(1, Math.floor(available / (BOX_LABEL_FONT_PX * BOX_LABEL_CHAR_EM)));
-  if (label.length <= maxChars) return label;
-  // An honest truncation, never a silent clip: a shortened identifier with
-  // an ellipsis tells the learner it is shortened; a bare clip (the bug this
-  // fixes) looked like a real, different identifier.
-  return `${label.slice(0, Math.max(1, maxChars - 1))}…`;
-}
 
 export function MapView({
   data,
@@ -343,7 +606,7 @@ export function MapView({
       ) : !data ? (
         <p className="map-loading" role="status">Laying out parser evidence…</p>
       ) : mapTab === "architecture" ? (
-        <ArchitectureMap
+        <CanvasArchitectureMap
           architecture={data.architecture}
           mode={mode}
           communityIndexByRegion={communityIndexByRegion}
@@ -355,7 +618,7 @@ export function MapView({
           onClearLanguageFocus={onClearLanguageFocus}
         />
       ) : (
-        <WorkflowTree
+        <CanvasWorkflowTree
           workflow={data.workflow}
           mode={mode}
           selectedRegionId={selectedRegionId}
@@ -384,236 +647,109 @@ export function MapView({
   );
 }
 
-// Above this many unrouted modules, the shelf opens collapsed: on this repo 80
-// of 109 boxes were test fixtures and scripts whose block made the drawing
-// 1:3.2 tall, so the connected core the tab exists to show fit at 7%.
-const SHELF_AUTO_COLLAPSE = 8;
+const boxKey = (box) => box.id;
+const boxPoint = (box) => ({
+  x: box.drawX + box.width / 2,
+  y: box.drawY + box.height / 2,
+});
+const workflowKey = (row) => row.order;
+const workflowPoint = (row) => ({ x: row.drawX + 8, y: row.drawY + 16 });
 
-function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedRegionId, hasEntrypointCandidates, onSelectRegion, viewportStore, languageFocusLabel, onClearLanguageFocus }) {
-  const boxes = new Map(architecture.boxes.map((box) => [box.id, box]));
-  // View state, like zoom -- never graph truth. Collapsed, the unrouted block
-  // is REPRESENTED by its count in the note below (with the control to expand),
-  // so every module stays accounted for even while its box is folded away.
-  const [showUnreached, setShowUnreached] = useState(
-    architecture.unreachable.length <= SHELF_AUTO_COLLAPSE,
+function CanvasArchitectureMap({
+  architecture,
+  mode,
+  communityIndexByRegion,
+  selectedRegionId,
+  hasEntrypointCandidates,
+  onSelectRegion,
+  viewportStore,
+  languageFocusLabel,
+  onClearLanguageFocus,
+}) {
+  const unreachableSet = useMemo(
+    () => new Set(architecture.unreachable),
+    [architecture.unreachable],
   );
-  const unreachableSet = new Set(architecture.unreachable);
-  // Folding is only ever a readability trade made FOR the connected core. When
-  // every box in view is unreachable there is no core to protect and folding
-  // empties the drawing outright -- which is exactly what a language focus
-  // produces on a polyglot project, because Home is written in one language and
-  // nothing in another language has an import route to it. Measured: focusing
-  // Rust here drew 0 of 5 boxes on a 1396x509 canvas.
-  //
-  // The state above cannot catch it on its own, because `useState` runs its
-  // initialiser once: the component mounts unfocused (132 unreachable, so
-  // collapsed) and the focus then changes the set to 5 while the collapse
-  // sticks. This is a derived guard rather than a second piece of state, so it
-  // cannot go stale the same way.
   const everyBoxUnreachable =
     architecture.boxes.length > 0 &&
     architecture.boxes.every((box) => unreachableSet.has(box.id));
-  const unfolded = showUnreached || everyBoxUnreachable;
-  const visibleBoxes = unfolded
-    ? architecture.boxes
-    : architecture.boxes.filter((box) => !unreachableSet.has(box.id));
-  // Cropping the empty band the folded shelf leaves behind is presentation of
-  // backend geometry, not layout: every visible coordinate is untouched.
-  const contentHeight = unfolded
-    ? architecture.height
-    : visibleBoxes.reduce((max, box) => Math.max(max, box.y + box.height), 0);
-  const padding = 32;
+  const scene = useMemo(
+    () =>
+      prepareArchitectureCanvas(architecture, {
+        communityIndexByRegion,
+      }),
+    [architecture, communityIndexByRegion],
+  );
   const focusBox =
-    boxes.get(selectedRegionId) ??
-    boxes.get(architecture.home) ??
-    architecture.boxes.find((box) => box.home) ??
-    architecture.boxes[0];
-  const focusPoint = focusBox
-    ? {
-        x: focusBox.x + padding + focusBox.width / 2,
-        y: focusBox.y + padding + focusBox.height / 2,
-      }
-    : null;
+    scene.boxById.get(selectedRegionId) ??
+    scene.boxById.get(architecture.home) ??
+    scene.boxes.find((box) => box.home) ??
+    scene.boxes[0] ??
+    null;
+  const focusPoint = focusBox ? boxPoint(focusBox) : null;
+  const itemForKey = useCallback((key) => scene.boxById.get(key) ?? null, [scene]);
+  const drawScene = useCallback(
+    (context, state) => {
+      const stats = drawArchitectureCanvas(context, scene, state.viewport, state.palette, {
+        activeId: state.activeKey,
+        hoverId: state.hoverKey,
+        keyboardFocused: state.keyboardFocused,
+        mode,
+        selectedId: selectedRegionId,
+      });
+      return { visibleItems: stats.visibleBoxes, visibleEdges: stats.visibleEdges };
+    },
+    [mode, scene, selectedRegionId],
+  );
+  const mapLabel = architecture.home
+    ? `${architecture.boxes.length} modules in ${architecture.layer_count} import layers from Home`
+    : `${architecture.boxes.length} modules in ${architecture.layer_count} import layers, measured from the modules nothing imports`;
+
   return (
     <>
-    <MapCanvas
-      contentWidth={architecture.width + padding * 2}
-      contentHeight={contentHeight + padding * 2}
-      label="the architecture map"
-      viewKey={`architecture:${architecture.home ?? "none"}`}
-      viewportStore={viewportStore}
-      focusPoint={focusPoint}
-    >
-      <svg
-        className="architecture-map"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMin meet"
-        viewBox={`${-padding} ${-padding} ${architecture.width + padding * 2} ${contentHeight + padding * 2}`}
-        // group, not img: `img` is children-presentational in ARIA, so it
-        // stripped the name and role off every box below -- a screen-reader
-        // user tabbed into focusable elements announced as nothing at all.
-        // (StudyPanel's mini-constellation is correctly `img`: it has no
-        // interactive children to hide.)
-        role="group"
-        aria-label={
-          architecture.home
-            ? `${architecture.boxes.length} modules in ${architecture.layer_count} import layers from Home`
-            : `${architecture.boxes.length} modules in ${architecture.layer_count} import layers, measured from the modules nothing imports`
-        }
+      <MapCanvas
+        contentWidth={architecture.width + MAP_CANVAS_GEOMETRY.architecturePadding * 2}
+        contentHeight={architecture.height + MAP_CANVAS_GEOMETRY.architecturePadding * 2}
+        label="the architecture map"
+        viewKey={`architecture:${architecture.home ?? "none"}`}
+        viewportStore={viewportStore}
+        focusPoint={focusPoint}
+        centerInline
       >
-        <defs>
-          {/* userSpaceOnUse, not strokeWidth: a route's stroke scales with its
-              weight, so a strokeWidth-relative head gave the thinnest -- and
-              most numerous -- routes the smallest arrows on the map. The head
-              carries direction, which every route needs equally. */}
-          <marker
-            id="architecture-arrow"
-            className="architecture-map__arrow"
-            markerWidth="9"
-            markerHeight="8"
-            refX="9"
-            refY="4"
-            orient="auto"
-            markerUnits="userSpaceOnUse"
-          >
-            <path d="M 0 0 L 9 4 L 0 8 Z" fill="currentColor" />
-          </marker>
-          <marker
-            id="architecture-cycle-arrow"
-            className="architecture-map__arrow is-cycle"
-            markerWidth="9"
-            markerHeight="8"
-            refX="9"
-            refY="4"
-            orient="auto"
-            markerUnits="userSpaceOnUse"
-          >
-            <path d="M 0 0 L 9 4 L 0 8 Z" fill="currentColor" />
-          </marker>
-        </defs>
-        <g className="architecture-map__edges">
-          {architecture.edges.map((edge) => {
-            const from = boxes.get(edge.src);
-            const to = boxes.get(edge.dst);
-            if (!from || !to) return null;
-            // A folded box takes its edges with it (fixtures import each
-            // other); an edge to a hidden anchor would point at nothing.
-            if (!unfolded && (unreachableSet.has(edge.src) || unreachableSet.has(edge.dst))) {
-              return null;
-            }
-            return (
-              <path
-                key={`${edge.src}->${edge.dst}`}
-                d={architectureEdgePath(edge.points)}
-                // Uncertainty stays visible in 2D exactly as it does in 3D.
-                strokeDasharray={edge.certain ? undefined : "5 4"}
-                strokeWidth={architectureEdgeWidth(edge.weight)}
-                markerEnd={`url(#${edge.cycle ? "architecture-cycle-arrow" : "architecture-arrow"})`}
-                className={`architecture-map__edge${edge.cycle ? " is-cycle" : ""}${edge.certain ? "" : " is-possible"}`}
-              />
-            );
-          })}
-        </g>
-        {visibleBoxes.map((box) => (
-          <g
-            key={box.id}
-            className="architecture-map__box"
-            data-understood={box.understood}
-            data-home={box.home}
-            data-reachable={box.reachable}
-            data-partial={box.partial}
-            // The community family hue rides a custom property the fill rule
-            // mixes a few percent of into the box ground -- zones form without
-            // touching the stroke channels that carry understood/Home/
-            // reachability. Undefined (no community fact) falls back to the
-            // plain ground in CSS.
-            style={
-              communityIndexByRegion?.has(box.id)
-                ? { "--box-com": `var(--cm-com-${communityIndexByRegion.get(box.id)})` }
-                : undefined
-            }
-            // Selection is the interaction accent (--cm-orbit), never amber:
-            // the box you clicked (or drilled into) reads as "you chose this",
-            // which is distinct from "understood". A persistent attribute, not
-            // :focus-visible, so a mouse click shows it too -- the whole bug was
-            // that focus-visible stays dark for a pointer user.
-            data-selected={box.id === selectedRegionId}
-            transform={`translate(${box.x} ${box.y})`}
-            role="button"
-            tabIndex={0}
-            aria-label={`${box.label}, ${box.node_count} ${box.node_count === 1 ? "structure" : "structures"}, ${box.loc} ${box.loc === 1 ? "line" : "lines"}${box.understood ? ", understood" : ", not yet understood"}${box.home ? ", Home" : ""}${box.reachable ? "" : ", no import route from Home"}${box.partial ? ", unchartable, syntax error" : ""}`}
-            onClick={() => onSelectRegion(box.id)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onSelectRegion(box.id);
-              }
-            }}
-          >
-            {/* Native hover tooltip; the full label is also always in
-                aria-label above regardless of what the glyphs below fit. */}
-            <title>{box.label}{box.partial ? " — unchartable, syntax error" : ""}</title>
-            <rect width={box.width} height={box.height} rx="3" />
-            {/* style, never the fill ATTRIBUTE: var() is invalid in an SVG
-                presentation attribute, so the attribute form silently fell
-                back to the box navy and the legend advertised language
-                colours the map never drew. The style property is CSS, where
-                var() resolves. */}
-            <rect
-              className="box-tint"
-              width="4"
-              height={box.height}
-              style={{ fill: tintFor(box.language) }}
-            />
-            {/* A corner flag, not just a colour: the box outline already
-                carries understood (colour), Home (width), and reachability
-                (dash), so a fourth signal on the same property would collide
-                -- and a syntax error must stay perceivable without colour
-                vision. The words are in <title> and aria-label above; the
-                meta line below is already full at this fixed box width. */}
-            {box.partial ? (
-              <path
-                className="box-partial"
-                d={`M ${box.width - 16} 2 L ${box.width - 2} 2 L ${box.width - 2} 16 Z`}
-              />
-            ) : null}
-            {/* short_label is the tail of the module's real path; `label` is
-                the full identifier and stays in <title> and aria-label above.
-                Truncating the dotted id instead used to render two different
-                modules as the same glyphs (codemble.server… twice). */}
-            <text x={BOX_LABEL_X} y="24">
-              {fitBoxLabel(box.short_label ?? box.label, box.width)}
-            </text>
-            <text className="box-meta" x="14" y="42">
-              {mode === "easy"
-                ? `${box.node_count} ${box.node_count === 1 ? "piece" : "pieces"}`
-                : `${box.node_count} ${box.node_count === 1 ? "node" : "nodes"} · ${box.loc} LOC`}
-            </text>
-          </g>
-        ))}
-      </svg>
+        {({ revealPoint, viewport }) => (
+          <CanvasMapSurface
+            ariaLabel={mapLabel}
+            canvasClassName="architecture-map-canvas"
+            drawScene={drawScene}
+            edgeCount={scene.edges.length}
+            fallbackItem={focusBox}
+            hitTarget={hitArchitectureCanvas}
+            itemForKey={itemForKey}
+            itemIdentity={(box) => box.id}
+            itemKey={boxKey}
+            itemLabel={architectureBoxLabel}
+            itemPoint={boxPoint}
+            itemReadout={(box) => box.label}
+            keyboardTarget={architectureKeyboardTarget}
+            onActivate={(box) => onSelectRegion(box.id)}
+            preferredKey={scene.boxById.has(selectedRegionId) ? selectedRegionId : focusBox?.id}
+            revealPoint={revealPoint}
+            scene={scene}
+            viewport={viewport}
+          />
+        )}
       </MapCanvas>
-      {/* Notes sit outside the zoom canvas: they are prose about the drawing,
-          so scaling them with it would shrink the explanation exactly when a
-          zoomed-out learner most needs to read it. */}
       {architecture.home ? null : (
         <p className="map-note">
           No Home is selected, so these layers run from the modules nothing else
           imports rather than from your entrypoint. Both are read from your imports,
           not guessed.{" "}
           {hasEntrypointCandidates
-            ? // Candidates exist, so the "Change Home" control is rendered.
-              "Pick your starting point with “Change Home” to see the same modules layered by what the project runs first."
-            : // No candidates, so no "Change Home" button is rendered -- point at
-              // the real reason instead of a control that isn't there.
-              "This project has no parser-recognisable entrypoint, so there is no “runs first” order to layer by instead."}
+            ? "Pick your starting point with “Change Home” to see the same modules layered by what the project runs first."
+            : "This project has no parser-recognisable entrypoint, so there is no “runs first” order to layer by instead."}
         </p>
       )}
       {everyBoxUnreachable ? (
-        // Nothing here connects to Home, so there is no folded/unfolded choice
-        // to offer -- the shelf IS the drawing. Say why rather than showing a
-        // note about hiding boxes that are all on screen.
         <p className="map-note">
           {languageFocusLabel
             ? `Home is not written in ${languageFocusLabel}, so none of these ${architecture.boxes.length} ${architecture.boxes.length === 1 ? "module" : "modules"} has an import route to it. They are drawn in file order rather than layered by guesswork.`
@@ -628,30 +764,25 @@ function ArchitectureMap({ architecture, mode, communityIndexByRegion, selectedR
         <p className="map-note">
           {architecture.unreachable.length}{" "}
           {architecture.unreachable.length === 1 ? "module has" : "modules have"} no import
-          route from Home
-          {showUnreached
-            ? `, so ${architecture.unreachable.length === 1 ? "it sits" : "they sit"} in the bottom rows rather than being placed by guesswork.`
-            : ". They are folded away so your connected code stays readable — nothing is hidden from the count."}{" "}
-          <button
-            type="button"
-            className="map-note__toggle"
-            aria-expanded={showUnreached}
-            onClick={() => setShowUnreached((value) => !value)}
-          >
-            {showUnreached ? "Fold them away" : "Show them"}
-          </button>
+          route from Home, so {architecture.unreachable.length === 1 ? "it sits" : "they sit"}
+          {" "}in the bottom rows rather than being placed by guesswork. Every module remains
+          searchable, drawable, and keyboard reachable.
         </p>
       ) : null}
     </>
   );
 }
 
-function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidates, onSelectNode, viewportStore, languageFocusLabel, onClearLanguageFocus }) {
-  // A root with no rows. The guard below only catches a MISSING root, so a
-  // language focus that filters out every row of a tree whose root still exists
-  // fell straight through it and drew an empty canvas with no message and no
-  // way back -- measured on this project: focusing Rust left a 1396x509 void
-  // whose only text was a note about structures it was not showing.
+function CanvasWorkflowTree({
+  workflow,
+  mode,
+  selectedRegionId,
+  hasEntrypointCandidates,
+  onSelectNode,
+  viewportStore,
+  languageFocusLabel,
+  onClearLanguageFocus,
+}) {
   if (workflow.root && workflow.nodes.length === 0) {
     return (
       <div className="map-state">
@@ -674,11 +805,6 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
     );
   }
   if (!workflow.root) {
-    // Two ways to reach an empty workflow. With candidates, a Home just hasn't
-    // been chosen and the "Change Home" control exists to fix it -- keep the
-    // original instruction. Without candidates, the parser found no entrypoint
-    // at all, the button isn't rendered, and there is no "runs first" order to
-    // show, so say that instead of pointing at a button that isn't there.
     return hasEntrypointCandidates ? (
       <div className="map-state">
         <h2>No Home is selected.</h2>
@@ -698,104 +824,78 @@ function WorkflowTree({ workflow, mode, selectedRegionId, hasEntrypointCandidate
       </div>
     );
   }
-  const rows = new Map(workflow.nodes.map((row) => [row.order, row]));
+  return (
+    <CanvasWorkflowDiagram
+      workflow={workflow}
+      mode={mode}
+      selectedRegionId={selectedRegionId}
+      onSelectNode={onSelectNode}
+      viewportStore={viewportStore}
+    />
+  );
+}
+
+function CanvasWorkflowDiagram({
+  workflow,
+  mode,
+  selectedRegionId,
+  onSelectNode,
+  viewportStore,
+}) {
+  const scene = useMemo(() => prepareWorkflowCanvas(workflow), [workflow]);
+  const selectedRow = scene.rows.find((row) => row.region === selectedRegionId) ?? null;
   const focusRow =
-    workflow.nodes.find((row) => row.id === workflow.root) ?? workflow.nodes[0];
-  const focusPoint = focusRow
-    ? { x: focusRow.x + 24, y: focusRow.y + 32 }
-    : null;
+    selectedRow ?? scene.rows.find((row) => row.id === workflow.root) ?? scene.rows[0] ?? null;
+  const focusPoint = focusRow ? workflowPoint(focusRow) : null;
+  const itemForKey = useCallback(
+    (key) => scene.rowByOrder.get(Number(key)) ?? null,
+    [scene],
+  );
+  const drawScene = useCallback(
+    (context, state) => {
+      const stats = drawWorkflowCanvas(context, scene, state.viewport, state.palette, {
+        activeOrder: state.activeKey,
+        hoverOrder: state.hoverKey,
+        keyboardFocused: state.keyboardFocused,
+        mode,
+        selectedRegionId,
+      });
+      return { visibleItems: stats.visibleRows, visibleEdges: stats.visibleEdges };
+    },
+    [mode, scene, selectedRegionId],
+  );
   return (
     <>
-    <MapCanvas
-      contentWidth={workflow.width + 32}
-      contentHeight={workflow.height + 32}
-      label="the workflow tree"
-      viewKey={`workflow:${workflow.root}`}
-      viewportStore={viewportStore}
-      focusPoint={focusPoint}
-    >
-      <svg
-        className="workflow-tree"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMinYMin meet"
-        viewBox={`-16 -16 ${workflow.width + 32} ${workflow.height + 32}`}
-        // group, not img -- see ArchitectureMap above: these rows are buttons.
-        role="group"
-        aria-label={`Call tree from ${workflow.root}, ${workflow.nodes.length} steps deep to ${workflow.depth_count} levels`}
+      <MapCanvas
+        contentWidth={workflow.width + MAP_CANVAS_GEOMETRY.workflowPadding * 2}
+        contentHeight={workflow.height + MAP_CANVAS_GEOMETRY.workflowPadding * 2}
+        label="the workflow tree"
+        viewKey={`workflow:${workflow.root}`}
+        viewportStore={viewportStore}
+        focusPoint={focusPoint}
       >
-        <g className="workflow-tree__edges">
-          {workflow.nodes.map((row) => {
-            if (row.parent === null) return null;
-            const parent = [...rows.values()]
-              .filter((candidate) => candidate.id === row.parent && candidate.order < row.order)
-              .at(-1);
-            if (!parent) return null;
-            return (
-              <path
-                key={`${row.order}`}
-                d={`M ${parent.x + 8} ${parent.y + 20} V ${row.y + 12} H ${row.x + 8}`}
-                strokeDasharray={row.certain ? undefined : "5 4"}
-                className={row.certain ? undefined : "is-possible"}
-              />
-            );
-          })}
-        </g>
-        {workflow.nodes.map((row) => (
-          <g
-            key={row.order}
-            className="workflow-tree__row"
-            data-understood={row.understood}
-            data-cut={row.cut ?? undefined}
-            data-partial={row.partial}
-            data-relation={row.relation}
-            // Every row whose structure lives in the selected module rings in
-            // the interaction accent, so clicking a box shows what it contains
-            // on this tab too. row.region is parser truth (mapview.py), matched
-            // by id -- no client-side region lookup.
-            data-selected={row.region === selectedRegionId}
-            transform={`translate(${row.x} ${row.y})`}
-            role="button"
-            tabIndex={0}
-            aria-label={`${row.label} at ${row.file}:${row.lineno}${row.certain ? "" : ", possible call"}${row.cut === "cycle" ? ", repeats an earlier step" : ""}${row.cut === "repeat" ? ", already shown above" : ""}${row.partial ? ", unchartable, syntax error" : ""}`}
-            onClick={() => onSelectNode(row.id)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onSelectNode(row.id);
-              }
-            }}
-          >
-            <circle cx="8" cy="16" r="4" />
-            {/* One <text> with two <tspan>s, so the meta flows after the label
-                at whatever width the label actually renders.
-
-                It used to be a SECOND <text> pinned to the same x/y and pushed
-                clear with `dx={row.label.length * 0.62}em` -- a guess at the
-                label's width from its character count. That is only ever right
-                for a monospace face at one size: every proportional label, and
-                every label of unusual letter widths, printed "— possible call"
-                or "— shown above" straight through its own name. Reported from
-                the served build as text merging into text on this tab. */}
-            <text x="20" y="20">
-              <tspan>{row.label}</tspan>
-              <tspan className="row-meta">
-                {row.relation === "defines"
-                  ? mode === "easy" ? " — lives here" : " — defined in this module"
-                  : row.certain
-                    ? ""
-                    : " — possible call"}
-                {row.cut === "cycle" ? " — loops back" : ""}
-                {row.cut === "repeat" ? " — shown above" : ""}
-                {/* Unlike the fixed-width architecture box, a tree row has room
-                    for the word, so partial says so in the same slot that
-                    already carries "possible call". */}
-                {row.partial ? (mode === "easy" ? " — could not be read" : " — unchartable") : ""}
-              </tspan>
-            </text>
-          </g>
-        ))}
-      </svg>
+        {({ revealPoint, viewport }) => (
+          <CanvasMapSurface
+            ariaLabel={`Call tree from ${workflow.root}, ${workflow.nodes.length} steps deep to ${workflow.depth_count} levels`}
+            canvasClassName="workflow-map-canvas"
+            drawScene={drawScene}
+            edgeCount={scene.edges.length}
+            fallbackItem={focusRow}
+            hitTarget={hitWorkflowCanvas}
+            itemForKey={itemForKey}
+            itemIdentity={(row) => `${row.order}:${row.id}:${row.file}:${row.lineno}`}
+            itemKey={workflowKey}
+            itemLabel={workflowRowLabel}
+            itemPoint={workflowPoint}
+            itemReadout={(row) => `${row.label} · ${row.file}:${row.lineno}`}
+            keyboardTarget={workflowKeyboardTarget}
+            onActivate={(row) => onSelectNode(row.id)}
+            preferredKey={focusRow?.order}
+            revealPoint={revealPoint}
+            scene={scene}
+            viewport={viewport}
+          />
+        )}
       </MapCanvas>
       {workflow.unreachable.length ? (
         <p className="map-note">

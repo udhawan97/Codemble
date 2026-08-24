@@ -3,7 +3,7 @@ title: Study a feature
 description: Follow one parser-proven journey in Easy or Expert mode, then inspect source, impact, connections, and checks.
 ---
 
-:::note[v0.19.2 product guide]
+:::note[v0.20.0 product guide]
 Study now begins with one shared, parser-owned feature journey. Easy and Expert
 change the teaching depth, never the evidence or your place in the route.
 :::
@@ -68,7 +68,7 @@ record. Charting, checks, and understood state retain their existing meanings.
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Study journey and Impact product screen. Scroll sideways to inspect it at a readable size.">
     <img src="/Codemble/shots/study-impact.png" alt="The current Expert Study panel scrolled to its integrated Impact lists over the Architecture map.">
   </div>
-  <figcaption>Codemble v0.19.2 · one journey, with Impact and Connections integrated once.</figcaption>
+  <figcaption>Codemble v0.20.0 · one journey, with Impact and Connections integrated once.</figcaption>
 </figure>
 
 The journey's details disclosure contains graph facts about the **selected

@@ -885,7 +885,7 @@ input:focus-visible {
 }
 
 /* The Map layer's variant: a row in the map column, not an overlay on it. The
-   3D canvas has nothing behind this corner, but the SVG below draws its first
+   3D canvas has nothing behind this corner, but the Map canvas below draws its first
    box and its root tree row exactly here, so floating meant display-size serif
    on top of the learner's own identifiers. Being a row rather than an overlay,
    it has nothing to keep clear of horizontally, so it does not inherit the
@@ -2901,159 +2901,59 @@ input:focus-visible {
 }
 
 .map-canvas__sized {
-  /* The zoomed drawing's box. Its size is the only thing zoom changes -- every
-     coordinate inside the SVG stays exactly as the backend computed it. */
+  /* The zoomed drawing's scroll extent. Its size is the only thing zoom
+     changes; the viewport-sized canvas stays sticky inside it and draws the
+     backend coordinates that intersect the current native scroll window. */
   min-width: 100%;
 }
 
-.architecture-map,
-.workflow-tree {
+.map-canvas-surface {
+  position: sticky;
+  inset-block-start: 0;
+  inset-inline-start: 0;
   display: block;
-  min-height: 0;
+  overflow: hidden;
+  max-width: 100%;
+  max-height: 100%;
+  contain: strict;
 }
 
-.architecture-map__edges path {
-  /* Route ink, not --cm-hairline: sharing the border ink made every edge
-     invisible against the chrome it ran beside (audit gap 3). */
-  color: var(--cm-route);
-  stroke: currentColor;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.architecture-map__edges path.is-possible,
-.architecture-map__edges path.is-cycle {
-  color: var(--cm-route-possible);
-}
-
-.architecture-map__arrow {
-  color: var(--cm-route);
-}
-
-.architecture-map__arrow.is-cycle {
-  color: var(--cm-route-possible);
-}
-
-.workflow-tree__edges path {
-  stroke: var(--cm-route);
-  stroke-width: 1.2;
-  fill: none;
-}
-
-.workflow-tree__edges path.is-possible {
-  stroke: var(--cm-route-possible);
-}
-
-.architecture-map__box rect {
-  /* A few percent of the box's community family hue (D1), set per box as
-     --box-com. Zones of related modules form at a glance while the stroke
-     channels stay free for understood (colour), Home (width) and
-     reachability (dash). Without a community fact the mix collapses to the
-     plain panel ground. */
-  fill: color-mix(in srgb, var(--box-com, var(--cm-ground-2)) 16%, var(--cm-ground-2));
-  stroke: var(--cm-hairline);
-}
-
-.architecture-map__box .box-tint {
-  stroke: none;
-}
-
-.architecture-map__box text {
-  fill: var(--cm-ink);
-  font-family: var(--cm-font-mono);
-  font-size: 13px;
-}
-
-.architecture-map__box .box-meta {
-  fill: var(--cm-ink-3);
-  font-size: 11px;
-}
-
-/* Declared before the understood rule on purpose: equal specificity means
-   source order decides, and a region that is both partial and understood
-   should still read as understood on the outline. The corner flag drawn by
-   MapView carries "partial" on its own channel either way, so the two facts
-   never compete for one property. */
-.architecture-map__box[data-partial="true"] rect:first-of-type {
-  stroke: var(--cm-route-possible);
-}
-
-.architecture-map__box .box-partial {
-  fill: var(--cm-route-possible);
-  stroke: none;
-}
-
-.architecture-map__box[data-understood="true"] rect:first-of-type {
-  stroke: var(--cm-star-high);
-}
-
-.architecture-map__box[data-home="true"] rect:first-of-type {
-  stroke-width: 2;
-}
-
-.architecture-map__box[data-reachable="false"] rect:first-of-type {
-  stroke-dasharray: 4 3;
-}
-
-.architecture-map__box:focus-visible rect:first-of-type,
-.workflow-tree__row:focus-visible circle {
+.map-canvas-surface:focus-visible {
   outline: 2px solid var(--cm-orbit);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 
-.architecture-map__box,
-.workflow-tree__row {
-  cursor: pointer;
+.map-canvas-surface canvas {
+  display: block;
 }
 
-.workflow-tree__row circle {
-  fill: var(--cm-ink-3);
-}
-
-.workflow-tree__row[data-partial="true"] circle {
-  fill: var(--cm-route-possible);
-}
-
-.workflow-tree__row[data-cut] circle {
-  fill: var(--cm-route-possible);
-}
-
-/* Last of the three at equal specificity, so understanding wins the cascade:
-   a repeated or cycle-cut row that the learner HAS proven must keep its amber.
-   The cut itself is never colour-only -- the row says "shown above" or
-   "loops back" in its own text and aria-label. */
-.workflow-tree__row[data-understood="true"] circle {
-  fill: var(--cm-star-high);
-}
-
-.workflow-tree__row text {
-  fill: var(--cm-ink);
+.map-canvas-readout {
+  position: absolute;
+  inset-inline-start: var(--cm-space-sm);
+  inset-block-end: var(--cm-space-sm);
+  max-width: calc(100% - var(--cm-space-sm) * 2);
+  padding: var(--cm-space-2xs) var(--cm-space-xs);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: rgb(16 26 62 / 92%);
+  color: var(--cm-ink-2);
   font-family: var(--cm-font-mono);
-  font-size: 13px;
+  font-size: var(--cm-text-xs);
+  overflow-wrap: anywhere;
+  white-space: normal;
+  pointer-events: none;
 }
 
-.workflow-tree__row .row-meta {
-  fill: var(--cm-ink-3);
-  font-size: 11px;
-}
-
-/* Selection wears the interaction accent (--cm-orbit), never the amber
-   understanding accent -- amber means understood only. Both signals compose
-   with the understood ones rather than replacing them: the box outline sits
-   outside its (possibly amber) stroke, and the row ring uses the circle's
-   otherwise-unused stroke channel, so an understood region that is also
-   selected still reads as understood. Driven by a persistent data-selected
-   attribute, not :focus-visible, because a pointer click must show it and
-   focus-visible stays dark for the mouse -- the exact bug this fixes. */
-.architecture-map__box[data-selected="true"] rect:first-of-type {
-  outline: 2px solid var(--cm-orbit);
-  outline-offset: 3px;
-}
-
-.workflow-tree__row[data-selected="true"] circle {
-  stroke: var(--cm-orbit);
-  stroke-width: 2;
+.map-canvas-active-option {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .map-note,
@@ -3276,7 +3176,7 @@ input:focus-visible {
   border-color: var(--cm-orbit);
 }
 
-/* Possible routes are dashed on both layers: SVG draws the Map version and
+/* Possible routes are dashed on both layers: canvas draws the Map version and
    possibleRoutes.js owns the custom WebGL path. */
 .legend-route--dashed {
   border-block-start-style: dashed;

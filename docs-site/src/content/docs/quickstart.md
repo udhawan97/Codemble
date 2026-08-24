@@ -3,7 +3,7 @@ title: Quickstart
 description: From one command to your first lit star system.
 ---
 
-:::note[This quickstart matches v0.19.2]
+:::note[This quickstart matches v0.20.0]
 The one-command package, current source, and screenshots all cover the same
 seven-language app. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
 :::
@@ -22,12 +22,12 @@ No Homebrew? Use the official installer — `curl -LsSf
 https://astral.sh/uv/install.sh | sh` on macOS and Linux, or `powershell
 -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` on
 Windows. If you would rather install Codemble permanently, `pipx install
-codemble==0.19.2` needs no uv at all.
+codemble==0.20.0` needs no uv at all.
 
 ## 2. Point it at your project
 
 ```bash
-uvx --from codemble==0.19.2 codemble
+uvx --from codemble==0.20.0 codemble
 ```
 
 Codemble opens your browser to an in-app picker: browse your home folders or
@@ -36,7 +36,7 @@ TypeScript, Go, Java, Rust, C#, and mixtures of those languages. To skip the
 picker, pass a path directly:
 
 ```bash
-uvx --from codemble==0.19.2 codemble ./my-project
+uvx --from codemble==0.20.0 codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -44,12 +44,12 @@ It keeps syntax-error files visible and labels unresolved calls instead of
 guessing. Use `--no-open` when you want to copy the printed URL yourself.
 Codemble reads supported source; it never runs your project or package scripts.
 
-For a project above 1,000 supported source files, the picker offers the
+For a project above 5,000 supported source files, the picker offers the
 busiest-first subdirectories as buttons and accepts a typed path, right in the
 UI. From the CLI, select the scope yourself:
 
 ```bash
-uvx --from codemble==0.19.2 codemble --path ./my-project/src
+uvx --from codemble==0.20.0 codemble --path ./my-project/src
 ```
 
 ## 3. Find Home

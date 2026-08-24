@@ -3,7 +3,7 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
-:::note[v0.19.2 product guide]
+:::note[v0.20.0 product guide]
 This page matches the packaged app, current source, and fresh product captures.
 [Choose a run or download route](/Codemble/download/).
 :::
@@ -12,7 +12,7 @@ This page matches the packaged app, current source, and fresh product captures.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.19.2 at galaxy level: 199 star systems across seven languages, with parser-owned names, community colour shared subtly by related proven routes, ranked labels, 35 charted systems, an unlit Home resolved to codemble.cli, and six unreadable test fixtures called out.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.20.0 at galaxy level: 203 star systems across seven languages, with parser-owned names, community colour shared subtly by related proven routes, ranked labels, 35 charted systems, an unlit Home resolved to codemble.cli, and six unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -209,11 +209,10 @@ two tabs: *Architecture* lays your modules out by folder and by how far they sit
 from Home along import routes, and *Workflow* walks the call tree from your
 entrypoint. Both layouts are computed by the same parser-backed graph the galaxy
 draws — the map cannot show you a relationship the galaxy does not have. Modules
-with no import route from Home are never guessed into position: when more than a
-handful exist they fold into a counted shelf — the note says exactly how many
-and **Show them** draws every one — so a project whose test fixtures outnumber
-its source keeps a readable connected core without hiding a single module from
-the count. Clicking anything in either layer opens the same study panel, and a
+with no import route from Home are never guessed into position: they remain in
+complete bottom rows, and the note says exactly how many. Every module stays in
+the canvas scene, Finder, and keyboard order even when test fixtures outnumber
+the connected source. Clicking anything in either layer opens the same study panel, and a
 lit system is amber in both. Architecture boxes carry their community's colour
 family and a language stripe, and routes are drawn in their own ink so a
 connection never disappears beside a box border.

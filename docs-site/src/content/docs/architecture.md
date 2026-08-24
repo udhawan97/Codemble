@@ -3,7 +3,7 @@ title: Architecture
 description: The adapter seam, the render-ready graph, and why the LLM only narrates.
 ---
 
-:::note[v0.19.2 architecture]
+:::note[v0.20.0 architecture]
 This page describes the seven-language packaged app and current source tree.
 :::
 
@@ -126,7 +126,7 @@ regions when graph JSON is requested; stale signatures simply remain dim.
 ## Stack
 
 Python 3.11+ · FastAPI · tree-sitter · Vite + React · `3d-force-graph` (three.js) ·
-plain SVG for the 2D map · Anthropic / OpenAI (bring your own key) · local JSON
+Canvas 2D for the complete flat map · Anthropic / OpenAI (bring your own key) · local JSON
 persistence.
 
 Both the 3D galaxy coordinates and the 2D map layouts are computed in

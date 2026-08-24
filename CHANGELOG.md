@@ -5,6 +5,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-08-24
+
+### Added
+- The Architecture and Workflow maps now use a complete, viewport-rendered
+  canvas surface. The default all-language map keeps every parser-owned module
+  and route represented, searchable, keyboard reachable, and recoverable;
+  explicit language focus keeps the complete named projection. Neither path
+  creates one DOM element per item.
+- The canvas Map exposes one stable keyboard focus target with directional,
+  Home/End, and Enter/Space navigation, plus a full-label readout for clipped
+  identifiers.
+
+### Changed
+- The default supported-project cap moves from 1,000 to 5,000 files after the
+  complete Map passed the same predeclared backend, Chromium, and WebKit gate.
+- Empty canvas space preserves drag-to-pan while emitted box coordinates and
+  renderer-owned painted-row bounds retain direct activation. Architecture
+  and Workflow keep their existing parser-owned coordinates, certainty,
+  progress, and language channels.
+
+### Fixed
+- Map recovery now gates on the first visible canvas slice rather than merely
+  the presence of an empty canvas element.
+
 ## [0.19.2] - 2026-08-21
 
 ### Changed

@@ -21,8 +21,9 @@ from codemble.server.app import PickerConfig, create_app
 def main() -> int:
     arguments = _arguments()
     parser = ProjectParser()
-    # This process exists only for the disposable cross-engine gate. The
-    # product default remains 1,000 unless that gate passes every budget.
+    # Keep the disposable fixture size explicit even when the product default
+    # moves: a later gate must never silently inherit a larger public cap and
+    # claim it measured a size the command did not request.
     parser.scale_cap = arguments.max_files
     codemble_app = create_app(
         picker=PickerConfig(browse_root=arguments.browse_root.resolve()),

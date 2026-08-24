@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codemble"
-version = "0.19.2"
+version = "0.20.0"
 description = "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it."
 readme = "README.md"
 license = "Apache-2.0"
@@ -93,6 +93,11 @@ exclude = [
   ".hallmark",
   ".claude",
   ".superpowers",
+  # Developer-owned backup/runtime markers can exist in a working tree but
+  # must never become published source-archive payload.
+  ".git-backup-remote",
+  ".last-git-backup-ts",
+  ".playwright-cli",
   # The public site has its own Pages artifact. Keeping it out of the Python
   # source archive also lets release.json record the archive's own digest
   # without creating a self-referential build.

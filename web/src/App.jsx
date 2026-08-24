@@ -374,7 +374,7 @@ export function App() {
   }
 
   // One element, two placements. Over the galaxy it floats: the 3D canvas is
-  // deep space at this corner, so nothing is behind it. The Map draws its SVG
+  // deep space at this corner, so nothing is behind it. The Map draws its canvas
   // in normal flow from that same corner, so there it is handed to MapView and
   // takes its own row above the drawing instead of sitting on the first rows
   // of the tree.
@@ -900,7 +900,7 @@ export function App() {
           </span>
           <span>
             {/* Possible routes use the custom dashed path in the galaxy and a
-                dashed SVG path on the Map, so the semantic key is the same on
+                dashed canvas stroke on the Map, so the semantic key is the same on
                 both layers. */}
             <i className="legend-route legend-route--possible legend-route--dashed" />
             {mode === "easy" ? "Possible connection" : "Possible relationship"}

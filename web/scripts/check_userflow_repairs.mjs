@@ -43,6 +43,7 @@ try {
       await checkHomeGeometry(browser, engine, project.url);
       await checkCompactRailEscape(browser, engine, project.url);
       await checkCompactQuizVisibility(browser, engine, project.url);
+      await checkCanvasMapInteraction(browser, engine, project.url);
       await checkGuidanceFocus(browser, engine, project.url);
       await checkPickerRecovery(browser, engine, picker.url);
     } finally {
@@ -52,6 +53,173 @@ try {
 } finally {
   await Promise.all(children.map(stopChild));
   for (const dataRoot of dataRoots) rmSync(dataRoot, { force: true, recursive: true });
+}
+
+async function checkCanvasMapInteraction(browser, engine, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page.setDefaultTimeout(15_000);
+  try {
+    await page.goto(url, { waitUntil: "networkidle" });
+    await settleApp(page);
+    const mapTruth = await page.evaluate(async () => {
+      const [mapResponse, graphResponse] = await Promise.all([
+        fetch("/api/map"),
+        fetch("/api/graph"),
+      ]);
+      if (!mapResponse.ok) throw new Error(`map truth returned ${mapResponse.status}`);
+      if (!graphResponse.ok) throw new Error(`graph truth returned ${graphResponse.status}`);
+      const map = await mapResponse.json();
+      const graph = await graphResponse.json();
+      const unreachableTarget = map.architecture.unreachable.at(-1);
+      return {
+        boxCount: map.architecture.boxes.length,
+        unreachableCount: map.architecture.unreachable.length,
+        unreachableTarget,
+        unreachableFile:
+          graph.nodes.find((node) => node.region === unreachableTarget)?.file ?? unreachableTarget,
+      };
+    });
+    const architecture = page.locator(".architecture-map-canvas");
+    assert.ok(
+      mapTruth.unreachableCount > 8,
+      `${engine}: complete-default fixture no longer has more than eight unreachable modules`,
+    );
+    assert.equal(
+      Number(await architecture.getAttribute("data-item-count")),
+      mapTruth.boxCount,
+      `${engine}: default Architecture scene folded parser-owned modules`,
+    );
+    await architecture.focus();
+    await architecture.press("Home");
+    const allLanguageActive = await architecture.locator(".map-canvas-active-option").evaluate(
+      (option) => ({ id: option.id, position: option.getAttribute("aria-posinset"), text: option.textContent }),
+    );
+    await architecture.press("Meta+K");
+    const finder = page.locator(".module-finder[open]");
+    await finder.waitFor();
+    const search = finder.getByRole("searchbox", { name: "Find a module by name or path" });
+    await search.fill(mapTruth.unreachableFile);
+    await finder.getByRole("option").first().waitFor();
+    await search.press("Enter");
+    await finder.waitFor({ state: "detached" });
+    assert.ok(
+      (await page.locator(".location [aria-current='page']").innerText()).includes(mapTruth.unreachableTarget),
+      `${engine}: Finder did not reach an unfolded-default unreachable module`,
+    );
+    const javascriptFocus = page.getByRole("button", { name: /^Focus JavaScript:/ });
+    await javascriptFocus.click();
+    await page.waitForFunction(
+      () => document.querySelector(".language-focus button[aria-pressed='true']")?.getAttribute("aria-label")?.startsWith("Focus JavaScript:"),
+    );
+    const focusedArchitecture = page.locator(".architecture-map-canvas");
+    await focusedArchitecture.focus();
+    await focusedArchitecture.press("Home");
+    const focusedLanguageActive = await focusedArchitecture.locator(".map-canvas-active-option").evaluate(
+      (option) => ({ id: option.id, position: option.getAttribute("aria-posinset"), text: option.textContent }),
+    );
+    assert.equal(allLanguageActive.position, "1", `${engine}: all-language Home did not select position 1`);
+    assert.equal(focusedLanguageActive.position, "1", `${engine}: focused language Home did not select position 1`);
+    assert.notEqual(
+      focusedLanguageActive.text,
+      allLanguageActive.text,
+      `${engine}: language projection did not replace the first active item fixture`,
+    );
+    assert.notEqual(
+      focusedLanguageActive.id,
+      allLanguageActive.id,
+      `${engine}: active-descendant identity did not change for a same-position projection swap`,
+    );
+    const pythonFocus = page.getByRole("button", { name: /^Focus Python:/ });
+    await pythonFocus.click();
+    await page.waitForFunction(
+      () => document.querySelector(".language-focus button[aria-pressed='true']")?.getAttribute("aria-label")?.startsWith("Focus Python:"),
+    );
+    await page.getByRole("button", { name: "What runs first", exact: true }).click();
+    const surface = page.locator(".workflow-map-canvas");
+    await surface.waitFor();
+    await surface.focus();
+    await surface.press("End");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    const focusedPosition = await surface.locator(".map-canvas-active-option").evaluate((option) => ({
+      position: option.getAttribute("aria-posinset"),
+      size: option.getAttribute("aria-setsize"),
+    }));
+    assert.equal(
+      focusedPosition.position,
+      focusedPosition.size,
+      `${engine}: focused Workflow keyboard did not reach its final retained row`,
+    );
+    assert.ok(
+      Number(await surface.locator("canvas").getAttribute("data-visible-items")) > 0,
+      `${engine}: focused Workflow culled every visible row`,
+    );
+
+    await surface.press("Home");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    const canvas = surface.locator("canvas");
+    await canvas.click({ position: { x: 44, y: 32 } });
+    await page.locator(".study-preview").waitFor();
+    await closeStudy(page);
+
+    const scroller = surface.locator("xpath=ancestor::*[contains(@class,'map-scroll')]");
+    await scroller.evaluate((node) => { node.scrollTop = 0; });
+    const box = await canvas.boundingBox();
+    assert.ok(box, `${engine}: Workflow canvas has no pointer box`);
+    await page.mouse.move(box.x + box.width - 8, box.y + Math.min(320, box.height - 24));
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 8, box.y + 80, { steps: 6 });
+    await page.mouse.up();
+    assert.ok(
+      (await scroller.evaluate((node) => node.scrollTop)) > 0,
+      `${engine}: blank far-right canvas space did not drag-to-pan`,
+    );
+    assert.equal(
+      await page.locator(".study-preview").count(),
+      0,
+      `${engine}: blank far-right canvas space activated a workflow row`,
+    );
+    results.push(`${engine} focused Workflow keyboard, pointer, and blank-space pan`);
+  } finally {
+    await page.close();
+  }
+
+  const narrow = await browser.newPage({ viewport: { width: 320, height: 640 } });
+  narrow.setDefaultTimeout(15_000);
+  try {
+    await narrow.goto(url, { waitUntil: "networkidle" });
+    await settleApp(narrow);
+    const surface = narrow.locator(".architecture-map-canvas");
+    await surface.focus();
+    const longLabel = "a/complete/module/identifier/that/remains/readable/at/two-hundred-percent.py";
+    const measured = await surface.locator(".map-canvas-readout").evaluate((readout, text) => {
+      readout.textContent = text;
+      const style = getComputedStyle(readout);
+      const rect = readout.getBoundingClientRect();
+      return {
+        text: readout.textContent,
+        whiteSpace: style.whiteSpace,
+        overflowX: style.overflowX,
+        completeHeight: readout.scrollHeight <= readout.clientHeight + 1,
+        completeWidth: readout.scrollWidth <= readout.clientWidth + 1,
+        inViewport: rect.left >= -1 && rect.right <= innerWidth + 1,
+      };
+    }, longLabel);
+    assert.deepEqual(
+      measured,
+      {
+        text: longLabel,
+        whiteSpace: "normal",
+        overflowX: "visible",
+        completeHeight: true,
+        completeWidth: true,
+        inViewport: true,
+      },
+      `${engine}: full canvas label is clipped at 320px`,
+    );
+    results.push(`${engine} full canvas label at 320px`);
+  } finally {
+    await narrow.close();
+  }
 }
 
 for (const result of results) console.log(`PASS  ${result}`);
@@ -98,8 +266,9 @@ async function checkCompactQuizVisibility(browser, engine, url) {
     try {
       await page.goto(url, { waitUntil: "networkidle" });
       await settleApp(page);
-      const box = page.locator("[role='button'][aria-label*='structure']").first();
-      await box.click({ force: true });
+      const map = page.locator(".architecture-map-canvas").first();
+      await map.focus();
+      await page.keyboard.press("Enter");
       const prove = page.getByRole("button", {
         name: /^(Prove understanding|Review understanding|Check availability)$/,
       }).first();
@@ -436,8 +605,9 @@ async function settleApp(page) {
 async function openStudy(page) {
   const read = page.getByRole("button", { name: "Read the source", exact: true });
   if (!(await read.count()) || !(await read.first().isVisible())) {
-    const box = page.locator("[role='button'][aria-label*='structure']").first();
-    await box.click({ force: true });
+    const map = page.locator(".architecture-map-canvas").first();
+    await map.focus();
+    await page.keyboard.press("Enter");
     await read.first().waitFor();
   }
   await read.first().click();
@@ -447,9 +617,10 @@ async function openStudy(page) {
 async function openStudyNormally(page) {
   const workflow = page.getByRole("button", { name: "What runs first", exact: true });
   await workflow.click();
-  const row = page.locator(".workflow-tree__row").first();
-  await row.waitFor();
-  await row.click({ force: true });
+  const tree = page.locator(".workflow-map-canvas");
+  await tree.waitFor();
+  await tree.focus();
+  await page.keyboard.press("Enter");
   await page.locator(".study-preview").waitFor();
 }
 

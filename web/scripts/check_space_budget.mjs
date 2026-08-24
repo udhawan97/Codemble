@@ -524,9 +524,10 @@ async function settleFirstRun(page, register, { home = false } = {}) {
  */
 async function descend(page, level) {
   if (level === "region") {
-    const box = page.locator("[role='button'][aria-label*='structure']").first();
-    if ((await box.count()) === 0) return false;
-    await box.click({ timeout: 8000 }).catch(() => {});
+    const map = page.locator(".architecture-map-canvas").first();
+    if ((await map.count()) === 0) return false;
+    await map.focus();
+    await page.keyboard.press("Enter");
   } else {
     const read = page.getByRole("button", { name: /read the source/i }).first();
     if ((await read.count()) === 0) return false;

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -86,6 +87,18 @@ if (distDirectory) {
     const path = resolve(repositoryRoot, distDirectory, artifact.filename);
     assert.equal(await digestFile(path), artifact.sha256, `${artifact.filename} build drifted`);
   }
+  const sdistPath = resolve(repositoryRoot, distDirectory, release.sdist.filename);
+  const archiveEntries = execFileSync("tar", ["-tzf", sdistPath], {
+    encoding: "utf8",
+  }).trim().split("\n");
+  const forbiddenArchiveEntry = archiveEntries.find((entry) =>
+    /(?:^|\/)(?:\.git(?:\/|$)|\.git-backup-remote$|\.last-git-backup-ts$|\.playwright-cli(?:\/|$)|\.env(?:\.(?!example$)[^/]+)?$|\.DS_Store$)/.test(entry),
+  );
+  assert.equal(
+    forbiddenArchiveEntry,
+    undefined,
+    `source archive contains developer or sensitive state: ${forbiddenArchiveEntry}`,
+  );
   process.stdout.write(`release artifact build passed (${release.tag}; local dist)\n`);
   process.exit(0);
 }
