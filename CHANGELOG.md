@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-08-25
+
+### Fixed
+- Source archives now explicitly exclude the developer-only `uv.lock` that
+  `uv run --with build` can create before invoking Hatchling. Local uv builds
+  and trusted clean-checkout builds therefore produce the same sdist bytes.
+
+### Release integrity
+- The immutable v0.21.0 tag remains recorded as a blocked prerelease: its
+  trusted publish workflow stopped before PyPI when the clean-checkout sdist
+  exposed the local lockfile pollution. v0.21.1 carries the complete
+  nine-language adventure release plus the corrected archive boundary.
+
 ## [0.21.0] - 2026-08-25
 
 ### Added

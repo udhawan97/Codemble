@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codemble"
-version = "0.21.0"
+version = "0.21.1"
 description = "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it."
 readme = "README.md"
 license = "Apache-2.0"
@@ -103,6 +103,10 @@ exclude = [
   ".git-backup-remote",
   ".last-git-backup-ts",
   ".playwright-cli",
+  # `uv run --with build` creates this developer lockfile before invoking the
+  # build backend. Clean CI builds do not. Excluding it keeps the sdist a
+  # function of tracked release source rather than the caller's launcher.
+  "uv.lock",
   # These files are deliberately generated/ignored by the parser fixture. Hatch
   # otherwise includes them when a developer builds from an exercised worktree,
   # making that sdist differ from the same commit built in a clean checkout.

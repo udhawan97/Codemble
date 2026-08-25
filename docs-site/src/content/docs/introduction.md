@@ -42,7 +42,7 @@ optional extra: bring your own Claude or OpenAI key, or run a local model
 through Ollama and send nothing anywhere.
 
 :::note[Status]
-Codemble **v0.21.0** is published on PyPI and maps Python, JavaScript,
+Codemble **v0.21.1** is published on PyPI and maps Python, JavaScript,
 TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixed projects. First run offers
 free exploration or a guided First Flight. Every landing can speak Easy or
 Expert while preserving one parser-owned route and graph; guided stops continue

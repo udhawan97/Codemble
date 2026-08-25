@@ -212,9 +212,9 @@ The v0.1.0 Python learner-acceptance issue stays open; technical completion
 does not claim those external runs passed.
 
 **NEXT — the privacy boundary for read-only sharing.** The parser and scale
-slate is now complete through the v0.21.0 candidate: Python's call resolution
+slate is now complete through the v0.21.1 candidate: Python's call resolution
 and lens (v0.11.0), JS/TS builtin classification and entrypoint ranking
-(v0.12.0), bounded parser evidence (v0.19.0), Ruby/PHP parsing (v0.21.0), and a
+(v0.12.0), bounded parser evidence (v0.19.0), Ruby/PHP parsing (v0.21.1), and a
 complete canvas Map that passes the 5,000-module backend, Chromium, and WebKit gate. The next build phase
 must define provenance, expiry, deletion, and source-exclusion for the planned
 shareable read-only galaxy link before adding its only cloud touch.
@@ -255,7 +255,7 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M18 adventure launch, landings, and Ruby/PHP** · Last updated:
-2026-08-25 · Session note: the v0.21.0 candidate adds a deliberate free-explore
+2026-08-25 · Session note: the v0.21.1 candidate adds a deliberate free-explore
 or First Flight launch, Easy/Expert landing briefs, seeded game-level space art,
 and conservative Ruby/PHP adapters without changing evidence or progression.
 
@@ -271,6 +271,12 @@ add deterministic terrain, mineral bands, atmosphere, tilt, and rotation. All
 new scenery adds no unsupported fact, is reduced-motion aware, and is
 recursive-disposal covered. Language tint mirrors parser truth; amber and its
 starburst still mean passed checks and nothing else.
+
+The immutable `v0.21.0` tag is retained as a blocked prerelease. Its trusted
+workflow stopped before PyPI because a local `uv run --with build` created an
+untracked `uv.lock` that entered only the local sdist; the clean CI sdist
+correctly disagreed with the manifest. v0.21.1 explicitly excludes that
+developer lockfile, and must repeat candidate CI and the full outside-in gate.
 
 Ruby and PHP now pass through the same adapter/finalization seam as the existing
 languages, with syntax-backed concepts, conservative calls, safe partial-file
@@ -288,7 +294,7 @@ landing explanation plus exact connection counts in the first viewport while
 the complete journey remains reachable.
 Native Safari acceptance was attempted but ScreenCaptureKit could not start the
 capture; WebKit is recorded only as engine evidence. v0.20.0 remains the stable
-public release until v0.21.0 completes candidate CI, exact-tag publication,
+public release until v0.21.1 completes candidate CI, exact-tag publication,
 outside-in artifact proof, main CI, Pages, and cold-install verification. Issue
 #13 remains open.
 
@@ -1786,7 +1792,9 @@ evidence are rebuilt from the reviewed source.
       ten-case semantic-oracle coverage, and pinned Rails/Laravel corpus receipts
 - [x] Rebuild the bundled SPA, nine public captures, brand social card, README,
       guides, changelog, release notes, and provenance record
-- [ ] Complete two council rounds, candidate PR CI, exact-tag v0.21.0 publish,
+- [x] Preserve the blocked v0.21.0 tag as failure evidence and exclude
+      developer-only `uv.lock` state from the reproducible source archive
+- [ ] Complete two council rounds, candidate PR CI, exact-tag v0.21.1 publish,
       outside-in artifact proof, main CI/Pages, and cold-install verification
 
 **Acceptance in progress:** 542 Python tests, Ruff, frontend contract/build,

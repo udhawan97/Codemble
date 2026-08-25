@@ -90,7 +90,7 @@ CODEMBLE_PYTHON=python3.12 npm run check:large-project -- \
   --output /tmp/codemble-browser-scale.json
 ```
 
-The v0.21.0 renderer changes scenery, not truth, and retains v0.20.0's complete
+The v0.21.1 renderer changes scenery, not truth, and retains v0.20.0's complete
 Map delivery: the source scene retains all
 5,000 modules and 4,999 routes while the viewport draws only the intersecting
 slice. Finder and End-key navigation both reach the final module directly;
@@ -102,7 +102,7 @@ activation, process RSS high-water mark, usable time, DOM and resource budgets,
 event-loop lag, Finder input latency, canvas keyboard arrival, recovery, and
 320 px geometry.
 
-The final v0.21.0 macOS candidate receipt measured 3.756 s cold activation,
+The final v0.21.1 macOS candidate receipt measured 3.756 s cold activation,
 1.345 s no-change activation, and a 166,395,904-byte process RSS high-water
 mark. Chromium reached usable in 1.480 s with 99 DOM elements, five visible
 boxes, 37.4 ms canvas End-key arrival, 30.4 ms Finder input p95, 55.2 ms

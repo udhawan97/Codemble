@@ -1,11 +1,11 @@
 ---
 title: Installation
-description: Run Codemble v0.21.0 and configure optional narration.
+description: Run Codemble v0.21.1 and configure optional narration.
 ---
 
 :::note[One current version]
 The packaged app, current source, screenshots, and these instructions all match
-**v0.21.0**. [Download the wheel or source archive](/Codemble/download/) when
+**v0.21.1**. [Download the wheel or source archive](/Codemble/download/) when
 you do not want the one-command route.
 :::
 
@@ -36,14 +36,14 @@ local Ollama can narrate instead, with nothing leaving your machine.
     <div class="cm-step-body">
       <p class="cm-step-title">Open Codemble</p>
       <p class="cm-step-note">Pick a project in the browser. Nothing is added to your system Python.</p>
-      <pre class="cm-step-cmd"><code>uvx --from codemble==0.21.0 codemble</code></pre>
+      <pre class="cm-step-cmd"><code>uvx --from codemble==0.21.1 codemble</code></pre>
     </div>
   </li>
 </ol>
 
 Use uv's [official installation guide](https://docs.astral.sh/uv/getting-started/installation/)
 if you do not use Homebrew. Prefer a permanent install? Run `pipx install
-codemble==0.21.0`, then `codemble`. Plain `pip install codemble==0.21.0` also works inside a
+codemble==0.21.1`, then `codemble`. Plain `pip install codemble==0.21.1` also works inside a
 virtual environment.
 
 The shorter `uvx codemble` intentionally follows the newest PyPI release. The
@@ -52,7 +52,7 @@ version-pinned command above stays aligned with this guide and its screenshots.
 Codemble opens an in-app picker. To skip it, pass a folder:
 
 ```bash
-uvx --from codemble==0.21.0 codemble ./your-project
+uvx --from codemble==0.21.1 codemble ./your-project
 ```
 
 The package contains the production web app, so Node.js is not required.
@@ -60,7 +60,7 @@ The package contains the production web app, so Node.js is not required.
 ## Build an editable checkout
 
 ```bash
-git clone --branch v0.21.0 --depth 1 https://github.com/udhawan97/Codemble.git
+git clone --branch v0.21.1 --depth 1 https://github.com/udhawan97/Codemble.git
 cd Codemble
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
@@ -68,7 +68,7 @@ pip install -e .
 codemble
 ```
 
-Run `codemble --version` to confirm v0.21.0. Contributors should follow the
+Run `codemble --version` to confirm v0.21.1. Contributors should follow the
 [full source build and verification guide](/Codemble/build-from-source/).
 
 ## Bring your own key—or do not

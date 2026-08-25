@@ -9,9 +9,9 @@ only when milestones actually complete. The shape:
 
 ## NOW — learner evidence and the nine-language adventure
 
-Packaged v0.21.0 and current source map Python, JavaScript, TypeScript, Go,
+Packaged v0.21.1 and current source map Python, JavaScript, TypeScript, Go,
 Java, Rust, C#, Ruby, PHP, and mixed projects through one local parser-proven
-learning loop. v0.21.0 adds the free-explore or First Flight launch choice,
+learning loop. v0.21.1 adds the free-explore or First Flight launch choice,
 guided landing-to-check handoff, Easy/Expert landing briefs, a richer
 deterministic game sky, and the two new
 adapters while retaining v0.20.0's complete 5,000-file Map gate. The current
