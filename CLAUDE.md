@@ -255,11 +255,11 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M18 adventure launch, landings, and Ruby/PHP** · Last updated:
-2026-08-25 · Session note: the v0.21.1 candidate adds a deliberate free-explore
+2026-08-25 · Session note: verified stable v0.21.1 adds a deliberate free-explore
 or First Flight launch, Easy/Expert landing briefs, seeded game-level space art,
 and conservative Ruby/PHP adapters without changing evidence or progression.
 
-**Two implementation loops are complete; release proof is in progress.** First
+**Two implementation loops and the full release gate are complete.** First
 run now persists the selected explanation register before either opening the
 complete Galaxy or starting the existing bounded First Flight. Landing on a
 structure exposes its real kind/span and inbound/outbound graph connections in
@@ -276,7 +276,8 @@ The immutable `v0.21.0` tag is retained as a blocked prerelease. Its trusted
 workflow stopped before PyPI because a local `uv run --with build` created an
 untracked `uv.lock` that entered only the local sdist; the clean CI sdist
 correctly disagreed with the manifest. v0.21.1 explicitly excludes that
-developer lockfile, and must repeat candidate CI and the full outside-in gate.
+developer lockfile. Its replacement clean build, exact-tag publish, and
+outside-in proof all agree.
 
 Ruby and PHP now pass through the same adapter/finalization seam as the existing
 languages, with syntax-backed concepts, conservative calls, safe partial-file
@@ -285,7 +286,7 @@ corpus (`1f0c247…`) parsed 3,452 Ruby files into 53,478 nodes with zero partia
 files and 298,355 edges in 21.760 s; Laravel Framework (`9b21ce0…`) parsed
 3,034 PHP files into 38,540 nodes with one partial file and 207,232 edges in
 43.573 s. Immediate repeats were
-deterministic. The candidate currently passes 542 Python tests, Ruff, the full
+deterministic. The released candidate passes 542 Python tests, Ruff, the full
 frontend build/contracts, and all 48 Chromium/WebKit user-flow journeys. The
 final 5,000-module gate reaches a usable app in 1.48 s in Chromium and 2.03 s in
 WebKit after large Galaxy startup began yielding for 650 ms; Map takeover
@@ -293,10 +294,13 @@ cancels the pending WebGL construction. Compact panel-reach now keeps the
 landing explanation plus exact connection counts in the first viewport while
 the complete journey remains reachable.
 Native Safari acceptance was attempted but ScreenCaptureKit could not start the
-capture; WebKit is recorded only as engine evidence. v0.20.0 remains the stable
-public release until v0.21.1 completes candidate CI, exact-tag publication,
-outside-in artifact proof, main CI, Pages, and cold-install verification. Issue
-#13 remains open.
+capture; WebKit is recorded only as engine evidence. Annotated tag object
+`913d641` peels to release commit `9f52778`; replacement candidate PR CI
+`32831499727`, trusted publish `32832515968`, main CI `32832683519`, and Pages
+`32832683592` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on
+wheel `ba515552…90212` and sdist `588c910f…613c0`; a cold Python 3.11 install
+reports 0.21.1 and carries `index-Is2yGdJX.js` plus `index-DVgxDoNx.css`.
+v0.21.1 is the stable public release. Issue #13 remains open.
 
 Previously (2026-08-24) · Session note: verified stable v0.20.0 replaced
 per-item Map SVG DOM with complete viewport canvas delivery and promoted the
@@ -1779,7 +1783,7 @@ engines remain below the DOM, resource, usable-time, input, keyboard, recovery,
 event-loop, memory, and 320 px overflow budgets; the production SPA and public
 evidence are rebuilt from the reviewed source.
 
-### M18 — Adventure launch, landings, and Ruby/PHP (candidate, 2026-08-25)
+### M18 — Adventure launch, landings, and Ruby/PHP ✅ (2026-08-25)
 - [x] Separate first-run free exploration from the existing bounded First
       Flight and durably commit Easy/Expert before guided navigation begins
 - [x] Continue First Flight through an explicit parser-owned landing and the
@@ -1794,20 +1798,21 @@ evidence are rebuilt from the reviewed source.
       guides, changelog, release notes, and provenance record
 - [x] Preserve the blocked v0.21.0 tag as failure evidence and exclude
       developer-only `uv.lock` state from the reproducible source archive
-- [ ] Complete two council rounds, candidate PR CI, exact-tag v0.21.1 publish,
+- [x] Complete two council rounds, candidate PR CI, exact-tag v0.21.1 publish,
       outside-in artifact proof, main CI/Pages, and cold-install verification
 
-**Acceptance in progress:** 542 Python tests, Ruff, frontend contract/build,
+**Acceptance complete:** 542 Python tests, Ruff, frontend contract/build,
 semantic oracle, 48 disposable Chromium/WebKit journeys, compact panel-reach,
 and the 5,000-module backend/browser budget pass. Native Safari is not claimed
-because ScreenCaptureKit could not start its capture. Publication still
-requires fresh Graphify, two council rounds, hosted candidate CI, reproducible
-artifacts, and outside-in public verification.
+because ScreenCaptureKit could not start its capture. Fresh Graphify, two
+council rounds, hosted candidate CI, reproducible artifacts, exact-tag trusted
+publication, outside-in package proof, cold install, main CI, and Pages pass.
 
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-25 | v0.21.1 becomes stable only after the v0.21.0 archive mismatch is preserved, repaired, and the replacement exact tag passes every outside-in gate | The v0.21.0 trusted workflow `32831002724` stopped before PyPI when an untracked local `uv.lock` polluted only the local sdist; its immutable tag remains a blocked prerelease. v0.21.1 excludes that developer file. Annotated tag `v0.21.1` (`913d641`) peels to `9f52778`; replacement candidate CI `32831499727`, trusted publish `32832515968`, main CI `32832683519`, and Pages `32832683592` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on wheel `ba515552…90212` and sdist `588c910f…613c0`; a cold Python 3.11 install reports 0.21.1 and carries `index-Is2yGdJX.js` plus `index-DVgxDoNx.css`. The follow-up changes only this operating truth and must never move the release tag |
 | 2026-08-25 | Every First Flight stop offers an explicit **Land and learn** action that selects the first complete non-module declaration in source order, falling back to the module anchor, then hands off to the existing Study and graph-derived check flow | A system-only tour did not satisfy the requested guided learning or quiz route, and a manual canvas Enter was not guidance. Source order is deterministic parser evidence, not an invented importance rank. Reusing `SELECT_STUDY_NODE`, Study guidance, and `OPEN_CHECKS` preserves the one visit, explanation, and check pipeline without a second lesson or progression state |
 | 2026-08-25 | First Flight is a tour of Home's direct proven imports, not a claim that each consecutive stop connects to the next; guided intent waits through Home calibration. Landing states parser-owned role purpose when present and explicitly unknown purpose otherwise. Semantic art channels mirror existing truth rather than becoming unlabelled decoration | Round-one outcome review found that `Home → alpha → beta` reads as a path even when only `Home → alpha` and `Home → beta` exist, that a guided choice fell through to free exploration when Home was unresolved, and that metadata-only prose could not satisfy a promise to explain purpose. The corrected tour copy, pending guided state, role-rule narration, and explicit unknown preserve the adventure without inventing an edge, a Home, or a job. Language nebulae and understood starbursts are truthful encodings, so the boundary is no unsupported fact, not no semantics |
 | 2026-08-25 | Projects above 900 source files yield 650 ms before constructing the Galaxy runtime; the honest preparation state is cancellable when the complete Map takes over. Compact Study keeps the landing explanation and exact connection counts in the first viewport, with full facts and journey in document order | The 5,000-module first-run route initially spent 10.9 s building a 3D scene the scale gate would immediately replace. A bounded yield preserves immediate entry for ordinary projects and lets the existing evidence-complete renderer win without duplicate work. At 320 px, showing every connection before the explanation hid the reason for landing; progressive disclosure preserves every fact while putting meaning before inventory |
