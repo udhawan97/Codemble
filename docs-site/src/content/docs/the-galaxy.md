@@ -3,7 +3,7 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
-:::note[v0.20.0 product guide]
+:::note[v0.21.0 product guide]
 This page matches the packaged app, current source, and fresh product captures.
 [Choose a run or download route](/Codemble/download/).
 :::
@@ -12,13 +12,15 @@ This page matches the packaged app, current source, and fresh product captures.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.20.0 at galaxy level: 203 star systems across seven languages, with parser-owned names, community colour shared subtly by related proven routes, ranked labels, 35 charted systems, an unlit Home resolved to codemble.cli, and six unreadable test fixtures called out.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.21.0 at galaxy level: 215 star systems across nine languages, with a seeded spiral starfield, parser-owned names, community colour shared subtly by related proven routes, ranked labels, 37 charted systems, an unlit Home resolved to codemble.cli, and eight unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
 
-The galaxy is not an artist's impression. Every visual property encodes a fact
-from the parsed structure of your code:
+The galaxy's structure is not an artist's impression. Every semantic visual
+property below comes from parsed code; spiral dust, distant stars, nebula
+variation, reticle glass, and the optical vignette are seeded scenery and
+add no independent meaning:
 
 | Visual | Meaning |
 | --- | --- |
@@ -31,7 +33,7 @@ from the parsed structure of your code:
 | Colour family | Import community — related modules and their proven internal routes share a hue |
 | Nebula tint | Language |
 | Lit amber / dim | Understood / not yet |
-| Drifting particles | A call the parser proved; possible calls stay still |
+| Drifting particles | A route the parser proved; possible routes stay still |
 | Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
 | Routes drawn around a system | You have flown there; the system is charted |
 
@@ -85,28 +87,34 @@ picker with the parser's own error message and a one-click retry for the same
 folder — no need to restart Codemble. Cancelling works the same way: it
 returns you to the picker and stops the parse at the next file boundary.
 
-## Light that means something
+## Game-level scenery, evidence-level restraint
 
 The sky is lit rather than drawn. Every star carries a halo generated on a
 canvas at runtime, and a bloom pass is tuned so the amber of an understood
 system blooms hard while the unlit ramp barely registers — brightness in this
 sky is a claim, so it is spent where a claim exists.
 
-The background starfield is not decoration either. It is generated from a seed
+The background starfield is explicitly decoration. It is generated from a seed
 derived from your project's own file hashes, so the same code always produces
-the same sky. The ground it sits on carries its own colour and a band of ambient
-light rather than matching the app's panels, and the unlit brightness range is
-wide enough that a module belonging to none of your project's main groups is
-plainly visible — while a lit amber star remains the brightest thing in the sky
-by a wide margin.
+the same spiral disc, core, dust lanes, distant star shells, and nebula family.
+It never changes a node, route, label, certainty, visit, check, or progress
+state. The ground carries its own ambient depth rather than matching the app's
+panels, while a lit amber star remains the brightest semantic object by a wide
+margin.
 
 At galaxy level, every system sits in a faint language-tinted nebula — one hue
-for each of the seven languages Codemble reads. The seven are held at the same
+for each of the nine languages Codemble reads. The nine are held at the same
 lightness as each other, so no language reads as more important than another,
 and all of them stay clear of the amber band, which belongs to understanding
 alone. A file in a language Codemble does not read is not in the graph at all,
 so there is no system to tint; the galaxy states how many such files it saw
 rather than drawing a colourless one.
+
+For projects above 900 supported source files, Codemble yields for 650 ms before
+constructing the 3D sky and names the preparation on screen. That short window
+keeps the first-run launch responsive: if the complete Canvas Map takes over,
+the pending WebGL work is cancelled instead of building a galaxy the learner
+will not see. Ordinary projects still enter the sky immediately.
 
 When you pass a region's checks, the next time you are at galaxy level that
 system plays a 1.2-second **nebula dawn**: amber washes out across its halo and
@@ -140,26 +148,71 @@ does.
 Clearing a project's progress clears both: the understood regions and the
 explored trail.
 
+## Choose your launch
+
+On a first run, **Choose your launch** separates two intentions that used to be
+stacked into one onboarding path. **Explore freely** opens the complete Galaxy
+with coach marks dismissed. **Take a first flight** saves the selected Easy or
+Expert register, enters the Galaxy, and tours Home plus the modules Home directly
+imports. If Home needs calibration, the guided intent waits for the learner's
+selection and begins afterward. The choice changes presentation and navigation
+only; it never changes the graph, source, checks, or progress.
+
+The launch control is deliberately not a difficulty lock. Easy and Expert stay
+available in the header and again on every landing brief, so a learner can begin
+casually and ask for exact parser evidence when curiosity demands it.
+
 ## Take a First Flight
 
 When Codemble has a Home, the guidance strip offers a short **First Flight**.
 It lands at Home first, then visits only the modules Home directly imports
 through routes the parser proved, ordered deterministically by their graph
-centrality and id. The route is capped at six systems in total, so it remains
-an orientation rather than turning into an exhaustive walkthrough.
+centrality and id. The stop list is capped at six systems in total, so it
+remains an orientation rather than turning into an exhaustive walkthrough.
+Each non-Home stop is related directly to Home; the order does not claim an
+import or call between consecutive stops.
 
 Each stop names the system, language, and how many galaxy import routes lead in
-and out. **Next**, **Back**, and **Exit** are keyboard reachable. Escape exits
+and out. **Land and learn** opens the first complete parser-owned declaration in
+source order (or the safe module anchor when no complete inner declaration
+exists, including for a partially parsed file). The
+landing brief then exposes **Prove understanding**, continuing through the same
+graph-derived checks used everywhere else. **Next**, **Back**, and **Exit** are
+keyboard reachable. Escape exits
 through the same ordered dismissal path as the app's other transient surfaces
 and returns focus to the First Flight control. Every landing uses the normal
 travel path, so a toured system is charted exactly as one reached by clicking a
 star. With reduced motion enabled, the camera jump-cuts between stops instead
 of animating.
 
-First Flight has no completion badge or saved state. It can be run again at any
+First Flight has no completion badge or saved state. Landing and checks use the
+ordinary Study and check pipeline, not a second tutorial progression. The
+flight can be run again at any
 time, and if the parser has not resolved a Home the control is absent rather
 than building a route around a guess. Easy and Expert change the language of
 the guidance, not the systems visited or the facts shown.
+
+## Land on a world
+
+Selecting a structure moves the camera along the existing bounded travel path
+and opens a **Landing brief**. When role evidence exists, Easy explains that
+parser-known purpose in plain language and Expert names the exact rule. Without
+role evidence, both explicitly say purpose is unknown. Expert also adds the
+exact kind, source span, parser summary, and certainty language. Both registers
+show real inbound and outbound graph connections; an unresolved relationship
+remains a visible possible call.
+
+From the landing, continue along a connection, read the real source, inspect
+Impact, or prove understanding. Changing Easy/Expert updates the explanation in
+place rather than sending the learner back to launch. The textured terrain,
+mineral bands, atmosphere shell, tilt, and slow rotation are deterministic
+world-building keyed by node identity. They encode no language fact or progress
+claim; orbit, edges, names, source, and amber retain those jobs.
+
+On a compact screen, that landing explanation stays in the first viewport.
+Inbound, outbound, and possible-connection counts name what continues below;
+opening the disclosure reveals the complete connection facts, and the journey,
+source, Impact, and checks remain reachable in normal document order.
 
 ## Bounded orbit, not free flight
 
@@ -319,13 +372,13 @@ least one candidate. The Home you choose is remembered for the next run of the
 same project, and a saved choice the parser no longer ranks is dropped rather
 than restored.
 
-On a first run Codemble asks for your audience, then opens the three-step coach.
-Home becomes a question between them only when candidates tie for best rank —
+On a first run Codemble asks for a launch route and explanation register. Home
+becomes a question before guided travel only when candidates tie for best rank —
 test-scoped candidates rank below your project's own code, so on most projects
 it is settled without asking. Those decisions do not stack on top of one
 another, and Easy-mode guidance waits until they are finished before it suggests
 anything.
 
-The audience question is about **you**, so it is asked once and remembered for
-the next project you open. Each project still keeps its own mode, which the
-header's Easy/Expert toggle changes at any time.
+The explanation register is about **you**, so it is remembered for the next
+project you open. Each project still keeps its own mode, which the header's
+Easy/Expert toggle and every landing brief can change at any time.

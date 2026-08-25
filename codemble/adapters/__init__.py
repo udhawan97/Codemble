@@ -9,6 +9,7 @@ from codemble.adapters.base import (
     Node,
     RoleEvidence,
 )
+from codemble.adapters.php_tree_sitter import PHPAdapter, PHPParseError
 from codemble.adapters.project import (
     ProjectIntake,
     ProjectParseError,
@@ -16,6 +17,7 @@ from codemble.adapters.project import (
     ProjectScaleError,
 )
 from codemble.adapters.python_ast import PythonAstAdapter, PythonParseError
+from codemble.adapters.ruby_tree_sitter import RubyAdapter, RubyParseError
 from codemble.adapters.typescript_tree_sitter import (
     JavaScriptTypeScriptAdapter,
     JavaScriptTypeScriptParseError,
@@ -30,6 +32,8 @@ __all__ = [
     "JavaScriptTypeScriptParseError",
     "LanguageAdapter",
     "Node",
+    "PHPAdapter",
+    "PHPParseError",
     "ProjectIntake",
     "ProjectParseError",
     "ProjectParser",
@@ -37,4 +41,6 @@ __all__ = [
     "PythonAstAdapter",
     "PythonParseError",
     "RoleEvidence",
+    "RubyAdapter",
+    "RubyParseError",
 ]

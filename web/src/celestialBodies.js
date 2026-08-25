@@ -4,12 +4,13 @@ import * as THREE from "three";
  * Procedural celestial bodies for the System level.
  *
  * Authorised by the 2026-07-29 Decision Log entry, which amends the "elaborate
- * game art" Non-Goal. Everything here is DECORATIVE: the crust, the banding and
- * the atmosphere carry no fact and are seeded only by the node's own id, so the
- * same code always yields the same world. Every SEMANTIC channel a body wears
- * -- size, brightness, community hue, amber for understood, the class ring, the
- * fracture on an unreadable file -- is still decided by `graphData.js` from
- * parser truth and is passed in here as a finished value.
+ * game art" Non-Goal. The decorative crust, banding and resting orientation are
+ * seeded only by the node's own id, so the same code always yields the same
+ * world. The atmosphere repeats the finished community hue but carries no new
+ * fact and never borrows understanding-only amber. Every SEMANTIC channel a
+ * body wears -- size, brightness, community hue, amber for understood, the
+ * class ring, the fracture on an unreadable file -- is still decided by
+ * `graphData.js` from parser truth and is passed in here as a finished value.
  *
  * Level-of-detail is the reason this module exists at all rather than being
  * folded into `galaxyMaterials`. A galaxy draws up to ~5,000 systems and cannot
@@ -63,6 +64,7 @@ const BODY_FRAGMENT = `
 ${NOISE_GLSL}
 uniform vec3 uBase;
 uniform vec3 uAmber;
+uniform vec3 uCool;
 uniform float uSeed;
 uniform float uLit;
 uniform float uPartial;
@@ -86,7 +88,8 @@ void main(){
   float crust = cbFbm(crustPoint);
   float band = cbFbm(crustPoint * 0.6 + vec3(0.0, uSeed * 9.0, 0.0));
   crust = mix(crust, band, 0.45);
-  float shade = 0.72 + 0.55 * crust;
+  float ridge = smoothstep(0.34, 0.78, crust);
+  float shade = 0.62 + 0.62 * crust;
 
   // A class is a container of methods -- a parser fact -- so it wears strata.
   // The ring in makeMarker already says "class"; this only gives the same fact
@@ -97,15 +100,21 @@ void main(){
   // rather than a scatter of independently lit balls.
   vec3 key = normalize(vec3(-0.45, 0.55, 0.72));
   float diffuse = max(dot(normal, key), 0.0);
+  float fill = max(dot(normal, normalize(vec3(0.62, -0.18, -0.76))), 0.0);
   float rim = pow(1.0 - max(normal.z, 0.0), 2.4);
+  vec3 halfVector = normalize(key + vec3(0.0, 0.0, 1.0));
+  float mineralGlint = pow(max(dot(normal, halfVector), 0.0), 28.0) * smoothstep(0.56, 0.82, band);
 
   // An unlit body is genuinely dark. That is what lets amber read as light
   // ARRIVING rather than as merely a warmer tint, which is the whole reward.
-  vec3 color = uBase * shade * (0.16 + diffuse * 0.95);
+  vec3 terrain = mix(uBase * 0.58, uBase * 1.08, ridge);
+  vec3 color = terrain * shade * (0.13 + diffuse * 0.88 + fill * 0.11);
 
   // Atmosphere: a rim band in the body's own community hue. Never amber --
   // amber means understood and nothing else.
-  color += uBase * rim * 0.55;
+  color += uBase * rim * 0.46;
+  color += uCool * rim * 0.12 * (1.0 - uLit);
+  color += uBase * mineralGlint * 0.16;
 
   // Understanding. Emissive, because it is the only light the body makes.
   color = mix(color, uAmber * (0.55 + 0.75 * shade), uLit * 0.85);
@@ -126,6 +135,31 @@ void main(){
 }
 `;
 
+const ATMOSPHERE_VERTEX = `
+varying vec3 vViewNormal;
+void main(){
+  vViewNormal = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const ATMOSPHERE_FRAGMENT = `
+uniform vec3 uBase;
+uniform vec3 uCool;
+uniform float uDim;
+varying vec3 vViewNormal;
+
+void main(){
+  vec3 normal = normalize(vViewNormal);
+  float rim = pow(1.0 - abs(normal.z), 2.15);
+  float crown = pow(1.0 - abs(normal.z), 5.0);
+  vec3 coolAir = mix(uCool, uBase, 0.42);
+  vec3 color = mix(coolAir, uCool, crown * 0.24);
+  float alpha = (0.018 + rim * 0.18 + crown * 0.12) * (1.0 - uDim * 0.72);
+  gl_FragColor = vec4(color, alpha);
+}
+`;
+
 /**
  * The shader sources, exported so a contract test can read them.
  *
@@ -138,6 +172,11 @@ void main(){
 export const BODY_SHADER_SOURCE = Object.freeze({
   vertex: BODY_VERTEX,
   fragment: BODY_FRAGMENT,
+});
+
+export const ATMOSPHERE_SHADER_SOURCE = Object.freeze({
+  vertex: ATMOSPHERE_VERTEX,
+  fragment: ATMOSPHERE_FRAGMENT,
 });
 
 /** FNV-1a over the node id: same code, same world, every run. */
@@ -177,6 +216,7 @@ export function createBodyMaterial({ node, color, palette }) {
     uniforms: {
       uBase: { value: new THREE.Color(color) },
       uAmber: { value: new THREE.Color(palette.star) },
+      uCool: { value: new THREE.Color(palette.starCool ?? palette.nodeBright) },
       uSeed: { value: bodySeed(node.id) },
       uLit: { value: node.understood ? 1 : 0 },
       uPartial: { value: node.partial ? 1 : 0 },
@@ -186,21 +226,56 @@ export function createBodyMaterial({ node, color, palette }) {
   });
 }
 
+export function createAtmosphereMaterial({ node, communityColor, palette }) {
+  return new THREE.ShaderMaterial({
+    vertexShader: ATMOSPHERE_VERTEX,
+    fragmentShader: ATMOSPHERE_FRAGMENT,
+    uniforms: {
+      uBase: { value: new THREE.Color(communityColor ?? palette.nodeDim) },
+      uCool: { value: new THREE.Color(palette.starCool ?? palette.nodeBright) },
+      uDim: { value: node.focusDim ? 1 : 0 },
+    },
+    side: THREE.BackSide,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
 /**
  * The System-level body for one parser-proven structure.
  *
- * Returns a mesh sized to the caller's radius. The caller owns placement; this
- * owns only how the body looks.
+ * Returns a tiny scene graph sized to the caller's radius: the engraved world
+ * plus one low-alpha shell. The caller owns placement; this owns only how the
+ * body looks.
  */
-export function createBody({ node, color, palette, radius, geometry }) {
-  const mesh = new THREE.Mesh(geometry, createBodyMaterial({ node, color, palette }));
-  mesh.scale.setScalar(radius);
+export function createBody({ node, color, communityColor, palette, radius, geometry }) {
+  const group = new THREE.Group();
+  const surface = new THREE.Mesh(
+    geometry,
+    createBodyMaterial({ node, color, palette }),
+  );
+  surface.name = "codemble-world-surface";
+  const atmosphere = new THREE.Mesh(
+    geometry,
+    createAtmosphereMaterial({ node, communityColor, palette }),
+  );
+  atmosphere.name = "codemble-world-atmosphere";
+  atmosphere.scale.setScalar(1.16);
+  atmosphere.renderOrder = 1;
+  group.add(surface, atmosphere);
+  group.scale.setScalar(radius);
   // A deterministic resting tilt, so a system does not read as a row of
   // identically-oriented balls. Decorative, seeded, and never animated into a
   // different value.
-  mesh.rotation.set(bodySeed(`${node.id}:tilt`) * 0.9 - 0.45, bodySeed(node.id) * Math.PI * 2, 0);
-  mesh.userData.codembleBody = true;
-  return mesh;
+  group.rotation.set(
+    bodySeed(`${node.id}:tilt`) * 0.9 - 0.45,
+    bodySeed(node.id) * Math.PI * 2,
+    bodySeed(`${node.id}:roll`) * 0.18 - 0.09,
+  );
+  group.userData.codembleBody = true;
+  group.userData.codembleSpinRate = 0.045 + bodySeed(`${node.id}:spin`) * 0.025;
+  return group;
 }
 
 /**
@@ -219,7 +294,9 @@ export function createBodySpin(scene, { reducedMotion = false } = {}) {
     const delta = Math.min(0.05, (now - previous) / 1000);
     previous = now;
     scene.traverse((object) => {
-      if (object.userData?.codembleBody) object.rotation.y += delta * 0.06;
+      if (object.userData?.codembleBody) {
+        object.rotation.y += delta * (object.userData.codembleSpinRate ?? 0.06);
+      }
     });
     frame = requestAnimationFrame(step);
   };

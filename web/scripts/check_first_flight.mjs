@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   FIRST_FLIGHT_LIMIT,
   firstFlightPlan,
+  firstFlightLandingNode,
   flightCameraDuration,
 } from "../src/firstFlight.js";
 
@@ -71,6 +72,34 @@ assert.ok(!plan.some((stop) => stop.id === "indirect"), "the flight is direct fr
 assert.deepEqual(firstFlightPlan(graph), plan, "the same graph produces the same flight");
 assert.deepEqual(graph, before, "planning never mutates graph truth");
 
+const landingGraph = {
+  ...graph,
+  nodes: [
+    ...graph.nodes.map((node) => ({ ...node, kind: "module", lineno: 1 })),
+    { id: "home::later", region: "home", kind: "function", lineno: 20 },
+    { id: "home::first", region: "home", kind: "class", lineno: 5 },
+    { id: "home::partial", region: "home", kind: "function", lineno: 2, partial: true },
+  ],
+};
+assert.equal(
+  firstFlightLandingNode(landingGraph, "home")?.id,
+  "home::first",
+  "an explicit landing chooses the first complete parser-owned structure, not a guessed rank",
+);
+assert.equal(firstFlightLandingNode(landingGraph, "missing"), null);
+assert.equal(
+  firstFlightLandingNode(
+    {
+      nodes: [
+        { id: "partial", region: "partial", kind: "module", lineno: 1, partial: true },
+      ],
+    },
+    "partial",
+  )?.id,
+  "partial",
+  "a syntax-error stop still lands on its safe parser-owned module instead of doing nothing",
+);
+
 assert.deepEqual(firstFlightPlan({ ...graph, selected_entrypoint: null }), []);
 assert.deepEqual(
   firstFlightPlan({ ...graph, regions: graph.regions.map((region) => ({ ...region, home: false })) }),
@@ -93,6 +122,16 @@ assert.match(
   appSource,
   /function exitFirstFlight[\s\S]*?restoreRailFocus\(firstFlightTriggerRef\)/,
   "every exit returns focus through the existing deferred task helper",
+);
+assert.match(
+  appSource,
+  /function landFirstFlightStop[\s\S]*?SELECT_STUDY_NODE/,
+  "the guided landing reuses the existing Study route rather than creating a second lesson state",
+);
+assert.match(
+  guidanceSource,
+  /Land and learn/,
+  "every flight stop exposes the learner-controlled route into landing and checks",
 );
 assert.match(
   canvasSource,

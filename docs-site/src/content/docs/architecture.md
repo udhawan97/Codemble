@@ -3,8 +3,8 @@ title: Architecture
 description: The adapter seam, the render-ready graph, and why the LLM only narrates.
 ---
 
-:::note[v0.20.0 architecture]
-This page describes the seven-language packaged app and current source tree.
+:::note[v0.21.0 architecture]
+This page describes the nine-language packaged app and current source tree.
 :::
 
 ## Three load-bearing decisions
@@ -14,10 +14,11 @@ This page describes the seven-language packaged app and current source tree.
 Every language plugs in behind one interface: `parse()` produces the structural
 graph; `concepts()` produces idiom annotations for the lens; and role evidence
 names parser-observed app entries, route handlers, UI renderers, and tests. Python uses the
-stdlib `ast` module; JavaScript/TypeScript, Go, Java, Rust, and C# use official
+stdlib `ast` module; JavaScript/TypeScript, Go, Java, Rust, C#, Ruby, and PHP use official
 tree-sitter grammar wheels. Nothing above the seam hardcodes a language, and the
 registry of adapters is a single tuple in `codemble/adapters/project.py` — that
-is the whole of what a seventh language had to touch outside its own file.
+plus the deterministic Lens note table is the whole of what the two new
+languages had to touch outside their adapter files.
 
 One project parser selects adapters by extension, merges their graphs, resolves
 Home globally, and rejects node-ID or file-hash conflicts. Adapters walk files
@@ -90,6 +91,17 @@ another language necessarily has an import route to it. Both Map tabs treat that
 as a state to explain rather than an empty canvas — they say that Home is not
 written in the focused language, and offer a control to show all languages
 again.
+
+Launch choice and landing briefs are projections too. `LearnerSession` commits
+the selected Easy/Expert mode before a guided First Flight begins; React then
+renders the already-selected graph target. **Land and learn** deterministically
+chooses the first complete parser-owned declaration in source order, then reuses
+the safe module anchor when necessary, then reuses the ordinary Study and check
+events. The landing brief derives kind,
+source span, parser summary, and inbound/outbound connections from the same node
+and edge records used by Study. Decorative terrain, atmosphere, spiral dust,
+and star shells are seeded by existing graph identity and never write evidence
+or progress back into the session.
 
 ### 3. The LLM narrates; it never decides
 

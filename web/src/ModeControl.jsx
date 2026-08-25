@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 // The first-run question frames each option as a description of the learner,
@@ -18,6 +18,19 @@ const TOGGLE_OPTIONS = [
   { mode: "expert", label: "Expert" },
 ];
 
+const VOYAGE_CHOICES = [
+  {
+    id: "explore",
+    label: "Explore freely",
+    detail: "Open the full galaxy and choose your own route. Every landing charts your trail.",
+  },
+  {
+    id: "guided",
+    label: "Take a first flight",
+    detail: "Tour Home and its direct imports, land on a real structure, then continue into graph-derived checks.",
+  },
+];
+
 /**
  * Three states from one prop, one component. `modeChosen` is owned and
  * sequenced entirely by learnerSession.js — this component only reads it.
@@ -28,8 +41,15 @@ const TOGGLE_OPTIONS = [
  *   to dismiss it except choosing — that is the point of it.
  * - Chosen (`modeChosen === true`): a compact radiogroup in the header rail.
  */
-export function ModeControl({ mode, modeChosen, onChoose }) {
+export function ModeControl({ mode, modeChosen, error, onChoose }) {
   const dialogRef = useRef(null);
+  const [voyage, setVoyage] = useState("explore");
+  const launchSelectionRef = useRef({
+    mode,
+    voyage: "explore",
+    modeTouched: false,
+    voyageTouched: false,
+  });
 
   // Open before the browser paints, so the gate is never visible closed first.
   useLayoutEffect(() => {
@@ -39,9 +59,29 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
     }
   }, [modeChosen]);
 
-  function choose(nextMode) {
+  function choose(nextMode, nextVoyage = null) {
     dialogRef.current?.close();
-    onChoose(nextMode);
+    onChoose(nextMode, nextVoyage);
+  }
+
+  function launch() {
+    // The first-run radios are intentionally uncontrolled: the browser owns
+    // their immediate checked state, while the ref makes every input event
+    // observable before React's next render. Read both at the action boundary
+    // so rapid keyboard and pointer activations cannot submit an older render.
+    const dialog = dialogRef.current;
+    const checkedMode = dialog?.querySelector('input[name="first-register"]:checked')?.value;
+    const checkedVoyage = dialog?.querySelector('input[name="first-voyage"]:checked')?.value;
+    const selectedMode = launchSelectionRef.current.modeTouched
+      ? launchSelectionRef.current.mode
+      : checkedMode;
+    const selectedVoyage = launchSelectionRef.current.voyageTouched
+      ? launchSelectionRef.current.voyage
+      : checkedVoyage;
+    choose(
+      selectedMode || mode,
+      selectedVoyage || "explore",
+    );
   }
 
   // The truth isn't in yet: render nothing so no dialog can open and no
@@ -62,17 +102,68 @@ export function ModeControl({ mode, modeChosen, onChoose }) {
         aria-describedby="mode-gate-detail"
         onCancel={(event) => event.preventDefault()}
       >
-        <h1 id="mode-gate-heading">New to coding, or do you build software already?</h1>
+        <p className="mode-gate__eyebrow">Codemble flight deck</p>
+        <h1 id="mode-gate-heading">Choose your launch</h1>
         <p id="mode-gate-detail">
-          This changes how much Codemble explains and how much it assumes you already know.
+          Explore your code as a galaxy, or follow a guided learn-and-prove flight. You
+          can switch explanation depth any time after launch.
         </p>
-        <div className="mode-gate__options">
-          {FIRST_RUN_CHOICES.map((choice) => (
-            <button key={choice.mode} type="button" onClick={() => choose(choice.mode)}>
-              {choice.label}
-            </button>
+        <fieldset className="mode-gate__voyages">
+          <legend>Voyage</legend>
+          {VOYAGE_CHOICES.map((choice) => (
+            <label key={choice.id}>
+              <input
+                type="radio"
+                name="first-voyage"
+                value={choice.id}
+                defaultChecked={choice.id === "explore"}
+                onClick={() => {
+                  launchSelectionRef.current.voyage = choice.id;
+                  launchSelectionRef.current.voyageTouched = true;
+                }}
+                onChange={() => {
+                  launchSelectionRef.current.voyage = choice.id;
+                  launchSelectionRef.current.voyageTouched = true;
+                  setVoyage(choice.id);
+                }}
+              />
+              <span>
+                <strong>{choice.label}</strong>
+                <small>{choice.detail}</small>
+              </span>
+            </label>
           ))}
-        </div>
+        </fieldset>
+        <fieldset className="mode-gate__register">
+          <legend>Explanation detail</legend>
+          {FIRST_RUN_CHOICES.map((choice) => (
+            <label key={choice.mode}>
+              <input
+                type="radio"
+                name="first-register"
+                value={choice.mode}
+                defaultChecked={mode === choice.mode}
+                onClick={() => {
+                  launchSelectionRef.current.mode = choice.mode;
+                  launchSelectionRef.current.modeTouched = true;
+                }}
+                onChange={() => {
+                  launchSelectionRef.current.mode = choice.mode;
+                  launchSelectionRef.current.modeTouched = true;
+                }}
+              />
+              <span>{choice.label}</span>
+            </label>
+          ))}
+        </fieldset>
+        {error ? <p className="mode-gate__error" role="alert">{error}</p> : null}
+        <button
+          className="mode-gate__launch"
+          type="button"
+          onClick={launch}
+        >
+          {voyage === "guided" ? "Begin first flight" : "Open the galaxy"}
+        </button>
       </dialog>,
       document.body,
     );

@@ -30,7 +30,7 @@ import {
   createLearnerSession,
 } from "./learnerSession.js";
 import { escapeAction } from "./escapeArbiter.js";
-import { firstFlightPlan } from "./firstFlight.js";
+import { firstFlightLandingNode, firstFlightPlan } from "./firstFlight.js";
 import { PARSE_STAGES } from "./projectMapping.js";
 import { createMapViewportStore } from "./mapViewport.js";
 import { projectBriefFilename, projectBriefMarkdown } from "./projectBrief.js";
@@ -57,6 +57,8 @@ export function App() {
   // the graph or the learner's progress says.
   const [revealSource, setRevealSource] = useState(false);
   const [firstFlightIndex, setFirstFlightIndex] = useState(null);
+  const [pendingVoyage, setPendingVoyage] = useState(null);
+  const [launchError, setLaunchError] = useState("");
   const mapViewportStore = useMemo(() => createMapViewportStore(), []);
   const session = useMemo(
     () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
@@ -75,6 +77,8 @@ export function App() {
     if (state.status !== "ready") {
       setMobileMenuOpen(false);
       setFirstFlightIndex(null);
+      setPendingVoyage(null);
+      setLaunchError("");
       mapViewportStore.clear();
     }
   }, [mapViewportStore, state.status]);
@@ -229,6 +233,16 @@ export function App() {
   const firstFlightActive = firstFlightIndex !== null && firstFlightStop !== null;
   firstFlightActiveRef.current = firstFlightActive;
 
+  // A guided first run may need Home calibration before a parser-owned tour can
+  // exist. Keep that intent across the modal; selecting Home updates the graph,
+  // closes calibration, and this effect starts the requested flight exactly
+  // once. The explicit "Explore without a flight" exit clears it instead.
+  useEffect(() => {
+    if (pendingVoyage !== "guided" || entrypointOpen || !firstFlightStops.length) return;
+    setPendingVoyage(null);
+    visitFirstFlightStop(0);
+  }, [entrypointOpen, firstFlightStops, pendingVoyage]);
+
   // Region id -> palette slot for the Map's box tints. The family itself is
   // assigned by the graph layer over the WHOLE project, so reading it off the
   // focused graph is safe: filtering by language hides regions but can never
@@ -325,6 +339,19 @@ export function App() {
   function exitFirstFlight() {
     setFirstFlightIndex(null);
     restoreRailFocus(firstFlightTriggerRef);
+  }
+
+  function landFirstFlightStop() {
+    const stop = firstFlightStops[firstFlightIndex];
+    const landingNode = firstFlightLandingNode(graph, stop?.id);
+    if (!landingNode) return;
+    // The learner explicitly chose to land. Reuse the existing Study route so
+    // arrival, parser evidence, local narration fallback, and visit persistence
+    // stay one pipeline. The ordinary guidance chip then offers the existing
+    // graph-derived check action; the flight creates no second quiz system.
+    setFirstFlightIndex(null);
+    setRevealSource(false);
+    session.dispatch({ type: "SELECT_STUDY_NODE", nodeId: landingNode.id });
   }
 
   function dismissCoachmarks() {
@@ -707,7 +734,33 @@ export function App() {
               <ModeControl
                 mode={mode}
                 modeChosen={modeChosen}
-                onChoose={(nextMode) => session.dispatch({ type: "SET_MODE", mode: nextMode })}
+                error={launchError}
+                onChoose={async (nextMode, voyage) => {
+                  // The voyage starts only after its explanation register is
+                  // durably accepted. Otherwise the guided GO_TO_REGION commit
+                  // can race a still-pending mode write and render the first
+                  // landing in the previous voice.
+                  const saved = await session.dispatch({
+                    type: "SET_MODE",
+                    mode: nextMode,
+                    layer: voyage ? "galaxy" : undefined,
+                  });
+                  if (!saved) {
+                    if (voyage) {
+                      setLaunchError("Launch was not saved. Your choice is still here; try again.");
+                    }
+                    return false;
+                  }
+                  setLaunchError("");
+                  if (!voyage) return true;
+                  // This explicit voyage replaces the older generic coach marks:
+                  // free explorers asked to be left in control, while guided
+                  // learners get the parser-proven First Flight instead.
+                  session.dispatch({ type: "DISMISS_COACHMARKS" });
+                  setPendingVoyage(voyage === "guided" ? "guided" : null);
+                  session.dispatch({ type: "SET_LAYER", layer: "galaxy" });
+                  return true;
+                }}
               />
             </div>
           </div>
@@ -821,6 +874,24 @@ export function App() {
             onDawnConsumed={(regionId) => session.dispatch({ type: "CONSUME_DAWN", regionId })}
           />
         )}
+        {layer === "galaxy" && firstFlightActive && firstFlightStop ? (
+          <output
+            key={firstFlightStop.id}
+            className="flight-hud"
+            aria-live="polite"
+          >
+            <span className="flight-hud__ship" aria-hidden="true" />
+            <span>
+              <small>First flight · stop {firstFlightIndex + 1}/{firstFlightStops.length}</small>
+              <strong>{firstFlightStop.id}</strong>
+              <em>
+                {firstFlightStop.home
+                  ? "Home orbit"
+                  : `${firstFlightStop.usedBy} inbound · ${firstFlightStop.uses} outbound`}
+              </em>
+            </span>
+          </output>
+        ) : null}
         {/* The legend describes the layer that is actually on screen. Size and
             brightness are 3D-only encodings: mapview.py fixes _BOX_WIDTH and
             _BOX_HEIGHT as constants, draws workflow rows as fixed-radius
@@ -995,10 +1066,14 @@ export function App() {
             selectedEntrypoint={graph.selected_entrypoint}
             mode={mode}
             error={entrypointError}
+            guidedPending={pendingVoyage === "guided"}
             onSelect={(nodeId) =>
               session.dispatch({ type: "SELECT_ENTRYPOINT", nodeId })
             }
-            onContinue={() => session.dispatch({ type: "DISMISS_ENTRYPOINT" })}
+            onContinue={() => {
+              setPendingVoyage(null);
+              session.dispatch({ type: "DISMISS_ENTRYPOINT" });
+            }}
           />
         ) : null}
         {litRegionId ? (
@@ -1018,6 +1093,9 @@ export function App() {
             explanationError={explanationError}
             llmStatus={llmStatus}
             revealSource={revealSource}
+            onModeChange={(nextMode) =>
+              session.dispatch({ type: "SET_MODE", mode: nextMode })
+            }
             onSelectNode={(nodeId) => {
               // Following a connection is ordinary navigation and opens at the
               // top of the panel, as every route but Read-the-source does.
@@ -1091,6 +1169,7 @@ export function App() {
             onStart: () => visitFirstFlightStop(0),
             onBack: () => visitFirstFlightStop(firstFlightIndex - 1),
             onNext: () => visitFirstFlightStop(firstFlightIndex + 1),
+            onLand: landFirstFlightStop,
             onExit: exitFirstFlight,
           }}
         />
@@ -1810,7 +1889,16 @@ function SwitchProject({ onConfirm }) {
   );
 }
 
-function EntrypointPicker({ candidates, nodes, selectedEntrypoint, mode, error, onSelect, onContinue }) {
+function EntrypointPicker({
+  candidates,
+  nodes,
+  selectedEntrypoint,
+  mode,
+  error,
+  guidedPending,
+  onSelect,
+  onContinue,
+}) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const scopes = useMemo(() => {
     const byScope = new Map();
@@ -1862,11 +1950,15 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, mode, error, 
         {candidates.length ? "Where does your project start?" : "No clear entrypoint found."}
       </h1>
       <p>
-        {candidates.length
-          ? mode === "easy"
-            ? "Your project could start from more than one place, and Codemble will not guess. Pick the one you actually run — best guess first."
-            : "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
-          : "No file here declares a startup structure the parser recognises, and Codemble will not guess one. Explore the map without Home — every system, check, explanation, and lens note still works."}
+        {guidedPending && candidates.length
+          ? "First Flight needs a parser-owned Home. Choose the structure you actually run, and the requested flight will begin there."
+          : guidedPending
+            ? "First Flight needs a parser-owned Home, but this project has no recognised startup candidate. Codemble will not invent one; you can explicitly explore without the flight."
+            : candidates.length
+              ? mode === "easy"
+                ? "Your project could start from more than one place, and Codemble will not guess. Pick the one you actually run — best guess first."
+                : "The parser found ranked candidates but cannot choose one honestly. Select the structure you run."
+              : "No file here declares a startup structure the parser recognises, and Codemble will not guess one. Explore the map without Home — every system, check, explanation, and lens note still works."}
       </p>
       {candidates.length ? (
         <>
@@ -1925,7 +2017,11 @@ function EntrypointPicker({ candidates, nodes, selectedEntrypoint, mode, error, 
         type="button"
         onClick={onContinue}
       >
-        {selectedEntrypoint ? "Keep current Home" : "Explore without Home"}
+        {guidedPending
+          ? "Explore without a flight"
+          : selectedEntrypoint
+            ? "Keep current Home"
+            : "Explore without Home"}
       </button>
     </dialog>
   );

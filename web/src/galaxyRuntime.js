@@ -45,6 +45,16 @@ const MAX_POLAR_ANGLE = 1.5;
 const LABEL_TICK_MS = 110;
 const MAX_DAWN_RETRY_FRAMES = 6;
 
+// A complete 5,000-system Map can be requested immediately after launch. Give
+// that explicit view change one short window to win before allocating a large
+// WebGL scene; a learner who stays in the Galaxy sees a named preparation state
+// and then the complete same sky. Ordinary projects start synchronously.
+export const LARGE_GALAXY_DEFER_MS = 650;
+
+export function galaxyRuntimeStartDelay(sourceFileCount) {
+  return Number(sourceFileCount) > 900 ? LARGE_GALAXY_DEFER_MS : 0;
+}
+
 const defaultClock = Object.freeze({
   requestFrame: (callback) => requestAnimationFrame(callback),
   cancelFrame: (handle) => cancelAnimationFrame(handle),
@@ -102,6 +112,7 @@ export function createGalaxyRuntime({
   let controls = null;
   let dressing = null;
   let bodyGeometry = null;
+  let releaseBodyGeometry = () => {};
   let bloom = null;
   let resizeObserver = null;
   let removePointerGuard = () => {};
@@ -109,8 +120,8 @@ export function createGalaxyRuntime({
   let hideNavigationFrame = null;
   let reframe = null;
   let userFramed = false;
-  let focusedNodeId = null;
   let highlight = { activeId: null, neighborIds: new Set() };
+  let navigator = null;
   let sky = null;
   let guides = null;
   let stopSpin = () => {};
@@ -130,11 +141,28 @@ export function createGalaxyRuntime({
     const target = linkEndId(link.target);
     return source === highlight.activeId || target === highlight.activeId ? base + 0.9 : base;
   };
+  const linkParticles = (link) => {
+    if (reducedMotion || !link.certain || link.focusDim) return 0;
+    if (snapshot?.level === LEVELS.GALAXY) {
+      if (!highlight.activeId) return 0;
+      const source = linkEndId(link.source);
+      const target = linkEndId(link.target);
+      // Motion is a local flight instrument at galaxy range: only proven
+      // routes touching the active system wake up. Possible routes stay still.
+      return source === highlight.activeId || target === highlight.activeId ? 3 : 0;
+    }
+    return link.kind === "call" ? 2 : 0;
+  };
 
   function setUp() {
     deps.assertWebGL();
     dressing = deps.createDressing(palette);
     bodyGeometry = deps.createBodyGeometry();
+    releaseBodyGeometry = bodyGeometry.dispose?.bind(bodyGeometry) ?? (() => {});
+    // Node objects borrow one shared sphere. three-forcegraph recursively
+    // deallocates custom objects, so the runtime owns the one real release.
+    if (bodyGeometry.dispose) bodyGeometry.dispose = () => {};
+    navigator = dressing.reticle(1);
     renderer = deps.rendererFactory(host)
       .backgroundColor(palette.ground)
       .showNavInfo(false)
@@ -147,10 +175,10 @@ export function createGalaxyRuntime({
       .nodeVal("val")
       .nodeColor(nodeColor)
       .nodeRelSize(NODE_REL_SIZE)
-      .nodeResolution(8)
-      .nodeOpacity(0.82)
+      .nodeResolution(12)
+      .nodeOpacity(0.9)
       .nodeThreeObject((node) =>
-        makeMarker(node, palette, dressing, focusedNodeId, {
+        makeMarker(node, palette, dressing, {
           level: snapshot?.level,
           bodyGeometry,
         }),
@@ -158,7 +186,7 @@ export function createGalaxyRuntime({
       .nodeThreeObjectExtend(true)
       .linkColor(linkColor)
       .linkLabel(linkLabel)
-      .linkOpacity(0.5)
+      .linkOpacity(0.58)
       .linkWidth(linkWidth)
       .linkCurvature(0.12)
       .linkThreeObject((link) =>
@@ -171,11 +199,10 @@ export function createGalaxyRuntime({
       .linkHoverPrecision(4)
       .linkDirectionalArrowRelPos(1)
       .linkDirectionalArrowColor(linkColor)
-      .linkDirectionalParticles((link) =>
-        link.kind === "call" && link.certain && !link.focusDim && !reducedMotion ? 2 : 0,
-      )
+      .linkDirectionalParticles(linkParticles)
       .linkDirectionalParticleSpeed(0.006)
-      .linkDirectionalParticleWidth(1.1)
+      .linkDirectionalParticleWidth(1.22)
+      .linkDirectionalParticleResolution(6)
       .linkDirectionalParticleColor(() => palette.orbit)
       .onNodeHover((node) => {
         if (closed) return;
@@ -252,7 +279,8 @@ export function createGalaxyRuntime({
   function replaceSky() {
     disposeSky();
     const starfield = deps.createStarfield(snapshot.starfieldSeed, palette);
-    const glow = deps.createGalacticGlow(palette);
+    const glow = deps.createGalacticGlow(snapshot.starfieldSeed, palette);
+    glow.visible = snapshot.level === LEVELS.GALAXY;
     renderer.scene().add(starfield);
     renderer.scene().add(glow);
     sky = { starfield, glow };
@@ -260,13 +288,32 @@ export function createGalaxyRuntime({
 
   function disposeSky() {
     if (!sky || !renderer) return;
-    renderer.scene().remove(sky.starfield);
-    sky.starfield.geometry?.dispose();
-    sky.starfield.material?.dispose();
-    renderer.scene().remove(sky.glow);
-    sky.glow.material?.map?.dispose();
-    sky.glow.material?.dispose();
+    for (const object of [sky.starfield, sky.glow]) {
+      renderer.scene().remove(object);
+      disposeSceneObject(object);
+    }
     sky = null;
+  }
+
+  function cancelNavigator() {
+    navigator?.removeFromParent?.();
+    if (navigator) navigator.visible = false;
+  }
+
+  function syncNavigator(activeId) {
+    cancelNavigator();
+    if (!activeId || !snapshot || !navigator || !renderer) return;
+    const node = snapshot.data.nodes.find((candidate) => candidate.id === activeId);
+    if (!node) return;
+    navigator.visible = true;
+    navigator.scale.setScalar(1);
+    navigator.position.set(
+      node.x ?? node.fx ?? 0,
+      node.y ?? node.fy ?? 0,
+      node.z ?? node.fz ?? 0,
+    );
+    renderer.scene().add(navigator);
+    renderer.refresh();
   }
 
   function cancelDawn() {
@@ -383,7 +430,7 @@ export function createGalaxyRuntime({
       previous.orbitPlan !== next.orbitPlan;
     if (graphChanged) {
       renderer
-        .nodeResolution(next.data.nodes.length >= 900 ? 4 : 8)
+        .nodeResolution(next.data.nodes.length >= 900 ? 4 : next.data.nodes.length >= 400 ? 8 : 12)
         .nodeThreeObjectExtend(next.level === LEVELS.GALAXY)
         .linkVisibility((link) => !(next.mode === "easy" && link.focusDim))
         .linkDirectionalArrowLength(next.level === LEVELS.GALAXY ? 0 : 3.2)
@@ -406,6 +453,7 @@ export function createGalaxyRuntime({
       replaceGuides();
     }
     if (!previous || previous.starfieldSeed !== next.starfieldSeed) replaceSky();
+    if (sky?.glow) sky.glow.visible = next.level === LEVELS.GALAXY;
 
     if (next.level !== LEVELS.GALAXY) {
       cancelDawn();
@@ -413,14 +461,14 @@ export function createGalaxyRuntime({
       startDawn(next.pendingDawnRegionId);
     }
 
-    if (
+    const highlightChanged =
       !previous ||
       previous.data !== next.data ||
       previous.hoverNodeId !== next.hoverNodeId ||
       previous.focusedNodeId !== next.focusedNodeId ||
       previous.level !== next.level ||
-      previous.selectedNode?.id !== next.selectedNode?.id
-    ) {
+      previous.selectedNode?.id !== next.selectedNode?.id;
+    if (highlightChanged) {
       const activeId =
         next.hoverNodeId ??
         next.focusedNodeId ??
@@ -443,19 +491,11 @@ export function createGalaxyRuntime({
         .nodeColor((node) => nodeColor(node))
         .linkColor((link) => linkColor(link))
         .linkWidth((link) => linkWidth(link))
+        .linkDirectionalParticles((link) => linkParticles(link))
         .linkDirectionalArrowColor((link) => linkColor(link));
       refreshPossibleRoutes(renderer.scene(), linkColor);
     }
-
-    // Refresh the custom marker only after the highlight closure above carries
-    // the new subject. Reversing these two steps could rebuild a sphere in the
-    // old faded/active colour and then hand the library the same accessor
-    // function it already held, leaving that stale material on screen after
-    // focus moved onto overlay chrome.
-    if (!previous || previous.focusedNodeId !== next.focusedNodeId) {
-      focusedNodeId = next.focusedNodeId;
-      renderer.refresh();
-    }
+    if (graphChanged || highlightChanged) syncNavigator(highlight.activeId);
 
     if (
       !previous ||
@@ -501,6 +541,8 @@ export function createGalaxyRuntime({
     atlas = null;
     if (benchmarkTimer !== null) clock.clearTimeout(benchmarkTimer);
     benchmarkTimer = null;
+    cancelNavigator();
+    navigator = null;
     disposeSky();
     renderer?.pauseAnimation();
     bloom?.dispose();
@@ -508,7 +550,8 @@ export function createGalaxyRuntime({
     renderer?._destructor();
     dressing?.dispose();
     dressing = null;
-    bodyGeometry?.dispose();
+    releaseBodyGeometry();
+    releaseBodyGeometry = () => {};
     bodyGeometry = null;
     controls = null;
     renderer = null;
@@ -525,19 +568,30 @@ export function createGalaxyRuntime({
   return Object.freeze({ update, dispose });
 }
 
-function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } = {}) {
+function makeMarker(node, palette, dressing, { level, bodyGeometry } = {}) {
   const group = new THREE.Group();
-  group.name = node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
+  group.name = markerName(node);
+  group.userData.codembleNodeId = node.id;
   const radius = nodeRadius(node);
   const worldTier = level && level !== LEVELS.GALAXY && bodyGeometry;
   if (worldTier) {
-    group.add(createBody({ node, color: node.color, palette, radius, geometry: bodyGeometry }));
+    group.add(createBody({
+      node,
+      color: node.color,
+      communityColor: node.communityColor,
+      palette,
+      radius,
+      geometry: bodyGeometry,
+    }));
   }
   const uncharted = isUncharted(node);
   if (!node.focusDim && !uncharted && !worldTier) group.add(dressing.halo(node, radius));
+  if (level === LEVELS.GALAXY && node.understood && !node.focusDim && !uncharted) {
+    group.add(dressing.starburst(radius));
+  }
   if (node.kind === "region" && !uncharted) {
     const tint = palette.nebula[node.language];
-    if (tint) group.add(dressing.nebula(tint, radius * 14));
+    if (tint) group.add(dressing.nebula(tint, radius * 14, node.id));
   }
   if (node.label) {
     const plate = dressing.label(node.label, radius);
@@ -568,8 +622,36 @@ function makeMarker(node, palette, dressing, focusedId, { level, bodyGeometry } 
     selectedRing.rotation.x = Math.PI / 2.8;
     group.add(selectedRing);
   }
-  if (node.id === focusedId) group.add(dressing.reticle(radius));
   return group;
+}
+
+function markerName(node) {
+  return node.kind === "region" ? `codemble-system-${node.id}` : `codemble-node-${node.id}`;
+}
+
+function disposeSceneObject(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+  const visit = (object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of objectMaterials) {
+      if (!material) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) textures.add(value);
+      }
+      for (const uniform of Object.values(material.uniforms ?? {})) {
+        if (uniform?.value?.isTexture) textures.add(uniform.value);
+      }
+    }
+  };
+  if (typeof root.traverse === "function") root.traverse(visit);
+  else visit(root);
+  for (const texture of textures) texture.dispose?.();
+  for (const material of materials) material.dispose?.();
+  for (const geometry of geometries) geometry.dispose?.();
 }
 
 function linkEndId(end) {

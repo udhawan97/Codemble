@@ -342,7 +342,7 @@ export function createLearnerSession({
         setLanguageFocus(event.language);
         return undefined;
       case "SET_MODE":
-        return setMode(event.mode);
+        return setMode(event.mode, event.layer);
       case "HOVER_NODE":
         // Pointer motion fires this constantly; only a real change may notify.
         if (snapshot.hoverNodeId !== (event.nodeId ?? null)) {
@@ -615,8 +615,9 @@ export function createLearnerSession({
   // explicit SET_LAYER (layerChosen) always wins, otherwise the mode picks the
   // learner's default layer -- and never without settling modeChosen, whose
   // three states the first-run gate reads directly.
-  function applyMode(mode, chosen) {
-    const layer = snapshot.layerChosen ? snapshot.layer : mode === "easy" ? "map" : "galaxy";
+  function applyMode(mode, chosen, layerOverride) {
+    const layer = layerOverride
+      ?? (snapshot.layerChosen ? snapshot.layer : mode === "easy" ? "map" : "galaxy");
     commit({ mode, layer, modeChosen: chosen });
     // Landing on Map by mode default must fetch exactly like an explicit
     // SET_LAYER does -- otherwise a learner already in Easy mode lands on a
@@ -624,14 +625,15 @@ export function createLearnerSession({
     if (layer === "map") ensureMapLoaded();
   }
 
-  async function setMode(mode) {
-    if (mode !== "easy" && mode !== "expert") return undefined;
+  async function setMode(mode, layerOverride) {
+    if (mode !== "easy" && mode !== "expert") return false;
     const previous = snapshot.mode;
     const previousChosen = snapshot.modeChosen;
+    const previousLayer = snapshot.layer;
     // Not a plain mode-equality check: confirming the current mode is exactly
     // how a first-run learner leaves the never-chosen state, so the choice
     // still has to be written when only modeChosen changes.
-    if (mode === previous && snapshot.modeChosen) return undefined;
+    if (mode === previous && snapshot.modeChosen) return true;
     // Bump first so a mode hydration already in flight (loadPreferences)
     // notices this explicit choice and skips its own commit on resolution.
     modeLifecycle += 1;
@@ -643,7 +645,7 @@ export function createLearnerSession({
     // settles, so the project generation has to be re-checked across the await
     // as well. Both sides below belong to the project that issued the write.
     const requestLifecycle = lifecycle;
-    applyMode(mode, true);
+    applyMode(mode, true, layerOverride);
     try {
       await adapter.saveMode(mode, { signal: controller.signal });
     } catch (requestError) {
@@ -656,20 +658,20 @@ export function createLearnerSession({
         requestLifecycle === lifecycle &&
         !isAbortError(requestError)
       ) {
-        applyMode(previous, previousChosen);
+        applyMode(previous, previousChosen, previousLayer);
       }
-      return undefined;
+      return false;
     }
-    if (requestLifecycle !== lifecycle || controller.signal.aborted) return undefined;
+    if (requestLifecycle !== lifecycle || controller.signal.aborted) return false;
     // Lens, checks, and the Tier 0 summary already carry both voices and
     // switch locally from the existing payload -- only narration is generated
     // per mode, so only narration is worth a refetch here. It runs after the
     // write so a rolled-back choice never leaves the other voice's narration
     // on screen.
     if (snapshot.level === LEVELS.STUDY && snapshot.selectedNode) {
-      return loadExplanation(snapshot.selectedNode.id);
+      await loadExplanation(snapshot.selectedNode.id);
     }
-    return undefined;
+    return true;
   }
 
   async function loadStudy(nodeId) {

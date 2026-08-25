@@ -22,13 +22,13 @@ def _run(oracle: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_committed_oracle_matches_all_seven_languages_and_mixed_project() -> None:
+def test_committed_oracle_matches_all_nine_languages_and_mixed_project() -> None:
     completed = _run(ORACLE)
 
     assert completed.returncode == 0, completed.stderr or completed.stdout
     payload = json.loads(completed.stdout)
     assert payload["status"] == "pass"
-    assert payload["cases"] == 8
+    assert payload["cases"] == 10
     assert payload["regressions"] == []
     assert [bucket["priority"] for bucket in payload["evidence_gap_plan"]] == [
         1,

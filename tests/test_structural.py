@@ -1,6 +1,6 @@
 """Tier 0 renders graph facts only; it must never infer."""
 
-from codemble.adapters.base import Node
+from codemble.adapters.base import Node, RoleEvidence
 from codemble.llm.structural import structural_summary
 
 
@@ -40,6 +40,36 @@ def test_both_voices_name_the_structure_and_its_location():
     assert "run" in summary["easy"]
     assert "pkg/app.py" in summary["easy"]
     assert "pkg/app.py:41-88" in summary["expert"]
+    assert "not its purpose" in summary["easy"]
+    assert "No parser-owned role evidence" in summary["expert"]
+
+
+def test_parser_roles_ground_purpose_without_claiming_runtime_success():
+    roles = [
+        RoleEvidence(
+            node_id="pkg/app.py::run",
+            role="application-entry",
+            rule_id="python.entrypoint.main",
+            file="pkg/app.py",
+            lineno=41,
+            end_lineno=41,
+        ),
+        RoleEvidence(
+            node_id="pkg/app.py::run",
+            role="test",
+            rule_id="python.test.pytest",
+            file="pkg/app.py",
+            lineno=42,
+            end_lineno=42,
+        ),
+    ]
+
+    summary = structural_summary(_node(), [], [], roles)
+
+    assert "place where the application starts" in summary["easy"]
+    assert "does not claim the test passed" in summary["easy"]
+    assert "application entry" in summary["expert"]
+    assert "python.entrypoint.main" in summary["expert"]
 
 
 def test_easy_voice_spells_small_counts_and_expert_uses_digits():
@@ -57,6 +87,9 @@ def test_possible_relationships_stay_labelled_possible_in_both_voices():
         in one["easy"]
     )
     assert "1 possible" in one["expert"]
+    assert "parser-observed graph edge" in one["expert"]
+    assert "parser-proven" not in one["expert"]
+    assert "proves its structure and connections" not in one["easy"]
 
     three = structural_summary(
         _node(), [_neighbor("inbound", certain=False) for _ in range(3)], []
@@ -66,6 +99,8 @@ def test_possible_relationships_stay_labelled_possible_in_both_voices():
         in three["easy"]
     )
     assert "3 possible" in three["expert"]
+    assert "parser-observed graph edges" in three["expert"]
+    assert "parser-proven" not in three["expert"]
 
 
 def test_zero_neighbours_is_stated_not_omitted():

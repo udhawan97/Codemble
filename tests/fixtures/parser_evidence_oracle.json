@@ -246,38 +246,120 @@
       "known_gaps": []
     },
     {
+      "id": "ruby",
+      "adapter": "ruby",
+      "fixture": "ruby_sample",
+      "languages": ["ruby"],
+      "partial_files": ["lib/broken.rb"],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 1,
+        "selected": "ruby:bin/atlas.rb",
+        "required": [["ruby:bin/atlas.rb", 1]]
+      },
+      "roles": {
+        "count": 1,
+        "required": [
+          ["ruby:bin/atlas.rb", "application-entry", "ruby.entrypoint.program-name", "bin/atlas.rb", 5, 5]
+        ]
+      },
+      "edge_sources": ["ruby:lib/atlas.rb::Atlas.Ship.launch"],
+      "edges": [
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "external:each", "call", false, 8, true],
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "external:puts", "call", false, 8, true],
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "ruby:lib/atlas.rb::Atlas.Ship.prime", "call", false, 6, false],
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "ruby:lib/atlas/navigation.rb::Atlas.Navigator.plot", "call", false, 7, false]
+      ],
+      "concept_nodes": ["ruby:lib/atlas.rb::Atlas.Ship.launch"],
+      "concepts": [
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "ruby", "singleton-method", 5, 9, "def self.launch(target)"],
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "ruby", "block", 8, 8, "route&.each { |stop| puts(\"Landing at #{stop}\") }"],
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "ruby", "safe-navigation", 8, 8, "route&.each { |stop| puts(\"Landing at #{stop}\") }"],
+        ["ruby:lib/atlas.rb::Atlas.Ship.launch", "ruby", "string-interpolation", 8, 8, "route&.each { |stop| puts(\"Landing at #{stop}\") }"]
+      ],
+      "journey": ["ruby:bin/atlas.rb", "complete", "not_applicable", null],
+      "known_gaps": [
+        "Measure receiver-type flow before resolving local-variable Ruby calls beyond explicit constants and self."
+      ]
+    },
+    {
+      "id": "php",
+      "adapter": "php",
+      "fixture": "php_sample",
+      "languages": ["php"],
+      "partial_files": ["src/Broken.php"],
+      "unsupported_sources": [],
+      "entrypoints": {
+        "count": 1,
+        "selected": "php:bin/atlas.php",
+        "required": [["php:bin/atlas.php", 0]]
+      },
+      "roles": {"count": 0, "required": []},
+      "edge_sources": ["php:bin/atlas.php", "php:src/Ship.php::App.Ship.land", "php:src/Names.php", "php:src/Names.php::App.voyage"],
+      "edges": [
+        ["php:bin/atlas.php", "external:$ship->land", "call", false, 9, true],
+        ["php:bin/atlas.php", "php:src/Ship.php", "import", true, 6, false],
+        ["php:bin/atlas.php", "php:src/Ship.php::App.Ship", "call", false, 8, false],
+        ["php:bin/atlas.php", "php:src/Ship.php::App.Ship", "import", true, 4, false],
+        ["php:src/Ship.php::App.Ship.land", "php:src/Navigator.php::App.Navigator.plot", "call", false, 14, false],
+        ["php:src/Ship.php::App.Ship.land", "php:src/Ship.php::App.Ship.dock", "call", false, 15, false],
+        ["php:src/Ship.php::App.Ship.land", "external:result?->manifest", "call", false, 15, true],
+        ["php:src/Names.php::App.voyage", "php:src/Names.php::App.LocalClass", "call", false, 21, false],
+        ["php:src/Names.php::App.voyage", "php:src/Names.php::App.local", "call", false, 22, false],
+        ["php:src/Names.php::App.voyage", "php:src/Names.php::Vendor.Pack.Other.go", "call", false, 24, false],
+        ["php:src/Names.php::App.voyage", "php:src/Names.php::Vendor.Pack.Thing.run", "call", false, 23, false],
+        ["php:src/Names.php::App.voyage", "php:src/Names.php::Vendor.RootThing", "call", false, 20, false],
+        ["php:src/Names.php", "php:src/Names.php::Vendor.Pack.Other", "import", true, 13, false],
+        ["php:src/Names.php", "php:src/Names.php::Vendor.Pack.Thing", "import", true, 13, false]
+      ],
+      "concept_nodes": ["php:src/Ship.php::App.Ship.land"],
+      "concepts": [
+        ["php:src/Ship.php::App.Ship.land", "php", "union-type", 12, 12, "public function land(string $world): array|null"],
+        ["php:src/Ship.php::App.Ship.land", "php", "named-argument", 14, 14, "$route = Navigator::plot(world: $world);"],
+        ["php:src/Ship.php::App.Ship.land", "php", "nullsafe-access", 15, 15, "return $this->dock($route)?->manifest();"]
+      ],
+      "journey": ["php:bin/atlas.php", "complete", "not_applicable", null],
+      "known_gaps": [
+        "Measure typed-local and constructor flow before resolving arbitrary PHP member receivers."
+      ]
+    },
+    {
       "id": "mixed",
       "adapter": "default",
-      "fixtures": ["go_sample", "java_sample", "rust_sample", "csharp_sample", "polyglot"],
+      "fixtures": ["go_sample", "java_sample", "rust_sample", "csharp_sample", "ruby_sample", "php_sample", "polyglot"],
       "extra_files": [["main.py", "def main():\n    return 1\n"]],
-      "languages": ["csharp", "go", "java", "javascript", "python", "rust", "typescript"],
+      "languages": ["csharp", "go", "java", "javascript", "php", "python", "ruby", "rust", "typescript"],
       "partial_files": [
         "csharp_sample/src/Broken.cs",
         "go_sample/internal/report/broken.go",
         "java_sample/src/com/example/app/Broken.java",
         "polyglot/src/broken.ts",
+        "php_sample/src/Broken.php",
+        "ruby_sample/lib/broken.rb",
         "rust_sample/src/broken.rs"
       ],
       "unsupported_sources": [],
       "entrypoints": {
-        "count": 19,
+        "count": 20,
         "selected": null,
         "required": [
           ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", 0],
           ["go:go_sample/cmd/app/main.go", 0],
           ["java:java_sample/src/com/example/app/App.java", 0],
           ["polyglot.python_worker", 0],
+          ["ruby:ruby_sample/bin/atlas.rb", 1],
           ["rust:rust_sample/src/main.rs::main", 0],
           ["typescript:polyglot/src/main.ts", 0]
         ]
       },
       "roles": {
-        "count": 11,
+        "count": 12,
         "required": [
           ["csharp:csharp_sample/src/Program.cs::Acme.App.Program.Main", "application-entry", "csharp.entrypoint.main", "csharp_sample/src/Program.cs", 19, 19],
           ["go:go_sample/cmd/app/main.go::main", "application-entry", "go.entrypoint.main", "go_sample/cmd/app/main.go", 10, 10],
           ["java:java_sample/src/com/example/app/App.java::App.main", "application-entry", "java.entrypoint.main", "java_sample/src/com/example/app/App.java", 19, 19],
           ["main.main", "application-entry", "python.entrypoint.main", "main.py", 1, 1],
+          ["ruby:ruby_sample/bin/atlas.rb", "application-entry", "ruby.entrypoint.program-name", "ruby_sample/bin/atlas.rb", 5, 5],
           ["rust:rust_sample/src/main.rs::main", "application-entry", "rust.entrypoint.main", "rust_sample/src/main.rs", 7, 7],
           ["typescript:polyglot/src/main.ts::main", "application-entry", "typescript.entrypoint.main", "polyglot/src/main.ts", 4, 4],
           ["typescript:polyglot/src/widget.tsx::Card", "ui-renderer", "typescript.jsx.render", "polyglot/src/widget.tsx", 11, 11]

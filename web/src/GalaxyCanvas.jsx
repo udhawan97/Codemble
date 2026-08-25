@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { prefersReducedMotion } from "./galaxyEffects.js";
-import { createGalaxyRuntime } from "./galaxyRuntime.js";
+import { createGalaxyRuntime, galaxyRuntimeStartDelay } from "./galaxyRuntime.js";
 import { seedFromHashes } from "./galaxyMaterials.js";
 import {
   LEVELS,
@@ -36,8 +36,11 @@ export function GalaxyCanvas({
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [keyboardExploring, setKeyboardExploring] = useState(false);
   const [renderError, setRenderError] = useState("");
+  const [runtimeGeneration, setRuntimeGeneration] = useState(0);
   const palette = useMemo(readPalette, []);
   const reducedMotion = useMemo(prefersReducedMotion, []);
+  const runtimeDelay = galaxyRuntimeStartDelay(Object.keys(graph.file_hashes ?? {}).length);
+  const [runtimePreparing, setRuntimePreparing] = useState(runtimeDelay > 0);
   const starfieldSeed = seedFromHashes(graph.file_hashes);
   const data = useMemo(() => {
     if (level === LEVELS.GALAXY) return galaxyData(graph, palette, revealedRegionIds);
@@ -60,31 +63,46 @@ export function GalaxyCanvas({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
-    try {
-      const runtime = createGalaxyRuntime({
-        host,
-        palette,
-        reducedMotion,
-        onHoverNode: (nodeId) => hoverRef.current(nodeId),
-        onAdvance: (node) => advanceRef.current(node),
-        onDawnConsumed: (regionId) => dawnConsumedRef.current?.(regionId),
-      });
-      runtimeRef.current = runtime;
-      setRenderError("");
-      return () => {
+    let disposed = false;
+    let runtime = null;
+    let timer = null;
+    const start = () => {
+      if (disposed) return;
+      try {
+        runtime = createGalaxyRuntime({
+          host,
+          palette,
+          reducedMotion,
+          onHoverNode: (nodeId) => hoverRef.current(nodeId),
+          onAdvance: (node) => advanceRef.current(node),
+          onDawnConsumed: (regionId) => dawnConsumedRef.current?.(regionId),
+        });
+        runtimeRef.current = runtime;
+        setRenderError("");
+        setRuntimePreparing(false);
+        setRuntimeGeneration((generation) => generation + 1);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setRuntimePreparing(false);
+        setRenderError(
+          message.startsWith("Codemble needs WebGL")
+            ? message
+            : `The galaxy could not start: ${message}`,
+        );
+      }
+    };
+    setRuntimePreparing(runtimeDelay > 0);
+    if (runtimeDelay > 0) timer = window.setTimeout(start, runtimeDelay);
+    else start();
+    return () => {
+      disposed = true;
+      if (timer !== null) window.clearTimeout(timer);
+      if (runtime) {
         runtime.dispose();
         if (runtimeRef.current === runtime) runtimeRef.current = null;
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setRenderError(
-        message.startsWith("Codemble needs WebGL")
-          ? message
-          : `The galaxy could not start: ${message}`,
-      );
-      return undefined;
-    }
-  }, [palette, reducedMotion]);
+      }
+    };
+  }, [palette, reducedMotion, runtimeDelay]);
 
   useEffect(() => {
     runtimeRef.current?.update({
@@ -111,6 +129,7 @@ export function GalaxyCanvas({
     mode,
     orbitPlan,
     pendingDawnRegionId,
+    runtimeGeneration,
     selectedNode,
     starfieldSeed,
   ]);
@@ -176,6 +195,11 @@ export function GalaxyCanvas({
         // for Key/Modules/Find can reliably retire the old neighborhood.
         onPointerLeave={() => hoverRef.current(null)}
       />
+      {runtimePreparing ? (
+        <p className="galaxy-preparing" role="status">
+          Preparing {graph.regions.length.toLocaleString()}-system sky…
+        </p>
+      ) : null}
       {keyboardExploring && focusedNode ? (
         <output className="keyboard-focus" aria-live="polite">
           {nodeLabel(focusedNode)}

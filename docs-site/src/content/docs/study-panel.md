@@ -3,12 +3,23 @@ title: Study a feature
 description: Follow one parser-proven journey in Easy or Expert mode, then inspect source, impact, connections, and checks.
 ---
 
-:::note[v0.20.0 product guide]
-Study now begins with one shared, parser-owned feature journey. Easy and Expert
-change the teaching depth, never the evidence or your place in the route.
+:::note[v0.21.0 product guide]
+Study now begins with a landing brief and one shared, parser-owned feature
+journey. Easy and Expert change the teaching depth, never the evidence or your
+place in the route.
 :::
 
-## Feature journey first
+## Land first, then choose depth
+
+Selecting a function or class opens a compact landing brief before the longer
+study surface. When the parser has role evidence, Easy explains that purpose in
+plain language and Expert names the exact rule. When it does not, both say the
+purpose is unknown rather than inferring one from a name. Expert also adds the
+exact kind, source span, structural summary, and certainty language. Both show
+inbound and outbound graph connections, so the next jump is visible without
+requiring narration. The register can change in place.
+
+## Feature journey next
 
 Open a structure and Study answers the question that a source excerpt alone
 cannot: **how does this project reach here from Home?** The journey is built
@@ -68,7 +79,7 @@ record. Charting, checks, and understood state retain their existing meanings.
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Study journey and Impact product screen. Scroll sideways to inspect it at a readable size.">
     <img src="/Codemble/shots/study-impact.png" alt="The current Expert Study panel scrolled to its integrated Impact lists over the Architecture map.">
   </div>
-  <figcaption>Codemble v0.20.0 · one journey, with Impact and Connections integrated once.</figcaption>
+  <figcaption>Codemble v0.21.0 · one landing, one journey, with Impact and Connections integrated once.</figcaption>
 </figure>
 
 The journey's details disclosure contains graph facts about the **selected

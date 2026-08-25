@@ -16,6 +16,7 @@ export function StudyPanel({
   explanationLoading,
   explanationError,
   llmStatus,
+  onModeChange,
   onSelectNode,
   onRetryStudy,
   onRetryNarration,
@@ -105,6 +106,26 @@ export function StudyPanel({
         ) : null}
         <p className="study-preview__path">{node.file}:{node.lineno}</p>
         <h1 ref={headingRef} tabIndex={-1}>{node.name}</h1>
+        {onModeChange ? (
+          <fieldset className="landing-register">
+            <legend>Explanation</legend>
+            {[
+              ["easy", "Easy"],
+              ["expert", "Expert"],
+            ].map(([value, label]) => (
+              <label key={value}>
+                <input
+                  type="radio"
+                  name="landing-register"
+                  value={value}
+                  checked={mode === value}
+                  onChange={() => onModeChange(value)}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </fieldset>
+        ) : null}
       </header>
 
       {error ? (
@@ -125,6 +146,14 @@ export function StudyPanel({
           narration on the parser payload made one failure look like five. */}
       <div className="study-content">
         {study ? (
+          <LandingBrief
+            node={node}
+            structural={study.structural}
+            neighbors={study.neighbors}
+            mode={mode}
+          />
+        ) : null}
+        {study ? (
           <LearningJourney
             journey={journey}
             activeStepId={activeJourneyStepId}
@@ -136,8 +165,6 @@ export function StudyPanel({
             onSelectNode={onSelectNode}
           />
         ) : null}
-        {study ? <StudyFacts node={node} mode={mode} /> : null}
-        {study ? <StructuralSummary structural={study.structural} mode={mode} /> : null}
         <Explanation
           explanation={explanation}
           loading={explanationLoading}
@@ -163,25 +190,53 @@ export function StudyPanel({
   );
 }
 
-function StudyFacts({ node, mode }) {
+function LandingBrief({ node, structural, neighbors, mode }) {
+  const relationships = neighbors ?? [];
+  const inbound = relationships.filter((item) => item.direction === "inbound").length;
+  const outbound = relationships.filter((item) => item.direction === "outbound").length;
+  const possible = relationships.filter((item) => !item.certain).length;
+  const facts = (
+    <dl className="landing-brief__facts">
+      <div><dt>{mode === "easy" ? "What it is" : "Kind"}</dt><dd>{node.kind}</dd></div>
+      <div><dt>{mode === "easy" ? "Size" : "Span"}</dt><dd>{node.loc} {node.loc === 1 ? "line" : "lines"}</dd></div>
+      <div>
+        <dt>{mode === "easy" ? "Arriving links" : "Inbound"}</dt>
+        <dd>{inbound}</dd>
+      </div>
+      <div>
+        <dt>{mode === "easy" ? "Leaving links" : "Outbound"}</dt>
+        <dd>{outbound}</dd>
+      </div>
+    </dl>
+  );
+  const uncertainty = possible ? (
+    <p className="landing-brief__uncertain">
+      {mode === "easy"
+        ? `${possible} ${possible === 1 ? "link is" : "links are"} possible, not proven.`
+        : `${possible} unresolved ${possible === 1 ? "relationship" : "relationships"}; dashed in connection views.`}
+    </p>
+  ) : null;
   return (
-    <section className="study-facts" aria-label="Selected structure facts">
-      <dl>
-        <div><dt>{mode === "easy" ? "What it is" : "Kind"}</dt><dd>{node.kind}</dd></div>
-        <div><dt>{mode === "easy" ? "Length" : "Span"}</dt><dd>{node.loc} {node.loc === 1 ? "line" : "lines"}</dd></div>
-        <div>
-          <dt>{mode === "easy" ? "Called by" : "Callers"}</dt>
-          <dd>{node.centrality}</dd>
-        </div>
-        <div>
-          <dt>{mode === "easy" ? "Evidence" : "Resolution"}</dt>
-          <dd>
-            {node.partial
-              ? mode === "easy" ? "Could not be fully read" : "Partial parse"
-              : mode === "easy" ? "Proven from your code" : "Parser-proven"}
-          </dd>
-        </div>
-      </dl>
+    <section className="landing-brief" aria-labelledby="landing-brief-heading">
+      <div className="study-section-heading">
+        <h2 id="landing-brief-heading">Landing brief</h2>
+        <span>Parser evidence</span>
+      </div>
+      <p className="landing-brief__summary">
+        {structural?.[mode] ?? structural?.easy ?? "The parser found this source structure."}
+      </p>
+      <div className="landing-brief__wide-facts">
+        {facts}
+        {uncertainty}
+      </div>
+      <details className="landing-brief__compact-facts">
+        <summary>
+          {inbound} {mode === "easy" ? "arriving" : "inbound"} · {outbound} {mode === "easy" ? "leaving" : "outbound"}
+          {possible ? ` · ${possible} possible` : " · all proven"}
+        </summary>
+        {facts}
+        {uncertainty}
+      </details>
     </section>
   );
 }
@@ -361,21 +416,6 @@ function VerificationCandidates({ items, onSelectNode }) {
       <p className="journey-candidate-note">
         These are parser-linked candidate verification points, not proof that a test passes.
       </p>
-    </section>
-  );
-}
-
-function StructuralSummary({ structural, mode }) {
-  if (!structural) return null;
-  return (
-    <section className="structural-summary" aria-labelledby="structural-heading">
-      <div className="study-section-heading">
-        <h2 id="structural-heading">
-          {mode === "easy" ? "What this is" : "Structural summary"}
-        </h2>
-        <span>No model needed</span>
-      </div>
-      <p>{structural[mode] ?? structural.easy}</p>
     </section>
   );
 }

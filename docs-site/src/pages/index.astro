@@ -4,7 +4,7 @@
  *
  * Macrostructure: Hallmark Workbench. Real product captures lead; the Formal
  * Edo system supplies material and typography without turning the site into a
- * decorative atlas. The current product and packaged release are both v0.20.0.
+ * decorative atlas. The current product and packaged release are both v0.21.0.
  */
 import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
@@ -28,13 +28,13 @@ const INSTALL = `uvx --from codemble==${VERSION} codemble`;
 const capabilities = [
   {
     icon: "compass",
-    title: "Explore before you study",
-    body: "Every module is represented on the first frame. Related systems and proven routes share a subtle colour cue; bridges stay neutral, possible routes stay dashed, and First Flight offers a bounded path from Home.",
+    title: "Choose your launch",
+    body: "Start with free exploration or take a bounded First Flight from Home. Land from any guided stop, read Easy or Expert evidence, then continue into graph-derived checks.",
   },
   {
     icon: "map",
-    title: "Follow one feature end to end",
-    body: "Study orders a parser-proven route from Home through files and calls to the selected feature. Easy guides one cited step; Expert adds that step’s parser evidence and clearly scoped selected-feature impact and checks.",
+    title: "Land, learn, and continue",
+    body: "Land on a structure for an Easy explanation or exact Expert evidence, inspect its real inbound and outbound connections, then follow one parser-proven route or open its source.",
   },
   {
     icon: "impact",
@@ -53,8 +53,8 @@ const capabilities = [
   },
   {
     icon: "languages",
-    title: "Read seven languages together",
-    body: "Python, JavaScript, TypeScript, Go, Java, Rust, and C# share one honest graph contract, including mixed projects.",
+    title: "Read nine languages together",
+    body: "Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, and PHP share one honest graph contract, including mixed projects.",
   },
 ];
 
@@ -144,7 +144,7 @@ const contract = [
         <div class="hero-copy">
           <p class="release-status">
             <span>Stable v{VERSION}</span>
-            <span>Seven languages · PyPI published</span>
+            <span>Nine languages · PyPI published</span>
           </p>
           <h1>Explore the code AI left behind.</h1>
           <p class="hero-lede">
@@ -184,7 +184,7 @@ const contract = [
           >
             <img
               src={shot("galaxy.png")}
-              alt="Codemble v0.20.0 showing 203 represented systems across Python, JavaScript, TypeScript, Go, Java, Rust, and C#, with community-tinted route corridors, ranked labels, 35 systems charted, six unreadable test fixtures called out, Home resolved to codemble.cli and still unlit."
+              alt="Codemble v0.21.0 showing 215 represented systems across Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, and PHP, with a seeded spiral starfield, community-tinted route corridors, ranked labels, 37 systems charted, eight unreadable test fixtures called out, Home resolved to codemble.cli and still unlit."
               width="1440"
               height="720"
               fetchpriority="high"
@@ -193,7 +193,7 @@ const contract = [
           </div>
           <figcaption>
             <span>Current app · Easy galaxy</span>
-            <span>203 systems · seven languages · local only</span>
+            <span>215 systems · nine languages · local only</span>
           </figcaption>
         </figure>
       </section>
@@ -280,9 +280,9 @@ const contract = [
               </div>
             </div>
             <p>
-              This is the same app shown on the page: seven languages, the
-              explorer’s trail, the brighter sky, Impact, and automatic Home
-              selection—ready for documentation or code changes.
+              This is the same app shown on the page: nine languages, launch
+              choice, seeded adventure sky, landing briefs, Impact, and automatic
+              Home selection—ready for documentation or code changes.
             </p>
             <pre><code>git clone --branch {release.tag} --depth 1 {REPO}.git
 cd Codemble
@@ -324,6 +324,7 @@ codemble</code></pre>
           <strong>One project can mix:</strong>
           <span>Python</span><span>JavaScript</span><span>TypeScript</span>
           <span>Go</span><span>Java</span><span>Rust</span><span>C#</span>
+          <span>Ruby</span><span>PHP</span>
         </div>
       </section>
 

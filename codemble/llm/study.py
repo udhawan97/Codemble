@@ -193,12 +193,17 @@ class StudyService:
             if node is None:
                 raise UnknownNodeError(node_id)
             source, neighbors, lens = self._prepare(node)
+            roles = tuple(
+                evidence
+                for evidence in self._graph.role_evidence
+                if evidence.node_id == node.id
+            )
             return {
                 "node": asdict(node),
                 "source": source,
                 "neighbors": neighbors,
                 "lens": lens,
-                "structural": structural_summary(node, neighbors, lens),
+                "structural": structural_summary(node, neighbors, lens, roles),
                 # Parser truth, so it arrives with the rest of the local payload and
                 # never waits on a provider. This is what lets the Expert panel lead
                 # with something useful when no key is configured at all.

@@ -140,6 +140,7 @@ export function conceptTitle(concept) {
     jsx: "JSX",
     typescript: "TypeScript",
     csharp: "C#",
+    php: "PHP",
     "linq-query": "LINQ Query",
   };
   if (exact[concept]) return exact[concept];
@@ -177,6 +178,8 @@ export const NEBULA_TINTS = Object.freeze({
   java: "--cm-neb-java",
   rust: "--cm-neb-rust",
   csharp: "--cm-neb-csharp",
+  ruby: "--cm-neb-ruby",
+  php: "--cm-neb-php",
 });
 
 /** CSS paint for a language's tint, or null when a language has none. */
@@ -662,26 +665,39 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
     }
   }
   return {
-    nodes: members.map((node) => ({
-      ...node,
-      // Every proven relationship this structure has, project-wide -- not only
-      // the ones inside this system. A helper called from four other modules
-      // is not a leaf, and a tooltip that counted only its siblings would say
-      // it was.
-      usedBy: memberDegree.usedBy.get(node.id) ?? 0,
-      uses: memberDegree.uses.get(node.id) ?? 0,
-      fx: node.system_x,
-      fy: node.system_y,
-      fz: node.system_z,
-      val: sizeFromLoc(node.loc, 2.8, 11),
-      color: node.understood
-        ? palette.star
-        : node.partial
-          ? palette.routePossible
-          : communityShade(palette, family, node.centrality, NODE_BRIGHT_AT),
-      selected: node.id === selectedId,
-      focusDim: Boolean(selectedId) && !connected.has(node.id),
-    })),
+    nodes: members.map((node) => {
+      const communityColor = communityShade(
+        palette,
+        family,
+        node.centrality,
+        NODE_BRIGHT_AT,
+      );
+      return {
+        ...node,
+        // Every proven relationship this structure has, project-wide -- not only
+        // the ones inside this system. A helper called from four other modules
+        // is not a leaf, and a tooltip that counted only its siblings would say
+        // it was.
+        usedBy: memberDegree.usedBy.get(node.id) ?? 0,
+        uses: memberDegree.uses.get(node.id) ?? 0,
+        fx: node.system_x,
+        fy: node.system_y,
+        fz: node.system_z,
+        val: sizeFromLoc(node.loc, 2.8, 11),
+        // Keep the parser-owned family colour beside the standing display
+        // colour. Understood and partial states override the world's surface,
+        // but the atmosphere must remain a family landmark and never inherit
+        // amber or uncertainty ink through that override.
+        communityColor,
+        color: node.understood
+          ? palette.star
+          : node.partial
+            ? palette.routePossible
+            : communityColor,
+        selected: node.id === selectedId,
+        focusDim: Boolean(selectedId) && !connected.has(node.id),
+      };
+    }),
     links: callEdges.map((edge) => ({
       ...edge,
       source: edge.src,

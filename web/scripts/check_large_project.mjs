@@ -471,7 +471,13 @@ async function settleOpeningDecisions(page) {
     if (await mode.count()) {
       stableReadyChecks = 0;
       await mode
-        .getByRole("button", { name: "New to coding?", exact: true })
+        .getByRole("radio", { name: /^Explore freely/ })
+        .check({ timeout: BUDGETS.usableMs });
+      await mode
+        .getByRole("radio", { name: "New to coding?", exact: true })
+        .check({ timeout: BUDGETS.usableMs });
+      await mode
+        .getByRole("button", { name: "Open the galaxy", exact: true })
         .click({ timeout: BUDGETS.usableMs });
     } else {
       const home = page.locator(".entrypoint-picker[open]");

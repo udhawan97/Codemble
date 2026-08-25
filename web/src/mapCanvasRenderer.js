@@ -1,3 +1,5 @@
+import { NEBULA_TINTS } from "./graphData.js";
+
 const ARCHITECTURE_PADDING = 32;
 const WORKFLOW_PADDING = 16;
 const SPATIAL_BAND_HEIGHT = 64;
@@ -327,15 +329,12 @@ export function canvasMapPalette(style) {
     interaction: cssValue(style, "--cm-orbit", "#82abec"),
     mono: cssValue(style, "--cm-font-mono", "monospace"),
     communities,
-    language: {
-      python: cssValue(style, "--cm-neb-python", "rgb(112 166 144)"),
-      javascript: cssValue(style, "--cm-neb-js", "rgb(161 151 185)"),
-      typescript: cssValue(style, "--cm-neb-ts", "rgb(119 161 186)"),
-      go: cssValue(style, "--cm-neb-go", "rgb(132 178 161)"),
-      java: cssValue(style, "--cm-neb-java", "rgb(177 154 137)"),
-      rust: cssValue(style, "--cm-neb-rust", "rgb(183 145 132)"),
-      csharp: cssValue(style, "--cm-neb-csharp", "rgb(157 146 184)"),
-    },
+    language: Object.fromEntries(
+      Object.entries(NEBULA_TINTS).map(([language, property]) => [
+        language,
+        cssValue(style, property, "rgb(146 154 182)"),
+      ]),
+    ),
   });
 }
 

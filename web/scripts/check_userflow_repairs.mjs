@@ -1,14 +1,15 @@
 /**
  * Browser contracts for the three repaired audit journeys.
  *
- * This gate owns two disposable Codemble processes: one bound to this checkout
- * and one unbound picker. They use separate data roots, inherit no provider
- * credentials, and are always stopped in `finally`, so a UI check cannot read
+ * This gate owns isolated Codemble processes for the product journey, picker,
+ * four launch/register combinations, refused persistence, and Home-calibration
+ * boundaries. They use disposable source/data roots, inherit no provider
+ * credentials, and are always stopped in `finally`, so UI checks cannot read
  * or change a developer's real progress.
  */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -29,6 +30,8 @@ const dataRoots = [
 ];
 const children = [];
 const results = [];
+const sourceRoots = [];
+const launchProjects = createLaunchProjects();
 
 try {
   const project = await startCodemble({ project: repoRoot, dataRoot: dataRoots[0] });
@@ -38,8 +41,18 @@ try {
     ["chromium", chromium],
     ["webkit", webkit],
   ]) {
+    const launchDataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-${engine}-`));
+    dataRoots.push(launchDataRoot);
+    const launch = await startCodemble({
+      project: launchProjects.ready,
+      dataRoot: launchDataRoot,
+    });
     const browser = await browserType.launch({ headless: true });
     try {
+      await checkGuidedLaunchAndLanding(browser, engine, launch.url);
+      await checkLaunchChoiceMatrix(browser, engine, launchProjects.ready);
+      await checkRefusedLaunch(browser, engine, launchProjects.ready);
+      await checkGuidedHomeCalibration(browser, engine, launchProjects);
       await checkHomeGeometry(browser, engine, project.url);
       await checkCompactRailEscape(browser, engine, project.url);
       await checkCompactQuizVisibility(browser, engine, project.url);
@@ -53,6 +66,271 @@ try {
 } finally {
   await Promise.all(children.map(stopChild));
   for (const dataRoot of dataRoots) rmSync(dataRoot, { force: true, recursive: true });
+  for (const sourceRoot of sourceRoots) rmSync(sourceRoot, { force: true, recursive: true });
+}
+
+function createLaunchProjects() {
+  const ready = mkdtempSync(path.join(tmpdir(), "codemble-launch-ready-"));
+  const ambiguous = mkdtempSync(path.join(tmpdir(), "codemble-launch-ambiguous-"));
+  const noHome = mkdtempSync(path.join(tmpdir(), "codemble-launch-no-home-"));
+  sourceRoots.push(ready, ambiguous, noHome);
+  writeFileSync(
+    path.join(ready, "main.py"),
+    "from helper import work\n\ndef main():\n    return work()\n\nif __name__ == '__main__':\n    main()\n",
+  );
+  writeFileSync(path.join(ready, "helper.py"), "def work():\n    return 'charted'\n");
+  writeFileSync(
+    path.join(ambiguous, "alpha.py"),
+    "def main():\n    return 'alpha'\n\nif __name__ == '__main__':\n    main()\n",
+  );
+  writeFileSync(
+    path.join(ambiguous, "beta.py"),
+    "def main():\n    return 'beta'\n\nif __name__ == '__main__':\n    main()\n",
+  );
+  writeFileSync(path.join(noHome, "values.py"), "ANSWER = 42\n");
+  return { ready, ambiguous, noHome };
+}
+
+async function checkGuidedLaunchAndLanding(browser, engine, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page.setDefaultTimeout(30_000);
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    // A provider-free disposable server intentionally rejects optional model
+    // narration; the landing brief, source, relationships, and language lens
+    // remain local parser evidence. Keep actual runtime errors in the gate.
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource:")) {
+      pageErrors.push(message.text());
+    }
+  });
+  try {
+    await page.goto(url, { waitUntil: "networkidle" });
+    const gate = page.locator(".mode-gate[open]");
+    await gate.waitFor();
+    assert.equal(
+      await gate.getByRole("heading", { name: "Choose your launch", exact: true }).count(),
+      1,
+      `${engine}: first run does not begin with the launch decision`,
+    );
+    assert.equal(
+      await gate.getByRole("radio", { name: /^Explore freely/ }).count(),
+      1,
+      `${engine}: free exploration is not a first-run choice`,
+    );
+    await gate.getByRole("radio", { name: /^Take a first flight/ }).check();
+    await gate.getByRole("radio", { name: "I build software", exact: true }).check();
+    assert.equal(
+      await gate.locator('input[name="first-register"]:checked').getAttribute("value"),
+      "expert",
+      `${engine}: Expert selection did not reach the launch form`,
+    );
+    await gate.getByRole("button", { name: "Begin first flight", exact: true }).click();
+    await page.locator(".flight-hud").waitFor();
+    assert.match(
+      await page.locator(".flight-hud").innerText(),
+      /First flight · stop 1\/\d+/,
+      `${engine}: guided launch did not expose voyage progress`,
+    );
+    const launchModeState = await page.evaluate(async () => ({
+      ui: document.querySelector(".app-shell")?.getAttribute("data-mode"),
+      stored: await fetch("/api/mode").then((response) => response.json()),
+    }));
+    assert.deepEqual(
+      launchModeState,
+      { ui: "expert", stored: { mode: "expert", chosen: true } },
+      `${engine}: launch explanation choice did not reach the persistent register`,
+    );
+
+    await page.locator(".first-flight").getByRole("button", { name: "Land and learn" }).click();
+    const study = page.locator(".study-preview");
+    await study.waitFor();
+    await study.getByRole("heading", { name: "Landing brief", exact: true }).waitFor();
+    assert.equal(
+      await study.locator('input[name="landing-register"][value="expert"]').isChecked(),
+      true,
+      `${engine}: landing did not retain the expert explanation`,
+    );
+    await study.locator('input[name="landing-register"][value="easy"]').check();
+    assert.equal(
+      await study.locator('input[name="landing-register"][value="easy"]').isChecked(),
+      true,
+      `${engine}: landing register cannot switch to Easy`,
+    );
+    assert.match(
+      await study.locator(".landing-brief").innerText(),
+      /Arriving links[\s\S]*Leaving links/i,
+      `${engine}: landing brief does not explain where the structure connects`,
+    );
+    await page.getByRole("button", { name: "Prove understanding", exact: true }).click();
+    await page.locator(".check-panel").waitFor();
+    assert.equal(
+      await page.locator(".check-panel").getAttribute("aria-label"),
+      "Graph-derived understanding checks",
+      `${engine}: guided landing did not continue into the existing quiz route`,
+    );
+    assert.deepEqual(pageErrors, [], `${engine}: guided launch browser errors`);
+    results.push(`${engine} guided launch and Easy/Expert landing`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function checkLaunchChoiceMatrix(browser, engine, project) {
+  for (const { voyage, register } of [
+    { voyage: "explore", register: "easy" },
+    { voyage: "explore", register: "expert" },
+    { voyage: "guided", register: "easy" },
+  ]) {
+    const dataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-${engine}-`));
+    dataRoots.push(dataRoot);
+    const launch = await startCodemble({ project, dataRoot });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    page.setDefaultTimeout(20_000);
+    try {
+      await page.goto(launch.url, { waitUntil: "networkidle" });
+      const gate = page.locator(".mode-gate[open]");
+      await gate.waitFor();
+      await completeModeGate(gate, { voyage, register });
+      await gate.waitFor({ state: "detached" });
+      await page.locator(".galaxy-frame").waitFor();
+      const persisted = await page.evaluate(async () => ({
+        mode: document.querySelector(".app-shell")?.getAttribute("data-mode"),
+        stored: await fetch("/api/mode").then((response) => response.json()),
+      }));
+      assert.deepEqual(
+        persisted,
+        { mode: register, stored: { mode: register, chosen: true } },
+        `${engine}: ${voyage}/${register} did not persist before launch`,
+      );
+      if (voyage === "guided") {
+        await page.locator(".flight-hud").waitFor();
+      } else {
+        assert.equal(
+          await page.locator(".flight-hud").count(),
+          0,
+          `${engine}: free ${register} launch started a guided flight`,
+        );
+      }
+      results.push(`${engine} ${voyage}/${register} launch`);
+    } finally {
+      await page.close();
+      await stopChild(launch.child);
+    }
+  }
+}
+
+async function checkRefusedLaunch(browser, engine, project) {
+  const dataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-refused-${engine}-`));
+  dataRoots.push(dataRoot);
+  const launch = await startCodemble({ project, dataRoot });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  page.setDefaultTimeout(20_000);
+  try {
+    await page.route("**/api/mode", async (route) => {
+      if (route.request().method() === "PUT") {
+        await route.fulfill({ status: 503, body: "mode write refused" });
+        return;
+      }
+      await route.continue();
+    });
+    await page.goto(launch.url, { waitUntil: "networkidle" });
+    const gate = page.locator(".mode-gate[open]");
+    await gate.waitFor();
+    await completeModeGate(gate, { voyage: "guided", register: "expert" });
+    await gate.waitFor();
+    await gate.getByRole("alert").waitFor();
+    assert.match(
+      await gate.getByRole("alert").innerText(),
+      /Launch was not saved/,
+      `${engine}: refused launch did not explain the retry`,
+    );
+    assert.equal(
+      await page.locator(".flight-hud").count(),
+      0,
+      `${engine}: refused mode persistence still started First Flight`,
+    );
+    assert.deepEqual(
+      await page.evaluate(async () => ({
+        mode: document.querySelector(".app-shell")?.getAttribute("data-mode"),
+        stored: await fetch("/api/mode").then((response) => response.json()),
+      })),
+      { mode: "easy", stored: { mode: "easy", chosen: false } },
+      `${engine}: refused launch did not roll back to server-confirmed state`,
+    );
+    results.push(`${engine} refused launch stays gated`);
+  } finally {
+    await page.close();
+    await stopChild(launch.child);
+  }
+}
+
+async function checkGuidedHomeCalibration(browser, engine, projects) {
+  const ambiguousRoot = mkdtempSync(path.join(tmpdir(), `codemble-home-ambiguous-${engine}-`));
+  dataRoots.push(ambiguousRoot);
+  const ambiguous = await startCodemble({
+    project: projects.ambiguous,
+    dataRoot: ambiguousRoot,
+  });
+  const ambiguousPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  ambiguousPage.setDefaultTimeout(20_000);
+  try {
+    await ambiguousPage.goto(ambiguous.url, { waitUntil: "networkidle" });
+    await completeModeGate(ambiguousPage.locator(".mode-gate[open]"), {
+      voyage: "guided",
+      register: "easy",
+    });
+    const home = ambiguousPage.locator(".entrypoint-picker[open]");
+    await home.waitFor();
+    assert.match(
+      await home.innerText(),
+      /requested flight will begin there/,
+      `${engine}: guided intent was not visible during Home calibration`,
+    );
+    await home.locator(".entrypoint-candidates button").first().click();
+    await home.waitFor({ state: "detached" });
+    await ambiguousPage.locator(".flight-hud").waitFor();
+    results.push(`${engine} guided launch resumes after Home calibration`);
+  } finally {
+    await ambiguousPage.close();
+    await stopChild(ambiguous.child);
+  }
+
+  const noHomeRoot = mkdtempSync(path.join(tmpdir(), `codemble-home-none-${engine}-`));
+  dataRoots.push(noHomeRoot);
+  const noHome = await startCodemble({ project: projects.noHome, dataRoot: noHomeRoot });
+  const noHomePage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  noHomePage.setDefaultTimeout(20_000);
+  try {
+    await noHomePage.goto(noHome.url, { waitUntil: "networkidle" });
+    await completeModeGate(noHomePage.locator(".mode-gate[open]"), {
+      voyage: "guided",
+      register: "expert",
+    });
+    const calibration = noHomePage.locator(".entrypoint-picker[open]");
+    await calibration.waitFor();
+    assert.match(
+      await calibration.innerText(),
+      /Codemble will not invent one/,
+      `${engine}: no-Home guided launch did not state its evidence boundary`,
+    );
+    const fallback = calibration.getByRole("button", {
+      name: "Explore without a flight",
+      exact: true,
+    });
+    await fallback.click();
+    await calibration.waitFor({ state: "detached" });
+    assert.equal(
+      await noHomePage.locator(".flight-hud").count(),
+      0,
+      `${engine}: no-Home fallback invented a guided flight`,
+    );
+    await noHomePage.locator(".galaxy-frame").waitFor();
+    results.push(`${engine} no-Home guided fallback is explicit`);
+  } finally {
+    await noHomePage.close();
+    await stopChild(noHome.child);
+  }
 }
 
 async function checkCanvasMapInteraction(browser, engine, url) {
@@ -560,7 +838,7 @@ async function openHomeDialog(page) {
     if (await home.count()) return;
     const mode = page.locator(".mode-gate[open]");
     if (await mode.count()) {
-      await mode.getByRole("button", { name: "New to coding?", exact: true }).click();
+      await completeModeGate(mode, { voyage: "explore", register: "easy" });
       await page.waitForTimeout(150);
       continue;
     }
@@ -586,7 +864,7 @@ async function settleApp(page) {
   for (let step = 0; step < 8; step += 1) {
     const mode = page.locator(".mode-gate[open]");
     if (await mode.count()) {
-      await mode.getByRole("button", { name: "New to coding?", exact: true }).click();
+      await completeModeGate(mode, { voyage: "explore", register: "easy" });
     } else {
       const home = page.locator(".entrypoint-picker[open]");
       if (await home.count()) {
@@ -600,6 +878,15 @@ async function settleApp(page) {
     await page.waitForTimeout(200);
   }
   await page.locator(".app-shell").waitFor();
+}
+
+async function completeModeGate(gate, { voyage, register }) {
+  const voyageName = voyage === "guided" ? "Take a first flight" : "Explore freely";
+  const registerName = register === "expert" ? "I build software" : "New to coding?";
+  await gate.getByRole("radio", { name: new RegExp(`^${voyageName}`) }).check();
+  await gate.getByRole("radio", { name: registerName, exact: true }).check();
+  const launchName = voyage === "guided" ? "Begin first flight" : "Open the galaxy";
+  await gate.getByRole("button", { name: launchName, exact: true }).click();
 }
 
 async function openStudy(page) {
@@ -781,7 +1068,7 @@ function openPort() {
 }
 
 async function stopChild(child) {
-  if (child.exitCode !== null) return;
+  if (child.exitCode !== null || child.signalCode !== null) return;
   const exited = new Promise((resolve) => child.once("exit", resolve));
   child.kill("SIGTERM");
   await Promise.race([

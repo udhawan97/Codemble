@@ -1,0 +1,4 @@
+{
+  "name": "codemble/php-sample",
+  "bin": ["bin/atlas.php"]
+}

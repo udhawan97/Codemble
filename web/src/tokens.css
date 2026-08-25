@@ -105,14 +105,10 @@
      token renders black. See the Gotchas in CLAUDE.md.
      ======================================================================= */
 
-  /* The sky itself. The canvas used to paint --cm-ground, so the galaxy's
-     background was the panel colour: relative luminance 0.0037, which is
-     black in all but name. This is 4.4x that and still deep night -- the
-     complaint was never that stars lacked contrast, it was that the sky read
-     as an empty void rather than as space with light in it. Lifting the
-     ground alone would have cost star contrast, so the real work is done by
-     the glow band and the brighter node range below. */
-  --cm-sky: rgb(19 31 75);
+  /* A uniform mid-blue field flattened stars, routes and the galactic band
+     into one plane. This stays distinct from UI ground while returning enough
+     darkness for the seeded dust shells and spiral plane to establish depth. */
+  --cm-sky: rgb(9 17 44);
   /* The galactic plane: a broad, very dim band of light across the disc, at
      lum 0.076. Encodes nothing -- it is the ambient that makes the emptiness
      read as distance rather than as absence. */
@@ -174,6 +170,8 @@
   --cm-neb-java: rgb(196 140 152);
   --cm-neb-rust: rgb(195 138 178);
   --cm-neb-csharp: rgb(120 169 87);
+  --cm-neb-ruby: rgb(195 141 141);
+  --cm-neb-php: rgb(140 153 197);
 
   /* Neutral base for the halo sprite texture. Always multiplied by the node's
      own colour, so it can never brighten an unlit node past a lit one. */

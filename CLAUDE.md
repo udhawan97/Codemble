@@ -29,7 +29,7 @@ npm run build                   # what the Pages workflow runs
 
 | Path | What |
 | --- | --- |
-| `codemble/adapters/` | LanguageAdapter seam. Seven languages: `python_ast.py` (stdlib `ast`), and `typescript_tree_sitter.py`, `go_tree_sitter.py`, `java_tree_sitter.py`, `rust_tree_sitter.py`, `csharp_tree_sitter.py` (tree-sitter). The registry is one tuple in `project.py` |
+| `codemble/adapters/` | LanguageAdapter seam. Nine languages: `python_ast.py` (stdlib `ast`), plus `typescript_tree_sitter.py`, `go_tree_sitter.py`, `java_tree_sitter.py`, `rust_tree_sitter.py`, `csharp_tree_sitter.py`, `ruby_tree_sitter.py`, and `php_tree_sitter.py` (tree-sitter). The registry is one tuple in `project.py` |
 | `codemble/graph/` | Language-tagged graph + render-ready metadata (the frontend is a pure consumer) |
 | `codemble/lens/` | Language lens: parser-detected idiom annotations → teachable notes |
 | `codemble/checks/` | Active checks generated FROM the graph; answers never come from the LLM |
@@ -77,12 +77,15 @@ human-approved only; never self-promote.
   OpenAI key.
 - **Local-first:** `codemble ./my-project` parses a local folder (no GitHub
   push needed) and serves the galaxy at localhost.
-- **Semantic zoom, three levels, no free flight:** 1) **Galaxy** — modules =
-  star systems, imports = routes, entrypoint = Home; camera on rails. 2)
+- **Semantic zoom, three levels, no free flight:** first run chooses free
+  exploration or the bounded First Flight, plus Easy or Expert explanation.
+  1) **Galaxy** — modules = star systems, imports = routes, entrypoint = Home;
+  camera on rails. 2)
   **System** — functions/classes as planets in deterministic orbits, call
   edges. 3) **Study** — one parser-owned journey from Home to the selected
-  feature, then real source, grounded explanation, language lens, and checks;
-  scene dims behind it. Scripted fly-to transitions.
+  feature, beginning with an Easy/Expert landing brief, then real source,
+  grounded explanation, language lens, and checks; scene dims behind it.
+  Scripted fly-to transitions.
 - **Illumination is the game:** nodes start dim; passing a region's checks
   lights them permanently. **A region = one star system = one module** — the
   unit of checks, lighting, and invalidation. Star chart tracks language
@@ -90,8 +93,8 @@ human-approved only; never self-promote.
 - **Persistence:** local JSON in `~/.codemble/`, keyed by project path + file
   hashes; a changed file re-dims only its region.
 - **Polyglot (from Phase 1):** nodes are language-tagged; users filter/focus
-  the galaxy by language, each language with its own idiom lens. Seven ship
-  today: Python, JavaScript, TypeScript, Go, Java, Rust and C#.
+  the galaxy by language, each language with its own idiom lens. Nine ship
+  today: Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby and PHP.
 
 ## Architecture rules
 
@@ -209,10 +212,10 @@ The v0.1.0 Python learner-acceptance issue stays open; technical completion
 does not claim those external runs passed.
 
 **NEXT — the privacy boundary for read-only sharing.** The parser and scale
-slate is now complete through the v0.20.0 candidate: Python's call resolution
+slate is now complete through the v0.21.0 candidate: Python's call resolution
 and lens (v0.11.0), JS/TS builtin classification and entrypoint ranking
-(v0.12.0), bounded parser evidence (v0.19.0), and a complete canvas Map that
-passes the 5,000-module backend, Chromium, and WebKit gate. The next build phase
+(v0.12.0), bounded parser evidence (v0.19.0), Ruby/PHP parsing (v0.21.0), and a
+complete canvas Map that passes the 5,000-module backend, Chromium, and WebKit gate. The next build phase
 must define provenance, expiry, deletion, and source-exclusion for the planned
 shareable read-only galaxy link before adding its only cloud touch.
 
@@ -251,31 +254,49 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M17 complete canvas Map and 5,000-file scale** · Last updated:
-2026-08-24 · Session note: verified stable v0.20.0 replaces per-item Map SVG DOM
-with complete viewport canvas delivery, improves keyboard/pointer/readout flow,
-and promotes the ordinary supported-file cap only after the full gate passes.
+**Current milestone: M18 adventure launch, landings, and Ruby/PHP** · Last updated:
+2026-08-25 · Session note: the v0.21.0 candidate adds a deliberate free-explore
+or First Flight launch, Easy/Expert landing briefs, seeded game-level space art,
+and conservative Ruby/PHP adapters without changing evidence or progression.
 
-**The verified v0.20.0 release completes the next measured phase.** Architecture and
-Workflow retain backend coordinates and every module/route in one complete
-prepared scene for the current language projection while drawing only the
-native-scroll viewport. The default all-language projection retains the entire
-Map; an explicit language focus remains a named learner-controlled filter. One
-listbox focus target replaces thousands of tab stops; arrows, Home/End, and
-Enter/Space remain direct, clipped canvas labels get a complete wrapping
-contextual readout, and empty space alone owns drag-to-pan. The revised schema-4
-5,000-module receipt passes at 4.870 s cold, 1.668 s no-change, and 170,606,592
-bytes process RSS.
-Chromium/WebKit each hold 99 DOM elements, all 5,000 boxes and 4,999 routes,
-direct final-module keyboard/Finder arrival, visible recovery in 76–82 ms,
-and zero page overflow at 320 px. The semantic oracle retains zero regressions.
-Native Safari visual acceptance was unavailable because the Mac was locked;
-WebKit engine acceptance and inspected 1440/320 captures passed without being
-misreported as Safari. Exact release commit `436cbee`, annotated tag object
-`9abf14a`, candidate PR CI `32769180402`, trusted publish `32770056876`, main CI
-`32770203502`, and Pages `32770203426` are green; downloaded public bytes and a
-cold Python 3.11 install match the committed ledger. Main's later evidence-only
-follow-up does not move the release tag. Issue #13 remains open.
+**Two implementation loops are complete; release proof is in progress.** First
+run now persists the selected explanation register before either opening the
+complete Galaxy or starting the existing bounded First Flight. Landing on a
+structure exposes its real kind/span and inbound/outbound graph connections in
+Easy or Expert language. Every guided stop now offers an explicit parser-owned
+landing and continues into the existing graph-derived checks without a second
+quiz or progression system. Galaxy scenery adds a seeded spiral disc, dust/core,
+layered star shells, nebula variants, reticle and route motion; System worlds
+add deterministic terrain, mineral bands, atmosphere, tilt, and rotation. All
+new scenery adds no unsupported fact, is reduced-motion aware, and is
+recursive-disposal covered. Language tint mirrors parser truth; amber and its
+starburst still mean passed checks and nothing else.
+
+Ruby and PHP now pass through the same adapter/finalization seam as the existing
+languages, with syntax-backed concepts, conservative calls, safe partial-file
+fallback, exact fixtures, and a ten-case semantic oracle. The pinned Rails
+corpus (`1f0c247…`) parsed 3,452 Ruby files into 53,478 nodes with zero partial
+files and 298,355 edges in 21.760 s; Laravel Framework (`9b21ce0…`) parsed
+3,034 PHP files into 38,540 nodes with one partial file and 207,232 edges in
+43.573 s. Immediate repeats were
+deterministic. The candidate currently passes 542 Python tests, Ruff, the full
+frontend build/contracts, and all 48 Chromium/WebKit user-flow journeys. The
+final 5,000-module gate reaches a usable app in 1.48 s in Chromium and 2.03 s in
+WebKit after large Galaxy startup began yielding for 650 ms; Map takeover
+cancels the pending WebGL construction. Compact panel-reach now keeps the
+landing explanation plus exact connection counts in the first viewport while
+the complete journey remains reachable.
+Native Safari acceptance was attempted but ScreenCaptureKit could not start the
+capture; WebKit is recorded only as engine evidence. v0.20.0 remains the stable
+public release until v0.21.0 completes candidate CI, exact-tag publication,
+outside-in artifact proof, main CI, Pages, and cold-install verification. Issue
+#13 remains open.
+
+Previously (2026-08-24) · Session note: verified stable v0.20.0 replaced
+per-item Map SVG DOM with complete viewport canvas delivery and promoted the
+ordinary supported-file cap after its full gate passed. Exact release commit
+`436cbee`, annotated tag object `9abf14a`, candidate PR CI `32769180402`, trusted
+publish `32770056876`, main CI `32770203502`, and Pages `32770203426` are green.
 
 Previously (2026-08-21) · Session note: two compact user-flow repairs shipped
 as verified stable v0.19.2 without changing parser, graph, checks, progress,
@@ -1752,10 +1773,36 @@ engines remain below the DOM, resource, usable-time, input, keyboard, recovery,
 event-loop, memory, and 320 px overflow budgets; the production SPA and public
 evidence are rebuilt from the reviewed source.
 
+### M18 — Adventure launch, landings, and Ruby/PHP (candidate, 2026-08-25)
+- [x] Separate first-run free exploration from the existing bounded First
+      Flight and durably commit Easy/Expert before guided navigation begins
+- [x] Continue First Flight through an explicit parser-owned landing and the
+      existing graph-derived Prove understanding route
+- [x] Add an in-place Easy/Expert landing brief with real kind/span and exact
+      inbound/outbound graph connections
+- [x] Deepen deterministic Galaxy scenery and System world materials without
+      adding free flight, semantic decoration, new progression, or new quests
+- [x] Add conservative Ruby and PHP tree-sitter adapters, Lens notes, fixtures,
+      ten-case semantic-oracle coverage, and pinned Rails/Laravel corpus receipts
+- [x] Rebuild the bundled SPA, nine public captures, brand social card, README,
+      guides, changelog, release notes, and provenance record
+- [ ] Complete two council rounds, candidate PR CI, exact-tag v0.21.0 publish,
+      outside-in artifact proof, main CI/Pages, and cold-install verification
+
+**Acceptance in progress:** 542 Python tests, Ruff, frontend contract/build,
+semantic oracle, 48 disposable Chromium/WebKit journeys, compact panel-reach,
+and the 5,000-module backend/browser budget pass. Native Safari is not claimed
+because ScreenCaptureKit could not start its capture. Publication still
+requires fresh Graphify, two council rounds, hosted candidate CI, reproducible
+artifacts, and outside-in public verification.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-25 | Every First Flight stop offers an explicit **Land and learn** action that selects the first complete non-module declaration in source order, falling back to the module anchor, then hands off to the existing Study and graph-derived check flow | A system-only tour did not satisfy the requested guided learning or quiz route, and a manual canvas Enter was not guidance. Source order is deterministic parser evidence, not an invented importance rank. Reusing `SELECT_STUDY_NODE`, Study guidance, and `OPEN_CHECKS` preserves the one visit, explanation, and check pipeline without a second lesson or progression state |
+| 2026-08-25 | First Flight is a tour of Home's direct proven imports, not a claim that each consecutive stop connects to the next; guided intent waits through Home calibration. Landing states parser-owned role purpose when present and explicitly unknown purpose otherwise. Semantic art channels mirror existing truth rather than becoming unlabelled decoration | Round-one outcome review found that `Home → alpha → beta` reads as a path even when only `Home → alpha` and `Home → beta` exist, that a guided choice fell through to free exploration when Home was unresolved, and that metadata-only prose could not satisfy a promise to explain purpose. The corrected tour copy, pending guided state, role-rule narration, and explicit unknown preserve the adventure without inventing an edge, a Home, or a job. Language nebulae and understood starbursts are truthful encodings, so the boundary is no unsupported fact, not no semantics |
+| 2026-08-25 | Projects above 900 source files yield 650 ms before constructing the Galaxy runtime; the honest preparation state is cancellable when the complete Map takes over. Compact Study keeps the landing explanation and exact connection counts in the first viewport, with full facts and journey in document order | The 5,000-module first-run route initially spent 10.9 s building a 3D scene the scale gate would immediately replace. A bounded yield preserves immediate entry for ordinary projects and lets the existing evidence-complete renderer win without duplicate work. At 320 px, showing every connection before the explanation hid the reason for landing; progressive disclosure preserves every fact while putting meaning before inventory |
 | 2026-07-18 | Learning-game identity; galaxy serves it | Resolved 3-way identity fight |
 | 2026-07-18 | Galaxy IS the map in v1 via semantic zoom; free flight banned | Wonder + readable study |
 | 2026-07-18 | Light gamification only (illumination + star chart) | The light-up IS the reward |
@@ -1967,6 +2014,9 @@ evidence are rebuilt from the reviewed source.
 | 2026-08-24 | A release candidate proves hosted CI on a PR, then publishes its exact local-main tag before moving origin/main | GitHub renders default-branch README copy independently of Pages, so pushing a version-bump commit to main before PyPI would still label an unpublished version stable. The candidate branch and PR give the exact commit hosted CI; local main then fast-forwards to that reviewed commit and owns the annotated tag while origin/main remains on the prior stable release. Only after trusted publishing and outside-in artifact proof does that same commit move origin/main. README media is tag-pinned, so PyPI never borrows older default-branch screenshots during the transition |
 | 2026-08-24 | Source archives exclude and reject parser-fixture outputs that are intentionally ignored by the fixture repository | Hatch's sdist selection could include `sampleproj/generated/` and `sampleproj/ignored.py` after the local parser tests exercised that fixture, even though a clean checkout of the same commit had neither file. The exact-tree gate stopped publication when the two archives differed. Explicit build exclusions now make exercised and clean checkouts byte-identical, while the release-fact gate rejects either path if it ever returns; developer/runtime marker exclusions remain independently enforced |
 | 2026-08-24 | v0.20.0 becomes stable only after candidate CI, exact-tag publication, outside-in artifact proof, main CI, Pages, and a cold install agree | Annotated tag `v0.20.0` (`9abf14a`) peels to release commit `436cbee`; candidate PR CI `32769180402`, trusted publish `32770056876`, main CI `32770203502`, and Pages `32770203426` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `15e42dee…cf61` and sdist `466e5f5b…b008`; a cold Python 3.11 install reports 0.20.0 and carries `index-DzCSIcHk.js` plus `index-R8cZVoqz.css`. Obscura rendered the deployed 203-system surface without failed images, overflow, or console errors. Native Safari remained unavailable on the locked Mac and is not claimed; issue #13 remains open. The follow-up changes only this operating truth and must never move the release tag |
+| 2026-08-25 | First run offers **Explore freely** or **Take a first flight**, and every landing can switch Easy/Expert without changing its graph target | Approved by UD as the adventure/onboarding fork. Explore dismisses coach marks and opens the complete Galaxy; guided launch durably commits the chosen register through `LearnerSession` before starting the existing bounded First Flight. A landing brief derives its kind, source span, summary, and connections from the selected node and graph edges. No free flight, XP, score, completion badge, saved voyage, new quest type, or second truth is introduced |
+| 2026-08-25 | Galaxy scenery and System worlds may deepen only as deterministic non-semantic art; amber, certainty, positions, and routes keep their prior owners | Approved by UD's game-level visual request within the existing locked limits. A hash-seeded spiral disc, core/dust, far/near star shells, nebula variants, reticle, vignette, and proven-route particles add depth at Galaxy range; seeded terrain, mineral bands, atmosphere, tilt, and slow rotation deepen System worlds. All are disposable renderer materials, respect reduced motion, and encode no fact. The existing no-procedural-surface rule at 5,000-system Galaxy range still holds: rich body surfaces remain System-only |
+| 2026-08-25 | Ruby and PHP join the adapter seam with conservative certainty and official MIT grammar wheels | Both adapters extract modules, types, methods/functions, imports/includes, explicit calls, entrypoint evidence, and syntax-anchored concepts; Ruby also emits native entrypoint roles, while PHP intentionally emits no role evidence. Dynamic dispatch stays possible and partial files fail closed to module evidence. The ten-case oracle and pinned Rails/Laravel corpora guard omission, invented certainty, scale, and deterministic bytes. tree-sitter-ruby `ad907a69…` and tree-sitter-php `3fda2fb…` were license-verified; no implementation code or assets were copied |
 
 
 ## Non-Goals — do NOT build (point here when asked)

@@ -1248,7 +1248,11 @@ const modeFailureSession = createLearnerSession({
 });
 await modeFailureSession.start();
 assert.equal(modeFailureSession.getSnapshot().mode, "easy");
-await modeFailureSession.dispatch({ type: "SET_MODE", mode: "expert" });
+assert.equal(
+  await modeFailureSession.dispatch({ type: "SET_MODE", mode: "expert" }),
+  false,
+  "a refused mode write is observable by the launch boundary",
+);
 assert.equal(
   modeFailureSession.getSnapshot().mode,
   "easy",
@@ -1776,7 +1780,11 @@ assert.equal(
 );
 
 rejectStaleMode(new Error("Mode write returned 500."));
-await staleModeRequest;
+assert.equal(
+  await staleModeRequest,
+  false,
+  "a superseded project cannot report its mode write as durable",
+);
 const modeRaceSnapshot = modeRaceSession.getSnapshot();
 assert.equal(
   modeRaceSnapshot.mode,

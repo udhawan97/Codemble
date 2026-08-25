@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 globalThis.window = {};
-const { createGalaxyRuntime } = await import("../src/galaxyRuntime.js");
+const { createGalaxyRuntime, galaxyRuntimeStartDelay, LARGE_GALAXY_DEFER_MS } =
+  await import("../src/galaxyRuntime.js");
+
+assert.equal(galaxyRuntimeStartDelay(900), 0, "ordinary galaxies start immediately");
+assert.equal(
+  galaxyRuntimeStartDelay(901),
+  LARGE_GALAXY_DEFER_MS,
+  "large galaxies yield briefly to an explicit Map transition",
+);
 
 function fakeClock() {
   let next = 1;
@@ -149,7 +157,8 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
     "linkCurvature", "linkThreeObject", "linkPositionUpdate", "linkVisibility",
     "linkHoverPrecision", "linkDirectionalArrowRelPos", "linkDirectionalArrowColor",
     "linkDirectionalParticles", "linkDirectionalParticleSpeed",
-    "linkDirectionalParticleWidth", "linkDirectionalParticleColor",
+    "linkDirectionalParticleWidth", "linkDirectionalParticleResolution",
+    "linkDirectionalParticleColor",
     "linkDirectionalArrowLength", "onNodeHover", "onNodeClick",
   ];
   for (const method of chainMethods) {
@@ -181,7 +190,17 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
       events.push("observer:disconnect");
     }
   }
-  const dressing = { dispose: () => events.push("dressing:dispose") };
+  const navigator = {
+    name: "codemble-navigator",
+    visible: false,
+    scale: { setScalar: () => events.push("navigator:scale") },
+    position: { set: () => events.push("navigator:position") },
+    removeFromParent: () => events.push("navigator:remove"),
+  };
+  const dressing = {
+    dispose: () => events.push("dressing:dispose"),
+    reticle: () => navigator,
+  };
   const bodyGeometry = { dispose: () => events.push("body:dispose") };
   const bloom = { dispose: () => events.push("bloom:dispose") };
   const dependencies = {
@@ -303,9 +322,9 @@ const beforeFocusClear = first.events.length;
 first.runtime.update(snapshot({ focusedNodeId: null, pendingDawnRegionId: null }));
 const focusClearEvents = first.events.slice(beforeFocusClear);
 assert.ok(
-  focusClearEvents.lastIndexOf("renderer:refresh") >
+  focusClearEvents.lastIndexOf("navigator:remove") >
     focusClearEvents.lastIndexOf(`nodeColor:${String(first.renderer.nodeColor())}`),
-  "marker refresh runs after the new highlight accessor is installed",
+  "the flight navigator retires after the new highlight accessor is installed",
 );
 assert.equal(
   first.renderer.nodeColor()({ id: "target", color: "#abc" }),
@@ -342,6 +361,16 @@ assert.equal(
   first.renderer.linkColor()(neighborhood.links[1]),
   "#fa4",
   "an active possible route keeps uncertainty ink",
+);
+assert.equal(
+  first.renderer.linkDirectionalParticles()(neighborhood.links[0]),
+  3,
+  "the active parser-proven galaxy route carries navigation motion",
+);
+assert.equal(
+  first.renderer.linkDirectionalParticles()(neighborhood.links[1]),
+  0,
+  "a possible route never gains navigation motion",
 );
 assert.equal(first.atlasPlacements.at(-1).activeNodeId, "neighbor");
 assert.deepEqual([...first.atlasPlacements.at(-1).neighborIds], ["target", "far"]);

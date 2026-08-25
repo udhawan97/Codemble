@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 
-import { BODY_SHADER_SOURCE, bodySeed } from "../src/celestialBodies.js";
+import {
+  ATMOSPHERE_SHADER_SOURCE,
+  BODY_SHADER_SOURCE,
+  bodySeed,
+} from "../src/celestialBodies.js";
 
 // A GLSL reserved word used as an identifier makes the program fail to LINK,
 // and three.js reports that only as a console flood while drawing nothing --
@@ -15,7 +19,10 @@ const RESERVED = [
   "public", "static", "extern", "external", "interface", "long", "short",
   "half", "fixed", "unsigned", "superp", "namespace", "using", "row_major",
 ];
-for (const source of Object.values(BODY_SHADER_SOURCE)) {
+for (const source of [
+  ...Object.values(BODY_SHADER_SOURCE),
+  ...Object.values(ATMOSPHERE_SHADER_SOURCE),
+]) {
   for (const word of RESERVED) {
     // Declaration shapes only: `<type> <reserved>` or `<reserved> =`.
     const declared = new RegExp(
@@ -26,13 +33,34 @@ for (const source of Object.values(BODY_SHADER_SOURCE)) {
 }
 // The uniforms the material binds must all actually be declared, or the value
 // is silently ignored and the body loses a semantic channel.
-for (const uniform of ["uBase", "uAmber", "uSeed", "uLit", "uPartial", "uClass", "uDim"]) {
+for (const uniform of [
+  "uBase",
+  "uAmber",
+  "uCool",
+  "uSeed",
+  "uLit",
+  "uPartial",
+  "uClass",
+  "uDim",
+]) {
   assert.ok(
     BODY_SHADER_SOURCE.fragment.includes(`uniform`) &&
       new RegExp(`\\b${uniform}\\b`).test(BODY_SHADER_SOURCE.fragment),
     `fragment shader never reads uniform ${uniform}`,
   );
 }
+for (const uniform of ["uBase", "uCool", "uDim"]) {
+  assert.match(
+    ATMOSPHERE_SHADER_SOURCE.fragment,
+    new RegExp(`\\b${uniform}\\b`),
+    `atmosphere shader never reads uniform ${uniform}`,
+  );
+}
+assert.doesNotMatch(
+  ATMOSPHERE_SHADER_SOURCE.fragment,
+  /uAmber|kohaku/i,
+  "the decorative atmosphere must never borrow understanding-only amber",
+);
 
 // "Same code -> same sky" is an acceptance criterion, and a procedural surface
 // is the easiest place to break it. The seed must depend only on the node id.

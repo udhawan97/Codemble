@@ -7,7 +7,7 @@ no network, and no provider configured at all.
 
 from __future__ import annotations
 
-from codemble.adapters.base import Node
+from codemble.adapters.base import Node, RoleEvidence
 
 _COUNT_WORDS = (
     "No",
@@ -29,11 +29,26 @@ _KIND_WORDS = {
     "class": "class",
 }
 
+_EASY_ROLE_PURPOSE = {
+    "application-entry": "The parser proves this is a place where the application starts.",
+    "route-handler": "The parser proves this receives an application route.",
+    "ui-renderer": "The parser proves this renders part of the user interface.",
+    "test": "The parser proves this is test code; it does not claim the test passed.",
+}
+
+_EXPERT_ROLE_PURPOSE = {
+    "application-entry": "application entry",
+    "route-handler": "route handler",
+    "ui-renderer": "UI renderer",
+    "test": "test",
+}
+
 
 def structural_summary(
     node: Node,
     neighbors: list[dict[str, object]],
     lens: list[dict[str, object]],
+    roles: list[RoleEvidence] | tuple[RoleEvidence, ...] = (),
 ) -> dict[str, str]:
     """Return the same parser facts in a beginner and an expert voice."""
 
@@ -43,8 +58,8 @@ def structural_summary(
     titles = [str(item.get("title", "")) for item in lens if item.get("title")]
     concepts = [str(item.get("concept", "")) for item in lens if item.get("concept")]
     return {
-        "easy": _easy_voice(node, inbound, outbound, possible, titles),
-        "expert": _expert_voice(node, inbound, outbound, possible, concepts),
+        "easy": _easy_voice(node, inbound, outbound, possible, titles, roles),
+        "expert": _expert_voice(node, inbound, outbound, possible, concepts, roles),
     }
 
 
@@ -86,12 +101,14 @@ def _easy_voice(
     outbound: list[dict[str, object]],
     possible: list[dict[str, object]],
     titles: list[str],
+    roles: list[RoleEvidence] | tuple[RoleEvidence, ...],
 ) -> str:
     kind = _KIND_WORDS.get(node.kind, node.kind)
     sentences = [
         f"This is {node.name}, a {kind}.",
         f"It lives in {node.file}, starting on line {node.lineno}.",
         f"It is {_line_count(node.loc)} long.",
+        _easy_purpose(roles),
     ]
     sentences.append(_inbound_sentence(inbound))
     sentences.append(
@@ -122,6 +139,7 @@ def _expert_voice(
     outbound: list[dict[str, object]],
     possible: list[dict[str, object]],
     concepts: list[str],
+    roles: list[RoleEvidence] | tuple[RoleEvidence, ...],
 ) -> str:
     # Prose, not a "·"-joined field list. The expert register is terse, but the
     # old single metadata line sat under a heading reading "Structural summary"
@@ -137,8 +155,9 @@ def _expert_voice(
         ),
         (
             f"It has {len(inbound)} inbound and {len(outbound)} outbound "
-            f"parser-proven {'edge' if edges == 1 else 'edges'}."
+            f"parser-observed graph {'edge' if edges == 1 else 'edges'}."
         ),
+        _expert_purpose(roles),
     ]
     if possible:
         count = len(possible)
@@ -151,6 +170,21 @@ def _expert_voice(
     if node.partial:
         sentences.append("A partial parse means this structure is incomplete.")
     return " ".join(sentences)
+
+
+def _easy_purpose(roles: list[RoleEvidence] | tuple[RoleEvidence, ...]) -> str:
+    if not roles:
+        return "The parser describes its structure and observed connections, but not its purpose."
+    descriptions = sorted({_EASY_ROLE_PURPOSE[evidence.role] for evidence in roles})
+    return " ".join(descriptions)
+
+
+def _expert_purpose(roles: list[RoleEvidence] | tuple[RoleEvidence, ...]) -> str:
+    if not roles:
+        return "No parser-owned role evidence describes its purpose."
+    labels = sorted({_EXPERT_ROLE_PURPOSE[evidence.role] for evidence in roles})
+    rules = sorted({evidence.rule_id for evidence in roles})
+    return f"Parser roles: {', '.join(labels)} (rules: {', '.join(rules)})."
 
 
 def _count_word(count: int) -> str:

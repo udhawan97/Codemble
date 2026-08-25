@@ -7,13 +7,15 @@ The authoritative roadmap lives in the repo's
 [CLAUDE.md](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md) and moves
 only when milestones actually complete. The shape:
 
-## NOW — learner evidence and the 5,000-file stable
+## NOW — learner evidence and the nine-language adventure
 
-Packaged v0.20.0 and current source map Python, JavaScript, TypeScript, Go,
-Java, Rust, C#, and mixed projects through one local parser-proven learning
-loop. v0.20.0 adds a complete canvas Map and moves the ordinary supported-file
-cap to 5,000 after the full backend, Chromium, and WebKit gate passed. The
-current work is learner evidence and correctness reports. The
+Packaged v0.21.0 and current source map Python, JavaScript, TypeScript, Go,
+Java, Rust, C#, Ruby, PHP, and mixed projects through one local parser-proven
+learning loop. v0.21.0 adds the free-explore or First Flight launch choice,
+guided landing-to-check handoff, Easy/Expert landing briefs, a richer
+deterministic game sky, and the two new
+adapters while retaining v0.20.0's complete 5,000-file Map gate. The current
+work is learner evidence and correctness reports. The
 original learner-acceptance issue remains open and is not treated as passed by
 technical completion.
 

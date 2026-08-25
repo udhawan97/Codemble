@@ -5,6 +5,55 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-08-25
+
+### Added
+- A first-run launch choice now separates **Explore freely** from **Take a
+  first flight**. Free exploration opens the complete galaxy immediately;
+  First Flight tours Home and its directly imported modules without implying
+  that consecutive stops call or import each other. Every stop offers **Land
+  and learn**, which opens a parser-owned structure and continues through the
+  existing graph-derived **Prove understanding** checks.
+- Landing on a structure opens a compact brief with Easy and Expert registers,
+  its real kind and source span, and exact inbound/outbound graph connections.
+  The learner can change register without leaving the world.
+- Ruby and PHP join the parser seam with deterministic tree-sitter adapters,
+  syntax-backed Lens concepts, conservative call certainty, safe partial-file
+  behavior, fixtures, semantic-oracle coverage, and real-framework corpus
+  receipts. Codemble now maps nine languages and mixed projects.
+
+### Changed
+- Galaxy range now uses a deterministic spiral star field, layered depth shells,
+  seeded nebula variants, route particles, a galactic core, optical framing,
+  and language tints for Ruby and PHP. System worlds gain seeded terrain,
+  mineral bands, atmosphere shells, tilt, and slow rotation.
+- First-run launch persistence is sequenced through `LearnerSession` before a
+  guided flight starts, so the selected Easy/Expert register is durable and the
+  first landing cannot render the prior mode. A refused write reopens the launch
+  gate, and guided intent waits through honest Home calibration.
+- A Galaxy above 900 supported files yields for 650ms before allocating WebGL,
+  showing a named preparation state. An immediate Map choice cancels that work;
+  the complete 5,000-file Map gate returns to 1.48s Chromium / 2.03s WebKit.
+- At 320px, the immediate landing explanation stays visible while exact
+  inbound/outbound/possible counts lead a 44px disclosure for the longer facts;
+  the parser journey remains the next explicit reachable section.
+- Product captures, current guides, README, and the public site now describe the
+  same v0.21.0 nine-language adventure flow.
+
+### Correctness
+- New visual layers are deterministic and add no unsupported fact. Language
+  tint and check-owned understanding remain truthful semantic channels; scenery
+  adds no role, certainty, or importance. The camera remains bounded; visits
+  still chart a trail; no XP, score, new quest type, or free-flight navigation
+  was added.
+- Ruby and PHP calls that cannot be resolved from explicit syntax stay labelled
+  possible; parser errors retain only safe module/file evidence instead of
+  manufacturing structures or routes.
+- PHP name resolution preserves fully qualified, namespace-relative, aliased,
+  and grouped-use forms. Ruby keeps `class << self` methods singleton-owned and
+  records standalone no-argument sends as possible calls unless syntax proves
+  the name local.
+
 ## [0.20.0] - 2026-08-24
 
 ### Added

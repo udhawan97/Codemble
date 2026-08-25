@@ -9,6 +9,8 @@ import { configureNamePlate } from "./nameAtlas.js";
 
 const HALO_TEXTURE_SIZE = 128;
 const NEBULA_TEXTURE_SIZE = 256;
+const STARBURST_TEXTURE_SIZE = 256;
+const NEBULA_VARIANTS = 4;
 const GUIDE_LABEL_HEIGHT = 0.026;
 
 function radialTexture(size, stops) {
@@ -30,16 +32,116 @@ function radialTexture(size, stops) {
   return texture;
 }
 
-function ringTexture(size) {
+function navigatorTexture(size) {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const context = canvas.getContext("2d");
-  context.strokeStyle = "rgba(255, 255, 255, 1)";
-  context.lineWidth = size * 0.05;
+  const center = size / 2;
+  context.strokeStyle = "rgba(255, 255, 255, 0.96)";
+  context.lineCap = "round";
+  context.lineWidth = size * 0.026;
+  for (let quadrant = 0; quadrant < 4; quadrant += 1) {
+    const start = quadrant * Math.PI / 2 + 0.18;
+    context.beginPath();
+    context.arc(center, center, size * 0.39, start, start + Math.PI / 2 - 0.36);
+    context.stroke();
+  }
+  context.globalAlpha = 0.72;
+  context.lineWidth = size * 0.012;
   context.beginPath();
-  context.arc(size / 2, size / 2, size * 0.4, 0, Math.PI * 2);
+  context.arc(center, center, size * 0.29, 0, Math.PI * 2);
   context.stroke();
+  context.globalAlpha = 1;
+  context.lineWidth = size * 0.022;
+  for (let tick = 0; tick < 8; tick += 1) {
+    const angle = tick * Math.PI / 4;
+    const inner = tick % 2 === 0 ? size * 0.34 : size * 0.365;
+    const outer = size * 0.46;
+    context.beginPath();
+    context.moveTo(center + Math.cos(angle) * inner, center + Math.sin(angle) * inner);
+    context.lineTo(center + Math.cos(angle) * outer, center + Math.sin(angle) * outer);
+    context.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function organicNebulaTexture(size, variant) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  const random = mulberry32(fnv1a(`codemble-nebula:${variant}`));
+  context.clearRect(0, 0, size, size);
+  context.globalCompositeOperation = "lighter";
+
+  // Four shared, seeded silhouettes break the UI-circle repetition without a
+  // texture per system. Language still owns colour; this owns only cloud shape.
+  for (let lobe = 0; lobe < 8; lobe += 1) {
+    const angle = random() * Math.PI * 2;
+    const reach = size * (0.04 + random() * 0.22);
+    const x = size / 2 + Math.cos(angle) * reach;
+    const y = size / 2 + Math.sin(angle) * reach * 0.62;
+    const radius = size * (0.18 + random() * 0.17);
+    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, `rgba(255, 255, 255, ${0.11 + random() * 0.1})`);
+    gradient.addColorStop(0.46, "rgba(255, 255, 255, 0.075)");
+    gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.ellipse(
+      x,
+      y,
+      radius * (0.9 + random() * 0.5),
+      radius * (0.46 + random() * 0.34),
+      angle + random() * 0.5,
+      0,
+      Math.PI * 2,
+    );
+    context.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function starburstTexture(size) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  const center = size / 2;
+  context.translate(center, center);
+  context.globalCompositeOperation = "lighter";
+  context.lineCap = "round";
+  for (let ray = 0; ray < 8; ray += 1) {
+    const angle = ray * Math.PI / 4;
+    const length = ray % 2 === 0 ? size * 0.46 : size * 0.3;
+    const gradient = context.createLinearGradient(0, 0, length, 0);
+    gradient.addColorStop(0, "rgba(255, 255, 255, 0.78)");
+    gradient.addColorStop(0.28, "rgba(255, 255, 255, 0.24)");
+    gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    context.save();
+    context.rotate(angle);
+    context.strokeStyle = gradient;
+    context.lineWidth = ray % 2 === 0 ? size * 0.018 : size * 0.01;
+    context.beginPath();
+    context.moveTo(size * 0.025, 0);
+    context.lineTo(length, 0);
+    context.stroke();
+    context.restore();
+  }
+  const core = context.createRadialGradient(0, 0, 0, 0, 0, size * 0.19);
+  core.addColorStop(0, "rgba(255, 255, 255, 0.94)");
+  core.addColorStop(0.22, "rgba(255, 255, 255, 0.48)");
+  core.addColorStop(1, "rgba(255, 255, 255, 0)");
+  context.fillStyle = core;
+  context.beginPath();
+  context.arc(0, 0, size * 0.19, 0, Math.PI * 2);
+  context.fill();
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -63,12 +165,39 @@ export function createDressing(palette) {
   const haloTexture = owned(radialTexture(HALO_TEXTURE_SIZE, [
     [0, 0.85], [0.25, 0.42], [0.6, 0.1], [1, 0],
   ]));
-  const nebulaTexture = owned(radialTexture(NEBULA_TEXTURE_SIZE, [
-    [0, 0.32], [0.45, 0.14], [0.8, 0.03], [1, 0],
-  ]));
-  const reticleTexture = owned(ringTexture(HALO_TEXTURE_SIZE));
+  const reticleTexture = owned(navigatorTexture(HALO_TEXTURE_SIZE));
+  const starburstMap = owned(starburstTexture(STARBURST_TEXTURE_SIZE));
   const haloMaterials = new Map();
+  const nebulaTextures = new Map();
   const nebulaMaterials = new Map();
+  const reticleMaterial = owned(new THREE.SpriteMaterial({
+    map: reticleTexture,
+    color: new THREE.Color(palette.orbit),
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    sizeAttenuation: false,
+    opacity: 0.94,
+  }));
+  const reticleGlowMaterial = owned(new THREE.SpriteMaterial({
+    map: haloTexture,
+    color: new THREE.Color(palette.orbit),
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    sizeAttenuation: false,
+    opacity: 0.18,
+  }));
+  const starburstMaterial = owned(new THREE.SpriteMaterial({
+    map: starburstMap,
+    color: new THREE.Color(palette.star),
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    opacity: 0.72,
+  }));
   // One amber mote material shared by every spark of every dawn. Built lazily,
   // because most sessions never light a region at all.
   let sparkMaterial = null;
@@ -112,25 +241,43 @@ export function createDressing(palette) {
       sprite.renderOrder = -1;
       return sprite;
     },
-    nebula(tint, radius) {
-      if (!nebulaMaterials.has(tint)) {
+    nebula(tint, radius, seedText = tint) {
+      const variant = fnv1a(String(seedText)) % NEBULA_VARIANTS;
+      const key = `${tint}:${variant}`;
+      if (!nebulaTextures.has(variant)) {
+        nebulaTextures.set(
+          variant,
+          owned(organicNebulaTexture(NEBULA_TEXTURE_SIZE, variant)),
+        );
+      }
+      if (!nebulaMaterials.has(key)) {
         nebulaMaterials.set(
-          tint,
+          key,
           owned(new THREE.SpriteMaterial({
-            map: nebulaTexture,
+            map: nebulaTextures.get(variant),
             color: new THREE.Color(tint),
             blending: THREE.AdditiveBlending,
             transparent: true,
             depthWrite: false,
             // Alpha lives here, not in the token: the token has to survive a
             // 4.5:1 legend check, the fog has to stay a whisper.
-            opacity: 0.16,
+            opacity: 0.2,
+            rotation: variant * 0.73,
           })),
         );
       }
-      const sprite = new THREE.Sprite(nebulaMaterials.get(tint));
-      sprite.scale.setScalar(radius);
+      const sprite = new THREE.Sprite(nebulaMaterials.get(key));
+      const breadth = 1.05 + variant * 0.08;
+      const depth = 0.66 + ((variant + 1) % NEBULA_VARIANTS) * 0.06;
+      sprite.scale.set(radius * breadth, radius * depth, 1);
       sprite.renderOrder = -2;
+      return sprite;
+    },
+    starburst(radius) {
+      const sprite = new THREE.Sprite(starburstMaterial);
+      sprite.scale.setScalar(radius * 13.5);
+      sprite.renderOrder = 1;
+      sprite.userData.codembleUnderstoodBurst = true;
       return sprite;
     },
     /**
@@ -155,19 +302,18 @@ export function createDressing(palette) {
       sprite.renderOrder = 2;
       return sprite;
     },
-    reticle(radius) {
-      const sprite = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: reticleTexture,
-          color: new THREE.Color(palette.orbit),
-          transparent: true,
-          depthWrite: false,
-          depthTest: false,
-        }),
-      );
-      sprite.scale.setScalar(radius * 5);
-      sprite.renderOrder = 3;
-      return sprite;
+    reticle(radius = 1) {
+      const group = new THREE.Group();
+      const glow = new THREE.Sprite(reticleGlowMaterial);
+      glow.scale.setScalar(0.23);
+      glow.renderOrder = 2;
+      const sight = new THREE.Sprite(reticleMaterial);
+      sight.scale.setScalar(0.16);
+      sight.renderOrder = 3;
+      group.add(glow, sight);
+      group.scale.setScalar(radius);
+      group.userData.codembleNavigator = true;
+      return group;
     },
     /**
      * A name plate that keeps a constant on-screen size.
@@ -202,11 +348,11 @@ export function createDressing(palette) {
     },
     dispose() {
       // The only real free: every shared texture and material registered above,
-      // in creation order. The per-call reticle material is not shared and is
-      // still freed by three-forcegraph when its node object is removed.
+      // in creation order.
       for (const release of releases) release();
       releases.length = 0;
       haloMaterials.clear();
+      nebulaTextures.clear();
       nebulaMaterials.clear();
       sparkMaterial = null;
       labelMaterials.clear();
@@ -296,7 +442,11 @@ function fnv1a(text) {
   return hash >>> 0;
 }
 
-export function createStarfield(seedText, palette, count = 3200, radius = 1600) {
+export function skySeed(seedText) {
+  return fnv1a(String(seedText ?? "")) / 4294967296;
+}
+
+function createStarLayer(seedText, palette, count, radius, { near = false } = {}) {
   const random = mulberry32(fnv1a(seedText));
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
@@ -309,12 +459,12 @@ export function createStarfield(seedText, palette, count = 3200, radius = 1600) 
     // Math.random: "same code -> same sky" is an acceptance criterion.
     const theta = random() * Math.PI * 2;
     const phi = Math.acos(2 * random() - 1);
-    const distance = radius * (0.65 + random() * 0.35);
+    const distance = radius * (0.68 + random() * 0.32);
     // Two thirds of the dust is flattened toward the galactic plane. A uniform
     // shell reads as a featureless dome from every angle; a band gives the
     // emptiness a direction, which is what makes it read as distance rather
     // than as absence. The layout itself is a disc, so the band agrees with it.
-    const flatten = index % 3 === 0 ? 1 : 0.18;
+    const flatten = index % 3 === 0 ? 1 : near ? 0.3 : 0.18;
     positions[index * 3] = distance * Math.sin(phi) * Math.cos(theta);
     positions[index * 3 + 1] = distance * Math.cos(phi) * flatten;
     positions[index * 3 + 2] = distance * Math.sin(phi) * Math.sin(theta);
@@ -325,27 +475,181 @@ export function createStarfield(seedText, palette, count = 3200, radius = 1600) 
     colors[index * 3] = tint.r;
     colors[index * 3 + 1] = tint.g;
     colors[index * 3 + 2] = tint.b;
-    sizes[index] = 1.4 + random() * 2.6;
+    if (near) {
+      sizes[index] = random() < 0.11 ? 8.5 + random() * 7.5 : 3.8 + random() * 4.6;
+    } else {
+      sizes[index] = random() < 0.05 ? 7 + random() * 5 : 2.4 + random() * 3.2;
+    }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
-  const points = new THREE.Points(
-    geometry,
-    new THREE.PointsMaterial({
-      // Dust, not stars: it must read as depth, never compete with a lit
-      // system. vertexColors carries the per-star temperature above.
-      vertexColors: true,
-      size: 2.4,
-      sizeAttenuation: true,
-      transparent: true,
-      opacity: 0.62,
-      depthWrite: false,
-    }),
-  );
-  points.name = "codemble-starfield";
+  const points = new THREE.Points(geometry, new THREE.ShaderMaterial({
+    vertexShader: STARFIELD_VERTEX,
+    fragmentShader: STARFIELD_FRAGMENT,
+    uniforms: {
+      uPointScale: { value: near ? 1.22 : 0.88 },
+      uOpacity: { value: near ? 0.78 : 0.62 },
+    },
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  }));
+  points.name = near ? "codemble-starfield-near" : "codemble-starfield-far";
   return points;
+}
+
+export function createStarfield(seedText, palette, count = 3200, radius = 1600) {
+  const total = Math.max(0, Math.floor(count));
+  const farCount = total > 0 ? Math.max(1, Math.floor(total * 0.82)) : 0;
+  const nearCount = total - farCount;
+  const group = new THREE.Group();
+  group.name = "codemble-starfield";
+  if (farCount) group.add(createStarLayer(`${seedText}:far`, palette, farCount, radius));
+  if (nearCount) {
+    group.add(
+      createStarLayer(`${seedText}:near`, palette, nearCount, radius * 0.62, { near: true }),
+    );
+  }
+  group.rotation.y = skySeed(`${seedText}:starfield-orientation`) * Math.PI * 2;
+  group.userData.codembleStarCount = total;
+  return group;
+}
+
+const STARFIELD_VERTEX = `
+attribute float size;
+uniform float uPointScale;
+varying vec3 vStarColor;
+void main(){
+  vStarColor = color;
+  vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+  float distanceScale = 430.0 / max(320.0, -viewPosition.z);
+  gl_PointSize = clamp(size * uPointScale * distanceScale, 1.0, 5.2);
+  gl_Position = projectionMatrix * viewPosition;
+}
+`;
+
+const STARFIELD_FRAGMENT = `
+uniform float uOpacity;
+varying vec3 vStarColor;
+void main(){
+  float distanceFromCore = length(gl_PointCoord - vec2(0.5));
+  if (distanceFromCore > 0.5) discard;
+  float core = 1.0 - smoothstep(0.0, 0.16, distanceFromCore);
+  float halo = 1.0 - smoothstep(0.06, 0.5, distanceFromCore);
+  float alpha = min(1.0, core * 0.72 + halo * 0.42);
+  gl_FragColor = vec4(vStarColor, alpha * uOpacity);
+}
+`;
+
+export const STARFIELD_SHADER_SOURCE = Object.freeze({
+  vertex: STARFIELD_VERTEX,
+  fragment: STARFIELD_FRAGMENT,
+});
+
+const GALACTIC_DISC_VERTEX = `
+varying vec2 vUv;
+void main(){
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const GALACTIC_DISC_FRAGMENT = `
+uniform vec3 uCore;
+uniform vec3 uEdge;
+uniform float uSeed;
+varying vec2 vUv;
+
+float cbDiscHash(vec2 p){
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32 + uSeed * 17.0);
+  return fract(p.x * p.y);
+}
+
+float cbDiscNoise(vec2 p){
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(cbDiscHash(i), cbDiscHash(i + vec2(1.0, 0.0)), f.x),
+    mix(cbDiscHash(i + vec2(0.0, 1.0)), cbDiscHash(i + vec2(1.0, 1.0)), f.x),
+    f.y
+  );
+}
+
+void main(){
+  vec2 point = (vUv - 0.5) * 2.0;
+  float radius = length(point);
+  if (radius > 1.0) discard;
+  float angle = atan(point.y, point.x);
+  float turbulence = cbDiscNoise(point * 4.4 + uSeed * 5.0);
+  float spiral = 0.5 + 0.5 * cos(angle * 4.0 - radius * 24.0 + turbulence * 2.8 + uSeed * 6.28318);
+  spiral = pow(smoothstep(0.28, 0.9, spiral), 2.0);
+  float dustLane = 1.0 - smoothstep(0.39, 0.53, abs(spiral - 0.43));
+  float envelope = (1.0 - smoothstep(0.72, 1.0, radius)) * smoothstep(0.02, 0.18, radius);
+  float core = exp(-radius * 5.2);
+  float alpha = envelope * (0.018 + spiral * 0.09 + turbulence * 0.024);
+  alpha += core * 0.18;
+  alpha *= mix(0.72, 1.0, dustLane);
+  vec3 color = mix(uEdge, uCore, clamp(core * 1.6 + spiral * 0.32, 0.0, 1.0));
+  gl_FragColor = vec4(color, alpha);
+}
+`;
+
+export const GALACTIC_DISC_SHADER_SOURCE = Object.freeze({
+  vertex: GALACTIC_DISC_VERTEX,
+  fragment: GALACTIC_DISC_FRAGMENT,
+});
+
+function createSpiralDust(seedText, palette, count, radius) {
+  const random = mulberry32(fnv1a(`${seedText}:spiral-dust`));
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const edge = new THREE.Color(palette.starCool ?? palette.nodeDim);
+  const core = new THREE.Color(palette.starPale ?? palette.nodeBright);
+  const tint = new THREE.Color();
+  for (let index = 0; index < count; index += 1) {
+    const arm = index % 4;
+    const reach = 0.08 + Math.sqrt(random()) * 0.92;
+    const angle =
+      arm * Math.PI / 2 +
+      reach * 4.6 +
+      skySeed(seedText) * Math.PI * 2 +
+      (random() - 0.5) * (0.2 + reach * 0.36);
+    const distance = reach * radius;
+    positions[index * 3] = Math.cos(angle) * distance;
+    positions[index * 3 + 1] = -34 + (random() - 0.5) * (12 + reach * 52);
+    positions[index * 3 + 2] = Math.sin(angle) * distance;
+    tint.copy(edge).lerp(core, (1 - reach) * 0.58 + random() * 0.16);
+    colors[index * 3] = tint.r;
+    colors[index * 3 + 1] = tint.g;
+    colors[index * 3 + 2] = tint.b;
+    sizes[index] = 2 + random() * 3.8;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
+  const material = new THREE.ShaderMaterial({
+    vertexShader: STARFIELD_VERTEX,
+    fragmentShader: STARFIELD_FRAGMENT,
+    uniforms: {
+      uPointScale: { value: 0.82 },
+      uOpacity: { value: 0.42 },
+    },
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const dust = new THREE.Points(geometry, material);
+  dust.name = "codemble-spiral-dust";
+  dust.renderOrder = -6;
+  return dust;
 }
 
 /**
@@ -360,25 +664,51 @@ export function createStarfield(seedText, palette, count = 3200, radius = 1600) 
  * It encodes nothing. That is deliberate and is what makes it safe: no fact
  * about the learner's code is readable from it, so it cannot mislead.
  */
-export function createGalacticGlow(palette, radius = 2100) {
-  const material = new THREE.SpriteMaterial({
+export function createGalacticGlow(seedText, palette, radius = 1050) {
+  const group = new THREE.Group();
+  group.name = "codemble-galactic-glow";
+  const disc = new THREE.Mesh(
+    new THREE.PlaneGeometry(radius * 2, radius * 2),
+    new THREE.ShaderMaterial({
+      vertexShader: GALACTIC_DISC_VERTEX,
+      fragmentShader: GALACTIC_DISC_FRAGMENT,
+      uniforms: {
+        uCore: { value: new THREE.Color(palette.starPale ?? palette.nodeBright) },
+        uEdge: { value: new THREE.Color(palette.skyGlow ?? palette.ground) },
+        uSeed: { value: skySeed(`${seedText}:galactic-disc`) },
+      },
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    }),
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = -58;
+  disc.renderOrder = -8;
+  disc.name = "codemble-galactic-disc";
+  const coreMaterial = new THREE.SpriteMaterial({
     map: radialTexture(256, [
-      [0, 0.5],
-      [0.35, 0.22],
-      [0.7, 0.05],
+      [0, 0.72],
+      [0.24, 0.3],
+      [0.68, 0.045],
       [1, 0],
     ]),
-    color: new THREE.Color(palette.skyGlow ?? palette.ground),
+    color: new THREE.Color(palette.starCool ?? palette.skyGlow ?? palette.ground),
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.34,
     depthWrite: false,
     depthTest: false,
     blending: THREE.AdditiveBlending,
   });
-  const sprite = new THREE.Sprite(material);
-  // Wide and flat: a band across the disc rather than a ball around it.
-  sprite.scale.set(radius * 2, radius * 0.5, 1);
-  sprite.renderOrder = -1;
-  sprite.name = "codemble-galactic-glow";
-  return sprite;
+  const core = new THREE.Sprite(coreMaterial);
+  core.scale.set(radius * 0.72, radius * 0.25, 1);
+  core.position.y = -24;
+  core.renderOrder = -7;
+  core.name = "codemble-galactic-core";
+  group.rotation.y = skySeed(`${seedText}:galactic-orientation`) * Math.PI * 2;
+  group.add(disc, createSpiralDust(seedText, palette, 1200, radius * 0.9), core);
+  group.userData.codembleSeed = skySeed(seedText);
+  return group;
 }

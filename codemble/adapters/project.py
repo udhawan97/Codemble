@@ -122,7 +122,9 @@ class ProjectParser:
             from codemble.adapters.csharp_tree_sitter import CSharpAdapter
             from codemble.adapters.go_tree_sitter import GoAdapter
             from codemble.adapters.java_tree_sitter import JavaAdapter
+            from codemble.adapters.php_tree_sitter import PHPAdapter
             from codemble.adapters.python_ast import PythonAstAdapter
+            from codemble.adapters.ruby_tree_sitter import RubyAdapter
             from codemble.adapters.rust_tree_sitter import RustAdapter
             from codemble.adapters.typescript_tree_sitter import (
                 JavaScriptTypeScriptAdapter,
@@ -135,6 +137,8 @@ class ProjectParser:
                 JavaAdapter(),
                 RustAdapter(),
                 CSharpAdapter(),
+                RubyAdapter(),
+                PHPAdapter(),
             )
         self._adapters = tuple(adapters)
         if not self._adapters:

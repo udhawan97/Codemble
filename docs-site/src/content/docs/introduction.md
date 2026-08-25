@@ -42,9 +42,11 @@ optional extra: bring your own Claude or OpenAI key, or run a local model
 through Ollama and send nothing anywhere.
 
 :::note[Status]
-Codemble **v0.20.0** is published on PyPI and maps Python, JavaScript,
-TypeScript, Go, Java, Rust, C#, and mixed projects. Easy guides one cited
-journey step at a time; Expert enriches that same step with parser evidence.
+Codemble **v0.21.0** is published on PyPI and maps Python, JavaScript,
+TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixed projects. First run offers
+free exploration or a guided First Flight. Every landing can speak Easy or
+Expert while preserving one parser-owned route and graph; guided stops continue
+from landing into the existing graph-derived checks.
 Impact, dependencies, and verification candidates are selected-feature facts,
 not claims about every route step. The downloadable package,
 current source, screenshots, and these product guides match. The original

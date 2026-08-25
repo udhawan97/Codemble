@@ -418,7 +418,7 @@ const socialSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630
   <text x="154" y="121" fill="${GOFUN}" font-family="serif" font-size="34" font-weight="700">Codemble</text>
   <text x="90" y="282" fill="${GOFUN}" font-family="serif" font-size="62" font-weight="700">Explore the code</text>
   <text x="90" y="354" fill="${GOFUN}" font-family="serif" font-size="62" font-weight="700">AI left behind.</text>
-  <text x="94" y="430" fill="${RURI_HI}" font-family="ui-monospace,monospace" font-size="22">local · parser-proven · seven languages</text>
+  <text x="94" y="430" fill="${RURI_HI}" font-family="ui-monospace,monospace" font-size="22">local · parser-proven · nine languages</text>
   <text x="94" y="516" fill="${GOFUN}" font-family="system-ui,sans-serif" font-size="23">Your code, mapped. Understanding stays earned.</text>
 </svg>`;
 writeBrand("social-card.svg", socialSvg);

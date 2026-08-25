@@ -1,4 +1,4 @@
-"""Diff parser-owned facts against the bounded seven-language oracle."""
+"""Diff parser-owned facts against the bounded nine-language oracle."""
 
 from __future__ import annotations
 
@@ -19,8 +19,10 @@ if str(ROOT) not in sys.path:
 from codemble.adapters.csharp_tree_sitter import CSharpAdapter
 from codemble.adapters.go_tree_sitter import GoAdapter
 from codemble.adapters.java_tree_sitter import JavaAdapter
+from codemble.adapters.php_tree_sitter import PHPAdapter
 from codemble.adapters.project import ProjectParser
 from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.adapters.ruby_tree_sitter import RubyAdapter
 from codemble.adapters.rust_tree_sitter import RustAdapter
 from codemble.adapters.typescript_tree_sitter import (
     JavaScriptTypeScriptAdapter,
@@ -253,6 +255,8 @@ def _project_parser(adapter: str) -> ProjectParser:
         "java": JavaAdapter,
         "rust": RustAdapter,
         "csharp": CSharpAdapter,
+        "ruby": RubyAdapter,
+        "php": PHPAdapter,
     }
     if adapter == "default":
         return ProjectParser()

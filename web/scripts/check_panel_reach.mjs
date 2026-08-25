@@ -103,35 +103,52 @@ try {
             `${label}: a proof break must precede every possible continuation`,
           );
           if (viewport.width === 320) {
-            for (const [name, metric] of Object.entries(journey.firstView)) {
+            const landing = await measureLanding(page);
+            for (const [name, metric] of Object.entries(landing.firstView)) {
               assert.equal(
                 metric.visible,
                 true,
-                `${label}: ${name} is not exposed in the journey's first view ` +
+                `${label}: ${name} is not exposed in the landing's first view ` +
+                  `(element ${metric.top}-${metric.bottom}, panel ${metric.panelTop}-${metric.panelBottom})`,
+              );
+            }
+            // Landing owns the first compact view now. The journey remains the
+            // next explicit section and must expose its complete current-step
+            // contract as soon as that section is brought into view.
+            await page.locator(".journey-current").scrollIntoViewIfNeeded();
+            const reachedJourney = await measureJourney(page);
+            for (const [name, metric] of Object.entries(reachedJourney.firstView)) {
+              assert.equal(
+                metric.visible,
+                true,
+                `${label}: ${name} is not exposed when the journey is reached ` +
                   `(element ${metric.top}-${metric.bottom}, panel ${metric.panelTop}-${metric.panelBottom})`,
               );
             }
             const next = page.locator(".journey-controls button", { hasText: "Next" });
             if (await next.isEnabled()) await next.click();
             const beforeMode = await page.locator(".journey-current").getAttribute("data-step-id");
-            await settleFirstRun(page, "Expert");
+            await page.locator(".landing-register").getByRole("radio", { name: "Expert" }).check();
+            await page.waitForTimeout(250);
             const afterMode = await page.locator(".journey-current").getAttribute("data-step-id");
             assert.equal(
               afterMode,
               beforeMode,
               `${label}: Easy/Expert mode changed the active parser step`,
             );
+            await page.locator(".journey-current").scrollIntoViewIfNeeded();
             const expertJourney = await measureJourney(page);
             for (const [name, metric] of Object.entries(expertJourney.firstView)) {
               assert.equal(
                 metric.visible,
                 true,
                 `${label.replace("easy", "expert")}: ${name} is not exposed in the ` +
-                  `journey's first view (element ${metric.top}-${metric.bottom}, ` +
+                  `reached journey view (element ${metric.top}-${metric.bottom}, ` +
                   `panel ${metric.panelTop}-${metric.panelBottom})`,
               );
             }
-            await settleFirstRun(page, "Easy");
+            await page.locator(".landing-register").getByRole("radio", { name: "Easy" }).check();
+            await page.waitForTimeout(250);
           }
         } catch (error) {
           failures += 1;
@@ -421,6 +438,29 @@ async function settleFirstRun(page, register) {
     await more.first().click();
     await page.waitForTimeout(120);
   }
+  // v0.21 launch intent deliberately wins the old Easy-mode default: a
+  // first-run explorer opens in the Galaxy even when Easy is selected. This
+  // gate measures Map-owned panels, so choose that layer explicitly instead
+  // of depending on a launch default that no longer promises it.
+  if ((await page.locator(".architecture-map-canvas").count()) === 0) {
+    let map = page.getByRole("button", { name: /^(Diagram|Map)$/ }).first();
+    let openedForMap = false;
+    if (!(await map.isVisible().catch(() => false))) {
+      if ((await more.count()) > 0 && (await more.first().isVisible().catch(() => false))) {
+        await more.first().click();
+        openedForMap = true;
+        await page.waitForTimeout(80);
+      }
+      map = page.getByRole("button", { name: /^(Diagram|Map)$/ }).first();
+    }
+    if (await map.isVisible().catch(() => false)) {
+      await map.click();
+      await page.locator(".architecture-map-canvas").waitFor();
+    }
+    if (openedForMap && (await more.first().isVisible().catch(() => false))) {
+      await more.first().click();
+    }
+  }
   await page.waitForTimeout(350);
 }
 
@@ -554,6 +594,34 @@ function measureJourney(page) {
         "current-step citation": inFirstView(".journey-citations"),
         "Back control": inFirstView(".journey-controls button:first-child"),
         "Next control": inFirstView(".journey-controls button:nth-child(2)"),
+      },
+    };
+  });
+}
+
+function measureLanding(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector(".study-preview");
+    if (!(panel instanceof HTMLElement)) return { firstView: {} };
+    const panelBox = panel.getBoundingClientRect();
+    const inFirstView = (selector) => {
+      const element = panel.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return { visible: false };
+      const box = element.getBoundingClientRect();
+      return {
+        visible: box.top >= panelBox.top && box.bottom <= panelBox.bottom,
+        top: Math.round(box.top),
+        bottom: Math.round(box.bottom),
+        panelTop: Math.round(panelBox.top),
+        panelBottom: Math.round(panelBox.bottom),
+      };
+    };
+    return {
+      firstView: {
+        "Explanation register": inFirstView(".landing-register"),
+        "Landing heading": inFirstView("#landing-brief-heading"),
+        "Landing explanation": inFirstView(".landing-brief__summary"),
+        "Connection counts": inFirstView(".landing-brief__compact-facts > summary"),
       },
     };
   });

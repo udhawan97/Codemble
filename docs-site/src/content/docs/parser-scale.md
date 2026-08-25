@@ -70,7 +70,7 @@ python scripts/audit_parser_evidence.py
 ```
 
 The hand-authored oracle covers Python, JavaScript, TypeScript, Go, Java, Rust,
-C#, and one mixed project. It checks bounded representative expectations:
+C#, Ruby, PHP, and one mixed project. It checks bounded representative expectations:
 supported and partial counts, named edge sources and concept owners, required
 entrypoint and role subsets, and selected journey proof breaks. It is designed
 to detect both invented facts and omissions in those scopes; it is not a claim
@@ -90,7 +90,8 @@ CODEMBLE_PYTHON=python3.12 npm run check:large-project -- \
   --output /tmp/codemble-browser-scale.json
 ```
 
-The v0.20.0 renderer changes delivery, not truth: the source scene retains all
+The v0.21.0 renderer changes scenery, not truth, and retains v0.20.0's complete
+Map delivery: the source scene retains all
 5,000 modules and 4,999 routes while the viewport draws only the intersecting
 slice. Finder and End-key navigation both reach the final module directly;
 recovery restores a visible complete Map; and the compact page keeps zero
@@ -101,14 +102,14 @@ activation, process RSS high-water mark, usable time, DOM and resource budgets,
 event-loop lag, Finder input latency, canvas keyboard arrival, recovery, and
 320 px geometry.
 
-The final macOS candidate receipt measured 8.476 s cold activation, 2.475 s
-no-change activation, and a 170,541,056-byte process RSS high-water mark.
-Chromium reached usable in 3.748 s with 99 DOM elements, six visible boxes,
-38.1 ms canvas End-key arrival, 32.7 ms Finder input p95, 55.7 ms recovery, and
-zero compact overflow. WebKit reached usable in 2.433 s with the same 99 DOM
-elements, five visible boxes, 24.7 ms canvas arrival, 34.0 ms Finder input p95,
-55.9 ms recovery, and zero compact overflow. Both retained all 5,000 boxes and
-4,999 routes in the complete source scene.
+The final v0.21.0 macOS candidate receipt measured 3.756 s cold activation,
+1.345 s no-change activation, and a 166,395,904-byte process RSS high-water
+mark. Chromium reached usable in 1.480 s with 99 DOM elements, five visible
+boxes, 37.4 ms canvas End-key arrival, 30.4 ms Finder input p95, 55.2 ms
+recovery, and zero compact overflow. WebKit reached usable in 2.032 s with the
+same 99 DOM elements, five visible boxes, 45.1 ms canvas arrival, 30.0 ms Finder
+input p95, 299.4 ms recovery, and zero compact overflow. Both retained all
+5,000 boxes and 4,999 routes in the complete source scene.
 
 Above 5,000 supported files, the picker still asks for a smaller scope. That is
 an explicit verified limit, not a claim of unbounded rendering. Logical LOD
@@ -117,8 +118,22 @@ that hides modules remains outside the correctness contract.
 ## Open-source inspiration and credit
 
 The design was implemented independently. No source code or assets were
-copied, and no runtime dependency, account, paid service, or free-tier service
-was added. Licenses were verified at these exact revisions:
+copied, and no account, paid service, or free-tier service was added. Ruby and
+PHP add only their official grammar-wheel runtime dependencies. Licenses were
+verified at these exact revisions:
+
+- [tree-sitter-ruby](https://github.com/tree-sitter/tree-sitter-ruby/tree/ad907a69da0c8a4f7a943a7fe012712208da6dee)
+  ([MIT](https://github.com/tree-sitter/tree-sitter-ruby/blob/ad907a69da0c8a4f7a943a7fe012712208da6dee/LICENSE))
+  and [tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php/tree/3fda2fb9577166c6399834917f9844f30370beea)
+  ([MIT](https://github.com/tree-sitter/tree-sitter-php/blob/3fda2fb9577166c6399834917f9844f30370beea/LICENSE))
+  supply the official grammar wheels behind Codemble's independently written
+  Ruby and PHP evidence passes.
+- Rails at `1f0c247be3da6c40332df94a4d1d2efdaaf7260c` and Laravel Framework at
+  `9b21ce0a9bb2b2599978bc0b0df4abea952ad31c` are pinned read-only corpus
+  receipts, not vendored fixtures. The candidate parsed 3,452 Ruby files with
+  53,478 nodes, 298,355 edges, and no partial files in 21.760 seconds; it parsed
+  3,034 PHP files with 38,540 nodes, 207,232 edges, and one partial file in
+  43.573 seconds. Immediate repeats were byte-deterministic.
 
 - [Graphify](https://github.com/Graphify-Labs/graphify/tree/7fe58b0b0f3873be9a21c30106b8b8527c353aa6)
   ([Apache-2.0](https://github.com/Graphify-Labs/graphify/blob/7fe58b0b0f3873be9a21c30106b8b8527c353aa6/LICENSE)) inspired versioned,

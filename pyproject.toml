@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codemble"
-version = "0.20.0"
+version = "0.21.0"
 description = "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it."
 readme = "README.md"
 license = "Apache-2.0"
@@ -33,14 +33,14 @@ dependencies = [
   # is `anyio>=3.6.2,<5` and therefore permits exactly that.
   "anyio>=4.1",
   "fastapi>=0.115",
-  # Hard upper bound, not caution, and re-verified 2026-08-02 against all six
+  # Hard upper bound, not caution, and re-verified against every shipped
   # grammars now shipped. tree-sitter 0.26.0 SIGSEGVs (exit 139) inside the
   # JS/TS adapter; 0.25.2 parses the same tree cleanly.
   #
   # The re-test narrowed it twice over the original note, so both corrections
   # are recorded here rather than left to be rediscovered:
   #   * It is the JAVASCRIPT grammar. Parsing only `.ts` is clean, as are Go,
-  #     Java, Rust, C# and Python. `.js`/`.jsx` crashes every run (3/3).
+  #     Java, Rust, C#, Ruby, PHP and Python. `.js`/`.jsx` crashes every run (3/3).
   #   * It does NOT need "a corpus of real size". 23 files reproduce it. What
   #     the old note got right is that a bare traversal will not: walking
   #     188,755 named nodes across all six grammars on 0.26.0 is clean, and
@@ -57,6 +57,11 @@ dependencies = [
   "tree-sitter-java>=0.23,<0.24",
   "tree-sitter-rust>=0.23,<0.24",
   "tree-sitter-c-sharp>=0.23,<0.24",
+  # Official upstream grammars, each tested against tree-sitter 0.25.2 before
+  # entering the default registry. Keep the grammar minors bounded until their
+  # next releases pass the parser-evidence oracle and realistic scale corpus.
+  "tree-sitter-ruby>=0.23,<0.24",
+  "tree-sitter-php>=0.24,<0.25",
   "uvicorn>=0.30",
 ]
 

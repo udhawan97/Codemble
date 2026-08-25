@@ -36,6 +36,9 @@ export function HintChip({ hint, onFollow, firstFlight }) {
           >
             Back
           </button>
+          <button type="button" onClick={firstFlight.onLand}>
+            Land and learn
+          </button>
           {index + 1 < total ? (
             <>
               <button ref={advanceRef} type="button" onClick={firstFlight.onNext}>
@@ -59,7 +62,7 @@ export function HintChip({ hint, onFollow, firstFlight }) {
   return (
     <output className="hint-chip" aria-live="polite">
       <span aria-hidden="true">→</span>
-      <span>{hint?.message ?? "Take a short guided route from Home."}</span>
+      <span>{hint?.message ?? "Take a short guided tour from Home."}</span>
       {hint?.reason ? <small>{hint.reason}</small> : null}
       {hint?.action ? (
         <button type="button" onClick={onFollow}>

@@ -53,11 +53,11 @@ async function waitForApp() {
 }
 
 async function settleFirstRun() {
-  const audienceDialog = page.getByRole("dialog", {
-    name: "New to coding, or do you build software already?",
-  });
-  if (await audienceDialog.isVisible().catch(() => false)) {
-    await audienceDialog.getByRole("button", { name: "New to coding?" }).click();
+  const launchDialog = page.getByRole("dialog", { name: "Choose your launch" });
+  if (await launchDialog.isVisible().catch(() => false)) {
+    await launchDialog.getByRole("radio", { name: /^Explore freely/ }).check();
+    await launchDialog.getByRole("radio", { name: "New to coding?" }).check();
+    await launchDialog.getByRole("button", { name: "Open the galaxy" }).click();
     await page.waitForTimeout(350);
   }
 

@@ -1,4 +1,4 @@
-"""Seven languages, one graph, one set of rules.
+"""Nine languages, one graph, one set of rules.
 
 The `LanguageAdapter` seam's whole claim is that adding a language changes
 nothing above it. These tests are what that claim costs: they compose every
@@ -21,12 +21,20 @@ from codemble.adapters.project import ProjectParser
 from codemble.lens import lens_notes
 
 FIXTURES = Path(__file__).parent / "fixtures"
-LANGUAGE_FIXTURES = ("go_sample", "java_sample", "rust_sample", "csharp_sample", "polyglot")
+LANGUAGE_FIXTURES = (
+    "go_sample",
+    "java_sample",
+    "rust_sample",
+    "csharp_sample",
+    "ruby_sample",
+    "php_sample",
+    "polyglot",
+)
 
 
 @pytest.fixture
 def polyglot_root(tmp_path: Path) -> Path:
-    root = tmp_path / "polyglot_seven"
+    root = tmp_path / "polyglot_nine"
     root.mkdir()
     for name in LANGUAGE_FIXTURES:
         source = FIXTURES / name
@@ -47,6 +55,8 @@ def test_every_shipped_language_lands_in_one_graph(polyglot_root: Path) -> None:
         "java",
         "javascript",
         "python",
+        "php",
+        "ruby",
         "rust",
         "typescript",
     }
@@ -104,11 +114,11 @@ def test_registering_an_adapter_silences_its_own_extension(polyglot_root: Path) 
 
     reported = {entry.extension for entry in graph.unsupported_sources}
 
-    assert not reported & {".go", ".java", ".rs", ".cs"}
+    assert not reported & {".go", ".java", ".rs", ".cs", ".rb", ".php"}
 
 
 def test_uncertainty_survives_composition(polyglot_root: Path) -> None:
-    """A possible call stays possible once six adapters' edges are merged."""
+    """A possible call stays possible once eight adapters' edges are merged."""
 
     graph = ProjectParser().parse(polyglot_root)
 
@@ -133,7 +143,7 @@ def test_a_syntax_error_in_one_language_never_costs_the_others(
     assert graph.partial_files, "each fixture ships one deliberately broken file"
     # The broken files are flagged, and the languages they belong to still
     # contributed structure -- a partial parse degrades one file, not a language.
-    assert len({node.language for node in graph.nodes}) == 7
+    assert len({node.language for node in graph.nodes}) == 9
 
 
 def test_composition_is_byte_identical_across_runs(polyglot_root: Path) -> None:

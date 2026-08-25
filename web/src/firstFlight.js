@@ -63,6 +63,33 @@ export function firstFlightPlan(graph) {
   }));
 }
 
+/**
+ * Choose a real structure for the learner's explicit landing action.
+ *
+ * Prefer the first complete non-module declaration in source order: it reads as
+ * a planet rather than the system's file-level anchor and carries no invented
+ * importance ranking. Empty or partially parsed files can still land on their
+ * safe parser-owned module anchor.
+ */
+export function firstFlightLandingNode(graph, regionId) {
+  if (!graph || !regionId) return null;
+  const nodes = (graph.nodes ?? [])
+    .filter((node) => node.region === regionId)
+    .sort(
+      (left, right) =>
+        landingRank(left) - landingRank(right) ||
+        (left.lineno ?? Number.MAX_SAFE_INTEGER) - (right.lineno ?? Number.MAX_SAFE_INTEGER) ||
+        String(left.id).localeCompare(String(right.id)),
+    );
+  return nodes[0] ?? null;
+}
+
+function landingRank(node) {
+  if (!node.partial && node.kind !== "module") return 0;
+  if (node.kind === "module") return 1;
+  return 2;
+}
+
 export function flightCameraDuration(defaultDuration, { active, reducedMotion }) {
   return active && reducedMotion ? 0 : defaultDuration;
 }

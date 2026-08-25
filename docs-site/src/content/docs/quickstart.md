@@ -3,9 +3,9 @@ title: Quickstart
 description: From one command to your first lit star system.
 ---
 
-:::note[This quickstart matches v0.20.0]
+:::note[This quickstart matches v0.21.0]
 The one-command package, current source, and screenshots all cover the same
-seven-language app. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
+nine-language app. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
 :::
 
 ## 1. Install uv
@@ -22,21 +22,21 @@ No Homebrew? Use the official installer — `curl -LsSf
 https://astral.sh/uv/install.sh | sh` on macOS and Linux, or `powershell
 -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` on
 Windows. If you would rather install Codemble permanently, `pipx install
-codemble==0.20.0` needs no uv at all.
+codemble==0.21.0` needs no uv at all.
 
 ## 2. Point it at your project
 
 ```bash
-uvx --from codemble==0.20.0 codemble
+uvx --from codemble==0.21.0 codemble
 ```
 
 Codemble opens your browser to an in-app picker: browse your home folders or
 reopen a recent project, then pick it. Codemble reads Python, JavaScript,
-TypeScript, Go, Java, Rust, C#, and mixtures of those languages. To skip the
+TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixtures of those languages. To skip the
 picker, pass a path directly:
 
 ```bash
-uvx --from codemble==0.20.0 codemble ./my-project
+uvx --from codemble==0.21.0 codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -49,7 +49,7 @@ busiest-first subdirectories as buttons and accepts a typed path, right in the
 UI. From the CLI, select the scope yourself:
 
 ```bash
-uvx --from codemble==0.20.0 codemble --path ./my-project/src
+uvx --from codemble==0.21.0 codemble --path ./my-project/src
 ```
 
 ## 3. Find Home
@@ -88,12 +88,23 @@ top-level folder each one really lives in. The best-ranked group opens first,
 and **Explore without Home** stays on screen however long the list is: every
 system, check, explanation and lens note works without a Home.
 
-## 4. Choose a layer, then zoom in
+## 4. Choose your launch, then zoom in
+
+On the first run, **Explore freely** opens the complete Galaxy immediately;
+**Take a first flight** tours Home and the modules it directly imports. If Home
+needs calibration, that guided intent waits for the learner's honest selection.
+At any stop, **Land and learn** opens a parser-owned structure; after reading its
+Easy or Expert landing brief, choose **Prove understanding** to begin the
+existing graph-derived quiz.
+Choose Easy for plain language or Expert for parser detail. This is a
+presentation choice, not a different graph, and you can change it in the header
+or on any landing.
 
 The header switches between two layers. **Galaxy** is the 3D view; its camera
 moves on rails through three levels. **Map** is a flat diagram with two tabs.
-Easy mode starts on the Map, Expert starts on the Galaxy, and you can switch at
-any time. In a mixed project the **Focus** control offers **All** plus one
+Both first-run launch choices enter the Galaxy; the Map remains one explicit
+switch away, and you can move between layers at any time. In a mixed project
+the **Focus** control offers **All** plus one
 button per language actually present, with its system count. Focus and layer are
 only views: neither alters coordinates, progress, or graph evidence.
 
@@ -101,7 +112,7 @@ only views: neither alters coordinates, progress, or graph evidence.
 | --- | --- | --- |
 | **Galaxy** | Source modules as star systems, imports as routes | Orientation |
 | **System** | Functions and classes in call-depth orbits — the inner ring runs first | Structure |
-| **Study** | A parser-proven route from Home, real source, integrated Impact and Connections, and optional grounded narration | Learning one feature in application context |
+| **Study** | A landing brief, parser-proven route from Home, real source, integrated Impact and Connections, and optional grounded narration | Learning one feature in application context |
 
 | Map tab | What you see | What it's for |
 | --- | --- | --- |
@@ -121,6 +132,12 @@ On a compact screen the Map opens at readable 100%, centred on Home or the
 selected parser-backed target. Use **Fit** when you want the whole diagram as an
 overview, and press the percentage button to return to 100%. Codemble keeps your
 zoom and pan when fresh Map data arrives or you briefly switch layers.
+
+Landing on a function or class first opens its model-free brief. When role
+evidence exists, Easy explains that parser-known purpose in plain language and
+Expert names the exact role rule. Without role evidence, both say purpose is
+unknown rather than guessing. Both show inbound and outbound graph connections
+so the next jump stays grounded in the code.
 
 No API key is required to follow the journey or inspect source, parser
 relationships, Lens notes, or checks. Easy shows one cited current step;

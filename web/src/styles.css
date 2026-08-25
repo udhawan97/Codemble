@@ -474,14 +474,16 @@ input:focus-visible {
    No close affordance: cancel is intercepted below so there is no way to
    dismiss this without choosing. */
 .mode-gate {
-  width: min(26rem, calc(100% - var(--cm-space-xl)));
-  max-height: min(86%, 30rem);
+  width: min(46rem, calc(100% - var(--cm-space-xl)));
+  max-height: min(90%, 44rem);
   margin: auto;
   overflow: auto;
-  padding: var(--cm-space-lg);
+  padding: clamp(var(--cm-space-lg), 4vw, var(--cm-space-2xl));
   border: 1px solid var(--cm-hairline);
   border-radius: var(--cm-radius);
-  background: var(--cm-ground-2);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--cm-orbit) 7%, transparent), transparent 42%),
+    var(--cm-ground-2);
   color: var(--cm-ink);
   animation: panel-enter var(--cm-dur-reveal) var(--cm-ease) both;
 }
@@ -494,9 +496,18 @@ input:focus-visible {
   margin: 0;
   overflow-wrap: anywhere;
   font-family: var(--cm-font-display);
-  font-size: var(--cm-text-xl);
+  font-size: clamp(var(--cm-text-xl), 5vw, 2.4rem);
   font-style: normal;
   line-height: 1.15;
+}
+
+.mode-gate__eyebrow {
+  margin: 0 0 var(--cm-space-xs) !important;
+  color: var(--cm-orbit) !important;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .mode-gate p {
@@ -505,44 +516,132 @@ input:focus-visible {
   color: var(--cm-ink-2);
 }
 
-.mode-gate__options {
-  display: grid;
-  gap: var(--cm-space-sm);
-  margin-block-start: var(--cm-space-lg);
+.mode-gate__voyages,
+.mode-gate__register {
+  margin: var(--cm-space-lg) 0 0;
+  padding: 0;
+  border: 0;
 }
 
-/* These two are the first thing the product ever asks, and they used to render
-   as `border: 0; background: transparent` -- two lines of bold text separated
-   by hairlines. The only frame on screen was the browser's focus ring on the
-   autofocused option, so the *other* choice carried no affordance at all, and
-   on a touch device (`hover: none`) not even the hover colour applied. The
-   coach marks two dialogs later already frame their actions, so this was the
-   outlier rather than a house style. Same border, ground and ruri ink as
-   `.check-primary`: ruri is the interaction accent, and nothing in this app is
-   more of an interaction than this. */
-.mode-gate__options button {
+.mode-gate__voyages > legend,
+.mode-gate__register > legend {
+  margin-block-end: var(--cm-space-sm);
+  padding: 0;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mode-gate__voyages {
+  display: grid;
+  gap: var(--cm-space-sm);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mode-gate__voyages label {
+  display: grid;
+  min-width: 0;
+  min-height: 9rem;
+  align-content: start;
+  padding: var(--cm-space-md);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  background: var(--cm-ground);
+  cursor: pointer;
+}
+
+.mode-gate__voyages label:has(input:checked) {
+  border-color: var(--cm-orbit);
+  box-shadow: inset 3px 0 0 var(--cm-orbit);
+  background: var(--cm-orbit-low);
+}
+
+.mode-gate__voyages input,
+.mode-gate__register input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.mode-gate__voyages span {
+  display: grid;
+  gap: var(--cm-space-sm);
+}
+
+.mode-gate__voyages strong {
+  color: var(--cm-ink);
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  font-style: normal;
+}
+
+.mode-gate__voyages small {
+  color: var(--cm-ink-2);
+  font-size: var(--cm-text-sm);
+  line-height: 1.5;
+}
+
+.mode-gate__register {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cm-space-sm);
+}
+
+.mode-gate__register > legend {
+  width: 100%;
+}
+
+.mode-gate__register label {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding-inline: var(--cm-space-md);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink-2);
+  cursor: pointer;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+}
+
+.mode-gate__register label:has(input:checked) {
+  border-color: var(--cm-orbit);
+  background: var(--cm-orbit-low);
+  color: var(--cm-orbit);
+}
+
+.mode-gate__launch {
+  width: 100%;
   min-height: 52px;
+  margin-block-start: var(--cm-space-lg);
   padding: var(--cm-space-sm) var(--cm-space-md);
   border: 1px solid var(--cm-orbit);
   border-radius: var(--cm-radius);
-  background: var(--cm-ground);
-  color: var(--cm-orbit);
+  background: var(--cm-orbit);
+  color: var(--cm-ground);
   cursor: pointer;
-  font: inherit;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
   font-weight: 600;
-  text-align: start;
   transition: background-color var(--cm-dur-quick) var(--cm-ease),
     color var(--cm-dur-quick) var(--cm-ease);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .mode-gate__options button:hover {
-    background: var(--cm-orbit-low);
-    color: var(--cm-ink);
+  .mode-gate__voyages label:hover,
+  .mode-gate__register label:hover {
+    border-color: var(--cm-orbit);
+  }
+
+  .mode-gate__launch:hover {
+    background: var(--cm-ink);
   }
 }
 
-.mode-gate__options button:active {
+.mode-gate__launch:active {
   transform: translateY(1px);
 }
 
@@ -580,12 +679,45 @@ input:focus-visible {
   overflow: hidden;
 }
 
+/* Optical depth for the WebGL stage. The center stays untouched so every
+   parser-owned mark keeps its measured colour; only the empty perimeter falls
+   back toward the shell ground like a lens instead of a flat panel. */
+.galaxy-frame::after {
+  content: "";
+  position: absolute;
+  z-index: var(--cm-z-base);
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 44%,
+    transparent 50%,
+    color-mix(in srgb, var(--cm-ground) 18%, transparent) 76%,
+    color-mix(in srgb, var(--cm-ground) 52%, transparent) 100%
+  );
+  box-shadow: inset 0 0 92px color-mix(in srgb, var(--cm-ground) 24%, transparent);
+  pointer-events: none;
+}
+
 .galaxy-canvas canvas {
   display: block;
 }
 
+.galaxy-preparing {
+  position: absolute;
+  z-index: var(--cm-z-raised);
+  inset: 50% auto auto 50%;
+  margin: 0;
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border: 1px solid var(--cm-hairline);
+  background: var(--cm-ground-2);
+  color: var(--cm-ink-2);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  transform: translate(-50%, -50%);
+}
+
 .keyboard-focus {
   position: absolute;
+  z-index: var(--cm-z-raised);
   inset-inline-start: var(--cm-space-md);
   inset-block-end: var(--cm-space-md);
   max-width: min(34rem, calc(100% - var(--cm-space-lg)));
@@ -595,6 +727,93 @@ input:focus-visible {
   color: var(--cm-ink);
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
+}
+
+.flight-hud {
+  position: absolute;
+  z-index: var(--cm-z-raised);
+  inset-block-start: 4rem;
+  inset-inline-end: max(var(--cm-space-md), env(safe-area-inset-right));
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  width: min(21rem, calc(100% - var(--cm-space-xl)));
+  align-items: center;
+  gap: var(--cm-space-md);
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border: 1px solid var(--cm-hairline);
+  border-inline-end: 3px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: color-mix(in srgb, var(--cm-ground) 90%, transparent);
+  color: var(--cm-ink);
+  pointer-events: none;
+  animation: flight-arrival 720ms var(--cm-ease) both;
+}
+
+.flight-hud > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.flight-hud small,
+.flight-hud em {
+  overflow-wrap: anywhere;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  font-style: normal;
+}
+
+.flight-hud strong {
+  overflow: hidden;
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flight-hud__ship {
+  position: relative;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--cm-orbit);
+  border-radius: 50%;
+}
+
+.flight-hud__ship::before {
+  content: "";
+  position: absolute;
+  inset: 0.48rem 0.7rem 0.38rem;
+  border: solid var(--cm-orbit);
+  border-width: 0 1px 1px 0;
+  transform: rotate(45deg);
+}
+
+.flight-hud__ship::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 50%;
+  inset-block-end: -0.55rem;
+  width: 1px;
+  height: 0.75rem;
+  background: linear-gradient(var(--cm-orbit), transparent);
+  transform: translateX(-50%);
+}
+
+@keyframes flight-arrival {
+  0% {
+    opacity: 0;
+    transform: translate3d(1.5rem, -0.5rem, 0);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(-0.2rem, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 /* What replaced the display-size headline that used to cover the left half of
@@ -1420,6 +1639,13 @@ input:focus-visible {
   color: var(--cm-error) !important;
 }
 
+.mode-gate__error {
+  margin: 0;
+  color: var(--cm-error);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
 .illumination-pulse {
   position: absolute;
   z-index: var(--cm-z-raised);
@@ -1444,10 +1670,34 @@ input:focus-visible {
   font-family: var(--cm-font-display);
 }
 
-.structural-summary p {
+.landing-brief {
+  padding: var(--cm-space-lg);
+  border: 1px solid var(--cm-hairline);
+  border-inline-start: 3px solid var(--cm-orbit);
+  border-radius: var(--cm-radius);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cm-orbit) 7%, transparent),
+    var(--cm-ground)
+  );
+}
+
+.landing-brief__summary {
   max-width: 62ch;
-  margin: var(--cm-space-sm) 0 0;
+  margin: var(--cm-space-md) 0 0;
+  overflow-wrap: anywhere;
   color: var(--cm-ink);
+}
+
+.landing-brief__uncertain {
+  margin: var(--cm-space-md) 0 0;
+  color: var(--cm-error);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.landing-brief__compact-facts {
+  display: none;
 }
 
 .mini-constellation {
@@ -1827,6 +2077,51 @@ input:focus-visible {
 
 .study-preview__header {
   display: block;
+}
+
+.landing-register {
+  display: flex;
+  align-items: center;
+  gap: var(--cm-space-xs);
+  margin: var(--cm-space-md) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.landing-register legend {
+  float: inline-start;
+  margin-inline-end: var(--cm-space-xs);
+  padding: 0;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.landing-register label {
+  min-height: 44px;
+  padding-inline: var(--cm-space-sm);
+  border: 1px solid var(--cm-hairline);
+  border-radius: var(--cm-radius);
+  color: var(--cm-ink-2);
+  cursor: pointer;
+  align-content: center;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+}
+
+.landing-register label:has(input:checked) {
+  border-color: var(--cm-orbit);
+  background: var(--cm-orbit-low);
+  color: var(--cm-orbit);
+}
+
+.landing-register input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
 }
 
 .study-preview dl {
@@ -2455,6 +2750,18 @@ input:focus-visible {
 
 
 @media (max-width: 39.999rem) {
+  .flight-hud {
+    inset-block: auto 7rem;
+    width: min(16rem, calc(100% - var(--cm-space-xl)));
+    grid-template-columns: 2rem minmax(0, 1fr);
+    padding: var(--cm-space-xs) var(--cm-space-sm);
+  }
+
+  .flight-hud__ship {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+
   .study-preview {
     /* The Study surface owns the remaining compact viewport. As an absolute
        child it stopped above the status/footer stack and had only 251px at
@@ -2568,6 +2875,10 @@ input:focus-visible {
 
   .illumination-pulse {
     animation-name: illumination-pulse-reduced;
+  }
+
+  .flight-hud {
+    animation: none;
   }
 }
 
@@ -3777,6 +4088,37 @@ input:focus-visible {
   .study-preview dl {
     gap: var(--cm-space-sm);
     margin-block-start: var(--cm-space-md);
+  }
+
+  .landing-brief {
+    padding: var(--cm-space-xs) var(--cm-space-sm);
+  }
+
+  .landing-brief__summary {
+    margin-block-start: var(--cm-space-xs);
+    font-size: var(--cm-text-sm);
+    line-height: 1.35;
+  }
+
+  .landing-brief__wide-facts {
+    display: none;
+  }
+
+  .landing-brief__compact-facts {
+    display: block;
+    margin-block-start: var(--cm-space-xs);
+    color: var(--cm-ink-2);
+    font-family: var(--cm-font-mono);
+    font-size: var(--cm-text-xs);
+  }
+
+  .landing-brief__compact-facts summary {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 0;
+    cursor: pointer;
   }
 
   .journey-current {
