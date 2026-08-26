@@ -158,21 +158,22 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** **v0.20.0 is the verified stable release.** Annotated
-  tag `v0.20.0` (`9abf14a`) peels to exact release commit `436cbee`. Candidate
-  PR CI run `32769180402`, main CI run `32770203502`, Pages run `32770203426`,
-  and trusted publish run `32770056876` passed; the latter built, published,
-  mirrored, and verified the wheel
-  (`15e42dee6b06d4569a969767cfae7556b2b642a15092e6801c924fcda692cf61`)
-  and sdist (`466e5f5bdad022730abd4b0c4228e1079bf88645ad3700af6cdc2e5ebc78b008`).
-  `check:release --live` reconciled PyPI, GitHub assets, `SHA256SUMS.txt`, and
-  fresh downloaded bytes. A cold Python 3.11 install reported
-  `codemble 0.20.0` and carried the tagged SPA assets `index-DzCSIcHk.js` and
-  `index-R8cZVoqz.css`; Obscura independently rendered the deployed Pages
-  surface with v0.20.0, the current 203-system evidence, complete images,
-  working tagged download links, zero 1280 px overflow, and no console errors.
-  Native Safari acceptance remained unavailable because the Mac was locked;
-  WebKit and Chromium acceptance passed without being mislabeled as Safari.
+- **Public release truth:** **v0.22.0 is the verified stable release.** Annotated
+  tag `v0.22.0` (`a3a2c5d`) peels to exact release commit `407a8aa`. Candidate
+  PR #42 CI run `32928613735`, trusted publish run `32929397290`, main CI run
+  `32929522840`, and Pages run `32929522861` passed. Fresh GitHub and PyPI
+  bytes plus `SHA256SUMS.txt` agree on wheel
+  (`ae8af55bc415990970cb54095f4e2774278e2de26d983d61f9364fd5180f0b25`)
+  and sdist (`0bdba3e4faafbdf121004c8301c3d95712cb8932f33e9e14e47050f0bd3a0e77`).
+  `check:release:live` reconciled both registries and fresh downloaded bytes; a
+  cold Python 3.12 install reported `codemble 0.22.0` and carried
+  `index-C3498IDT.js` plus `index-ZndcOj-s.css`. Obscura rendered the deployed
+  217-system Pages surface, and the maintained public-site gate passed 320,
+  375, 414, 768, 1280, and 1440 px, 200% reflow, reduced motion, docs routes,
+  images, and console checks. Native Safari directly passed the Galaxy-to-System
+  semantic and keyboard/pointer journey; its automation capture omitted the
+  WebGL layer, so visual rendering remains claimed only from the Chromium and
+  WebKit acceptance suites.
   Issue #13's unaided-learner gate remains open. A later tag is not stable until
   it repeats all of that.
 - **Digests are taken from the tree you are about to tag, never earlier.**
@@ -255,13 +256,13 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M19 luminous galaxies and living solar systems** · Last
-updated: 2026-08-25 · Session note: the v0.22.0 candidate keeps every system
+updated: 2026-08-25 · Session note: verified stable v0.22.0 keeps every system
 colourful and legible in free Explore, turns the parser-owned module anchor into
 the System Sun, names every structure world, gives each parsed language a
 deterministic visual character, and exposes parser-owned neighbouring imports without
 changing certainty, checks, progression, or the bounded camera.
 
-**The implementation loop is complete; release verification is in progress.**
+**The implementation loop and full release gate are complete.**
 Explore no longer blacks out unrelated systems during hover or selection, and
 unvisited systems retain their language atmosphere. Within a selected module,
 the safe module anchor is a central language-coloured star; functions and
@@ -270,9 +271,9 @@ direct certain calls, call roots, and no-path placement; a nearby-systems consol
 lists inbound and outbound imports with split certainty and opens the selected
 destination. Possible routes stay possible, reduced motion removes animation rather than content, and
 amber remains exclusive to passed checks. The full local gate, fresh Graphify,
-and exactly two council rounds pass; reproducible final artifacts, candidate CI,
-exact-tag publication, outside-in artifact proof, main CI, and Pages remain
-required before v0.22.0 can be called stable.
+exactly two council rounds, reproducible artifacts, candidate PR CI, exact-tag
+trusted publication, outside-in package proof, cold install, main CI, Pages,
+native Safari semantics, and public responsive-site acceptance pass.
 
 Previously (2026-08-25) · Session note: verified stable v0.21.1 added a
 deliberate free-explore or First Flight launch, Easy/Expert landing briefs,
@@ -1851,7 +1852,7 @@ launch focus. Fresh Graphify, two
 council rounds, hosted candidate CI, reproducible artifacts, exact-tag trusted
 publication, outside-in package proof, cold install, main CI, and Pages pass.
 
-### M19 — Luminous galaxies and living solar systems 🚧 (2026-08-25)
+### M19 — Luminous galaxies and living solar systems ✅ (2026-08-25)
 - [x] Keep every system visible, colourful, and contextually legible throughout
       free Explore hover and selection; retain guided dimming only for Learning
 - [x] Make the parser-owned module anchor the central System Sun and provide
@@ -1866,17 +1867,21 @@ publication, outside-in package proof, cold install, main CI, and Pages pass.
       no XP, new quest, free-flight camera, provider, account, or cloud touch
 - [x] Rebuild the bundled SPA and public captures; pass the complete local,
       browser, documentation, Hallmark, Graphify, and release-artifact gates
-- [ ] Complete exactly two council rounds, candidate PR CI, exact-tag v0.22.0
+- [x] Complete exactly two council rounds, candidate PR CI, exact-tag v0.22.0
       publication, outside-in package proof, main CI/Pages, and cold install
 
-**Acceptance pending:** every checked implementation item has focused contract
-coverage and local visual evidence; no release claim is valid until both open
-items pass from the reviewed candidate.
+**Acceptance complete:** 542 Python tests, Ruff, frontend contract/build, two
+consecutive 52-receipt Chromium/WebKit journeys, 29 space-budget states, 104
+Escape assertions, 5,000-module cross-engine scale, public responsive-site
+acceptance, native Safari semantics, Hallmark, Graphify, exactly two council
+rounds, deterministic artifacts, candidate/main CI, exact-tag trusted publish,
+outside-in package proof, cold install, and Pages pass.
 
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-25 | v0.22.0 becomes stable only after the luminous Galaxy candidate passes exactly two council rounds and the complete tag-first outside-in release sequence | Annotated tag `v0.22.0` (`a3a2c5d`) peels to exact candidate commit `407a8aa`; PR #42 CI `32928613735`, trusted publish `32929397290`, main CI `32929522840`, and Pages `32929522861` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on wheel `ae8af55b…f0b25` and sdist `0bdba3e4…0e77`; a cold Python 3.12 install reports 0.22.0 and carries `index-C3498IDT.js` plus `index-ZndcOj-s.css`. Obscura and the maintained responsive-site gate prove the deployed v0.22.0 Pages surface. Native Safari proves the semantic Galaxy-to-System interaction but not the WebGL capture; Chromium/WebKit own that visual claim. This evidence-only follow-up must never move the fixed release tag. |
 | 2026-08-25 | System navigation reports certain and possible import counts separately, labels call roots without implying a call edge, cues every overflow, and focuses the destination System heading after travel | Two council rounds found three ways visual polish could outrun evidence: a mixed route list was collectively called proven, call roots shared a ring labelled direct calls, and the fifth route looked absent behind a silent scroller. The corrected console preserves direction and certainty in visible and accessible names; orbit plans carry both `guideCertain` and `containsCallRoots`; desktop and compact overflow state the continuation; and two consecutive fresh full runs each passed all 52 Chromium/WebKit receipts, including 320 px keyboard and reduced-motion travel. |
 | 2026-08-25 | Free Explore keeps the full galaxy luminous and colourful; guided Learning may soften unrelated context. The safe module anchor becomes the System Sun, structure worlds vary by parser-owned language, and connected-system navigation uses only existing import edges | The owner explicitly separated display/exploration from learning focus and requested a world-class solar-system metaphor. Visibility is not proof: amber remains check-only. Language is already parser evidence, so it can safely drive deterministic surface character; import direction and certainty already exist, so the nearby-systems console can improve continuation without inventing a connection. The bounded rail camera, one graph, and no-XP/non-cloud contracts remain unchanged |
 | 2026-08-25 | A successful free first-run launch focuses the existing Galaxy application frame once after commit; compact Study's first view owns an 8 px bottom guard measured by pinned Chromium after local fonts settle | The opener-less launch modal left Chromium, WebKit, and native Safari on `BODY` even though the named `.galaxy-frame` was already the correct target. A free-only post-commit flag closes that seam without touching guided launch, hydration, later layer changes, or refused-save dialog focus. Separately, pinned bundled Chromium and system Chrome reproduced the same 320×640 geometry: the complete 44 px connection summary ended at 654 against a panel ending at 640. Compact-only inset and gap changes restore the first view without shrinking type or controls, hiding graph evidence, or changing document order. The historical v0.21.1 record is preserved; this correction is unreleased and moves no tag |
