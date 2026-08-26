@@ -5,6 +5,37 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-08-25
+
+### Added
+- Every System view now has a central Sun for the parser-owned module anchor,
+  named functions and classes as orbiting worlds, and a nearby-systems console
+  for parser-owned inbound and outbound module imports with certainty intact.
+- Nine deterministic language-world profiles give Python, JavaScript,
+  TypeScript, Go, Java, Rust, C#, Ruby, and PHP distinct terrain, mineral
+  bands, atmospheres, shimmer, tilt, and motion.
+
+### Changed
+- Free Explore keeps all systems colourful, luminous, and legible while one is
+  hovered or selected. Guided Learning may soften unrelated context to focus a
+  route without removing parser-owned structure.
+- Galaxy and System staging now use brighter layered sky light, language-tinted
+  local depth, stronger route contrast, larger worlds, and solar-system/call-
+  orbit terminology. System framing accounts for the actual world and Sun
+  extents plus both orientation consoles.
+
+### Fixed
+- System worlds now receive their parser-owned display names instead of
+  appearing anonymous, which made populated modules look incomplete.
+- Selecting one system no longer turns unrelated Explore systems black, and
+  unvisited Explore worlds retain their atmosphere and visual identity.
+
+### Correctness
+- Amber remains exclusive to passed checks. Language styling mirrors an
+  existing parser fact; proven and possible routes keep their original
+  certainty; the redesign adds no inferred structure, score, quest, or free-
+  flight camera.
+
 ## [0.21.1] - 2026-08-25
 
 ### Fixed

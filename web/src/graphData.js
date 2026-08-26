@@ -525,10 +525,20 @@ export const isUncharted = (node) => node.charted === false;
  * halo came to be painted from `node.color` while the sphere in front of it
  * was painted from here.
  */
-export function highlightColor(node, highlight, palette) {
+export function highlightColor(
+  node,
+  highlight,
+  palette,
+  { preserveContext = false } = {},
+) {
   const { activeId, neighborIds } = highlight ?? {};
   if (!activeId) return node.color;
   if (node.id === activeId) return palette.orbit;
+  // Free exploration is a display mode, not a memory test. Hover still marks
+  // the active system in interaction blue, but it must not turn the remaining
+  // galaxy into black pebbles. Guided learning keeps the stronger neighborhood
+  // focus, where receding unrelated nodes is an intentional teaching aid.
+  if (preserveContext) return node.color;
   return neighborIds?.has(node.id) ? node.color : palette.faded;
 }
 
@@ -540,7 +550,13 @@ export function highlightColor(node, highlight, palette) {
  * It recedes to `faded`, never to the uncertainty ink -- painting a *certain*
  * edge in the possible-call colour would claim something the parser never said.
  */
-export function highlightLinkColor(link, highlight, palette, endId) {
+export function highlightLinkColor(
+  link,
+  highlight,
+  palette,
+  endId,
+  { preserveContext = false } = {},
+) {
   if (link.focusDim) return palette.faded;
   const { activeId, neighborIds } = highlight ?? {};
   // A possible relationship may never inherit a family tint: its uncertainty
@@ -556,6 +572,7 @@ export function highlightLinkColor(link, highlight, palette, endId) {
   if (source === activeId || target === activeId) {
     return link.certain ? palette.orbit : palette.routePossible;
   }
+  if (preserveContext) return base;
   return neighborIds?.has(source) && neighborIds?.has(target) ? base : palette.faded;
 }
 
@@ -680,6 +697,15 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
         // it was.
         usedBy: memberDegree.usedBy.get(node.id) ?? 0,
         uses: memberDegree.uses.get(node.id) ?? 0,
+        // Galaxy systems already carried labels; their planets did not. The
+        // renderer therefore had four real worlds after a click but no names
+        // on any of them, which looked exactly like partial population. Use the
+        // parser-owned structure name verbatim and let Name Atlas handle only
+        // decluttering, never naming.
+        label:
+          node.system_orbit?.kind === "origin"
+            ? `${node.name} · system Sun`
+            : node.name,
         fx: node.system_x,
         fy: node.system_y,
         fz: node.system_z,
@@ -689,6 +715,15 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
         // but the atmosphere must remain a family landmark and never inherit
         // amber or uncertainty ink through that override.
         communityColor,
+        // Language owns the atmosphere and procedural world family. It stays
+        // beside the community colour rather than replacing it: the surface
+        // still says which import community this module belongs to, while the
+        // atmosphere says which parser/language shaped this world.
+        languageColor: palette.nebula?.[node.language] ?? palette.starCool,
+        // Layout already gives the module node the one origin orbit. Naming
+        // that fact here lets every renderer present it as the system's star
+        // without re-deriving "main" from coordinates or identifier spelling.
+        isSystemCore: node.system_orbit?.kind === "origin",
         color: node.understood
           ? palette.star
           : node.partial
@@ -707,6 +742,56 @@ export function systemData(graph, regionId, palette, { selectedId = null } = {})
         Boolean(selectedId) && edge.src !== selectedId && edge.dst !== selectedId,
     })),
   };
+}
+
+/**
+ * Parser-owned import routes touching one solar system.
+ *
+ * This is the system-level bridge back to the galaxy. It deliberately uses
+ * region_edges rather than structure calls: crossing a module boundary is an
+ * import relationship, and a planet panel must not imply a call the parser did
+ * not prove. Certainty survives on every row, and both directions remain
+ * separate when the graph contains both; collapsing them would erase a real
+ * cycle.
+ */
+export function systemConnections(graph, regionId) {
+  if (!graph || !regionId) return [];
+  const regions = new Map((graph.regions ?? []).map((region) => [region.id, region]));
+  const files = regionFiles(graph);
+  const rows = [];
+  for (const edge of graph.region_edges ?? []) {
+    let direction;
+    let neighborId;
+    if (edge.src === regionId) {
+      direction = "outbound";
+      neighborId = edge.dst;
+    } else if (edge.dst === regionId) {
+      direction = "inbound";
+      neighborId = edge.src;
+    } else {
+      continue;
+    }
+    const neighbor = regions.get(neighborId);
+    if (!neighbor) continue;
+    rows.push({
+      id: `${direction}:${neighborId}`,
+      regionId: neighborId,
+      label: pathTail(files.get(neighborId) ?? neighborId),
+      language: neighbor.language,
+      direction,
+      certain: edge.certain !== false,
+      weight: Number.isFinite(edge.weight) ? edge.weight : 1,
+      home: Boolean(neighbor.home),
+    });
+  }
+  return rows.sort(
+    (left, right) =>
+      Number(right.certain) - Number(left.certain) ||
+      Number(right.weight) - Number(left.weight) ||
+      left.direction.localeCompare(right.direction) ||
+      left.label.localeCompare(right.label) ||
+      left.regionId.localeCompare(right.regionId),
+  );
 }
 
 export function defaultRegion(graph) {
@@ -835,7 +920,12 @@ export function degreeIndex(edges) {
 }
 
 export function nodeLabel(node) {
-  const role = node.kind === "region" ? "star system" : node.kind;
+  const role =
+    node.kind === "region"
+      ? "star system"
+      : node.isSystemCore
+        ? "system star · module anchor"
+        : `planet · ${node.kind}`;
   const uncertainty = node.partial ? " · unchartable · syntax error" : "";
   const home = node.home ? " · Home" : "";
   // Omitted entirely at zero rather than printed as "used by 0": a tooltip
@@ -848,7 +938,7 @@ export function nodeLabel(node) {
       ? " · no proven call path"
       : Number.isInteger(node.system_orbit?.call_depth) &&
           node.system_orbit.call_depth > 0
-        ? ` · call layer ${node.system_orbit.call_depth}`
+        ? ` · orbit ${node.system_orbit.ring} · call depth ${node.system_orbit.call_depth}`
         : "";
   return `${node.name} · ${role} · ${node.loc} LOC${home}${reach}${uncertainty}${orbit}`;
 }

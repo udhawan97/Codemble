@@ -1,7 +1,7 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 /* Hallmark · macrostructure: Map / Diagram · tone: technical observatory
  * theme: locked Observatory Instrument · nav: N9 edge-aligned · footer: Ft2 inline
- * contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46)
+ * contrast: pass (40–41) · slop: pass (1–58) · honest: pass (46)
  * chrome: pass (47) · tokens: pass (48) · responsive: pass (49)
  * icons: pass (30) · mobile: pass (34, 49, 50–57)
  */
@@ -679,6 +679,28 @@ input:focus-visible {
   overflow: hidden;
 }
 
+/* A luminous instrument layer above WebGL. The gradients carry no graph fact;
+   they give the stage atmospheric depth so empty space reads as scale, not as
+   a failed black canvas. Language and progress colour still live in WebGL. */
+.galaxy-frame::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background:
+    radial-gradient(circle at 17% 18%, var(--cm-stage-bloom-a), transparent 34%),
+    radial-gradient(circle at 82% 28%, var(--cm-stage-bloom-b), transparent 31%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.galaxy-frame[data-level="system"]::before,
+.galaxy-frame[data-level="study"]::before {
+  background:
+    radial-gradient(circle at 50% 54%, var(--cm-stage-system-a), transparent 28%),
+    radial-gradient(ellipse at 76% 34%, var(--cm-stage-system-b), transparent 36%);
+}
+
 /* Optical depth for the WebGL stage. The center stays untouched so every
    parser-owned mark keeps its measured colour; only the empty perimeter falls
    back toward the shell ground like a lens instead of a flat panel. */
@@ -689,11 +711,11 @@ input:focus-visible {
   inset: 0;
   background: radial-gradient(
     ellipse at 50% 44%,
-    transparent 50%,
-    color-mix(in srgb, var(--cm-ground) 18%, transparent) 76%,
-    color-mix(in srgb, var(--cm-ground) 52%, transparent) 100%
+    transparent 58%,
+    color-mix(in srgb, var(--cm-ground) 8%, transparent) 80%,
+    color-mix(in srgb, var(--cm-ground) 28%, transparent) 100%
   );
-  box-shadow: inset 0 0 92px color-mix(in srgb, var(--cm-ground) 24%, transparent);
+  box-shadow: inset 0 0 72px color-mix(in srgb, var(--cm-ground) 12%, transparent);
   pointer-events: none;
 }
 
@@ -1101,6 +1123,57 @@ input:focus-visible {
 
 .orientation-copy--system {
   inset-block-start: var(--cm-space-lg);
+  width: min(27rem, calc(100% - var(--cm-space-lg)));
+  padding: var(--cm-space-md);
+  border: 1px solid color-mix(in srgb, var(--cm-orbit) 32%, var(--cm-hairline));
+  border-block-start: 2px solid var(--cm-orbit);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--cm-ground) 72%, transparent);
+  box-shadow: 0 18px 50px var(--cm-panel-shadow), inset 0 1px var(--cm-panel-highlight);
+  backdrop-filter: blur(16px) saturate(132%);
+  pointer-events: auto;
+}
+
+.orientation-copy--system:focus {
+  outline: none;
+}
+
+.system-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0 var(--cm-space-sm);
+  padding-block-end: var(--cm-space-sm);
+  border-block-end: 1px solid color-mix(in srgb, var(--cm-orbit) 18%, transparent);
+}
+
+.system-identity > span {
+  grid-column: 1 / -1;
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.system-identity h2 {
+  margin: 0;
+  color: var(--cm-ink);
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-lg);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.system-identity h2:focus {
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: 0.2rem;
+}
+
+.system-identity small {
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
 }
 
 /* The Map layer's variant: a row in the map column, not an overlay on it. The
@@ -1144,6 +1217,12 @@ input:focus-visible {
   font-size: var(--cm-text-xs);
 }
 
+.orientation-copy--system > p:first-of-type {
+  color: var(--cm-ink);
+  font-size: var(--cm-text-sm);
+  line-height: 1.55;
+}
+
 .system-orbit-note > span {
   color: var(--cm-ink-2);
   text-transform: uppercase;
@@ -1168,6 +1247,199 @@ input:focus-visible {
   flex-basis: 100%;
   color: var(--cm-ink-3);
   font-size: inherit;
+}
+
+/* The system stays connected to the galaxy after drill-down. A compact route
+   console occupies the opposite corner from the learning controls and scrolls
+   within itself when a module has many import neighbors. */
+.system-navigator {
+  position: absolute;
+  z-index: var(--cm-z-raised);
+  inset-inline-end: max(var(--cm-space-md), env(safe-area-inset-right));
+  inset-block-end: calc(3rem + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(27rem, calc(100% - var(--cm-space-lg)));
+  max-height: min(12rem, 34vh);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cm-orbit) 28%, var(--cm-hairline));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--cm-ground) 74%, transparent);
+  box-shadow: 0 18px 52px var(--cm-panel-shadow), inset 0 1px var(--cm-panel-highlight);
+  backdrop-filter: blur(16px) saturate(135%);
+}
+
+.system-navigator > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 var(--cm-space-sm);
+  padding: var(--cm-space-sm) var(--cm-space-md);
+  border-block-end: 1px solid color-mix(in srgb, var(--cm-orbit) 16%, transparent);
+}
+
+.system-navigator > header > span {
+  grid-column: 1 / -1;
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.system-navigator > header strong {
+  color: var(--cm-ink);
+  font-family: var(--cm-font-display);
+  font-size: var(--cm-text-base);
+}
+
+.system-navigator > header small {
+  align-self: center;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: 0.65rem;
+}
+
+.system-navigator__routes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--cm-hairline) transparent;
+}
+
+.system-navigator__overflow-cue {
+  padding: 0.28rem var(--cm-space-sm);
+  border-block-start: 1px solid color-mix(in srgb, var(--cm-orbit) 18%, transparent);
+  background: color-mix(in srgb, var(--cm-ground) 90%, transparent);
+  color: var(--cm-orbit);
+  font-family: var(--cm-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-align: end;
+}
+
+.system-navigator__routes button {
+  --system-route-tint: var(--cm-orbit);
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  min-height: 52px;
+  align-items: center;
+  gap: var(--cm-space-xs);
+  padding: var(--cm-space-xs) var(--cm-space-sm);
+  border: 0;
+  border-block-end: 1px solid var(--cm-hairline-soft);
+  border-inline-start: 2px solid var(--system-route-tint);
+  background: transparent;
+  color: var(--cm-ink);
+  cursor: pointer;
+  text-align: start;
+  transition: background-color var(--cm-dur-quick) var(--cm-ease),
+    border-color var(--cm-dur-quick) var(--cm-ease);
+}
+
+.system-navigator__routes button:nth-child(odd) {
+  border-inline-end: 1px solid var(--cm-hairline-soft);
+}
+
+.system-navigator__routes button:not([data-certain]) {
+  border-inline-start-style: dashed;
+  color: var(--cm-ink-2);
+}
+
+.system-navigator__routes button > span:first-child {
+  color: var(--system-route-tint);
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-lg);
+}
+
+.system-navigator__routes button > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.system-navigator__routes button strong {
+  overflow: hidden;
+  font-family: var(--cm-font-mono);
+  font-size: var(--cm-text-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-navigator__routes button small {
+  overflow: hidden;
+  color: var(--cm-ink-3);
+  font-family: var(--cm-font-mono);
+  font-size: 0.64rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .system-navigator__routes button:hover {
+    background: color-mix(in srgb, var(--system-route-tint) 11%, transparent);
+  }
+}
+
+.system-navigator__routes button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--cm-orbit);
+  outline-offset: -2px;
+}
+
+.system-navigator__routes button:active {
+  background: color-mix(in srgb, var(--system-route-tint) 18%, transparent);
+}
+
+.system-navigator__routes button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 40rem) {
+  .orientation-copy--system {
+    inset-block-start: var(--cm-space-sm);
+    width: calc(100% - var(--cm-space-lg));
+    padding: var(--cm-space-sm);
+  }
+
+  .orientation-copy--system > p:first-of-type {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .system-navigator {
+    inset-inline: var(--cm-space-sm);
+    inset-block-end: calc(2.5rem + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 8.5rem;
+  }
+
+  .system-navigator > header {
+    padding: var(--cm-space-xs) var(--cm-space-sm);
+  }
+
+  .system-navigator > header small {
+    display: none;
+  }
+
+  .system-navigator__routes {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .system-navigator__routes button {
+    flex: 0 0 12rem;
+    border-inline-end: 1px solid var(--cm-hairline-soft);
+  }
+
+  .system-navigator__overflow-cue {
+    padding-block: 0.2rem;
+  }
 }
 
 .orientation-copy--inline {

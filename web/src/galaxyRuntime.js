@@ -27,6 +27,7 @@ import {
   createDressing,
   createGalacticGlow,
   createStarfield,
+  createSystemAura,
 } from "./galaxyMaterials.js";
 import { createNameAtlas } from "./nameAtlas.js";
 import { guardOrbitPointerState } from "./orbitPointerGuard.js";
@@ -81,6 +82,7 @@ const defaultDependencies = Object.freeze({
   disposeSystemOrbitGuides,
   createStarfield,
   createGalacticGlow,
+  createSystemAura,
   attachBloom,
   guardOrbitPointerState,
   runDawnSequence,
@@ -131,8 +133,16 @@ export function createGalaxyRuntime({
   let atlasTimer = null;
   let benchmarkTimer = null;
 
-  const nodeColor = (node) => highlightColor(node, highlight, palette);
-  const linkColor = (link) => highlightLinkColor(link, highlight, palette, linkEndId);
+  const nodeColor = (node) =>
+    highlightColor(node, highlight, palette, {
+      preserveContext:
+        snapshot?.level !== LEVELS.STUDY && snapshot?.firstFlightActive !== true,
+    });
+  const linkColor = (link) =>
+    highlightLinkColor(link, highlight, palette, linkEndId, {
+      preserveContext:
+        snapshot?.level !== LEVELS.STUDY && snapshot?.firstFlightActive !== true,
+    });
   const linkWidth = (link) => {
     if (link.focusDim) return 0.4;
     const base = Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25);
@@ -176,17 +186,18 @@ export function createGalaxyRuntime({
       .nodeColor(nodeColor)
       .nodeRelSize(NODE_REL_SIZE)
       .nodeResolution(12)
-      .nodeOpacity(0.9)
+      .nodeOpacity(1)
       .nodeThreeObject((node) =>
         makeMarker(node, palette, dressing, {
           level: snapshot?.level,
           bodyGeometry,
+          explorationActive: snapshot?.firstFlightActive !== true,
         }),
       )
       .nodeThreeObjectExtend(true)
       .linkColor(linkColor)
       .linkLabel(linkLabel)
-      .linkOpacity(0.58)
+      .linkOpacity(0.64)
       .linkWidth(linkWidth)
       .linkCurvature(0.12)
       .linkThreeObject((link) =>
@@ -271,7 +282,9 @@ export function createGalaxyRuntime({
       guides = null;
     }
     if (snapshot.level === LEVELS.GALAXY || !snapshot.orbitPlan.length) return;
-    guides = deps.createSystemOrbitGuides(snapshot.orbitPlan, palette, dressing);
+    guides = deps.createSystemOrbitGuides(snapshot.orbitPlan, palette, dressing, {
+      languageColor: snapshot.data.nodes.find((node) => node.languageColor)?.languageColor,
+    });
     renderer.scene().add(guides);
     stopSpin = deps.createBodySpin(renderer.scene(), { reducedMotion });
   }
@@ -280,15 +293,24 @@ export function createGalaxyRuntime({
     disposeSky();
     const starfield = deps.createStarfield(snapshot.starfieldSeed, palette);
     const glow = deps.createGalacticGlow(snapshot.starfieldSeed, palette);
+    const languageColor = snapshot.data.nodes.find((node) => node.languageColor)?.languageColor;
+    const aura = deps.createSystemAura(
+      `${snapshot.starfieldSeed}:${snapshot.region?.id ?? "system"}`,
+      palette,
+      languageColor,
+    );
     glow.visible = snapshot.level === LEVELS.GALAXY;
+    aura.visible = snapshot.level !== LEVELS.GALAXY;
     renderer.scene().add(starfield);
     renderer.scene().add(glow);
-    sky = { starfield, glow };
+    renderer.scene().add(aura);
+    sky = { starfield, glow, aura };
   }
 
   function disposeSky() {
     if (!sky || !renderer) return;
-    for (const object of [sky.starfield, sky.glow]) {
+    for (const object of [sky.starfield, sky.glow, sky.aura]) {
+      if (!object) continue;
       renderer.scene().remove(object);
       disposeSceneObject(object);
     }
@@ -384,6 +406,7 @@ export function createGalaxyRuntime({
           distanceBounds: bounds,
           activeNodeId: highlight.activeId,
           neighborIds: highlight.neighborIds,
+          maxLabels: snapshot.level === LEVELS.SYSTEM ? 12 : Infinity,
           chrome: occlusion.nameObstructions,
         });
       } catch (error) {
@@ -432,6 +455,8 @@ export function createGalaxyRuntime({
       renderer
         .nodeResolution(next.data.nodes.length >= 900 ? 4 : next.data.nodes.length >= 400 ? 8 : 12)
         .nodeThreeObjectExtend(next.level === LEVELS.GALAXY)
+        .linkOpacity(next.level === LEVELS.GALAXY ? 0.64 : 0.82)
+        .linkDirectionalParticleWidth(next.level === LEVELS.GALAXY ? 1.22 : 1.72)
         .linkVisibility((link) => !(next.mode === "easy" && link.focusDim))
         .linkDirectionalArrowLength(next.level === LEVELS.GALAXY ? 0 : 3.2)
         .graphData(next.data);
@@ -452,8 +477,16 @@ export function createGalaxyRuntime({
     ) {
       replaceGuides();
     }
-    if (!previous || previous.starfieldSeed !== next.starfieldSeed) replaceSky();
+    if (
+      !previous ||
+      previous.starfieldSeed !== next.starfieldSeed ||
+      previous.level !== next.level ||
+      previous.region?.id !== next.region?.id
+    ) {
+      replaceSky();
+    }
     if (sky?.glow) sky.glow.visible = next.level === LEVELS.GALAXY;
+    if (sky?.aura) sky.aura.visible = next.level !== LEVELS.GALAXY;
 
     if (next.level !== LEVELS.GALAXY) {
       cancelDawn();
@@ -568,7 +601,12 @@ export function createGalaxyRuntime({
   return Object.freeze({ update, dispose });
 }
 
-function makeMarker(node, palette, dressing, { level, bodyGeometry } = {}) {
+function makeMarker(
+  node,
+  palette,
+  dressing,
+  { level, bodyGeometry, explorationActive = false } = {},
+) {
   const group = new THREE.Group();
   group.name = markerName(node);
   group.userData.codembleNodeId = node.id;
@@ -579,12 +617,17 @@ function makeMarker(node, palette, dressing, { level, bodyGeometry } = {}) {
       node,
       color: node.color,
       communityColor: node.communityColor,
+      languageColor: node.languageColor,
       palette,
       radius,
       geometry: bodyGeometry,
     }));
   }
-  const uncharted = isUncharted(node);
+  // "Uncharted" controls the learning trail, not whether free exploration is
+  // allowed to look alive. In Explore mode every parser-owned system gets its
+  // halo and language atmosphere from the first frame; First Flight may still
+  // use the quieter undiscovered dressing to focus the lesson.
+  const uncharted = !explorationActive && isUncharted(node);
   if (!node.focusDim && !uncharted && !worldTier) group.add(dressing.halo(node, radius));
   if (level === LEVELS.GALAXY && node.understood && !node.focusDim && !uncharted) {
     group.add(dressing.starburst(radius));

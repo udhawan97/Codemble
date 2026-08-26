@@ -254,10 +254,30 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M18 adventure launch, landings, and Ruby/PHP** · Last updated:
-2026-08-25 · Session note: verified stable v0.21.1 adds a deliberate free-explore
-or First Flight launch, Easy/Expert landing briefs, seeded game-level space art,
-and conservative Ruby/PHP adapters without changing evidence or progression.
+**Current milestone: M19 luminous galaxies and living solar systems** · Last
+updated: 2026-08-25 · Session note: the v0.22.0 candidate keeps every system
+colourful and legible in free Explore, turns the parser-owned module anchor into
+the System Sun, names every structure world, gives each parsed language a
+deterministic visual character, and exposes parser-owned neighbouring imports without
+changing certainty, checks, progression, or the bounded camera.
+
+**The implementation loop is complete; release verification is in progress.**
+Explore no longer blacks out unrelated systems during hover or selection, and
+unvisited systems retain their language atmosphere. Within a selected module,
+the safe module anchor is a central language-coloured star; functions and
+classes are named planets in parser-owned call placement that distinguishes
+direct certain calls, call roots, and no-path placement; a nearby-systems console
+lists inbound and outbound imports with split certainty and opens the selected
+destination. Possible routes stay possible, reduced motion removes animation rather than content, and
+amber remains exclusive to passed checks. The full local gate, fresh Graphify,
+and exactly two council rounds pass; reproducible final artifacts, candidate CI,
+exact-tag publication, outside-in artifact proof, main CI, and Pages remain
+required before v0.22.0 can be called stable.
+
+Previously (2026-08-25) · Session note: verified stable v0.21.1 added a
+deliberate free-explore or First Flight launch, Easy/Expert landing briefs,
+seeded game-level space art, and conservative Ruby/PHP adapters without
+changing evidence or progression.
 
 **Two implementation loops and the full release gate are complete.** First
 run now persists the selected explanation register before either opening the
@@ -1831,10 +1851,34 @@ launch focus. Fresh Graphify, two
 council rounds, hosted candidate CI, reproducible artifacts, exact-tag trusted
 publication, outside-in package proof, cold install, main CI, and Pages pass.
 
+### M19 — Luminous galaxies and living solar systems 🚧 (2026-08-25)
+- [x] Keep every system visible, colourful, and contextually legible throughout
+      free Explore hover and selection; retain guided dimming only for Learning
+- [x] Make the parser-owned module anchor the central System Sun and provide
+      parser-owned display labels for every function and class world
+- [x] Give all nine parsed languages deterministic, reduced-motion-aware world
+      terrain, banding, atmosphere, shimmer, tilt, and rotation profiles
+- [x] Add a nearby-systems console for parser-owned inbound and outbound imports while
+      preserving proven and possible certainty and direct system navigation
+- [x] Reframe System around the actual world/Sun extents and both orientation
+      consoles; brighten layered sky, local language depth, routes, and labels
+- [x] Preserve amber as check-only, add no inferred role or structure, and add
+      no XP, new quest, free-flight camera, provider, account, or cloud touch
+- [x] Rebuild the bundled SPA and public captures; pass the complete local,
+      browser, documentation, Hallmark, Graphify, and release-artifact gates
+- [ ] Complete exactly two council rounds, candidate PR CI, exact-tag v0.22.0
+      publication, outside-in package proof, main CI/Pages, and cold install
+
+**Acceptance pending:** every checked implementation item has focused contract
+coverage and local visual evidence; no release claim is valid until both open
+items pass from the reviewed candidate.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-25 | System navigation reports certain and possible import counts separately, labels call roots without implying a call edge, cues every overflow, and focuses the destination System heading after travel | Two council rounds found three ways visual polish could outrun evidence: a mixed route list was collectively called proven, call roots shared a ring labelled direct calls, and the fifth route looked absent behind a silent scroller. The corrected console preserves direction and certainty in visible and accessible names; orbit plans carry both `guideCertain` and `containsCallRoots`; desktop and compact overflow state the continuation; and two consecutive fresh full runs each passed all 52 Chromium/WebKit receipts, including 320 px keyboard and reduced-motion travel. |
+| 2026-08-25 | Free Explore keeps the full galaxy luminous and colourful; guided Learning may soften unrelated context. The safe module anchor becomes the System Sun, structure worlds vary by parser-owned language, and connected-system navigation uses only existing import edges | The owner explicitly separated display/exploration from learning focus and requested a world-class solar-system metaphor. Visibility is not proof: amber remains check-only. Language is already parser evidence, so it can safely drive deterministic surface character; import direction and certainty already exist, so the nearby-systems console can improve continuation without inventing a connection. The bounded rail camera, one graph, and no-XP/non-cloud contracts remain unchanged |
 | 2026-08-25 | A successful free first-run launch focuses the existing Galaxy application frame once after commit; compact Study's first view owns an 8 px bottom guard measured by pinned Chromium after local fonts settle | The opener-less launch modal left Chromium, WebKit, and native Safari on `BODY` even though the named `.galaxy-frame` was already the correct target. A free-only post-commit flag closes that seam without touching guided launch, hydration, later layer changes, or refused-save dialog focus. Separately, pinned bundled Chromium and system Chrome reproduced the same 320×640 geometry: the complete 44 px connection summary ended at 654 against a panel ending at 640. Compact-only inset and gap changes restore the first view without shrinking type or controls, hiding graph evidence, or changing document order. The historical v0.21.1 record is preserved; this correction is unreleased and moves no tag |
 | 2026-08-25 | v0.21.1 becomes stable only after the v0.21.0 archive mismatch is preserved, repaired, and the replacement exact tag passes every outside-in gate | The v0.21.0 trusted workflow `32831002724` stopped before PyPI when an untracked local `uv.lock` polluted only the local sdist; its immutable tag remains a blocked prerelease. v0.21.1 excludes that developer file. Annotated tag `v0.21.1` (`913d641`) peels to `9f52778`; replacement candidate CI `32831499727`, trusted publish `32832515968`, main CI `32832683519`, and Pages `32832683592` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on wheel `ba515552…90212` and sdist `588c910f…613c0`; a cold Python 3.11 install reports 0.21.1 and carries `index-Is2yGdJX.js` plus `index-DVgxDoNx.css`. The follow-up changes only this operating truth and must never move the release tag |
 | 2026-08-25 | Every First Flight stop offers an explicit **Land and learn** action that selects the first complete non-module declaration in source order, falling back to the module anchor, then hands off to the existing Study and graph-derived check flow | A system-only tour did not satisfy the requested guided learning or quiz route, and a manual canvas Enter was not guidance. Source order is deterministic parser evidence, not an invented importance rank. Reusing `SELECT_STUDY_NODE`, Study guidance, and `OPEN_CHECKS` preserves the one visit, explanation, and check pipeline without a second lesson or progression state |

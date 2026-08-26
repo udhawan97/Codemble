@@ -1,6 +1,6 @@
 # Codemble product captures
 
-The public README and website use real 1440×720 captures of Codemble v0.17.0,
+The public README and website use real 1440×720 captures of Codemble v0.22.0,
 not mockups. Recreate them with the self-contained capture command:
 
 ```bash
@@ -22,7 +22,7 @@ removes the server and temporary data afterward.
 | `easy-mode.png` | Easy “How it fits together” diagram |
 | `map-architecture.png` | Expert Architecture map |
 | `map-workflow.png` | Expert Workflow map |
-| `system.png` | `codemble.server.app` system |
+| `system.png` | `codemble.cli` system with its Sun, four worlds, and Nearby systems |
 | `study-panel.png` | Module structural summary |
 | `study-impact.png` | Parser-owned Impact widget |
 | `galaxy-lit.png` | Galaxy after proving Home, with the semantic key open |

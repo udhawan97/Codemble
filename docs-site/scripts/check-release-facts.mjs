@@ -51,6 +51,20 @@ for (const match of readme.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
   assert.match(match[1], /^(?:https:\/\/|#|mailto:)/, `README link is not PyPI-safe: ${match[1]}`);
 }
 
+const atlasJourney = await read("docs-site/src/components/AtlasJourney.astro");
+const systemJourney = atlasJourney.slice(
+  atlasJourney.indexOf('id: "system"'),
+  atlasJourney.indexOf('id: "impact"'),
+);
+assert.match(systemJourney, /image: "system\.png"/, "System journey must show the System capture");
+assert.doesNotMatch(systemJourney, /study-panel\.png/, "System journey still points at Study");
+const galaxyGuide = await read("docs-site/src/content/docs/the-galaxy.md");
+assert.match(
+  galaxyGuide,
+  /system\.png" alt="[^"]*codemble\.cli[^"]*four named worlds[^"]*five parser-owned import routes/i,
+  "System capture alt text must match the current codemble.cli four-world image",
+);
+
 const downloadGuide = await read("docs-site/src/content/docs/download.md");
 const sharedFacts = [
   release.version,

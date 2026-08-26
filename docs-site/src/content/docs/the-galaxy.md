@@ -3,7 +3,7 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
-:::note[v0.21.1 product guide]
+:::note[v0.22.0 product guide]
 This page matches the packaged app, current source, and fresh product captures.
 [Choose a run or download route](/Codemble/download/).
 :::
@@ -12,7 +12,7 @@ This page matches the packaged app, current source, and fresh product captures.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.21.1 at galaxy level: 215 star systems across nine languages, with a seeded spiral starfield, parser-owned names, community colour shared subtly by related proven routes, ranked labels, 37 charted systems, an unlit Home resolved to codemble.cli, and eight unreadable test fixtures called out.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.22.0 at galaxy level: 217 visible, colourful star systems across nine languages in a luminous spiral sky, with parser-owned names, proven and possible routes kept distinct, ranked labels, 37 charted systems, Home resolved to codemble.cli without amber understanding light, and eight unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -32,13 +32,16 @@ add no independent meaning:
 | Brightness and glow | How many distinct places call it (centrality) |
 | Colour family | Import community — related modules and their proven internal routes share a hue |
 | Nebula tint | Language |
-| Lit amber / dim | Understood / not yet |
+| Lit amber / no amber | Understood / not yet; Explore still keeps unproved systems colourful and readable |
 | Drifting particles | A route the parser proved; possible routes stay still |
-| Orbit guide | Solid = call layer from certain calls; dashed = no proven call path |
+| Orbit guide | Solid = layer containing certain calls; call roots are named separately; dashed = no certain call in that placement |
 | Routes drawn around a system | You have flown there; the system is charted |
 
-Every system is drawn, coloured and named from the very first frame, whether or
-not you have been near it. What fills in as you explore is the web of **import
+Every system is drawn, coloured, named, and visibly luminous from the very
+first Explore frame, whether or not you have been near it. Hovering one system
+does not black out the rest of the project. Guided Learning may soften distant
+context to clarify the current route, but it never removes parser-owned nodes.
+What fills in as you explore is the web of **import
 routes** between systems — drawing all of them at once is what makes a large
 project unreadable — along with the frame the camera opens on, so a first run
 starts among the modules closest to Home rather than staring at the whole disc
@@ -66,6 +69,28 @@ star remains the brightest object by a wide margin, and the amber band itself
 is excluded from the wheel so no community can ever read as "understood".
 Inside a system its planets inherit the family hue, with lightness still
 answering callers.
+
+## Enter a solar system
+
+Selecting a module changes scale without changing truth. Its safe module anchor
+becomes the **system Sun**: a central language-coloured star that makes the file
+itself unmistakable. Functions and classes become named planets in **call
+orbits**. Inner placement distinguishes direct certain calls from call roots,
+which can share the first ring without claiming an edge. The outer drift states
+that no proven path was found instead of inventing one.
+
+World character follows the parser-owned language. Python, JavaScript,
+TypeScript, Go, Java, Rust, C#, Ruby, and PHP each receive a deterministic mix
+of surface terrain, mineral bands, shimmer, atmospheric colour, axial tilt, and
+rotation. These are variations of a known language fact, not inferred runtime
+roles or quality scores. Reduced-motion mode removes the rotation and shimmer
+without hiding the worlds.
+
+The **Nearby systems** console lists parser-owned module imports that enter or
+leave the selected system. Certain routes remain solid, possible routes remain explicitly
+possible, and each named destination can open its own solar system. This is the
+same graph as the Galaxy route mesh, presented as a readable continuation rather
+than a new relationship.
 
 The route cue is intentionally quiet. A proven import whose two systems belong
 to the same coloured community picks up only part of that family's hue, making
@@ -299,7 +324,7 @@ The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="System product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/system.png" alt="One star system, codemble.server.app, its 34 parser-proven structures as worlds in the system's own colour family, laid out on labelled call guides with proven and possible edges between them.">
+    <img src="/Codemble/shots/system.png" alt="The codemble.cli solar system with a luminous Python module Sun, four named worlds on labelled call guides, and a Nearby systems console showing five parser-owned import routes with certainty preserved.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>

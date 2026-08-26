@@ -20,8 +20,9 @@ Point Codemble at your project. It parses your code into a real structural
 graph — no guessing — and gives you two ways to look at that one graph: a **3D
 galaxy** where modules are star systems, functions are planets and your
 entrypoint is Home, and a flat **Map** that lays out architecture and workflow
-as a diagram. Every module is drawn, coloured and named from the first frame;
-every one of them starts dim.
+as a diagram. Every module is drawn, coloured and named from the first frame.
+In free exploration the whole galaxy stays visibly alive; amber remains absent
+until a check proves understanding.
 
 You explore, follow a parser-proven feature journey from Home to the structure
 you selected, see what a change would reach, read explanations grounded in your
@@ -42,11 +43,14 @@ optional extra: bring your own Claude or OpenAI key, or run a local model
 through Ollama and send nothing anywhere.
 
 :::note[Status]
-Codemble **v0.21.1** is published on PyPI and maps Python, JavaScript,
+Codemble **v0.22.0** is published on PyPI and maps Python, JavaScript,
 TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixed projects. First run offers
-free exploration or a guided First Flight. Every landing can speak Easy or
-Expert while preserving one parser-owned route and graph; guided stops continue
-from landing into the existing graph-derived checks.
+free exploration or a guided First Flight. Every module opens as a solar system
+with its module anchor as the Sun, named language-styled worlds in parser-owned
+call placement, and a navigator for certain and possible neighbouring imports.
+Every landing can
+speak Easy or Expert while preserving one parser-owned route and graph; guided
+stops continue from landing into the existing graph-derived checks.
 Impact, dependencies, and verification candidates are selected-feature facts,
 not claims about every route step. The downloadable package,
 current source, screenshots, and these product guides match. The original

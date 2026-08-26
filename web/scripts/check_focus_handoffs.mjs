@@ -41,6 +41,17 @@ assert.doesNotMatch(
   /requestAnimationFrame/,
   "Finder arrival cannot race a large React commit on the next frame",
 );
+assert.match(app, /const systemNavigatorArrivalRef = useRef\(false\)/);
+assert.match(
+  app,
+  /function goFromSystemNavigator[\s\S]*?systemNavigatorArrivalRef\.current = true[\s\S]*?GO_TO_REGION/,
+  "Nearby-system travel records that its route control will unmount",
+);
+assert.match(
+  app,
+  /useLayoutEffect\(\(\) => \{[\s\S]*?systemNavigatorArrivalRef\.current[\s\S]*?systemHeadingRef\.current\?\.focus/,
+  "Nearby-system arrival focuses the committed System heading",
+);
 assert.match(app, /function dismissCoachmarks[\s\S]*?stageRef\.current\?\.focus/);
 assert.match(app, /modeChosen === true && entrypointOpen/);
 assert.match(app, /function IndexSidebar[\s\S]*?closeButtonRef/);

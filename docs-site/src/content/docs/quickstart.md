@@ -3,7 +3,7 @@ title: Quickstart
 description: From one command to your first lit star system.
 ---
 
-:::note[This quickstart matches v0.21.1]
+:::note[This quickstart matches v0.22.0]
 The one-command package, current source, and screenshots all cover the same
 nine-language app. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
 :::
@@ -22,12 +22,12 @@ No Homebrew? Use the official installer — `curl -LsSf
 https://astral.sh/uv/install.sh | sh` on macOS and Linux, or `powershell
 -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` on
 Windows. If you would rather install Codemble permanently, `pipx install
-codemble==0.21.1` needs no uv at all.
+codemble==0.22.0` needs no uv at all.
 
 ## 2. Point it at your project
 
 ```bash
-uvx --from codemble==0.21.1 codemble
+uvx --from codemble==0.22.0 codemble
 ```
 
 Codemble opens your browser to an in-app picker: browse your home folders or
@@ -36,7 +36,7 @@ TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixtures of those languages. To s
 picker, pass a path directly:
 
 ```bash
-uvx --from codemble==0.21.1 codemble ./my-project
+uvx --from codemble==0.22.0 codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -49,7 +49,7 @@ busiest-first subdirectories as buttons and accepts a typed path, right in the
 UI. From the CLI, select the scope yourself:
 
 ```bash
-uvx --from codemble==0.21.1 codemble --path ./my-project/src
+uvx --from codemble==0.22.0 codemble --path ./my-project/src
 ```
 
 ## 3. Find Home
@@ -110,8 +110,8 @@ only views: neither alters coordinates, progress, or graph evidence.
 
 | Galaxy level | What you see | What it's for |
 | --- | --- | --- |
-| **Galaxy** | Source modules as star systems, imports as routes | Orientation |
-| **System** | Functions and classes in call-depth orbits — the inner ring runs first | Structure |
+| **Galaxy** | Source modules as visible, colourful star systems; imports as routes | Orientation |
+| **Solar system** | The module anchor as its Sun; named functions and classes as language-styled worlds in parser-owned call placement; certain and possible imports as neighbouring systems | Structure and continuation |
 | **Study** | A landing brief, parser-proven route from Home, real source, integrated Impact and Connections, and optional grounded narration | Learning one feature in application context |
 
 | Map tab | What you see | What it's for |

@@ -16,8 +16,7 @@
  *     centrality ramp -- 40% and 57% of headroom respectively.
  *   - one hue means one import community, at most eight ranked families.
  *   - every value used as a legend swatch clears WCAG 4.5:1 on BOTH
- *     --cm-ground and --cm-ground-2. The families now measure 9.6:1 and 8.4:1,
- *     up from 8.1:1 and 7.0:1.
+ *     --cm-ground and --cm-ground-2.
  *
  * The app is dark-only -- it sets no `data-theme` and reads no
  * `prefers-color-scheme` -- so the site's light-ground block is deliberately
@@ -105,14 +104,20 @@
      token renders black. See the Gotchas in CLAUDE.md.
      ======================================================================= */
 
-  /* A uniform mid-blue field flattened stars, routes and the galactic band
-     into one plane. This stays distinct from UI ground while returning enough
-     darkness for the seeded dust shells and spiral plane to establish depth. */
-  --cm-sky: rgb(9 17 44);
+  /* A lifted navy field, distinct from UI ground. It keeps enough darkness for
+     seeded dust and the spiral plane to establish depth without making Explore
+     mode feel like an unlit room. */
+  --cm-sky: rgb(14 28 62);
   /* The galactic plane: a broad, very dim band of light across the disc, at
      lum 0.076. Encodes nothing -- it is the ambient that makes the emptiness
      read as distance rather than as absence. */
-  --cm-sky-glow: rgb(42 75 145);
+  --cm-sky-glow: rgb(66 108 198);
+  --cm-stage-bloom-a: rgb(101 130 255 / 0.14);
+  --cm-stage-bloom-b: rgb(95 220 235 / 0.11);
+  --cm-stage-system-a: rgb(117 176 255 / 0.16);
+  --cm-stage-system-b: rgb(104 229 218 / 0.12);
+  --cm-panel-shadow: rgb(0 0 0 / 0.24);
+  --cm-panel-highlight: rgb(255 255 255 / 0.035);
 
   /* The unlit centrality ramp: three canvas-only values, no longer borrowed
      from --cm-ink-2 and --cm-ink-3. Those are TEXT tokens, so the sky's
@@ -127,10 +132,12 @@
      project is still plainly a star.
 
      Ordering, measured, and the thing that must never break:
-     floor 0.220 < mid 0.322 < ceiling 0.439 < community 0.470 < LIT 0.665. */
-  --cm-node-unlit: rgb(115 129 162);
-  --cm-node-mid: rgb(142 154 180);
-  --cm-node-bright: rgb(169 177 197);
+     floor 0.287 < mid < community 0.472 < ceiling 0.502 < LIT 0.665.
+     The neutral ceiling may edge above a family hue because centrality owns
+     brightness; both remain below the 0.52 bloom threshold and amber reward. */
+  --cm-node-unlit: rgb(130 146 183);
+  --cm-node-mid: rgb(153 166 198);
+  --cm-node-bright: rgb(177 188 214);
 
   /* Starfield and neutral-node temperature. Blue to white only: there is
      deliberately NO warm end, because a warm tint at this brightness sits in
@@ -151,7 +158,7 @@
      borrow --cm-hairline -- the ink of box borders -- at 1.6:1 on the canvas
      ground, so the relationships the app exists to teach were its least
      visible marks. */
-  --cm-route: rgb(96 113 152);
+  --cm-route: rgb(117 139 188);
 
   /* Language nebula tints. Raised to lum ~0.33 so a system sits in visible
      atmosphere rather than in nothing; fog alpha lives in the material, not
@@ -201,6 +208,6 @@
      composited by CSS, so its alpha lives in the rgba() below. The ink is
      deliberately NOT --cm-star-high: amber means understanding, and a label
      is not a claim about understanding anything. */
-  --cm-label-plate: rgba(9 14 28 / 0.82);
-  --cm-label-ink: rgb(214 219 231);
+  --cm-label-plate: rgba(8 16 38 / 0.74);
+  --cm-label-ink: rgb(232 237 248);
 }

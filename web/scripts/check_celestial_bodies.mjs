@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import {
   ATMOSPHERE_SHADER_SOURCE,
   BODY_SHADER_SOURCE,
+  LANGUAGE_WORLD_PROFILES,
+  SYSTEM_STAR_SHADER_SOURCE,
   bodySeed,
+  languageWorldProfile,
 } from "../src/celestialBodies.js";
 
 // A GLSL reserved word used as an identifier makes the program fail to LINK,
@@ -22,6 +25,7 @@ const RESERVED = [
 for (const source of [
   ...Object.values(BODY_SHADER_SOURCE),
   ...Object.values(ATMOSPHERE_SHADER_SOURCE),
+  ...Object.values(SYSTEM_STAR_SHADER_SOURCE),
 ]) {
   for (const word of RESERVED) {
     // Declaration shapes only: `<type> <reserved>` or `<reserved> =`.
@@ -37,11 +41,16 @@ for (const uniform of [
   "uBase",
   "uAmber",
   "uCool",
+  "uLanguage",
   "uSeed",
   "uLit",
   "uPartial",
   "uClass",
   "uDim",
+  "uTerrain",
+  "uBands",
+  "uShimmer",
+  "uTime",
 ]) {
   assert.ok(
     BODY_SHADER_SOURCE.fragment.includes(`uniform`) &&
@@ -49,17 +58,40 @@ for (const uniform of [
     `fragment shader never reads uniform ${uniform}`,
   );
 }
-for (const uniform of ["uBase", "uCool", "uDim"]) {
+for (const uniform of ["uBase", "uCool", "uLanguage", "uDim"]) {
   assert.match(
     ATMOSPHERE_SHADER_SOURCE.fragment,
     new RegExp(`\\b${uniform}\\b`),
     `atmosphere shader never reads uniform ${uniform}`,
   );
 }
+for (const uniform of ["uBase", "uLanguage", "uCool", "uAmber", "uSeed", "uLit", "uDim", "uTime"]) {
+  assert.match(
+    SYSTEM_STAR_SHADER_SOURCE.fragment,
+    new RegExp(`\\b${uniform}\\b`),
+    `system-star shader never reads uniform ${uniform}`,
+  );
+}
 assert.doesNotMatch(
   ATMOSPHERE_SHADER_SOURCE.fragment,
   /uAmber|kohaku/i,
   "the decorative atmosphere must never borrow understanding-only amber",
+);
+
+assert.deepEqual(
+  Object.keys(LANGUAGE_WORLD_PROFILES).sort(),
+  ["csharp", "go", "java", "javascript", "php", "python", "ruby", "rust", "typescript"],
+  "every shipped language owns a deliberate world profile",
+);
+assert.notDeepEqual(
+  languageWorldProfile("python"),
+  languageWorldProfile("ruby"),
+  "language families change more than a label",
+);
+assert.equal(
+  languageWorldProfile("kotlin"),
+  languageWorldProfile("kotlin"),
+  "an unknown language gets one stable neutral profile",
 );
 
 // "Same code -> same sky" is an acceptance criterion, and a procedural surface

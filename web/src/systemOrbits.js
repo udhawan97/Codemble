@@ -43,27 +43,44 @@ export function systemOrbitPlan(nodes) {
       const callDepth = depths.length === 1 ? depths[0] : null;
       const kinds = [...group.kinds].sort();
       const unproven = kinds.every((kind) => kind === "unreached");
+      const guideCertain = kinds.includes("certain-call");
+      const containsCallRoots = kinds.includes("call-root");
       return {
         ring,
         callDepth,
         kinds,
         radii: [...group.radii].sort((left, right) => left - right),
         label: unproven
-          ? "No proven path"
+          ? "Outer drift · no proven path"
+          : containsCallRoots && guideCertain
+            ? callDepth === 1
+              ? "Inner orbit · direct calls + call roots"
+              : `Orbit ${ring} · calls + call roots`
+            : containsCallRoots
+              ? "Inner orbit · call roots, no call edge"
           : callDepth === null
             ? "Mixed call evidence"
-            : `Layer ${callDepth}`,
+            : callDepth === 1
+              ? "Inner orbit · direct calls"
+              : `Orbit ${callDepth} · call depth ${callDepth}`,
+        containsCallRoots,
+        guideCertain,
         unproven,
       };
     });
 }
 
-export function createSystemOrbitGuides(plan, palette, dressing) {
+export function createSystemOrbitGuides(
+  plan,
+  palette,
+  dressing,
+  { languageColor = null } = {},
+) {
   const group = new THREE.Group();
   group.name = "codemble-system-orbits";
 
   for (const layer of plan) {
-    const material = layer.unproven
+    const material = !layer.guideCertain
       ? new THREE.LineDashedMaterial({
           color: palette.faded,
           dashSize: 3,
@@ -78,9 +95,17 @@ export function createSystemOrbitGuides(plan, palette, dressing) {
           transparent: true,
           depthWrite: false,
         });
+    const glowMaterial = !layer.guideCertain
+      ? null
+      : new THREE.LineBasicMaterial({
+          color: languageColor ?? palette.orbit,
+          opacity: 0.16,
+          transparent: true,
+          depthWrite: false,
+        });
 
     for (const radius of layer.radii) {
-      const geometry = new THREE.BufferGeometry().setFromPoints(
+      const points =
         Array.from({ length: GUIDE_SEGMENTS }, (_, index) => {
           const angle = (index / GUIDE_SEGMENTS) * Math.PI * 2;
           return new THREE.Vector3(
@@ -88,12 +113,22 @@ export function createSystemOrbitGuides(plan, palette, dressing) {
             0,
             Math.sin(angle) * radius,
           );
-        }),
-      );
+        });
+      if (glowMaterial) {
+        const glow = new THREE.LineLoop(
+          new THREE.BufferGeometry().setFromPoints(points),
+          glowMaterial,
+        );
+        glow.scale.setScalar(1.012);
+        glow.userData.codembleOrbitGuide = true;
+        glow.renderOrder = -2;
+        group.add(glow);
+      }
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
       const line = new THREE.LineLoop(geometry, material);
       line.userData.codembleOrbitGuide = true;
       line.renderOrder = -1;
-      if (layer.unproven) line.computeLineDistances();
+      if (!layer.guideCertain) line.computeLineDistances();
       group.add(line);
     }
 

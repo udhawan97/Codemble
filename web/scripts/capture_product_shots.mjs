@@ -17,6 +17,7 @@ const outputDirectory = resolve(
   process.env.CODEMBLE_CAPTURE_DIR || "../docs-site/public/shots",
 );
 const homeCandidate = /^codemble\.cli codemble\/cli\.py:1/;
+const systemModulePath = "codemble/cli.py";
 const appModulePath = "server/app.py";
 
 const captureServer = await startDisposableCaptureServer({
@@ -40,6 +41,10 @@ const page = await browser.newPage({
   deviceScaleFactor: 1,
   reducedMotion: "reduce",
 });
+// A cold self-parse may share the machine with real-browser acceptance. Keep
+// capture deterministic under that load; individual interaction waits remain
+// bounded by the same page deadline and browser errors still fail the run.
+page.setDefaultTimeout(90_000);
 
 const pageErrors = [];
 page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -109,14 +114,14 @@ async function capture(name) {
   process.stdout.write(`captured ${name}\n`);
 }
 
-async function selectAppModule() {
+async function selectModule(modulePath) {
   await page.keyboard.press("Meta+K");
   const finder = page.locator(".module-finder[open]");
   await finder.waitFor();
   const input = finder.getByRole("searchbox", {
     name: "Find a module by name or path",
   });
-  await input.fill(appModulePath);
+  await input.fill(modulePath);
   const option = finder.getByRole("option").first();
   await option.waitFor();
   await page.keyboard.press("Enter");
@@ -184,10 +189,11 @@ await page.waitForTimeout(400);
 await capture("map-workflow.png");
 
 await page.getByRole("button", { name: "Architecture", exact: true }).click();
-await selectAppModule();
+await selectModule(systemModulePath);
 await setLayer("galaxy");
 await capture("system.png");
 
+await selectModule(appModulePath);
 await setLayer("map");
 await page.getByRole("button", { name: "Read the source", exact: true }).click();
 await page.waitForTimeout(700);

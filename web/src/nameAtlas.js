@@ -31,6 +31,7 @@ export function createNameAtlas(nodes) {
     distanceBounds,
     activeNodeId = null,
     neighborIds = null,
+    maxLabels = Infinity,
     // Rectangles of DOM chrome drawn over the canvas, in the same CSS pixels
     // as `width`/`height`. Empty by default: a caller that draws no chrome
     // over its sky need not know this exists.
@@ -42,7 +43,7 @@ export function createNameAtlas(nodes) {
       return Object.freeze({ budget: 0, shown: 0, visibleIds: Object.freeze([]) });
     }
 
-    const budget = labelBudget(distance, distanceBounds);
+    const budget = Math.min(labelBudget(distance, distanceBounds), maxLabels);
     const candidates = [];
     for (const sprite of sprites) {
       const nodeId = sprite.userData.nodeId;
@@ -118,6 +119,7 @@ function rankNames(nodes) {
     .map((node) => ({
       id: node.id,
       weight:
+        (node.isSystemCore ? 4_000_000 : 0) +
         (node.home ? 3_000_000 : 0) +
         (node.understood ? 1_000_000 : 0) +
         (node.centrality ?? 0) * 1000,

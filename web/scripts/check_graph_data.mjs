@@ -27,6 +27,7 @@ import {
   revealedRegionIds,
   sharedTopSegment,
   systemData,
+  systemConnections,
   unsupportedSummary,
   projectOverview,
 } from "../src/graphData.js";
@@ -273,7 +274,15 @@ const swatches = {
 };
 const ramp = {
   nodes: [
-    { id: "cold", region: "r", centrality: 0, loc: 4, understood: false },
+    {
+      id: "cold",
+      name: "r",
+      region: "r",
+      centrality: 0,
+      loc: 4,
+      understood: false,
+      system_orbit: { kind: "origin" },
+    },
     { id: "warm", region: "r", centrality: 1, loc: 4, understood: false },
     { id: "hot", region: "r", centrality: 9, loc: 4, understood: false },
     { id: "lit", region: "r", centrality: 0, loc: 4, understood: true },
@@ -289,7 +298,8 @@ const ramp = {
 };
 const byId = (data) => Object.fromEntries(data.nodes.map((n) => [n.id, n.color]));
 
-const systemColors = byId(systemData(ramp, "r", swatches));
+const systemScene = systemData(ramp, "r", swatches);
+const systemColors = byId(systemScene);
 assert.deepEqual(systemColors, {
   cold: "DIM",
   warm: "MID",
@@ -299,6 +309,11 @@ assert.deepEqual(systemColors, {
   lit: "AMBER",
   broken: "UNCERTAIN",
 });
+assert.match(
+  systemScene.nodes.find((node) => node.isSystemCore).label,
+  / · system Sun$/,
+  "the module origin is visibly named as the solar-system Sun",
+);
 const galaxyColors = byId(galaxyData(ramp, swatches));
 assert.deepEqual(galaxyColors, { r: "UNCERTAIN", busy: "BRIGHT", known: "AMBER" });
 assert.equal(
@@ -319,7 +334,18 @@ assert.equal(
       kind: "certain-call",
     },
   }),
-  "run · function · 4 LOC · call layer 2",
+  "run · planet · function · 4 LOC · orbit 2 · call depth 2",
+);
+assert.equal(
+  nodeLabel({
+    name: "app",
+    kind: "module",
+    loc: 12,
+    isSystemCore: true,
+    system_orbit: { ring: 0, radius: 0, call_depth: 0, kind: "origin" },
+  }),
+  "app · system star · module anchor · 12 LOC",
+  "the graph-owned origin is named as the solar-system anchor without guessing from its id",
 );
 assert.equal(
   nodeLabel({
@@ -333,7 +359,7 @@ assert.equal(
       kind: "unreached",
     },
   }),
-  "cycle · function · 3 LOC · no proven call path",
+  "cycle · planet · function · 3 LOC · no proven call path",
 );
 
 // --- progressive reveal -----------------------------------------------------
@@ -683,6 +709,40 @@ assert.equal(
 assert.equal(unsupportedSummary([], "easy"), null);
 assert.equal(unsupportedSummary(undefined, "easy"), null);
 
+const connected = systemConnections(
+  {
+    nodes: [
+      { id: "home", region: "home", file: "src/home.py" },
+      { id: "api", region: "api", file: "src/api.py" },
+      { id: "view", region: "view", file: "web/view.ts" },
+    ],
+    regions: [
+      { id: "home", language: "python", home: true },
+      { id: "api", language: "python" },
+      { id: "view", language: "typescript" },
+    ],
+    region_edges: [
+      { src: "home", dst: "api", weight: 2, certain: true },
+      { src: "view", dst: "home", weight: 1, certain: false },
+    ],
+  },
+  "home",
+);
+assert.deepEqual(
+  connected.map(({ regionId, direction, certain, weight, label }) => ({
+    regionId,
+    direction,
+    certain,
+    weight,
+    label,
+  })),
+  [
+    { regionId: "api", direction: "outbound", certain: true, weight: 2, label: "src/api.py" },
+    { regionId: "view", direction: "inbound", certain: false, weight: 1, label: "web/view.ts" },
+  ],
+  "system navigation preserves import direction and uncertainty",
+);
+
 // A language focus is a projection over nodes; it must not hide a
 // project-level fact about what was never parsed at all.
 const unsupportedGraph = {
@@ -714,6 +774,11 @@ console.log("graph-data contracts passed");
   assert.equal(highlightColor(star, highlight, pal), pal.orbit, "the hovered node takes the interaction ink");
   assert.equal(highlightColor(neighbour, highlight, pal), neighbour.color, "a neighbour keeps its own");
   assert.equal(highlightColor(stranger, highlight, pal), pal.faded, "everything else recedes");
+  assert.equal(
+    highlightColor(stranger, highlight, pal, { preserveContext: true }),
+    stranger.color,
+    "free exploration keeps unrelated systems colourful while hover marks the subject",
+  );
 
   const endId = (end) => (typeof end === "string" ? end : end.id);
   const certain = { source: "a", target: "b", certain: true };
@@ -741,6 +806,11 @@ console.log("graph-data contracts passed");
   );
   assert.equal(highlightLinkColor(possible, highlight, pal, endId), pal.faded,
     "a route touching neither the hover nor two of its neighbours recedes");
+  assert.equal(
+    highlightLinkColor(possible, highlight, pal, endId, { preserveContext: true }),
+    pal.routePossible,
+    "free exploration keeps unrelated routes visible without changing uncertainty",
+  );
   assert.equal(
     highlightLinkColor({ ...possible, focusDim: true }, null, pal, endId),
     pal.faded,

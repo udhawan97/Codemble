@@ -77,6 +77,9 @@ assert(
 const near = atlas.place({ ...view, distance: 10 });
 assert.equal(near.budget, 44, "the near camera clamp exposes the larger budget");
 
+const systemNames = atlas.place({ ...view, distance: 10, maxLabels: 8 });
+assert.equal(systemNames.budget, 8, "dense systems can cap labels without hiding worlds");
+
 // A plate is far wider than the star it names, so a star comfortably on screen
 // can still put its name half off the canvas -- which reads as a rendering
 // fault, not as a label. Stars sit at the origin here, so on a canvas narrower

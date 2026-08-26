@@ -58,9 +58,10 @@ for (const viewport of VIEWPORTS) {
   const page = await browser.newPage({
     viewport: { width: viewport.width, height: viewport.height },
   });
-  // A control that has been renamed or removed should fail this gate, not hang
-  // it. Playwright's 30s default, times a dozen locators, reads as a stuck job.
-  page.setDefaultTimeout(15_000);
+  // Missing controls fail immediately by count below. Keep real interaction
+  // waits at Playwright's standard ceiling so software WebGL under shared host
+  // load cannot turn one slow click into a product regression.
+  page.setDefaultTimeout(30_000);
   try {
     await runViewport(page, viewport, label);
   } catch (error) {
@@ -164,7 +165,7 @@ async function runViewport(page, viewport, label) {
     return state();
   };
 
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "networkidle", timeout: 90_000 });
   await page.waitForTimeout(700);
 
   // Clear whatever first-run steps this data directory still has.

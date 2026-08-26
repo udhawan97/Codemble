@@ -1,5 +1,7 @@
-const CLICK_OBSTRUCTION_SELECTOR = ".orientation-copy button, .legend-toggle";
-const NAME_OBSTRUCTION_SELECTOR = ".orientation-bar, .keyboard-focus";
+const CLICK_OBSTRUCTION_SELECTOR =
+  ".orientation-copy--system, .system-navigator, .legend-toggle";
+const NAME_OBSTRUCTION_SELECTOR =
+  ".orientation-bar, .orientation-copy--system, .system-navigator, .keyboard-focus";
 
 /**
  * Measure the usable canvas and classify the DOM drawn over it.

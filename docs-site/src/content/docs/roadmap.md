@@ -9,12 +9,14 @@ only when milestones actually complete. The shape:
 
 ## NOW — learner evidence and the nine-language adventure
 
-Packaged v0.21.1 and current source map Python, JavaScript, TypeScript, Go,
+Packaged v0.22.0 and current source map Python, JavaScript, TypeScript, Go,
 Java, Rust, C#, Ruby, PHP, and mixed projects through one local parser-proven
-learning loop. v0.21.1 adds the free-explore or First Flight launch choice,
-guided landing-to-check handoff, Easy/Expert landing briefs, a richer
-deterministic game sky, and the two new
-adapters while retaining v0.20.0's complete 5,000-file Map gate. The current
+learning loop. v0.22.0 makes Explore fully luminous, gives every language its
+own world character, turns the module anchor into a system Sun, and exposes
+parser-owned neighbouring imports with certainty intact beside named call-orbit
+worlds. It retains
+the free-explore or First Flight launch, landing-to-check handoff, nine-language
+parser boundary, and v0.20.0's complete 5,000-file Map gate. The current
 work is learner evidence and correctness reports. The
 original learner-acceptance issue remains open and is not treated as passed by
 technical completion.

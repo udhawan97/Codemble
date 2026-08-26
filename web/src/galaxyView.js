@@ -21,7 +21,7 @@
  */
 
 import { cameraPositionAt, frameAround, framingDistance } from "./cameraFraming.js";
-import { LEVELS, drawnRadius, isCharted } from "./graphData.js";
+import { LEVELS, drawnRadius, isCharted, nodeRadius } from "./graphData.js";
 
 /** How long the camera takes to move between levels, in milliseconds. */
 export const CAMERA_DURATION = 420;
@@ -90,12 +90,20 @@ export function viewportAspect(size) {
  * back than it needed to, and immediately visible once the aim was corrected
  * and the standoff shrank with it.
  */
-const layoutPoints = (nodes) =>
+const layoutPoints = (nodes, level) =>
   nodes.map((node) => ({
     x: node.fx ?? node.x ?? 0,
     y: node.fy ?? node.y ?? 0,
     z: node.fz ?? node.z ?? 0,
-    radius: drawnRadius(node),
+    // Galaxy systems carry 6.5x halo sprites, so their luminous extent really
+    // is much larger than the sphere. Solar-system worlds do not draw those
+    // sprites; fitting every planet as if it did was the reason a 34-world
+    // system opened as a thumbnail. The module star gets its real larger
+    // corona allowance, while ordinary worlds fit to the bodies actually seen.
+    radius:
+      level === LEVELS.GALAXY
+        ? drawnRadius(node)
+        : nodeRadius(node) * (node.isSystemCore ? 3.7 : 1.78),
   }));
 
 /**
@@ -144,7 +152,7 @@ export function frameLevel({ level, nodes, orbitPlan, fov, aspect, viewport, chr
   const bounds = CAMERA_BOUNDS[level] ?? CAMERA_BOUNDS.GALAXY;
   const rings = level === LEVELS.GALAXY ? [] : orbitRingPoints(orbitPlan);
   const subjects = Array.isArray(nodes) ? nodes : [];
-  const pointsFor = (subset) => [...layoutPoints(subset), ...rings];
+  const pointsFor = (subset) => [...layoutPoints(subset, level), ...rings];
   const aim = (subset) =>
     frameAround({ points: pointsFor(subset), direction: view, fov, aspect });
 

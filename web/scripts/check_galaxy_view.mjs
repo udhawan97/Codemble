@@ -9,7 +9,7 @@ import {
   frameStudy,
   viewportAspect,
 } from "../src/galaxyView.js";
-import { LEVELS, drawnRadius } from "../src/graphData.js";
+import { LEVELS, drawnRadius, nodeRadius } from "../src/graphData.js";
 
 // `framingDistance` is the most thoroughly tested function in this frontend and
 // has never been the bug. All three shipped framing faults were about *what it
@@ -301,7 +301,7 @@ const CHARTED_SKY = [
  * aim -- which shortens the standoff -- started cropping stars that had only
  * been safe because the camera stood too far back.
  */
-function screenSpread(framed, points, aspect, fov = 50) {
+function screenSpread(framed, points, aspect, fov = 50, radiusFor = drawnRadius) {
   const dot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
   const cross = (a, b) => ({
     x: a.y * b.z - a.z * b.y,
@@ -327,7 +327,7 @@ function screenSpread(framed, points, aspect, fov = 50) {
     const v = { x: p.fx - framed.position.x, y: p.fy - framed.position.y, z: p.fz - framed.position.z };
     const depth = dot(v, fwd);
     if (depth <= 0) continue;
-    const glow = drawnRadius(p);
+    const glow = radiusFor(p);
     xs.push((dot(v, right) + glow) / depth / tanH, (dot(v, right) - glow) / depth / tanH);
     ys.push((dot(v, up) + glow) / depth / tanV, (dot(v, up) - glow) / depth / tanV);
   }
@@ -395,7 +395,7 @@ for (const [label, aspect] of [
 // low in the frame -- measured at 31.6 points off on this fixture, which is
 // worse than the galaxy's own 27. Aiming at the module is the intuitive answer
 // and it is not the centred one.
-const systemNodes = [node(0, 0, 0, { val: 8 })];
+const systemNodes = [node(0, 0, 0, { val: 8, isSystemCore: true })];
 for (const [index, radius] of [34, 58, 78].entries()) {
   for (let step = 0; step < 5; step += 1) {
     const angle = 2 * Math.PI * (step / 5 + index * 0.13);
@@ -417,7 +417,13 @@ for (const [label, aspect] of [
     fov: 50,
     aspect,
   });
-  const seen = screenSpread(framed, systemNodes, aspect);
+  const seen = screenSpread(
+    framed,
+    systemNodes,
+    aspect,
+    50,
+    (point) => nodeRadius(point) * (point.isSystemCore ? 3.7 : 1.78),
+  );
   assert.ok(
     Math.abs(seen.skewX) < 0.03,
     `${label}: a system is horizontally centred (skew ${(seen.skewX * 100).toFixed(1)}%)`,

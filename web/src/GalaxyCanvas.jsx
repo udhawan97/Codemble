@@ -109,6 +109,7 @@ export function GalaxyCanvas({
       graph,
       data,
       level,
+      region,
       mode,
       orbitPlan,
       selectedNode,
@@ -129,6 +130,7 @@ export function GalaxyCanvas({
     mode,
     orbitPlan,
     pendingDawnRegionId,
+    region,
     runtimeGeneration,
     selectedNode,
     starfieldSeed,
@@ -177,9 +179,11 @@ export function GalaxyCanvas({
   return (
     <div
       className="galaxy-frame"
+      data-level={level.toLowerCase()}
+      data-voyage={firstFlightActive ? "learning" : "explore"}
       role="application"
       tabIndex="0"
-      aria-label={`Codemble ${level.toLowerCase()} view. Drag to orbit, scroll to zoom. Use arrow keys to choose a node and Enter to move closer.${level === LEVELS.GALAXY ? "" : " Solid guides are parser-proven call layers; a dashed guide has no proven call path."}`}
+      aria-label={`Codemble ${level.toLowerCase()} view. Drag to orbit, scroll to zoom. Use arrow keys to choose a node and Enter to move closer.${level === LEVELS.GALAXY ? "" : " Solid orbit layers contain certain calls; call roots can share the inner orbit without claiming a call. A dashed guide has no certain call in that placement."}`}
       onFocus={() => setKeyboardExploring(true)}
       onBlur={() => {
         hoverRef.current(null);

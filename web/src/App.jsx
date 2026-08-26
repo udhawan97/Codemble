@@ -12,6 +12,7 @@ import { CoachMarks, HintChip } from "./GuidanceLayer.jsx";
 import { MapView } from "./MapView.jsx";
 import { ModeControl } from "./ModeControl.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
+import { SystemNavigator } from "./SystemNavigator.jsx";
 import {
   LEVELS,
   communityFamilyIndex,
@@ -23,6 +24,7 @@ import {
   pathTail,
   projectOverview,
   sharedTopSegment,
+  systemConnections,
   unsupportedSummary,
 } from "./graphData.js";
 import {
@@ -42,6 +44,7 @@ export function App() {
   const finderTriggerRef = useRef(null);
   const finderReturnRef = useRef(null);
   const finderArrivalRef = useRef(false);
+  const systemNavigatorArrivalRef = useRef(false);
   const chartTriggerRef = useRef(null);
   // The control that opens the quiz. It stays on screen behind the panel, so
   // closing the quiz has somewhere obvious to put focus -- and every other
@@ -51,6 +54,7 @@ export function App() {
   const firstFlightActiveRef = useRef(false);
   const stageRef = useRef(null);
   const systemCopyRef = useRef(null);
+  const systemHeadingRef = useRef(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // View-local, and deliberately not a session field: "did the learner arrive
   // by the Read-the-source button" is a fact about this click, not about what
@@ -242,6 +246,22 @@ export function App() {
     finderReturnRef.current = null;
   }, [finderOpen, level, region?.id]);
 
+  // A route button disappears when its destination replaces the current
+  // System. Move keyboard focus to the newly rendered identity instead of
+  // leaving it on body, where the successful travel has no announced result.
+  useLayoutEffect(() => {
+    if (
+      !systemNavigatorArrivalRef.current ||
+      level !== LEVELS.SYSTEM ||
+      layer !== "galaxy" ||
+      !systemHeadingRef.current
+    ) {
+      return;
+    }
+    setTimeout(() => systemHeadingRef.current?.focus({ preventScroll: true }), 0);
+    systemNavigatorArrivalRef.current = false;
+  }, [layer, level, region?.id]);
+
   const firstFlightStops = useMemo(() => firstFlightPlan(graph), [graph]);
   const firstFlightStop = firstFlightStops[firstFlightIndex] ?? null;
   const firstFlightActive = firstFlightIndex !== null && firstFlightStop !== null;
@@ -327,6 +347,11 @@ export function App() {
 
   function goFromFinder(regionId) {
     finderArrivalRef.current = true;
+    session.dispatch({ type: "GO_TO_REGION", regionId });
+  }
+
+  function goFromSystemNavigator(regionId) {
+    systemNavigatorArrivalRef.current = true;
     session.dispatch({ type: "GO_TO_REGION", regionId });
   }
 
@@ -431,6 +456,13 @@ export function App() {
     level === LEVELS.SYSTEM && layer === "galaxy"
       ? systemOrbitPlan(focusedGraph.nodes.filter((node) => node.region === region.id))
       : [];
+  const connectedSystems =
+    level === LEVELS.SYSTEM && layer === "galaxy"
+      ? systemConnections(graph, region.id)
+      : [];
+  const systemCore = focusedGraph.nodes.find(
+    (node) => node.region === region.id && node.system_orbit?.kind === "origin",
+  );
 
   const systemCopy =
     level === LEVELS.SYSTEM ? (
@@ -441,6 +473,15 @@ export function App() {
         }`}
         tabIndex={-1}
       >
+        {layer === "galaxy" ? (
+          <header className="system-identity">
+            <span>Solar system</span>
+            <h2 ref={systemHeadingRef} tabIndex={-1}>
+              {languageLabel(region.language)}
+            </h2>
+            <small>{region.home ? "Home system" : "Project system"}</small>
+          </header>
+        ) : null}
         {/* No heading here any more: the breadcrumb in the header already names
             this module, and rendering the full path at display size wrapped it
             across three lines over the very system it described. Dropping it
@@ -455,18 +496,18 @@ export function App() {
                 // Only claim what is true for every module — an unreachable
                 // one has no rows in the Workflow tab, so never promise it.
                 `The ${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} inside this module ${region.node_count === 1 ? "is" : "are"} drawn as planets in the Galaxy layer. This map shows how modules connect, not what is inside them.`
-              : `${region.node_count} parser-proven ${region.node_count === 1 ? "structure" : "structures"} · ${region.loc} ${region.loc === 1 ? "line" : "lines"} in this system.`}
+              : `${region.node_count} parser-proven ${region.node_count === 1 ? "world" : "worlds"} · ${region.loc} ${region.loc === 1 ? "line" : "lines"}. ${systemCore?.name ?? region.id} is the module anchor at the system star; functions and classes use parser-owned call placement.`}
         </p>
         {systemOrbits.length ? (
           <p className="system-orbit-note">
-            <span>Call layers</span>
+            <span>Call orbits</span>
             {systemOrbits.map((orbit) => (
-              <i key={orbit.ring} data-unproven={orbit.unproven || undefined}>
+              <i key={orbit.ring} data-unproven={!orbit.guideCertain || undefined}>
                 {orbit.label}
               </i>
             ))}
             <small>
-              Solid guides use certain calls only
+              Solid orbit layers contain certain calls; call roots can share the inner orbit without claiming a call
               {systemOrbits.some((orbit) => orbit.unproven)
                 ? "; dashed means no proven path."
                 : "."}
@@ -1062,6 +1103,13 @@ export function App() {
           </p>
         ) : null}
         {layer === "galaxy" ? systemCopy : null}
+        {layer === "galaxy" && level === LEVELS.SYSTEM ? (
+          <SystemNavigator
+            connections={connectedSystems}
+            mode={mode}
+            onGo={goFromSystemNavigator}
+          />
+        ) : null}
         {level === LEVELS.SYSTEM && showChecks ? (
           <CheckPanel
             suite={checkData}

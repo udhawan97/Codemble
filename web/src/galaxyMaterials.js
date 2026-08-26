@@ -712,3 +712,59 @@ export function createGalacticGlow(seedText, palette, radius = 1050) {
   group.userData.codembleSeed = skySeed(seedText);
   return group;
 }
+
+/**
+ * A language-tinted light well behind one solar system.
+ *
+ * The System level previously hid the galactic disc and left the worlds over a
+ * nearly uniform navy field. This local aura restores depth without encoding a
+ * new fact: its colour repeats the system's parser-owned language tint, and its
+ * shape is seeded decorative atmosphere. It never uses amber, which remains
+ * reserved for understanding.
+ */
+export function createSystemAura(seedText, palette, languageColor, radius = 180) {
+  const group = new THREE.Group();
+  group.name = "codemble-system-aura";
+  const tint = new THREE.Color(languageColor ?? palette.skyGlow ?? palette.starCool);
+  const hazeTexture = radialTexture(256, [
+    [0, 0.58],
+    [0.2, 0.31],
+    [0.56, 0.085],
+    [1, 0],
+  ]);
+  const hazeMaterial = new THREE.SpriteMaterial({
+    map: hazeTexture,
+    color: tint,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const haze = new THREE.Sprite(hazeMaterial);
+  haze.name = "codemble-system-haze";
+  haze.scale.set(radius * 2.4, radius * 1.18, 1);
+  haze.position.y = -18;
+  haze.renderOrder = -7;
+
+  const planeMaterial = new THREE.MeshBasicMaterial({
+    color: tint,
+    transparent: true,
+    opacity: 0.055,
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const plane = new THREE.Mesh(
+    new THREE.RingGeometry(radius * 0.18, radius, 96),
+    planeMaterial,
+  );
+  plane.name = "codemble-system-light-plane";
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.y = -20;
+  plane.rotation.z = skySeed(`${seedText}:system-aura`) * Math.PI * 2;
+  plane.renderOrder = -8;
+  group.add(plane, haze);
+  return group;
+}

@@ -37,10 +37,8 @@ try {
   const project = await startCodemble({ project: repoRoot, dataRoot: dataRoots[0] });
   const picker = await startCodemble({ project: null, dataRoot: dataRoots[1] });
 
-  for (const [engine, browserType] of [
-    ["chromium", chromium],
-    ["webkit", webkit],
-  ]) {
+  const engines = [["chromium", chromium], ["webkit", webkit]];
+  for (const [engine, browserType] of engines) {
     const launchDataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-${engine}-`));
     dataRoots.push(launchDataRoot);
     const launch = await startCodemble({
@@ -54,6 +52,7 @@ try {
       await checkRefusedLaunch(browser, engine, launchProjects.ready);
       await checkGuidedHomeCalibration(browser, engine, launchProjects);
       await checkHomeGeometry(browser, engine, project.url);
+      await checkSystemNavigator(browser, engine, project.url);
       await checkCompactRailEscape(browser, engine, project.url);
       await checkCompactQuizVisibility(browser, engine, project.url);
       await checkCanvasMapInteraction(browser, engine, project.url);
@@ -105,7 +104,7 @@ async function checkGuidedLaunchAndLanding(browser, engine, url) {
     }
   });
   try {
-    await page.goto(url, { waitUntil: "networkidle" });
+    await gotoApp(page, url);
     const gate = page.locator(".mode-gate[open]");
     await gate.waitFor();
     assert.equal(
@@ -188,7 +187,7 @@ async function checkLaunchChoiceMatrix(browser, engine, project) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     page.setDefaultTimeout(20_000);
     try {
-      await page.goto(launch.url, { waitUntil: "networkidle" });
+      await gotoApp(page, launch.url);
       const gate = page.locator(".mode-gate[open]");
       await gate.waitFor();
       await completeModeGate(gate, { voyage, register, activation });
@@ -249,7 +248,7 @@ async function checkRefusedLaunch(browser, engine, project) {
       }
       await route.continue();
     });
-    await page.goto(launch.url, { waitUntil: "networkidle" });
+    await gotoApp(page, launch.url);
     const gate = page.locator(".mode-gate[open]");
     await gate.waitFor();
     await completeModeGate(gate, { voyage: "guided", register: "expert" });
@@ -295,7 +294,7 @@ async function checkGuidedHomeCalibration(browser, engine, projects) {
   const ambiguousPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   ambiguousPage.setDefaultTimeout(20_000);
   try {
-    await ambiguousPage.goto(ambiguous.url, { waitUntil: "networkidle" });
+    await gotoApp(ambiguousPage, ambiguous.url);
     await completeModeGate(ambiguousPage.locator(".mode-gate[open]"), {
       voyage: "guided",
       register: "easy",
@@ -322,7 +321,7 @@ async function checkGuidedHomeCalibration(browser, engine, projects) {
   const noHomePage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   noHomePage.setDefaultTimeout(20_000);
   try {
-    await noHomePage.goto(noHome.url, { waitUntil: "networkidle" });
+    await gotoApp(noHomePage, noHome.url);
     await completeModeGate(noHomePage.locator(".mode-gate[open]"), {
       voyage: "guided",
       register: "expert",
@@ -357,8 +356,13 @@ async function checkCanvasMapInteraction(browser, engine, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(15_000);
   try {
-    await page.goto(url, { waitUntil: "networkidle" });
+    await gotoApp(page, url);
     await settleApp(page);
+    const mapLayer = page.getByRole("button", { name: /^(Map|Diagram)$/ });
+    if ((await mapLayer.getAttribute("aria-pressed")) !== "true") {
+      await mapLayer.click();
+      await page.locator(".architecture-map-canvas").waitFor();
+    }
     const mapTruth = await page.evaluate(async () => {
       const [mapResponse, graphResponse] = await Promise.all([
         fetch("/api/map"),
@@ -463,9 +467,10 @@ async function checkCanvasMapInteraction(browser, engine, url) {
     await scroller.evaluate((node) => { node.scrollTop = 0; });
     const box = await canvas.boundingBox();
     assert.ok(box, `${engine}: Workflow canvas has no pointer box`);
-    await page.mouse.move(box.x + box.width - 8, box.y + Math.min(320, box.height - 24));
+    const blank = await findBlankCanvasPoint(page, surface, box);
+    await page.mouse.move(blank.x, blank.y);
     await page.mouse.down();
-    await page.mouse.move(box.x + box.width - 8, box.y + 80, { steps: 6 });
+    await page.mouse.move(blank.x, box.y + 80, { steps: 6 });
     await page.mouse.up();
     assert.ok(
       (await scroller.evaluate((node) => node.scrollTop)) > 0,
@@ -484,7 +489,7 @@ async function checkCanvasMapInteraction(browser, engine, url) {
   const narrow = await browser.newPage({ viewport: { width: 320, height: 640 } });
   narrow.setDefaultTimeout(15_000);
   try {
-    await narrow.goto(url, { waitUntil: "networkidle" });
+    await gotoApp(narrow, url);
     await settleApp(narrow);
     const surface = narrow.locator(".architecture-map-canvas");
     await surface.focus();
@@ -520,6 +525,38 @@ async function checkCanvasMapInteraction(browser, engine, url) {
   }
 }
 
+async function findBlankCanvasPoint(page, surface, box) {
+  await surface.evaluate((node) => node.blur());
+  await page.mouse.move(1, 1);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  const readout = surface.locator(".map-canvas-readout");
+  // Layout widths vary with font settlement and machine load. A single
+  // far-right probe can therefore line up with every full-width workflow row
+  // even though the canvas has ample blank gaps. Search a bounded 2D grid and
+  // let the renderer's own hover readout identify occupied pixels.
+  const xFractions = [0.98, 0.9, 0.8, 0.7, 0.6, 0.5, 0.35, 0.2];
+  const yOffsets = [];
+  for (let offsetY = box.height - 16; offsetY >= 128; offsetY -= 11) {
+    yOffsets.push(offsetY);
+  }
+  let probes = 0;
+  for (const fraction of xFractions) {
+    const x = box.x + Math.max(8, Math.min(box.width - 8, box.width * fraction));
+    for (const offsetY of yOffsets) {
+      const y = box.y + offsetY;
+      probes += 1;
+      await page.mouse.move(x, y);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const overCanvas = await page.evaluate(
+        ({ x: pointX, y: pointY }) => document.elementFromPoint(pointX, pointY)?.tagName === "CANVAS",
+        { x, y },
+      );
+      if (overCanvas && (await readout.count()) === 0) return { x, y };
+    }
+  }
+  throw new Error(`Workflow fixture has no blank canvas point after ${probes} bounded probes`);
+}
+
 for (const result of results) console.log(`PASS  ${result}`);
 console.log(`user-flow repair contracts passed (${results.length} receipts)`);
 
@@ -527,7 +564,7 @@ async function checkCompactRailEscape(browser, engine, url) {
   const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
   page.setDefaultTimeout(15_000);
   try {
-    await page.goto(url, { waitUntil: "networkidle" });
+    await gotoApp(page, url);
     await settleApp(page);
     const menu = page.getByRole("button", { name: "Menu", exact: true });
     const breadcrumbBefore = await page.locator("nav[aria-label='Breadcrumb']").innerText();
@@ -562,7 +599,7 @@ async function checkCompactQuizVisibility(browser, engine, url) {
     const page = await browser.newPage({ viewport: { width, height: 640 } });
     page.setDefaultTimeout(15_000);
     try {
-      await page.goto(url, { waitUntil: "networkidle" });
+      await gotoApp(page, url);
       await settleApp(page);
       const map = page.locator(".architecture-map-canvas").first();
       await map.focus();
@@ -576,6 +613,10 @@ async function checkCompactQuizVisibility(browser, engine, url) {
       // fonts settle. Measure the learner's actual contract after both rather
       // than racing the first animation frame on a slower CI runner.
       await page.waitForTimeout(500);
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
 
       const measured = await page.locator(".check-panel").evaluate((panel) => {
         const options = [...panel.querySelectorAll(".check-options label")];
@@ -636,7 +677,7 @@ async function checkHomeGeometry(browser, engine, url) {
     const page = await browser.newPage({ viewport });
     page.setDefaultTimeout(15_000);
     try {
-      await page.goto(url, { waitUntil: "networkidle" });
+      await gotoApp(page, url);
       await openHomeDialog(page);
       const measured = await page.evaluate(() => {
         const dialog = document.querySelector(".entrypoint-picker[open]");
@@ -697,6 +738,119 @@ async function checkHomeGeometry(browser, engine, url) {
   }
 }
 
+async function checkSystemNavigator(browser, engine, url) {
+  for (const fixture of [
+    { width: 1440, height: 900, reducedMotion: "no-preference", activation: "pointer" },
+    { width: 320, height: 640, reducedMotion: "reduce", activation: "keyboard" },
+  ]) {
+    const page = await browser.newPage({
+      viewport: { width: fixture.width, height: fixture.height },
+      reducedMotion: fixture.reducedMotion,
+    });
+    page.setDefaultTimeout(20_000);
+    try {
+      // The repository's Home has five real neighboring imports. Downgrade one
+      // response row to possible so this frontend gate proves mixed certainty
+      // without mutating parser output or developer progress.
+      await page.route("**/api/graph", async (route) => {
+        const response = await route.fetch();
+        const graph = await response.json();
+        const home = graph.regions.find((region) => region.home)?.id;
+        const touching = graph.region_edges.filter(
+          (edge) => edge.src === home || edge.dst === home,
+        );
+        assert.ok(touching.length >= 5, `${engine}: System fixture lost its route-rich Home`);
+        touching.at(-1).certain = false;
+        await route.fulfill({ response, json: graph });
+      });
+
+      await gotoApp(page, url);
+      await settleApp(page);
+      const galaxyLayer = page.getByRole("button", { name: "Galaxy", exact: true });
+      if (!(await galaxyLayer.isVisible())) {
+        await page.getByRole("button", { name: /^(Menu|More)$/ }).click();
+      }
+      if ((await galaxyLayer.getAttribute("aria-pressed")) !== "true") {
+        await galaxyLayer.click();
+        await page.locator(".galaxy-frame").waitFor();
+      }
+      await page.getByRole("button", { name: "Open codemble.cli", exact: true }).click();
+      const navigator = page.locator(".system-navigator");
+      await navigator.waitFor();
+      const routes = navigator.locator(".system-navigator__routes");
+      const buttons = routes.getByRole("button");
+      const routeCount = await buttons.count();
+      const label = `${engine} System navigator ${fixture.width}x${fixture.height}`;
+      assert.ok(routeCount >= 5, `${label}: route-rich fixture rendered ${routeCount} routes`);
+      await expectAttribute(navigator, "aria-label", /parser-owned import routes: \d+ proven and 1 possible\. Scroll for all routes\./, label);
+
+      const cue = navigator.locator("#system-route-overflow-cue");
+      assert.equal(await cue.isVisible(), true, `${label}: overflow has no visible continuation cue`);
+      assert.match(
+        await cue.innerText(),
+        /scroll to see all/i,
+        `${label}: overflow cue does not explain the action`,
+      );
+
+      const possible = buttons.filter({ has: page.locator("small", { hasText: /possible (?:inbound|outbound) import/ }) }).first();
+      assert.equal(await possible.count(), 1, `${label}: possible route is not visibly directional`);
+      assert.match(
+        await possible.getAttribute("aria-label"),
+        /possible import (?:from|into) this system/i,
+        `${label}: possible route direction is absent from its accessible name`,
+      );
+
+      const last = buttons.last();
+      await last.scrollIntoViewIfNeeded();
+      const overflow = await routes.evaluate((node) => ({
+        horizontal: node.scrollWidth - node.clientWidth,
+        vertical: node.scrollHeight - node.clientHeight,
+        scrollLeft: node.scrollLeft,
+        scrollTop: node.scrollTop,
+      }));
+      if (fixture.width <= 320) {
+        assert.ok(overflow.horizontal > 1, `${label}: compact routes do not form the promised horizontal continuation`);
+        assert.ok(overflow.scrollLeft > 0, `${label}: final compact route could not be reached by scrolling`);
+      } else {
+        assert.ok(overflow.vertical > 1, `${label}: desktop route overflow fixture no longer overflows`);
+        assert.ok(overflow.scrollTop > 0, `${label}: final desktop route could not be reached by scrolling`);
+      }
+
+      const destination = await possible.getAttribute("data-region-id");
+      assert.ok(destination, `${label}: route button lost its parser-owned destination id`);
+      if (fixture.activation === "keyboard") {
+        await possible.focus();
+        await possible.press("Enter");
+      } else {
+        await possible.click();
+      }
+      await page.waitForFunction(
+        (expected) => document.querySelector(".location [aria-current='page']")?.textContent?.trim() === expected,
+        destination,
+      );
+      await page.waitForFunction(() => document.activeElement?.matches(".system-identity h2"));
+      assert.equal(
+        await page.locator(".system-identity h2").evaluate((heading) => document.activeElement === heading),
+        true,
+        `${label}: route arrival did not focus the destination System heading`,
+      );
+      assert.equal(
+        await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
+        fixture.reducedMotion === "reduce",
+        `${label}: reduced-motion browser preference drifted`,
+      );
+      results.push(`${label} ${fixture.activation}${fixture.reducedMotion === "reduce" ? " reduced-motion" : ""}`);
+    } finally {
+      await page.close();
+    }
+  }
+}
+
+async function expectAttribute(locator, name, pattern, label) {
+  const value = await locator.getAttribute(name);
+  assert.match(value ?? "", pattern, `${label}: ${name} did not match the System contract`);
+}
+
 async function checkGuidanceFocus(browser, engine, url) {
   for (const viewport of [
     { width: 1440, height: 900 },
@@ -707,7 +861,7 @@ async function checkGuidanceFocus(browser, engine, url) {
     const page = await browser.newPage({ viewport });
     page.setDefaultTimeout(15_000);
     try {
-      await page.goto(url, { waitUntil: "networkidle" });
+      await gotoApp(page, url);
       await settleApp(page);
       const label = `${engine} ${viewport.width}x${viewport.height}`;
 
@@ -811,7 +965,7 @@ async function checkPickerRecovery(browser, engine, url) {
   const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
   page.setDefaultTimeout(15_000);
   try {
-    await page.goto(url, { waitUntil: "networkidle" });
+    await gotoApp(page, url);
     const pathBefore = await page.locator(".picker-path").innerText();
     const folder = page.locator(".picker-browser li button").filter({ hasText: /\/$/ }).first();
     assert.ok(await folder.count(), `${engine} picker: no child folder is available to browse`);
@@ -878,6 +1032,14 @@ async function openHomeDialog(page) {
   }
   await change.first().click();
   await page.locator(".entrypoint-picker[open]").waitFor();
+}
+
+async function gotoApp(page, url) {
+  // Disposable self-parses share the machine with both browser engines and
+  // WebGL. Keep navigation bounded but independent of transient parser startup
+  // load; every function's interaction assertions retain their tighter local
+  // timeout.
+  await page.goto(url, { waitUntil: "networkidle", timeout: 90_000 });
 }
 
 async function settleApp(page) {

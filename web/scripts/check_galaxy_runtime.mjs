@@ -227,6 +227,10 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
       name: "codemble-galactic-glow",
       material: { ...disposable("glow:material", events), map: disposable("glow:map", events) },
     }),
+    createSystemAura: () => ({
+      name: "codemble-system-aura",
+      material: disposable("aura:material", events),
+    }),
     attachBloom(_renderer, receivedSize) {
       events.push(`bloom:size:${receivedSize.width}x${receivedSize.height}`);
       return bloom;
@@ -355,7 +359,11 @@ first.runtime.update(
 assert.equal(first.renderer.nodeColor()(neighborhood.nodes[1]), "#0ff");
 assert.equal(first.renderer.nodeColor()(neighborhood.nodes[0]), "#111");
 assert.equal(first.renderer.nodeColor()(neighborhood.nodes[2]), "#333");
-assert.equal(first.renderer.nodeColor()(neighborhood.nodes[3]), "#555");
+assert.equal(
+  first.renderer.nodeColor()(neighborhood.nodes[3]),
+  "#666",
+  "free exploration keeps the full galaxy visibly colourful during hover",
+);
 assert.equal(first.renderer.linkColor()(neighborhood.links[0]), "#0ff");
 assert.equal(
   first.renderer.linkColor()(neighborhood.links[1]),
@@ -374,6 +382,21 @@ assert.equal(
 );
 assert.equal(first.atlasPlacements.at(-1).activeNodeId, "neighbor");
 assert.deepEqual([...first.atlasPlacements.at(-1).neighborIds], ["target", "far"]);
+
+first.runtime.update(
+  snapshot({
+    data: neighborhood,
+    focusedNodeId: "target",
+    hoverNodeId: "neighbor",
+    firstFlightActive: true,
+    pendingDawnRegionId: null,
+  }),
+);
+assert.equal(
+  first.renderer.nodeColor()(neighborhood.nodes[3]),
+  "#555",
+  "guided learning may recede systems outside the active neighborhood",
+);
 
 first.runtime.update(
   snapshot({
