@@ -69,6 +69,49 @@ for (const viewport of viewports) {
       proof && proof.y < viewport.height && Math.min(proof.y + proof.height, viewport.height) - proof.y >= 180,
       "1280: the hero product focal point does not fit the first fold",
     );
+    const metadata = await page.evaluate(() => ({
+      title: document.title,
+      canonical: document.querySelector('link[rel="canonical"]')?.getAttribute("href"),
+      description: document.querySelector('meta[name="description"]')?.getAttribute("content"),
+      openGraphType: document.querySelector('meta[property="og:type"]')?.getAttribute("content"),
+      openGraphUrl: document.querySelector('meta[property="og:url"]')?.getAttribute("content"),
+      openGraphTitle: document.querySelector('meta[property="og:title"]')?.getAttribute("content"),
+      openGraphDescription: document.querySelector('meta[property="og:description"]')?.getAttribute("content"),
+      openGraphImage: document.querySelector('meta[property="og:image"]')?.getAttribute("content"),
+      openGraphImageAlt: document.querySelector('meta[property="og:image:alt"]')?.getAttribute("content"),
+      twitterCard: document.querySelector('meta[name="twitter:card"]')?.getAttribute("content"),
+      twitterTitle: document.querySelector('meta[name="twitter:title"]')?.getAttribute("content"),
+      twitterDescription: document.querySelector('meta[name="twitter:description"]')?.getAttribute("content"),
+      twitterImage: document.querySelector('meta[name="twitter:image"]')?.getAttribute("content"),
+      twitterImageAlt: document.querySelector('meta[name="twitter:image:alt"]')?.getAttribute("content"),
+    }));
+    assert(
+      metadata.canonical === "https://udhawan97.github.io/Codemble/" &&
+        metadata.openGraphUrl === metadata.canonical,
+      "1280: canonical and Open Graph URLs do not name the public landing",
+    );
+    assert(
+      Boolean(metadata.title) &&
+        metadata.openGraphTitle === metadata.title &&
+        metadata.twitterTitle === metadata.title,
+      "1280: document, Open Graph, and Twitter titles are missing or inconsistent",
+    );
+    assert(
+      Boolean(metadata.description) &&
+        metadata.openGraphDescription === metadata.description &&
+        metadata.twitterDescription === metadata.description &&
+        metadata.openGraphType === "website",
+      "1280: document, Open Graph, and Twitter descriptions are missing or inconsistent",
+    );
+    assert(
+      metadata.openGraphImage ===
+        "https://udhawan97.github.io/Codemble/brand/social-card.png" &&
+        metadata.twitterCard === "summary_large_image" &&
+        metadata.twitterImage === metadata.openGraphImage &&
+        Boolean(metadata.openGraphImageAlt) &&
+        metadata.twitterImageAlt === metadata.openGraphImageAlt,
+      "1280: social-card metadata is incomplete or inconsistent",
+    );
   }
   if (viewport.name === "reduced-motion") {
     assert(
@@ -174,7 +217,14 @@ for (const viewport of viewports) {
   await context.close();
 }
 
-for (const route of ["download", "installation", "introduction", "build-from-source"]) {
+for (const route of [
+  "download",
+  "installation",
+  "introduction",
+  "quickstart",
+  "parser-scale",
+  "build-from-source",
+]) {
  for (const viewport of [{ name: "375", width: 375, height: 812 }, { name: "1280", width: 1280, height: 800 }]) {
   const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
   const errors = [];

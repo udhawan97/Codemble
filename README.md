@@ -11,7 +11,7 @@
 <p align="center">
   Codemble reads a project on your machine and turns its real structure into a
   galaxy you can explore or a diagram you can follow. Study any file, see what
-  a change reaches, follow one feature from Home to its application surface,
+  a change reaches, follow parser-proven routes as far as the evidence goes,
   and light only what you prove you understand.
 </p>
 
@@ -136,7 +136,7 @@ compilers, or tests.
 | **Map · Architecture** | Modules grouped by folder and layered by proven imports from Home | See how parts fit together |
 | **Map · Workflow** | Certain calls from the selected entrypoint, depth by depth | See what runs first |
 | **Star chart** | Project overview, proven import cycles, progress, and a local Markdown export | Carry parser-owned facts into a handoff |
-| **Study** | One feature journey, real source, integrated Impact and Connections, Lens notes, and optional narration | Understand how one structure reaches the application |
+| **Study** | Parser-owned evidence as far as it reaches, a visible proof break when it does not, real source, integrated Impact and Connections, Lens notes, and optional narration | Follow one structure toward its application context without inventing a route |
 
 The default all-language Map is a complete viewport-rendered canvas; an explicit
 language focus keeps every item in that named projection. Both remain usable on

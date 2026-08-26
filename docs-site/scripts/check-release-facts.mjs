@@ -66,6 +66,11 @@ assert.match(
 );
 
 const downloadGuide = await read("docs-site/src/content/docs/download.md");
+const installationGuide = await read("docs-site/src/content/docs/installation.md");
+const quickstartGuide = await read("docs-site/src/content/docs/quickstart.md");
+const introductionGuide = await read("docs-site/src/content/docs/introduction.md");
+const parserScaleGuide = await read("docs-site/src/content/docs/parser-scale.md");
+const landing = await read("docs-site/src/pages/index.astro");
 const sharedFacts = [
   release.version,
   release.tag,
@@ -80,11 +85,77 @@ const sharedFacts = [
 for (const [surface, text, values] of [
   ["README", readme, sharedFacts],
   ["download guide", downloadGuide, [...sharedFacts, release.wheel.sha256, release.sdist.sha256]],
+  ["installation guide", installationGuide, [release.version]],
+  ["quickstart guide", quickstartGuide, [release.version]],
 ]) {
   for (const value of values) {
     assert(text.includes(value), `${surface} is missing release fact: ${value}`);
   }
 }
+
+const pinnedRunCommand = `uvx --from codemble==${release.version} codemble`;
+const pinnedNoOpenCommand = `${pinnedRunCommand} --no-open`;
+for (const [surface, text] of [
+  ["README", readme],
+  ["download guide", downloadGuide],
+  ["installation guide", installationGuide],
+  ["quickstart guide", quickstartGuide],
+]) {
+  assert(text.includes(pinnedRunCommand), `${surface} is missing the pinned run command`);
+  for (const pin of text.matchAll(/codemble==([0-9]+(?:\.[0-9]+){2}(?:[A-Za-z0-9.-]+)?)/g)) {
+    assert.equal(
+      pin[1],
+      release.version,
+      `${surface} contains a stale Codemble version pin: ${pin[0]}`,
+    );
+  }
+}
+for (const [surface, text] of [
+  ["README", readme],
+  ["installation guide", installationGuide],
+  ["quickstart guide", quickstartGuide],
+  ["introduction guide", introductionGuide],
+]) {
+  for (const version of text.matchAll(/(?:\bv|codemble==)(0\.\d+\.\d+)\b/g)) {
+    assert.equal(
+      version[1],
+      release.version,
+      `${surface} contains a stale current-version label: ${version[0]}`,
+    );
+  }
+}
+assert(
+  parserScaleGuide.includes(`The current v${release.version} source receipt`),
+  "parser-scale guide is missing the current source-receipt version",
+);
+assert(
+  landing.includes("v{VERSION}") && !/v0\.\d+\.\d+/.test(landing),
+  "landing current-version labels must derive from release.json",
+);
+assert(
+  atlasJourney.includes("v{VERSION}") && !/v0\.\d+\.\d+/.test(atlasJourney),
+  "Atlas journey current-version labels must derive from release.json",
+);
+assert(
+  installationGuide.includes(`git clone --branch ${release.tag} --depth 1`),
+  "installation source-build command is not pinned to the current release tag",
+);
+assert(
+  installationGuide.includes(`Run \`codemble --version\` to confirm ${release.tag}`),
+  "installation confirmation does not name the current release tag",
+);
+const browserRecovery = installationGuide.slice(
+  installationGuide.indexOf("## If the browser does not open"),
+  installationGuide.indexOf("## Build an editable checkout"),
+);
+assert(browserRecovery.includes(pinnedNoOpenCommand), "browser recovery needs the pinned no-open command");
+assert.match(browserRecovery, /active server already prints an `Open http:\/\/127\.0\.0\.1:PORT`/);
+assert.match(browserRecovery, /Leave that process running and open its printed URL/);
+assert.match(browserRecovery, /future launch, after stopping the current server with `Ctrl-C`/);
+assert(
+  browserRecovery.indexOf("Leave that process running") < browserRecovery.indexOf(pinnedNoOpenCommand),
+  "browser recovery must use the active URL before offering no-open for a future launch",
+);
 
 const artifacts = [release.wheel, release.sdist];
 const expectedLedger = `${artifacts

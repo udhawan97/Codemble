@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -142,6 +143,28 @@ class _CountingPythonAdapter(PythonAstAdapter):
 
 def test_default_project_parser_preserves_the_python_graph() -> None:
     assert ProjectParser().parse(FIXTURE).to_json() == PythonAstAdapter().parse(FIXTURE).to_json()
+
+
+def test_installation_extensions_match_the_default_adapter_registry() -> None:
+    installation_path = (
+        Path(__file__).parents[1]
+        / "docs-site"
+        / "src"
+        / "content"
+        / "docs"
+        / "installation.md"
+    )
+    if not installation_path.exists():
+        pytest.skip("public docs are intentionally absent from the source distribution")
+    installation = installation_path.read_text(encoding="utf-8")
+    extension_paragraph = installation.split("Supported extensions are ", 1)[1]
+    documented = frozenset(re.findall(r"`(\.[a-z0-9]+)`", extension_paragraph))
+    parser = ProjectParser()
+    registered = frozenset().union(
+        *(adapter.file_extensions for adapter in parser._adapters)
+    )
+
+    assert documented == registered
 
 
 def test_unchanged_project_reuses_exact_derived_evidence(tmp_path: Path) -> None:

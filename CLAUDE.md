@@ -256,11 +256,12 @@ Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M19 luminous galaxies and living solar systems** · Last
-updated: 2026-08-25 · Session note: verified stable v0.22.0 keeps every system
-colourful and legible in free Explore, turns the parser-owned module anchor into
-the System Sun, names every structure world, gives each parsed language a
-deterministic visual character, and exposes parser-owned neighbouring imports without
-changing certainty, checks, progression, or the bounded camera.
+updated: 2026-08-26 · Session note: stable v0.22.0 keeps every system colourful
+and legible in free Explore, uses the parser-owned module anchor as the System
+Sun, and exposes parser-owned neighbouring imports. The 2026-08-26
+post-release session refreshes the matching source-controlled public
+documentation without changing certainty, checks, progression, or the bounded
+camera.
 
 **The implementation loop and full release gate are complete.**
 Explore no longer blacks out unrelated systems during hover or selection, and
@@ -274,6 +275,26 @@ amber remains exclusive to passed checks. The full local gate, fresh Graphify,
 exactly two council rounds, reproducible artifacts, candidate PR CI, exact-tag
 trusted publication, outside-in package proof, cold install, main CI, Pages,
 native Safari semantics, and public responsive-site acceptance pass.
+
+The 2026-08-26 post-release public-surface refresh preserves the Formal Edo
+Workbench and current v0.22.0 product captures while tightening the first-time
+route: public copy says explore rather than implying free-flight, stops route
+claims where parser proof stops, explains the local-server/browser recovery
+path, and lists Ruby/PHP extensions beside the other seven languages. The
+standalone landing now carries one canonical URL and complete Open Graph /
+Twitter metadata from the same title, description, social card, and image-alt
+text. No package code, application behavior, release manifest, published wheel
+or sdist bytes, or tag changed. The main push updates the default-branch README
+and triggers the repository's existing Pages workflow; deployment success is a
+separate post-push verification, not a package release. Because `README.md` is
+embedded in package metadata, a wheel built from this source tree would carry
+its refreshed project description; the tracked documentation test also changes
+a source archive built from this tree. Neither would be byte-identical to the
+published v0.22.0 artifacts.
+The fresh schema-4 scale receipt also passes on v0.22.0 source: 5.691 s cold,
+1.585 s no-change, 167,788,544-byte process RSS high-water, 1.743 s Chromium
+usable and 2.387 s WebKit usable, with all 5,000 modules / 4,999 routes retained,
+99 DOM elements per engine, and zero compact overflow.
 
 Previously (2026-08-25) · Session note: verified stable v0.21.1 added a
 deliberate free-explore or First Flight launch, Easy/Expert landing briefs,
@@ -1881,6 +1902,7 @@ outside-in package proof, cold install, and Pages pass.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-26 | The v0.22.0 public surface keeps the approved Formal Edo Workbench and real product captures; this refresh tightens route truth, completes registry-checked nine-language installation coverage, adds explicit local-server recovery, and makes landing metadata canonical from one source | The full live/source pass found no visual redesign gap or release-ledger drift, so replacing the proven landing would add churn rather than clarity. It did find one concrete contradiction: Installation listed only the first seven languages' extensions while every other current surface says nine. “Fly through” and a guaranteed Home-to-surface route also outran the bounded camera and proof-break contract. The corrected copy, active-server-first recovery path, metadata and image-alt parity gate, parser-registry documentation test, and current-version checks improve first-run trust without changing package code, the app, brand, published release bytes, or fixed tag. `README.md` feeds future wheel metadata, and the tracked documentation test changes a future source archive, so locally rebuilt artifacts would differ from published v0.22.0. The test skips only when the intentionally excluded docs tree is absent from an extracted sdist. A fresh schema-4 v0.22.0 source run retains all 5,000 modules / 4,999 routes and passes Chromium/WebKit budgets with 99 DOM elements and zero compact overflow. |
 | 2026-08-25 | v0.22.0 becomes stable only after the luminous Galaxy candidate passes exactly two council rounds and the complete tag-first outside-in release sequence | Annotated tag `v0.22.0` (`a3a2c5d`) peels to exact candidate commit `407a8aa`; PR #42 CI `32928613735`, trusted publish `32929397290`, main CI `32929522840`, and Pages `32929522861` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on wheel `ae8af55b…f0b25` and sdist `0bdba3e4…0e77`; a cold Python 3.12 install reports 0.22.0 and carries `index-C3498IDT.js` plus `index-ZndcOj-s.css`. Obscura and the maintained responsive-site gate prove the deployed v0.22.0 Pages surface. Native Safari proves the semantic Galaxy-to-System interaction but not the WebGL capture; Chromium/WebKit own that visual claim. This evidence-only follow-up must never move the fixed release tag. |
 | 2026-08-25 | System navigation reports certain and possible import counts separately, labels call roots without implying a call edge, cues every overflow, and focuses the destination System heading after travel | Two council rounds found three ways visual polish could outrun evidence: a mixed route list was collectively called proven, call roots shared a ring labelled direct calls, and the fifth route looked absent behind a silent scroller. The corrected console preserves direction and certainty in visible and accessible names; orbit plans carry both `guideCertain` and `containsCallRoots`; desktop and compact overflow state the continuation; and two consecutive fresh full runs each passed all 52 Chromium/WebKit receipts, including 320 px keyboard and reduced-motion travel. |
 | 2026-08-25 | Free Explore keeps the full galaxy luminous and colourful; guided Learning may soften unrelated context. The safe module anchor becomes the System Sun, structure worlds vary by parser-owned language, and connected-system navigation uses only existing import edges | The owner explicitly separated display/exploration from learning focus and requested a world-class solar-system metaphor. Visibility is not proof: amber remains check-only. Language is already parser evidence, so it can safely drive deterministic surface character; import direction and certainty already exist, so the nearby-systems console can improve continuation without inventing a connection. The bounded rail camera, one graph, and no-XP/non-cloud contracts remain unchanged |
