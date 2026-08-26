@@ -46,7 +46,6 @@ const VIEWPORTS = [
 ];
 
 const browser = await chromium.launch({
-  channel: "chrome",
   headless: true,
   args: ["--use-angle=swiftshader", "--enable-webgl"],
 });
@@ -67,6 +66,7 @@ try {
     const label = `${viewport.width}x${viewport.height} easy`;
     try {
       await page.goto(url, { waitUntil: "networkidle" });
+      await page.evaluate(() => document.fonts.ready);
       await settleFirstRun(page, "easy");
 
       if (!(await descendToRegion(page))) {
@@ -77,6 +77,17 @@ try {
 
       // --- the study panel ------------------------------------------------
       if (await openStudy(page)) {
+        // The compact contract is line-wrap sensitive. Settle the actual
+        // self-hosted faces after Study mounts, then return to the same top
+        // position before reading geometry so a fallback-font frame cannot
+        // produce either a false pass or a false failure.
+        await page.evaluate(async () => {
+          await document.fonts.ready;
+          const panel = document.querySelector(".study-preview");
+          if (panel) panel.scrollTop = 0;
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+        });
         const study = await measurePanel(page, ".study-preview");
         const journey = await measureJourney(page);
         report.push({ label, panel: "study", ...study });
@@ -105,11 +116,11 @@ try {
           if (viewport.width === 320) {
             const landing = await measureLanding(page);
             for (const [name, metric] of Object.entries(landing.firstView)) {
-              assert.equal(
-                metric.visible,
-                true,
+              assert.ok(
+                metric.visible && metric.bottom <= metric.panelBottom - 8,
                 `${label}: ${name} is not exposed in the landing's first view ` +
-                  `(element ${metric.top}-${metric.bottom}, panel ${metric.panelTop}-${metric.panelBottom})`,
+                  `with an 8px guard (element ${metric.top}-${metric.bottom}, ` +
+                  `panel ${metric.panelTop}-${metric.panelBottom})`,
               );
             }
             // Landing owns the first compact view now. The journey remains the

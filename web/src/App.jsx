@@ -58,6 +58,7 @@ export function App() {
   const [revealSource, setRevealSource] = useState(false);
   const [firstFlightIndex, setFirstFlightIndex] = useState(null);
   const [pendingVoyage, setPendingVoyage] = useState(null);
+  const [freeLaunchFocusPending, setFreeLaunchFocusPending] = useState(false);
   const [launchError, setLaunchError] = useState("");
   const mapViewportStore = useMemo(() => createMapViewportStore(), []);
   const session = useMemo(
@@ -78,6 +79,7 @@ export function App() {
       setMobileMenuOpen(false);
       setFirstFlightIndex(null);
       setPendingVoyage(null);
+      setFreeLaunchFocusPending(false);
       setLaunchError("");
       mapViewportStore.clear();
     }
@@ -207,6 +209,18 @@ export function App() {
     studyData,
     studyError,
   } = state;
+
+  // The first-run dialog has no opener to restore. Wait for the successful
+  // free-launch state to commit, then enter the rendered application surface.
+  // Keeping this as one transition flag avoids stealing focus on hydration,
+  // guided launch, later mode changes, or any ordinary Galaxy rerender.
+  useLayoutEffect(() => {
+    if (!freeLaunchFocusPending || modeChosen !== true || layer !== "galaxy") return;
+    const frame = stageRef.current?.querySelector(".galaxy-frame");
+    if (!(frame instanceof HTMLElement)) return;
+    frame.focus({ preventScroll: true });
+    setFreeLaunchFocusPending(false);
+  }, [freeLaunchFocusPending, layer, modeChosen]);
 
   // A large complete Map can take longer than one animation frame to commit.
   // Finder used to ask for focus in requestAnimationFrame immediately after
@@ -758,6 +772,7 @@ export function App() {
                   // learners get the parser-proven First Flight instead.
                   session.dispatch({ type: "DISMISS_COACHMARKS" });
                   setPendingVoyage(voyage === "guided" ? "guided" : null);
+                  setFreeLaunchFocusPending(voyage === "explore");
                   session.dispatch({ type: "SET_LAYER", layer: "galaxy" });
                   return true;
                 }}

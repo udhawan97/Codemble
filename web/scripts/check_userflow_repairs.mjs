@@ -177,10 +177,10 @@ async function checkGuidedLaunchAndLanding(browser, engine, url) {
 }
 
 async function checkLaunchChoiceMatrix(browser, engine, project) {
-  for (const { voyage, register } of [
-    { voyage: "explore", register: "easy" },
-    { voyage: "explore", register: "expert" },
-    { voyage: "guided", register: "easy" },
+  for (const { voyage, register, activation } of [
+    { voyage: "explore", register: "easy", activation: "pointer" },
+    { voyage: "explore", register: "expert", activation: "keyboard" },
+    { voyage: "guided", register: "easy", activation: "pointer" },
   ]) {
     const dataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-${engine}-`));
     dataRoots.push(dataRoot);
@@ -191,7 +191,7 @@ async function checkLaunchChoiceMatrix(browser, engine, project) {
       await page.goto(launch.url, { waitUntil: "networkidle" });
       const gate = page.locator(".mode-gate[open]");
       await gate.waitFor();
-      await completeModeGate(gate, { voyage, register });
+      await completeModeGate(gate, { voyage, register, activation });
       await gate.waitFor({ state: "detached" });
       await page.locator(".galaxy-frame").waitFor();
       const persisted = await page.evaluate(async () => ({
@@ -210,6 +210,21 @@ async function checkLaunchChoiceMatrix(browser, engine, project) {
           await page.locator(".flight-hud").count(),
           0,
           `${engine}: free ${register} launch started a guided flight`,
+        );
+        assert.equal(
+          await page.locator(".galaxy-frame").evaluate(
+            (frame) => document.activeElement === frame,
+          ),
+          true,
+          `${engine}: free ${register} ${activation} launch left app focus on ${await page.evaluate(() => document.activeElement?.tagName || "nothing")}`,
+        );
+        await page.keyboard.press("Tab");
+        assert.equal(
+          await page.locator(".legend-toggle").evaluate(
+            (button) => document.activeElement === button,
+          ),
+          true,
+          `${engine}: free ${register} ${activation} launch did not continue from the Galaxy frame to Key on first Tab`,
         );
       }
       results.push(`${engine} ${voyage}/${register} launch`);
@@ -249,6 +264,11 @@ async function checkRefusedLaunch(browser, engine, project) {
       await page.locator(".flight-hud").count(),
       0,
       `${engine}: refused mode persistence still started First Flight`,
+    );
+    assert.equal(
+      await gate.evaluate((dialog) => dialog.contains(document.activeElement)),
+      true,
+      `${engine}: refused launch reopened without dialog-owned focus`,
     );
     assert.deepEqual(
       await page.evaluate(async () => ({
@@ -501,7 +521,7 @@ async function checkCanvasMapInteraction(browser, engine, url) {
 }
 
 for (const result of results) console.log(`PASS  ${result}`);
-console.log(`user-flow repair contracts passed (${results.length} assertions)`);
+console.log(`user-flow repair contracts passed (${results.length} receipts)`);
 
 async function checkCompactRailEscape(browser, engine, url) {
   const page = await browser.newPage({ viewport: { width: 320, height: 640 } });
@@ -880,13 +900,19 @@ async function settleApp(page) {
   await page.locator(".app-shell").waitFor();
 }
 
-async function completeModeGate(gate, { voyage, register }) {
+async function completeModeGate(gate, { voyage, register, activation = "pointer" }) {
   const voyageName = voyage === "guided" ? "Take a first flight" : "Explore freely";
   const registerName = register === "expert" ? "I build software" : "New to coding?";
   await gate.getByRole("radio", { name: new RegExp(`^${voyageName}`) }).check();
   await gate.getByRole("radio", { name: registerName, exact: true }).check();
   const launchName = voyage === "guided" ? "Begin first flight" : "Open the galaxy";
-  await gate.getByRole("button", { name: launchName, exact: true }).click();
+  const launch = gate.getByRole("button", { name: launchName, exact: true });
+  if (activation === "keyboard") {
+    await launch.focus();
+    await launch.press("Enter");
+  } else {
+    await launch.click();
+  }
 }
 
 async function openStudy(page) {

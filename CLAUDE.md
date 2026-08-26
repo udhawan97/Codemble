@@ -287,14 +287,28 @@ files and 298,355 edges in 21.760 s; Laravel Framework (`9b21ce0…`) parsed
 3,034 PHP files into 38,540 nodes with one partial file and 207,232 edges in
 43.573 s. Immediate repeats were
 deterministic. The released candidate passes 542 Python tests, Ruff, the full
-frontend build/contracts, and all 48 Chromium/WebKit user-flow journeys. The
+frontend build/contracts, and all 48 Chromium/WebKit user-flow receipts. The
 final 5,000-module gate reaches a usable app in 1.48 s in Chromium and 2.03 s in
 WebKit after large Galaxy startup began yielding for 650 ms; Map takeover
-cancels the pending WebGL construction. Compact panel-reach now keeps the
-landing explanation plus exact connection counts in the first viewport while
-the complete journey remains reachable.
-Native Safari acceptance was attempted but ScreenCaptureKit could not start the
-capture; WebKit is recorded only as engine evidence. Annotated tag object
+cancels the pending WebGL construction.
+
+Post-release re-verification found two bounded presentation defects in the
+otherwise unchanged v0.21.1 source. Successful free exploration left focus on
+`BODY` after its opener-less modal closed, and the font-settled 320×640 Study
+landing put the complete connection-count disclosure at y=610–654 against a
+panel ending at y=640. The current source now transfers focus once to the
+layer-correct Galaxy frame after a successful free-only commit, while refused
+saves retain dialog focus. Compact Study yields only card inset and local gaps;
+the complete 44 px disclosure now clears the panel by at least 8 px. Its gate
+uses Playwright's pinned Chromium and waits for self-hosted fonts after Study
+mounts. Fresh Chromium/WebKit receipts, native Safari pointer and keyboard
+launches, the full panel sweep, 29-state space budget, and 104 Escape assertions
+pass. This is an unreleased source correction: v0.21.1 remains the stable public
+release, and no release tag moved.
+
+For the v0.21.1 release itself, native Safari acceptance was attempted but
+ScreenCaptureKit could not start the capture; that release record names WebKit
+only as engine evidence. Annotated tag object
 `913d641` peels to release commit `9f52778`; replacement candidate PR CI
 `32831499727`, trusted publish `32832515968`, main CI `32832683519`, and Pages
 `32832683592` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on
@@ -1800,11 +1814,20 @@ evidence are rebuilt from the reviewed source.
       developer-only `uv.lock` state from the reproducible source archive
 - [x] Complete two council rounds, candidate PR CI, exact-tag v0.21.1 publish,
       outside-in artifact proof, main CI/Pages, and cold-install verification
+- [x] Close the post-release free-launch focus gap with one successful
+      free-only Galaxy handoff; preserve guided launch and refused-save focus
+- [x] Reproduce the 320×640 Study miss after fonts settle, pin the maintained
+      gate, and restore a complete 44 px connection summary with an 8 px guard
+- [x] Rebuild the bundled SPA and pass 542 Python tests, Ruff, frontend
+      contracts, 48 Chromium/WebKit receipts, panel reach, 29 space-budget
+      states, 104 Escape assertions, and native Safari pointer/keyboard launch
 
 **Acceptance complete:** 542 Python tests, Ruff, frontend contract/build,
-semantic oracle, 48 disposable Chromium/WebKit journeys, compact panel-reach,
+semantic oracle, 48 disposable Chromium/WebKit receipts, compact panel-reach,
 and the 5,000-module backend/browser budget pass. Native Safari is not claimed
-because ScreenCaptureKit could not start its capture. Fresh Graphify, two
+for the v0.21.1 release because ScreenCaptureKit could not start its capture;
+the later source correction claims only its directly repeated pointer/keyboard
+launch focus. Fresh Graphify, two
 council rounds, hosted candidate CI, reproducible artifacts, exact-tag trusted
 publication, outside-in package proof, cold install, main CI, and Pages pass.
 
@@ -1812,6 +1835,7 @@ publication, outside-in package proof, cold install, main CI, and Pages pass.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-25 | A successful free first-run launch focuses the existing Galaxy application frame once after commit; compact Study's first view owns an 8 px bottom guard measured by pinned Chromium after local fonts settle | The opener-less launch modal left Chromium, WebKit, and native Safari on `BODY` even though the named `.galaxy-frame` was already the correct target. A free-only post-commit flag closes that seam without touching guided launch, hydration, later layer changes, or refused-save dialog focus. Separately, pinned bundled Chromium and system Chrome reproduced the same 320×640 geometry: the complete 44 px connection summary ended at 654 against a panel ending at 640. Compact-only inset and gap changes restore the first view without shrinking type or controls, hiding graph evidence, or changing document order. The historical v0.21.1 record is preserved; this correction is unreleased and moves no tag |
 | 2026-08-25 | v0.21.1 becomes stable only after the v0.21.0 archive mismatch is preserved, repaired, and the replacement exact tag passes every outside-in gate | The v0.21.0 trusted workflow `32831002724` stopped before PyPI when an untracked local `uv.lock` polluted only the local sdist; its immutable tag remains a blocked prerelease. v0.21.1 excludes that developer file. Annotated tag `v0.21.1` (`913d641`) peels to `9f52778`; replacement candidate CI `32831499727`, trusted publish `32832515968`, main CI `32832683519`, and Pages `32832683592` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on wheel `ba515552…90212` and sdist `588c910f…613c0`; a cold Python 3.11 install reports 0.21.1 and carries `index-Is2yGdJX.js` plus `index-DVgxDoNx.css`. The follow-up changes only this operating truth and must never move the release tag |
 | 2026-08-25 | Every First Flight stop offers an explicit **Land and learn** action that selects the first complete non-module declaration in source order, falling back to the module anchor, then hands off to the existing Study and graph-derived check flow | A system-only tour did not satisfy the requested guided learning or quiz route, and a manual canvas Enter was not guidance. Source order is deterministic parser evidence, not an invented importance rank. Reusing `SELECT_STUDY_NODE`, Study guidance, and `OPEN_CHECKS` preserves the one visit, explanation, and check pipeline without a second lesson or progression state |
 | 2026-08-25 | First Flight is a tour of Home's direct proven imports, not a claim that each consecutive stop connects to the next; guided intent waits through Home calibration. Landing states parser-owned role purpose when present and explicitly unknown purpose otherwise. Semantic art channels mirror existing truth rather than becoming unlabelled decoration | Round-one outcome review found that `Home → alpha → beta` reads as a path even when only `Home → alpha` and `Home → beta` exist, that a guided choice fell through to free exploration when Home was unresolved, and that metadata-only prose could not satisfy a promise to explain purpose. The corrected tour copy, pending guided state, role-rule narration, and explicit unknown preserve the adventure without inventing an edge, a Home, or a job. Language nebulae and understood starbursts are truthful encodings, so the boundary is no unsupported fact, not no semantics |

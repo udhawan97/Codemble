@@ -4091,7 +4091,15 @@ input:focus-visible {
   }
 
   .landing-brief {
-    padding: var(--cm-space-xs) var(--cm-space-sm);
+    padding: var(--cm-space-xs);
+  }
+
+  /* At exactly 320px, the default Easy spacing made this row miss staying
+     inline by a few pixels. "Landing brief" then became two lines and pushed
+     the 44px connection-summary target below the panel. Keep both labels and
+     type sizes; only yield the unused compact inset and space between them. */
+  .landing-brief .study-section-heading {
+    gap: 0;
   }
 
   .landing-brief__summary {
@@ -4106,7 +4114,7 @@ input:focus-visible {
 
   .landing-brief__compact-facts {
     display: block;
-    margin-block-start: var(--cm-space-xs);
+    margin-block-start: var(--cm-space-2xs);
     color: var(--cm-ink-2);
     font-family: var(--cm-font-mono);
     font-size: var(--cm-text-xs);
