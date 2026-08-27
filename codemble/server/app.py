@@ -11,10 +11,12 @@ from typing import Literal
 import anyio
 import anyio.to_thread
 from fastapi import FastAPI, HTTPException, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
+from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.requests import Request
 
 from codemble import __version__
 from codemble.adapters.base import Graph
@@ -39,6 +41,7 @@ from codemble.server.project_selection import (
     ProjectFolderUnreadable,
     ProjectSelector,
 )
+from codemble.share import SharePreviewConfirmationError, UnknownSharePreviewError
 
 # Narration is the only handler that makes an outbound network call, and
 # ``urlopen`` cannot be cancelled: once a worker thread is inside it, that
@@ -107,6 +110,42 @@ class ProjectRelease(BaseModel):
     confirmed: Literal[True]
 
 
+class SharePreviewSelection(BaseModel):
+    """The only choices that may widen the local share artifact."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    lifetime_days: StrictInt
+    include_labels: StrictBool = False
+    include_understanding: StrictBool = False
+
+    @field_validator("lifetime_days")
+    @classmethod
+    def declared_lifetime(cls, value: int) -> int:
+        if value not in (1, 7, 30):
+            raise ValueError("share lifetime must be 1, 7, or 30 days")
+        return value
+
+
+class SharePreviewConfirmation(BaseModel):
+    """Acknowledgement bound to the exact retained bytes, with no upload."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    preview_id: str = Field(min_length=1, max_length=256)
+    payload_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    reviewed: StrictBool
+    labels_confirmed: StrictBool
+    understanding_confirmed: StrictBool
+
+    @field_validator("reviewed")
+    @classmethod
+    def exact_review_acknowledgement(cls, value: bool) -> bool:
+        if value is not True:
+            raise ValueError("reviewed must be true")
+        return value
+
+
 @dataclass(frozen=True)
 class PickerConfig:
     """Filesystem scope and parse settings for the in-app project picker."""
@@ -132,6 +171,19 @@ def create_app(
         raise ValueError("create_app needs a parsed graph or a PickerConfig")
     app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
+
+    @app.middleware("http")
+    async def no_store_share_responses(
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        """Forbid caching of every share response, including validation errors."""
+
+        response = await call_next(request)
+        if request.url.path.startswith("/api/share/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     # Per app, not module-global: two apps in one test process must not share a
     # narration budget, or one test's stuck provider throttles another's.
     narration_limiter = anyio.CapacityLimiter(_NARRATION_SLOTS)
@@ -260,6 +312,45 @@ def create_app(
         # beginner's first request and must not re-pay hydration + layout on
         # every read either.
         return Response(_project().map_json(), media_type="application/json")
+
+    @app.post("/api/share/preview", status_code=201)
+    def create_share_preview(selection: SharePreviewSelection) -> JSONResponse:
+        project = _project()
+        try:
+            preview = project.create_share_preview(
+                lifetime_days=selection.lifetime_days,
+                include_labels=selection.include_labels,
+                include_understanding=selection.include_understanding,
+            )
+        except (TypeError, ValueError, RuntimeError, UnknownSharePreviewError) as error:
+            raise HTTPException(
+                status_code=409,
+                detail=f"This project cannot be previewed safely: {error}",
+            ) from error
+        return JSONResponse(
+            preview,
+            status_code=201,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.post("/api/share/confirm")
+    def confirm_share_preview(
+        confirmation: SharePreviewConfirmation,
+    ) -> JSONResponse:
+        project = _project()
+        try:
+            result = project.share_previews.confirm(
+                preview_id=confirmation.preview_id,
+                payload_digest=confirmation.payload_digest,
+                reviewed=confirmation.reviewed,
+                labels_confirmed=confirmation.labels_confirmed,
+                understanding_confirmed=confirmation.understanding_confirmed,
+            )
+        except UnknownSharePreviewError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except SharePreviewConfirmationError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
     @app.post("/api/entrypoint")
     def select_entrypoint(selection: EntrypointSelection) -> dict[str, object]:

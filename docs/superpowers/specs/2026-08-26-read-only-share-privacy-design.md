@@ -1,7 +1,8 @@
 # Read-only share privacy boundary — design spec
 
 Date: 2026-08-26 · Approved by: UD (promoted the next phase and confirmed the
-artifact seam) · Status: M20 local foundation implemented; delivery remains gated
+artifact seam) · Status: M20 local preview and confirmation implemented; delivery
+remains gated
 
 Primary-source research and the complete future delivery contract live in
 [`docs/research/2026-08-26-read-only-share-privacy-boundary.md`](../../research/2026-08-26-read-only-share-privacy-boundary.md).
@@ -86,16 +87,19 @@ Always excluded:
 - concept evidence, narration, prompts, provider configuration, and caches;
 - check questions/answers/attempts, visits, recents, and local logs.
 
-## 4. Delivery remains blocked
+## 4. Exact preview is local; delivery remains blocked
 
-This slice adds no CLI option, app control, server route, view/delete token,
-storage adapter, provider dependency, deployment, account, analytics, or cloud
-request.
+Current source adds one app workbench plus strict same-origin loopback routes for
+preview and confirmation. They retain one exact candidate in process memory,
+return `Cache-Control: no-store`, and deliberately expose `upload_available:
+false`. Project release, replacement, or process exit discards the candidate.
+There is still no CLI publishing option, view/delete token, storage adapter,
+provider dependency, deployment, account, analytics, upload, or cloud request.
 
-Before any upload is authorized, M20 still requires:
+Before any upload is authorized, M20 requires:
 
-1. a local preview of the exact artifact and explicit confirmation of label and
-   understanding exposure;
+1. **Complete:** a local preview of the exact artifact and explicit confirmation
+   of label and understanding exposure;
 2. independent unguessable view and deletion capabilities;
 3. immutable storage with server-enforced expiry, inert `GET`, confirmed
    idempotent deletion, active/back-up purge deadlines, and uniform revoked
@@ -119,4 +123,14 @@ Before any upload is authorized, M20 still requires:
   routes, stale Home distance, and inconsistent orbit meaning fail closed.
 - Ordinary construction from arbitrary bytes is impossible; only `from_graph`
   can create the immutable value.
+- Preview defaults both sensitive choices off, offers only one-, seven-, or
+  thirty-day lifetimes, and displays the exact canonical bytes and payload digest.
+- Confirmation requires review, matches each sensitive acknowledgement to the
+  retained unexpired artifact, and stays idempotent without creating an upload
+  capability.
+- Strict JSON loopback routes are no-store; unknown fields, form posts, stale
+  or expired preview IDs, changed digests, and mismatched acknowledgements fail
+  closed.
+- The workbench remains usable at 320 px and restores focus to the rail after
+  Close or Escape in Chromium and WebKit.
 - Focused tests, Ruff, full pytest, and Graphify update pass before integration.

@@ -23,6 +23,31 @@ const passedChecks = {
   region_understood: true,
   checks: [{ id: "calls", passed: true }],
 };
+const sharePreview = {
+  status: "preview",
+  preview_id: "local-preview",
+  payload_digest: "sha256:preview-digest",
+  created_at: "2026-08-26T18:00:00Z",
+  expires_at: "2026-09-02T18:00:00Z",
+  artifact_json: '{"manifest":{},"payload":{}}',
+  exposure: {
+    labels_included: true,
+    label_count: 4,
+    understanding_included: false,
+    understood_regions: 0,
+  },
+  confirmed: false,
+  upload_available: false,
+};
+const shareConfirmation = {
+  status: "confirmed",
+  preview_id: "local-preview",
+  payload_digest: "sha256:preview-digest",
+  expires_at: "2026-09-02T18:00:00Z",
+  upload_available: false,
+};
+let previewSelection = null;
+let previewAcknowledgement = null;
 const pendingTimers = new Map();
 let nextTimerId = 1;
 const clock = {
@@ -68,6 +93,14 @@ const adapter = createInMemoryLearnerSessionAdapter({
       fallback: "qwen3:8b",
     },
   },
+  sharePreview(selection) {
+    previewSelection = selection;
+    return sharePreview;
+  },
+  shareConfirmation(acknowledgement) {
+    previewAcknowledgement = acknowledgement;
+    return shareConfirmation;
+  },
 });
 const session = createLearnerSession({ adapter, clock });
 let notifications = 0;
@@ -89,6 +122,47 @@ assert.deepEqual(snapshot.languageOptions.map((option) => option.id), [
 ]);
 assert.equal(snapshot.mode, "easy", "the session adopts the server's persisted mode");
 assert.equal(snapshot.llmStatus.ollama.recommended, "gemma4:12b");
+
+await session.dispatch({ type: "OPEN_SHARE_PREVIEW" });
+assert.equal(session.getSnapshot().sharePreviewOpen, true);
+await session.dispatch({
+  type: "CREATE_SHARE_PREVIEW",
+  selection: {
+    lifetimeDays: 7,
+    includeLabels: true,
+    includeUnderstanding: false,
+  },
+});
+assert.deepEqual(previewSelection, {
+  lifetimeDays: 7,
+  includeLabels: true,
+  includeUnderstanding: false,
+});
+assert.equal(session.getSnapshot().sharePreviewData, sharePreview);
+await session.dispatch({
+  type: "CONFIRM_SHARE_PREVIEW",
+  acknowledgement: {
+    reviewed: true,
+    labelsConfirmed: true,
+    understandingConfirmed: false,
+  },
+});
+assert.deepEqual(previewAcknowledgement, {
+  preview_id: "local-preview",
+  payload_digest: "sha256:preview-digest",
+  reviewed: true,
+  labels_confirmed: true,
+  understanding_confirmed: false,
+});
+assert.equal(session.getSnapshot().sharePreviewConfirmation, shareConfirmation);
+assert.equal(
+  session.getSnapshot().sharePreviewConfirmation.upload_available,
+  false,
+  "confirmation exposes no upload authority",
+);
+await session.dispatch({ type: "CLOSE_SHARE_PREVIEW" });
+assert.equal(session.getSnapshot().sharePreviewOpen, false);
+assert.equal(session.getSnapshot().sharePreviewData, null);
 
 await session.dispatch({ type: "SET_MODE", mode: "expert" });
 assert.equal(session.getSnapshot().mode, "expert");
@@ -710,6 +784,8 @@ const responsePayloads = [
   { home: true },
   { mode: "easy" },
   { mode: "expert" },
+  sharePreview,
+  shareConfirmation,
 ];
 const http = createHttpLearnerSessionAdapter(async (url, options = {}) => {
   httpCalls.push([url, options]);
@@ -728,6 +804,24 @@ assert.deepEqual(await http.selectEntrypoint("node/id"), { home: true });
 assert.deepEqual(await http.loadMode(), { mode: "easy" });
 assert.deepEqual(await http.saveMode("expert"), { mode: "expert" });
 assert.deepEqual(
+  await http.createSharePreview({
+    lifetimeDays: 7,
+    includeLabels: true,
+    includeUnderstanding: false,
+  }),
+  sharePreview,
+);
+assert.deepEqual(
+  await http.confirmSharePreview({
+    preview_id: "local-preview",
+    payload_digest: "sha256:preview-digest",
+    reviewed: true,
+    labels_confirmed: true,
+    understanding_confirmed: false,
+  }),
+  shareConfirmation,
+);
+assert.deepEqual(
   httpCalls.map(([url]) => url),
   [
     "/api/graph",
@@ -737,6 +831,8 @@ assert.deepEqual(
     "/api/entrypoint",
     "/api/mode",
     "/api/mode",
+    "/api/share/preview",
+    "/api/share/confirm",
   ],
 );
 assert.equal(httpCalls[3][1].method, "POST");
@@ -745,6 +841,26 @@ assert.equal(httpCalls[4][1].body, JSON.stringify({ node_id: "node/id" }));
 assert.equal(httpCalls[6][1].method, "PUT");
 assert.equal(httpCalls[6][1].headers["Content-Type"], "application/json");
 assert.equal(httpCalls[6][1].body, JSON.stringify({ mode: "expert" }));
+assert.equal(httpCalls[7][1].method, "POST");
+assert.equal(
+  httpCalls[7][1].body,
+  JSON.stringify({
+    lifetime_days: 7,
+    include_labels: true,
+    include_understanding: false,
+  }),
+);
+assert.equal(httpCalls[8][1].method, "POST");
+assert.equal(
+  httpCalls[8][1].body,
+  JSON.stringify({
+    preview_id: "local-preview",
+    payload_digest: "sha256:preview-digest",
+    reviewed: true,
+    labels_confirmed: true,
+    understanding_confirmed: false,
+  }),
+);
 
 console.log("learner-session contracts passed");
 
@@ -1378,6 +1494,106 @@ assert.equal(
   "a refused reset leaves the bound project exactly as it was",
 );
 refusedResetSession.dispose();
+
+// A preview or confirmation response belongs to the project lifecycle that
+// started it. An adapter may ignore AbortSignal (the real server can finish a
+// CPU-bound compilation after the browser disconnects), so reset must also
+// reject the late result by generation before it can repopulate share state.
+const shareRacePicker = {
+  browse: {
+    "": {
+      path: "/home/u",
+      parent: null,
+      entries: [{ name: "demo", path: "/home/u/demo" }],
+    },
+  },
+  recents: [],
+  selections: { "/home/u/demo": { state: "ready" } },
+};
+let resolveStaleSharePreview;
+const staleSharePreview = new Promise((resolve) => {
+  resolveStaleSharePreview = resolve;
+});
+const shareCreateRaceBase = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: shareRacePicker,
+});
+const shareCreateRaceSession = createLearnerSession({
+  adapter: {
+    ...shareCreateRaceBase,
+    createSharePreview: () => staleSharePreview,
+  },
+  clock,
+});
+await shareCreateRaceSession.start();
+await shareCreateRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+await shareCreateRaceSession.dispatch({ type: "OPEN_SHARE_PREVIEW" });
+const staleShareCreateRequest = shareCreateRaceSession.dispatch({
+  type: "CREATE_SHARE_PREVIEW",
+  selection: {
+    lifetimeDays: 7,
+    includeLabels: false,
+    includeUnderstanding: false,
+  },
+});
+await shareCreateRaceSession.dispatch({ type: "RESET_PROJECT" });
+resolveStaleSharePreview(sharePreview);
+await staleShareCreateRequest;
+assert.equal(shareCreateRaceSession.getSnapshot().status, "picking");
+assert.equal(
+  shareCreateRaceSession.getSnapshot().sharePreviewData,
+  null,
+  "a stale preview response cannot repopulate the released project",
+);
+assert.equal(shareCreateRaceSession.getSnapshot().sharePreviewOpen, false);
+shareCreateRaceSession.dispose();
+
+let resolveStaleShareConfirmation;
+const staleShareConfirmation = new Promise((resolve) => {
+  resolveStaleShareConfirmation = resolve;
+});
+const shareConfirmRaceBase = createInMemoryLearnerSessionAdapter({
+  graph,
+  picker: shareRacePicker,
+  sharePreview,
+});
+const shareConfirmRaceSession = createLearnerSession({
+  adapter: {
+    ...shareConfirmRaceBase,
+    confirmSharePreview: () => staleShareConfirmation,
+  },
+  clock,
+});
+await shareConfirmRaceSession.start();
+await shareConfirmRaceSession.dispatch({ type: "SELECT_PROJECT", path: "/home/u/demo" });
+await shareConfirmRaceSession.dispatch({ type: "OPEN_SHARE_PREVIEW" });
+await shareConfirmRaceSession.dispatch({
+  type: "CREATE_SHARE_PREVIEW",
+  selection: {
+    lifetimeDays: 7,
+    includeLabels: true,
+    includeUnderstanding: false,
+  },
+});
+const staleShareConfirmRequest = shareConfirmRaceSession.dispatch({
+  type: "CONFIRM_SHARE_PREVIEW",
+  acknowledgement: {
+    reviewed: true,
+    labelsConfirmed: true,
+    understandingConfirmed: false,
+  },
+});
+await shareConfirmRaceSession.dispatch({ type: "RESET_PROJECT" });
+resolveStaleShareConfirmation(shareConfirmation);
+await staleShareConfirmRequest;
+assert.equal(shareConfirmRaceSession.getSnapshot().status, "picking");
+assert.equal(
+  shareConfirmRaceSession.getSnapshot().sharePreviewConfirmation,
+  null,
+  "a stale confirmation response cannot repopulate the released project",
+);
+assert.equal(shareConfirmRaceSession.getSnapshot().sharePreviewOpen, false);
+shareConfirmRaceSession.dispose();
 
 // Regression: a stale SELECT_ENTRYPOINT response arriving after RESET_PROJECT
 // must not resurrect the old project. resetProject() must abort

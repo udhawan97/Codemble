@@ -345,6 +345,91 @@ try {
     }
   }
 
+  // M20 adds one more self-scrolling surface. At 320px the choice form is over
+  // two viewports tall and its only build action begins below the fold, so
+  // Playwright's click auto-scroll would hide exactly the silent-scroller bug
+  // this gate exists to catch. Measure the untouched first view, then scroll
+  // explicitly and prove both the build action and confirmation remain reachable.
+  {
+    const page = await browser.newPage({
+      viewport: { width: 320, height: 640 },
+      deviceScaleFactor: 1,
+    });
+    page.setDefaultTimeout(30_000);
+    try {
+      await page.goto(url, { waitUntil: "networkidle" });
+      await page.evaluate(() => document.fonts.ready);
+      await settleFirstRun(page, "easy");
+      const more = page.getByRole("button", { name: /^(More|Menu)$/ }).first();
+      await more.click();
+      await page.getByRole("button", { name: "Share preview" }).click();
+      await page.locator(".share-preview__choices").waitFor();
+      const choices = await measurePanel(page, ".share-preview__choices");
+      report.push({ label: "320x640 easy", panel: "share choices", ...choices });
+      try {
+        assert.equal(choices.overflows, true, "320x640: share choices should exercise overflow");
+        assert.equal(
+          choices.hasOverflowCue,
+          true,
+          `320x640: share choices hold ${choices.viewports} viewports but draw no continuation cue`,
+        );
+        const buildReach = await revealInsidePanel(
+          page,
+          ".share-preview__choices",
+          ".share-preview__primary",
+        );
+        assert.equal(
+          buildReach.fullyVisible,
+          true,
+          `320x640: the local preview action remains unreachable after explicit scroll ` +
+            `(button ${buildReach.top}-${buildReach.bottom}, panel ${buildReach.panelTop}-${buildReach.panelBottom})`,
+        );
+      } catch (error) {
+        failures += 1;
+        console.error(`  FAIL ${error.message}`);
+      }
+      await page.getByRole("button", { name: "Build exact local preview" }).click();
+      await page.locator(".share-preview__inspection").waitFor();
+      const inspection = await measurePanel(page, ".share-preview__inspection");
+      report.push({ label: "320x640 easy", panel: "share inspection", ...inspection });
+      try {
+        assert.equal(inspection.overflows, true, "320x640: share inspection should overflow");
+        assert.equal(
+          inspection.hasOverflowCue,
+          true,
+          `320x640: share inspection holds ${inspection.viewports} viewports but draws no continuation cue`,
+        );
+        const acknowledgementReach = await revealInsidePanel(
+          page,
+          ".share-preview__inspection",
+          ".share-preview__acknowledgements input",
+        );
+        assert.equal(
+          acknowledgementReach.fullyVisible,
+          true,
+          `320x640: exact-artifact acknowledgement remains unreachable after explicit scroll`,
+        );
+        await page.getByRole("button", { name: "Change choices" }).click();
+        await page.locator(".share-preview__choices").waitFor();
+        assert.equal(
+          await page.evaluate(
+            () =>
+              document.activeElement?.matches(
+                'input[name="share-lifetime"]:checked',
+              ) ?? false,
+          ),
+          true,
+          "changing choices hands focus to the restored selected lifetime",
+        );
+      } catch (error) {
+        failures += 1;
+        console.error(`  FAIL ${error.message}`);
+      }
+    } finally {
+      await page.close();
+    }
+  }
+
   // `position: sticky` was applied to `.check-primary`, which is the app's
   // shared primary-button class on ten buttons across six components. Only the
   // quiz submit is inside a scrolling panel that needs it; the other nine
@@ -560,6 +645,29 @@ function measurePanel(page, selector) {
       hasOverflowCue: cueFromBackground || cueFromMask || cueFromEdges || cueFromScrollbar,
     };
   }, selector);
+}
+
+function revealInsidePanel(page, panelSelector, targetSelector) {
+  return page.evaluate(
+    ({ panelSelector: panelName, targetSelector: targetName }) => {
+      const panel = document.querySelector(panelName);
+      const target = document.querySelector(targetName);
+      if (!(panel instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+        return { fullyVisible: false };
+      }
+      panel.scrollTop = panel.scrollHeight;
+      const panelBox = panel.getBoundingClientRect();
+      const targetBox = target.getBoundingClientRect();
+      return {
+        fullyVisible: targetBox.top >= panelBox.top && targetBox.bottom <= panelBox.bottom,
+        top: Math.round(targetBox.top),
+        bottom: Math.round(targetBox.bottom),
+        panelTop: Math.round(panelBox.top),
+        panelBottom: Math.round(panelBox.bottom),
+      };
+    },
+    { panelSelector, targetSelector },
+  );
 }
 
 function measureJourney(page) {

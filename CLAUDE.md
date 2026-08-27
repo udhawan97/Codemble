@@ -208,16 +208,18 @@ The audience cannot detect when the tool is wrong. Therefore:
 2026-08-26. Its first slice defines the complete source-exclusion, provenance,
 expiry, and deletion contract and compiles one canonical local artifact with
 per-artifact keyed identities and source-ID-independent graph-owned placement
-before any provider, upload route, or cloud authority exists. Phase 1 tester
-evidence continues in parallel — the v0.1.0 Python learner-acceptance issue
-stays open, and technical completion does not claim those external runs passed.
+before any provider, upload route, or cloud authority exists. Its local
+workbench now shows the exact artifact and binds explicit confirmation to that
+in-memory candidate. Phase 1 tester evidence continues in parallel — the v0.1.0
+Python learner-acceptance issue stays open, and technical completion does not
+claim those external runs passed.
 
 **NEXT — accountless share delivery after the privacy gates.** The parser and
 scale slate is complete through v0.22.0: nine languages, bounded parser
 evidence, and a complete canvas Map that passes the 5,000-module backend,
-Chromium, and WebKit gate. Delivery may begin only after the exact local preview
-and explicit exposure confirmation exist. The provider-neutral design then
-needs independent view/delete capabilities, immutable expiry, active and backup
+Chromium, and WebKit gate. The exact local preview and explicit exposure
+confirmation now exist. The provider-neutral design still needs independent
+view/delete capabilities, immutable expiry, active and backup
 purge deadlines, authenticated source-free storage, token-safe HTTP/browser
 delivery, and operational deletion proof.
 
@@ -256,22 +258,24 @@ lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M20 private read-only share foundation** · Last updated:
-2026-08-26 · Session note: the first local-only slice defines the privacy
-contract and compiles the render-ready graph into one canonical raw-source-free
-artifact. Fresh CSPRNG-seeded identities plus graph-owned layout over the opaque
+2026-08-26 · Session note: the local privacy workbench now compiles the active
+project into one canonical raw-source-free artifact, shows the exact bytes,
+expiry, exposure ledger, and digest, then binds confirmation to that in-memory
+candidate. Fresh CSPRNG-seeded identities plus graph-owned layout over the opaque
 graph prevent the fixed-coordinate label oracle; labels and learner understanding
-require separate explicit choices;
-provenance and a 30-day maximum absolute expiry travel with the bytes. No upload,
-server route, provider, account, deployment, or cloud request exists.
+require separate explicit choices. No upload, bearer link, provider, account,
+deployment, persistent preview, or cloud request exists.
 
-**The local artifact slice is complete; delivery remains gated.** The deep
+**The local artifact and confirmation slices are complete; delivery remains gated.** The deep
 `ShareArtifact.from_graph(graph, policy, created_at)` interface owns the closed
 allowlist, keyed remapping plus graph-owned re-layout, opt-ins, RFC 8785 bytes, manifest payload
 digest, source-safe coverage, and expiry validation. It fails closed when an
 internal node, region, Home, or closed-schema fact cannot be represented. The
-research contract and approved design separately name the future capability,
-deletion, cache, browser, storage, and operational gates; none is implied by
-this local module.
+project-owned preview service retains only one candidate, and strict no-store
+loopback routes plus the Formal Edo workbench expose and acknowledge it without
+upload authority. The research contract and approved design separately name the
+future capability, deletion, cache, browser, storage, and operational gates;
+none is implied by local confirmation.
 
 Previously (2026-08-25) · Session note: verified stable v0.22.0 keeps every
 system colourful and legible in free Explore, turns the parser-owned module
@@ -1931,7 +1935,7 @@ outside-in package proof, cold install, and Pages pass.
       bounds; recompute centrality, routes, Home distance, and orbit meaning;
       omit unresolved possible targets; fail on missing certain truth; deduplicate
       viewer edges; prove fixed-entropy order invariance and fresh-ID placement
-- [ ] Preview the exact local artifact and confirm each sensitive opt-in before
+- [x] Preview the exact local artifact and confirm each sensitive opt-in before
       any upload authority is available
 - [ ] Add independent unguessable view/delete capabilities, strict immutable
       storage validation, server-enforced expiry, and confirmed idempotent
@@ -1940,13 +1944,16 @@ outside-in package proof, cold install, and Pages pass.
       encrypted least-privilege storage, active/backup purge deadlines, and
       deletion without resurrection before public release
 
-**Acceptance is partial:** 23 focused share-artifact cases, the full 565-test
-Python suite, repository-wide Ruff, sample-project and current self-parse
+**Acceptance is partial:** 39 focused artifact/preview cases, the full 582-test
+Python suite, repository-wide Ruff, the complete frontend contract/build,
+a live Chromium desktop exact-preview/confirmation journey, an observed WebKit
+320 px journey, and the maintained Chromium 320 px share-panel reach gate,
+documentation check/build, sample-project and current self-parse
 artifact/digest/path-exclusion checks, 5,001-node/one-region and 5,000-region
 scale probes, a targeted 53,478-node/one-region acceptance, and two fresh
 5,000-region runs with greater than 43-unit minimum separation all pass.
 Wheel/sdist inclusion with the RFC 8785 runtime dependency and the refreshed
-Graphify query also pass. M20 does
+Graphify update/query also pass. M20 does
 not authorize a cloud touch, claim deletion, or advance to release until every
 unchecked delivery gate is implemented and evidenced.
 
@@ -1954,6 +1961,7 @@ unchecked delivery gate is implemented and evidenced.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-26 | Exact share preview and confirmation stay owned by the active project: one in-memory candidate, strict same-origin loopback JSON routes, and a three-step app workbench with no upload callback or delivery port | Confirmation is meaningful only if it refers to the same bytes the learner inspected. A preview ID plus payload digest binds the request to the retained artifact; replacement invalidates the older candidate, project release drops the service with the graph, and process exit erases everything. Labels and learner understanding default off and each included choice earns its own acknowledgement after the exact canonical JSON is visible. `Cache-Control: no-store`, rejected unknown/form fields, and an explicit `upload_available: false` keep the local HTTP seam narrow. The exposure ledger and artifact seal use ruri interaction semantics rather than amber, which remains understanding-only. Chromium proves the desktop journey, WebKit proves the observed 320 px journey, and the maintained Chromium reach gate proves the compact scroll cue; no provider, persistent state, bearer link, network upload, tag, or release enters this slice. |
 | 2026-08-26 | M20 begins with one local `ShareArtifact` seam and no storage adapter: fresh per-artifact IDs plus graph-owned opaque placement, separate label/understanding opt-ins, a required absolute expiry capped at 30 days, and a source-safe manifest whose digest covers the exact RFC 8785 payload | `/api/graph` contains local-only paths, hashes, snippets, line evidence, external targets, learner state, and fixed source-ID-derived coordinates, so uploading it or filtering it in a caller would make privacy depend on every future call site. The deep module keeps allowlisting, keyed remapping, collision-aware re-layout, derived-truth validation, provenance, and canonicalization in one test surface. Labels-off is explicitly not anonymity: topology and orbit structure remain fingerprints. The primary-source contract requires independent view/delete capabilities, inert GET, idempotent revocation, finite purge deadlines, token-safe delivery, and authenticated storage later; no provider, route, account, or cloud request enters this slice. |
 | 2026-08-26 | The v0.22.0 public surface keeps the approved Formal Edo Workbench and real product captures; this refresh tightens route truth, completes registry-checked nine-language installation coverage, adds explicit local-server recovery, and makes landing metadata canonical from one source | The full live/source pass found no visual redesign gap or release-ledger drift, so replacing the proven landing would add churn rather than clarity. It did find one concrete contradiction: Installation listed only the first seven languages' extensions while every other current surface says nine. “Fly through” and a guaranteed Home-to-surface route also outran the bounded camera and proof-break contract. The corrected copy, active-server-first recovery path, metadata and image-alt parity gate, parser-registry documentation test, and current-version checks improve first-run trust without changing package code, the app, brand, published release bytes, or fixed tag. `README.md` feeds future wheel metadata, and the tracked documentation test changes a future source archive, so locally rebuilt artifacts would differ from published v0.22.0. The test skips only when the intentionally excluded docs tree is absent from an extracted sdist. A fresh schema-4 v0.22.0 source run retains all 5,000 modules / 4,999 routes and passes Chromium/WebKit budgets with 99 DOM elements and zero compact overflow. |
 | 2026-08-25 | v0.22.0 becomes stable only after the luminous Galaxy candidate passes exactly two council rounds and the complete tag-first outside-in release sequence | Annotated tag `v0.22.0` (`a3a2c5d`) peels to exact candidate commit `407a8aa`; PR #42 CI `32928613735`, trusted publish `32929397290`, main CI `32929522840`, and Pages `32929522861` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on wheel `ae8af55b…f0b25` and sdist `0bdba3e4…0e77`; a cold Python 3.12 install reports 0.22.0 and carries `index-C3498IDT.js` plus `index-ZndcOj-s.css`. Obscura and the maintained responsive-site gate prove the deployed v0.22.0 Pages surface. Native Safari proves the semantic Galaxy-to-System interaction but not the WebGL capture; Chromium/WebKit own that visual claim. This evidence-only follow-up must never move the fixed release tag. |

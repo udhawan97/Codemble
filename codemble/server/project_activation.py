@@ -14,6 +14,7 @@ from codemble.checks import CheckService
 from codemble.graph import build_map
 from codemble.llm.study import StudyService
 from codemble.server.parse_job import ParseJob
+from codemble.share import SharePreviewService
 
 ParseRunner = Callable[[Callable[[], None]], None]
 
@@ -38,6 +39,9 @@ class LiveProject:
     ) -> None:
         self.checks = checks or CheckService(graph)
         self.studies = studies or StudyService.from_environment(graph)
+        # Local and process-only. Releasing the LiveProject drops the retained
+        # candidate, so a preview can never drift into the next selected folder.
+        self.share_previews = SharePreviewService()
         # CheckService may restore a persisted, still parser-ranked Home while
         # it starts. Study owns its own journey index, so synchronize it with
         # that restored graph before either API surface can answer; otherwise
@@ -87,6 +91,27 @@ class LiveProject:
             self._graph = None
             self._graph_json = None
             self._map_json = None
+
+    def create_share_preview(
+        self,
+        *,
+        lifetime_days: int,
+        include_labels: bool,
+        include_understanding: bool,
+    ) -> dict[str, object]:
+        """Compile the current hydrated graph into one retained local preview."""
+
+        return self.share_previews.create(
+            self._hydrated(),
+            lifetime_days=lifetime_days,
+            include_labels=include_labels,
+            include_understanding=include_understanding,
+        )
+
+    def release(self) -> None:
+        """Invalidate process-local state that must not outlive this project."""
+
+        self.share_previews.close()
 
     def _hydrated(self) -> Graph:
         with self._lock:
@@ -196,8 +221,11 @@ class ProjectActivation:
 
         with self._lock:
             previous = self._job
+            project = self._project
             self._job = self._new_job()
             self._project = None
+        if project is not None:
+            project.release()
         previous.cancel(timeout)
 
     def progress(self) -> dict[str, object]:

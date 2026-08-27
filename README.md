@@ -238,9 +238,9 @@ project:
 
 | Horizon | Work |
 | --- | --- |
-| **Now** | Collect unaided learner evidence and correctness reports on v0.22.0 |
-| **Next** | Design the privacy boundary for the planned read-only galaxy link |
-| **Later** | Read-only sharing, new quest types, and a coordinated public launch |
+| **Now** | Build and prove the privacy boundary for the planned read-only galaxy link; current source stops at an exact local preview and confirmation |
+| **Next** | Add independently revocable, expiring delivery only after the remaining privacy gates pass |
+| **Later** | New quest types and a coordinated public launch |
 
 Milestones move only when their acceptance evidence exists. See the
 [public roadmap](https://udhawan97.github.io/Codemble/roadmap/).

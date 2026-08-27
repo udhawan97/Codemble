@@ -10,7 +10,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   immutable read-only snapshot with per-artifact keyed IDs, source-ID-independent
   collision-aware placement, RFC 8785 canonical bytes, an exact payload digest,
   source-safe provenance, and an absolute expiry capped at 30 days. It adds no
-  upload, provider, server route, account, or cloud request.
+  upload, provider, account, or cloud request.
+- A local share workbench now makes the privacy boundary visible before delivery:
+  choose a one-, seven-, or thirty-day lifetime, opt into names and learner
+  understanding separately, inspect the exact canonical artifact and its digest,
+  then acknowledge only the fields present. Its same-origin preview and
+  confirmation routes retain one candidate in process memory and expose no upload
+  capability.
 
 ### Privacy
 - Raw source, snippets, filesystem paths, dedicated filename metadata, file
@@ -20,6 +26,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   false-by-default publisher choices. The compiler closes language/schema/value
   bounds, rejects contradictory or incomplete certain relationships, recomputes
   Home/routes/orbits over represented edges, and deduplicates viewer marks.
+- Preview and confirmation responses are `no-store`, accept strict JSON bodies,
+  bind confirmation to the current preview ID and payload digest, and disappear
+  with the active project or process. A confirmed preview creates no link and
+  performs no outbound or cloud request.
 
 ## [0.22.0] - 2026-08-25
 

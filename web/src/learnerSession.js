@@ -31,6 +31,12 @@ export function createLearnerSession({
     explanationLoading: false,
     explanationError: "",
     showChart: false,
+    sharePreviewOpen: false,
+    sharePreviewData: null,
+    sharePreviewLoading: false,
+    sharePreviewConfirming: false,
+    sharePreviewError: "",
+    sharePreviewConfirmation: null,
     studiedNodeIds: new Set(),
     // The explorer's trail. Persisted server-side, unlike studiedNodeIds above
     // which is deliberately session-local: flying somewhere is a fact about
@@ -86,6 +92,7 @@ export function createLearnerSession({
   let entrypointController = null;
   let mapController = null;
   let modeController = null;
+  let sharePreviewController = null;
   let illuminationTimer = null;
 
   function getSnapshot() {
@@ -276,6 +283,124 @@ export function createLearnerSession({
     return reloaded;
   }
 
+  function openSharePreview() {
+    commit({
+      sharePreviewOpen: true,
+      sharePreviewData: null,
+      sharePreviewLoading: false,
+      sharePreviewConfirming: false,
+      sharePreviewError: "",
+      sharePreviewConfirmation: null,
+    });
+  }
+
+  function closeSharePreview() {
+    abortController(sharePreviewController);
+    sharePreviewController = null;
+    commit({
+      sharePreviewOpen: false,
+      sharePreviewData: null,
+      sharePreviewLoading: false,
+      sharePreviewConfirming: false,
+      sharePreviewError: "",
+      sharePreviewConfirmation: null,
+    });
+  }
+
+  async function createSharePreview(selection) {
+    const requestLifecycle = lifecycle;
+    abortController(sharePreviewController);
+    sharePreviewController = new AbortController();
+    const controller = sharePreviewController;
+    commit({
+      sharePreviewLoading: true,
+      sharePreviewConfirming: false,
+      sharePreviewData: null,
+      sharePreviewError: "",
+      sharePreviewConfirmation: null,
+    });
+    try {
+      const preview = await adapter.createSharePreview(selection, {
+        signal: controller.signal,
+      });
+      if (
+        requestLifecycle !== lifecycle ||
+        controller.signal.aborted ||
+        !snapshot.sharePreviewOpen
+      ) {
+        return undefined;
+      }
+      commit({ sharePreviewData: preview, sharePreviewLoading: false });
+      return preview;
+    } catch (requestError) {
+      if (
+        sharePreviewController === controller &&
+        requestLifecycle === lifecycle &&
+        !controller.signal.aborted &&
+        snapshot.sharePreviewOpen &&
+        !isAbortError(requestError)
+      ) {
+        commit({
+          sharePreviewLoading: false,
+          sharePreviewError: errorMessage(requestError),
+        });
+      }
+      return undefined;
+    }
+  }
+
+  async function confirmSharePreview(acknowledgement) {
+    const preview = snapshot.sharePreviewData;
+    if (!preview) return undefined;
+    const requestLifecycle = lifecycle;
+    abortController(sharePreviewController);
+    sharePreviewController = new AbortController();
+    const controller = sharePreviewController;
+    commit({
+      sharePreviewConfirming: true,
+      sharePreviewError: "",
+      sharePreviewConfirmation: null,
+    });
+    try {
+      const confirmation = await adapter.confirmSharePreview(
+        {
+          preview_id: preview.preview_id,
+          payload_digest: preview.payload_digest,
+          reviewed: acknowledgement.reviewed,
+          labels_confirmed: acknowledgement.labelsConfirmed,
+          understanding_confirmed: acknowledgement.understandingConfirmed,
+        },
+        { signal: controller.signal },
+      );
+      if (
+        requestLifecycle !== lifecycle ||
+        controller.signal.aborted ||
+        !snapshot.sharePreviewOpen
+      ) {
+        return undefined;
+      }
+      commit({
+        sharePreviewConfirming: false,
+        sharePreviewConfirmation: confirmation,
+      });
+      return confirmation;
+    } catch (requestError) {
+      if (
+        sharePreviewController === controller &&
+        requestLifecycle === lifecycle &&
+        !controller.signal.aborted &&
+        snapshot.sharePreviewOpen &&
+        !isAbortError(requestError)
+      ) {
+        commit({
+          sharePreviewConfirming: false,
+          sharePreviewError: errorMessage(requestError),
+        });
+      }
+      return undefined;
+    }
+  }
+
   async function resetProject() {
     if (!(await projectMapping.reset())) return snapshot;
     cancelStudy();
@@ -294,6 +419,8 @@ export function createLearnerSession({
     // next project's already-loading session.
     abortController(modeController);
     modeController = null;
+    abortController(sharePreviewController);
+    sharePreviewController = null;
     commit({
       graph: null,
       parseProgress: null,
@@ -307,6 +434,12 @@ export function createLearnerSession({
       explanationError: "",
       explanationLoading: false,
       showChart: false,
+      sharePreviewOpen: false,
+      sharePreviewData: null,
+      sharePreviewLoading: false,
+      sharePreviewConfirming: false,
+      sharePreviewError: "",
+      sharePreviewConfirmation: null,
       studiedNodeIds: new Set(),
       showChecks: false,
       checkData: null,
@@ -355,6 +488,16 @@ export function createLearnerSession({
       case "HIDE_CHART":
         commit({ showChart: false });
         return undefined;
+      case "OPEN_SHARE_PREVIEW":
+        openSharePreview();
+        return undefined;
+      case "CLOSE_SHARE_PREVIEW":
+        closeSharePreview();
+        return undefined;
+      case "CREATE_SHARE_PREVIEW":
+        return createSharePreview(event.selection);
+      case "CONFIRM_SHARE_PREVIEW":
+        return confirmSharePreview(event.acknowledgement);
       case "OPEN_CHECKS":
         return openChecks();
       case "CLOSE_CHECKS":
@@ -956,6 +1099,7 @@ export function createLearnerSession({
       entrypointController,
       mapController,
       modeController,
+      sharePreviewController,
     ]) {
       abortController(controller);
     }
@@ -967,6 +1111,7 @@ export function createLearnerSession({
     entrypointController = null;
     mapController = null;
     modeController = null;
+    sharePreviewController = null;
     unsubscribeProjectMapping();
     projectMapping.dispose();
     if (illuminationTimer !== null) {
@@ -1104,6 +1249,26 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
     fetchLlmStatus(options = {}) {
       return request("/api/llm/status", "Model status", options);
     },
+    createSharePreview(selection, options = {}) {
+      return request("/api/share/preview", "Share preview", {
+        ...options,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lifetime_days: selection.lifetimeDays,
+          include_labels: selection.includeLabels,
+          include_understanding: selection.includeUnderstanding,
+        }),
+      });
+    },
+    confirmSharePreview(acknowledgement, options = {}) {
+      return request("/api/share/confirm", "Share preview confirmation", {
+        ...options,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(acknowledgement),
+      });
+    },
     resetProject(options = {}) {
       return request("/api/picker/reset", "Project reset", {
         ...options,
@@ -1180,6 +1345,8 @@ export function createInMemoryLearnerSessionAdapter({
   picker = null,
   llmStatus = null,
   map = null,
+  sharePreview = null,
+  shareConfirmation = null,
   mode,
   modeChosen: initialModeChosen = false,
 }) {
@@ -1258,6 +1425,22 @@ export function createInMemoryLearnerSessionAdapter({
           },
         }
       );
+    },
+    async createSharePreview(selection, options = {}) {
+      throwIfAborted(options.signal);
+      if (typeof sharePreview === "function") return sharePreview(selection);
+      if (sharePreview === null) throw new Error("No in-memory share preview fixture.");
+      return sharePreview;
+    },
+    async confirmSharePreview(acknowledgement, options = {}) {
+      throwIfAborted(options.signal);
+      if (typeof shareConfirmation === "function") {
+        return shareConfirmation(acknowledgement);
+      }
+      if (shareConfirmation === null) {
+        throw new Error("No in-memory share confirmation fixture.");
+      }
+      return shareConfirmation;
     },
     async loadPickerState(options = {}) {
       throwIfAborted(options.signal);

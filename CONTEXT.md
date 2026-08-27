@@ -52,3 +52,17 @@ render-ready graph. Its small interface owns CSPRNG-seeded per-artifact IDs and
 source-ID-independent graph-owned placement, the exact allowlist, explicit
 label/understanding choices, absolute expiry, RFC 8785 bytes, provenance, and
 payload integrity; no storage or network adapter exists yet.
+
+## Share Preview
+
+The one in-memory candidate compiled from the active project's current hydrated
+graph. It exposes the exact canonical artifact, expiry, payload digest, and an
+exposure ledger through same-origin loopback routes. A replacement invalidates
+the prior candidate; expiry, project release, or process exit invalidates it.
+
+## Share Confirmation
+
+A local acknowledgement bound to the current preview identity and payload
+digest. Review is mandatory, and label/understanding acknowledgements must match
+the artifact's two opt-ins exactly. Confirmation grants no upload authority,
+creates no bearer link, and writes no persistent state.

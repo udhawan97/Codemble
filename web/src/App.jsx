@@ -11,6 +11,7 @@ import { GalaxyCanvas } from "./GalaxyCanvas.jsx";
 import { CoachMarks, HintChip } from "./GuidanceLayer.jsx";
 import { MapView } from "./MapView.jsx";
 import { ModeControl } from "./ModeControl.jsx";
+import { SharePreviewDialog } from "./SharePreviewDialog.jsx";
 import { StudyPanel } from "./StudyPanel.jsx";
 import { SystemNavigator } from "./SystemNavigator.jsx";
 import {
@@ -43,6 +44,7 @@ export function App() {
   const modulesTriggerRef = useRef(null);
   const finderTriggerRef = useRef(null);
   const finderReturnRef = useRef(null);
+  const shareTriggerRef = useRef(null);
   const finderArrivalRef = useRef(false);
   const systemNavigatorArrivalRef = useRef(false);
   const chartTriggerRef = useRef(null);
@@ -208,11 +210,22 @@ export function App() {
     showAll,
     showChart,
     showChecks,
+    sharePreviewConfirmation,
+    sharePreviewConfirming,
+    sharePreviewData,
+    sharePreviewError,
+    sharePreviewLoading,
+    sharePreviewOpen,
     sidebarOpen,
     status,
     studyData,
     studyError,
   } = state;
+
+  function closeSharePreview() {
+    session.dispatch({ type: "CLOSE_SHARE_PREVIEW" });
+    restoreRailFocus(shareTriggerRef, mobileMenuRef);
+  }
 
   // The first-run dialog has no opener to restore. Wait for the successful
   // free-launch state to commit, then enter the rendered application surface.
@@ -743,10 +756,11 @@ export function App() {
                 913px on this project and the widest column the desktop rail
                 can offer them is 522px, so they wrapped to two 44px lines and
                 the header spent 221px of a 720px viewport. Change Home is
-                first-run calibration and Switch project is once per project,
-                so these are the two that yield; Modules, Find, the level exit
-                and Star chart stay permanent, as global surfaces. Compact is
-                unaffected -- there this group is simply more of the Menu. */}
+                first-run calibration, Share preview is a deliberate handoff,
+                and Switch project is once per project, so these yield;
+                Modules, Find, the level exit and Star chart stay permanent,
+                as global surfaces. Compact is unaffected -- there this group
+                is simply more of the Menu. */}
             <div className="rail-more">
               {graph.entrypoint_candidates.length ? (
                 <button
@@ -757,6 +771,14 @@ export function App() {
                   Change Home
                 </button>
               ) : null}
+              <button
+                ref={shareTriggerRef}
+                className="rail-action"
+                type="button"
+                onClick={() => session.dispatch({ type: "OPEN_SHARE_PREVIEW" })}
+              >
+                Share preview
+              </button>
               <SwitchProject onConfirm={() => session.dispatch({ type: "RESET_PROJECT" })} />
             </div>
             <div className="rail-controls">
@@ -1205,6 +1227,23 @@ export function App() {
           onClose={closeFinder}
         />
       ) : null}
+      {sharePreviewOpen ? (
+        <SharePreviewDialog
+          preview={sharePreviewData}
+          loading={sharePreviewLoading}
+          confirming={sharePreviewConfirming}
+          error={sharePreviewError}
+          confirmation={sharePreviewConfirmation}
+          onCreate={(selection) =>
+            session.dispatch({ type: "CREATE_SHARE_PREVIEW", selection })
+          }
+          onConfirm={(acknowledgement) =>
+            session.dispatch({ type: "CONFIRM_SHARE_PREVIEW", acknowledgement })
+          }
+          onRestart={() => session.dispatch({ type: "OPEN_SHARE_PREVIEW" })}
+          onClose={closeSharePreview}
+        />
+      ) : null}
       {/* Guidance waits for the first-run decisions to finish. It used to
           render behind the audience gate and beside the required Home
           calibration, recommending a target "because no import route reaches
@@ -1217,7 +1256,12 @@ export function App() {
           viewport to say "Read it before proving it" to somebody already
           proving it -- while the panel it was crowding showed 33% of its own
           content and opened with the question below the fold. */}
-      {!showChart && !showChecks && modeChosen === true && !entrypointOpen && coachmarksSeen ? (
+      {!showChart &&
+      !showChecks &&
+      !sharePreviewOpen &&
+      modeChosen === true &&
+      !entrypointOpen &&
+      coachmarksSeen ? (
         <HintChip
           hint={hint}
           onFollow={followHint}
