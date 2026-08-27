@@ -4,9 +4,10 @@ description: Run Codemble v0.22.0 and configure optional narration.
 ---
 
 :::note[One current version]
-The packaged app, current source, screenshots, and these instructions all match
-**v0.22.0**. [Download the wheel or source archive](/Codemble/download/) when
-you do not want the one-command route.
+The published package, screenshots, and these instructions describe **v0.22.0**.
+The current application source preserves that user-facing behavior; this
+checkout may also contain post-release documentation. [Download the wheel or
+source archive](/Codemble/download/) when you do not want the one-command route.
 :::
 
 ## Requirements
@@ -56,6 +57,25 @@ uvx --from codemble==0.22.0 codemble ./your-project
 ```
 
 The package contains the production web app, so Node.js is not required.
+Keep the terminal process open while you use Codemble; it is the local server
+for that browser tab. Press `Ctrl-C` in the terminal when you are finished.
+
+## If the browser does not open
+
+The active server already prints an `Open http://127.0.0.1:PORT` loopback URL in
+the terminal. Leave that process running and open its printed URL in your
+browser. On a future launch, after stopping the current server with `Ctrl-C`,
+you can suppress automatic browser opening and copy the new printed URL
+yourself:
+
+```bash
+uvx --from codemble==0.22.0 codemble --no-open
+```
+
+If the 3D galaxy reports that WebGL is unavailable, use the flat **Map** layer;
+it keeps the complete parser-owned diagram without WebGL. If project selection
+reports more than 5,000 supported files, choose one of the offered
+subdirectories or pass `--path ./project/src`.
 
 ## Build an editable checkout
 
@@ -125,4 +145,4 @@ parser-owned.
   scripts, compilers, or bundlers.
 
 Supported extensions are `.py`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`,
-`.mts`, `.cts`, `.go`, `.java`, `.rs`, and `.cs`.
+`.mts`, `.cts`, `.go`, `.java`, `.rs`, `.cs`, `.rb`, and `.php`.

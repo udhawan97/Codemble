@@ -4,8 +4,9 @@ description: From one command to your first lit star system.
 ---
 
 :::note[This quickstart matches v0.22.0]
-The one-command package, current source, and screenshots all cover the same
-nine-language app. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
+The published one-command package and screenshots cover the same nine-language
+v0.22.0 app. The current application source preserves that user-facing
+behavior. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
 :::
 
 ## 1. Install uv
@@ -43,6 +44,8 @@ Codemble parses locally, chooses a free localhost port, and opens the galaxy.
 It keeps syntax-error files visible and labels unresolved calls instead of
 guessing. Use `--no-open` when you want to copy the printed URL yourself.
 Codemble reads supported source; it never runs your project or package scripts.
+Keep that terminal process open while you explore; press `Ctrl-C` there to stop
+the local server when you are done.
 
 For a project above 5,000 supported source files, the picker offers the
 busiest-first subdirectories as buttons and accepts a typed path, right in the
@@ -112,7 +115,7 @@ only views: neither alters coordinates, progress, or graph evidence.
 | --- | --- | --- |
 | **Galaxy** | Source modules as visible, colourful star systems; imports as routes | Orientation |
 | **Solar system** | The module anchor as its Sun; named functions and classes as language-styled worlds in parser-owned call placement; certain and possible imports as neighbouring systems | Structure and continuation |
-| **Study** | A landing brief, parser-proven route from Home, real source, integrated Impact and Connections, and optional grounded narration | Learning one feature in application context |
+| **Study** | A landing brief, parser-owned evidence from Home as far as it reaches, a visible proof break and separate possible frontier when it does not, real source, integrated Impact and Connections, and optional grounded narration | Learning one feature without inventing a route |
 
 | Map tab | What you see | What it's for |
 | --- | --- | --- |

@@ -4,7 +4,8 @@
  *
  * Macrostructure: Hallmark Workbench. Real product captures lead; the Formal
  * Edo system supplies material and typography without turning the site into a
- * decorative atlas. The current product and packaged release are both v0.22.0.
+ * decorative atlas. The current product and packaged release share the version
+ * recorded in release.json.
  */
 import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
@@ -18,6 +19,13 @@ const icon = (name: string) => `${base}/brand/icons/${name}.svg`;
 const shot = (name: string) => `${base}/shots/${name}`;
 
 const REPO = "https://github.com/udhawan97/Codemble";
+const PUBLIC_URL = "https://udhawan97.github.io/Codemble/";
+const META_TITLE = "Codemble — explore the code AI left behind";
+const META_DESCRIPTION =
+  "Explore a local codebase as a parser-proven galaxy or architecture diagram, then light only what you prove you understand.";
+const SOCIAL_IMAGE = "https://udhawan97.github.io/Codemble/brand/social-card.png";
+const SOCIAL_IMAGE_ALT =
+  "Codemble's luminous code galaxy with colourful language systems and parser-owned routes.";
 const VERSION = release.version;
 const RELEASE = release.releaseUrl;
 const WHEEL = release.wheel.url;
@@ -73,24 +81,23 @@ const contract = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Codemble — explore the code AI left behind</title>
-    <meta
-      name="description"
-      content="Codemble maps a local codebase into a parser-proven galaxy and architecture diagram, then lights only what you prove you understand."
-    />
+    <title>{META_TITLE}</title>
+    <meta name="description" content={META_DESCRIPTION} />
+    <link rel="canonical" href={PUBLIC_URL} />
     <link rel="icon" href={`${base}/favicon.svg`} />
     <link rel="apple-touch-icon" href={`${base}/brand/icon-180.png`} />
     <meta name="theme-color" content="#070b1c" />
-    <meta property="og:title" content="Codemble — your code, mapped" />
-    <meta
-      property="og:description"
-      content="Explore the code AI left behind. Local-first, parser-proven, and honest about what it cannot know."
-    />
-    <meta
-      property="og:image"
-      content="https://udhawan97.github.io/Codemble/brand/social-card.png"
-    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={PUBLIC_URL} />
+    <meta property="og:title" content={META_TITLE} />
+    <meta property="og:description" content={META_DESCRIPTION} />
+    <meta property="og:image" content={SOCIAL_IMAGE} />
+    <meta property="og:image:alt" content={SOCIAL_IMAGE_ALT} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={META_TITLE} />
+    <meta name="twitter:description" content={META_DESCRIPTION} />
+    <meta name="twitter:image" content={SOCIAL_IMAGE} />
+    <meta name="twitter:image:alt" content={SOCIAL_IMAGE_ALT} />
 
     <script is:inline>
       (() => {
@@ -149,9 +156,9 @@ const contract = [
           <h1>Explore the code AI left behind.</h1>
           <p class="hero-lede">
             Codemble reads a project on your machine and turns its real structure
-            into a galaxy you can fly through or a diagram you can follow. Study
-            any feature from Home to its application surface, see what a change
-            reaches, and light only what you prove you understand.
+            into a galaxy you can explore or a diagram you can follow. Study real
+            source, trace parser-proven routes as far as the evidence goes, see what
+            a change reaches, and light only what you prove you understand.
           </p>
           <div class="hero-actions">
             <a class="button button-primary" href="#download">
@@ -184,7 +191,7 @@ const contract = [
           >
             <img
               src={shot("galaxy.png")}
-              alt="Codemble v0.22.0 showing 217 visible, colourful systems across Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, and PHP in a luminous spiral galaxy, with parser-proven routes, ranked labels, 37 charted systems, eight unreadable fixtures, and Home resolved to codemble.cli without amber understanding light."
+              alt={`Codemble v${VERSION} showing 217 visible, colourful systems across Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, and PHP in a luminous spiral galaxy, with parser-proven routes, ranked labels, 37 charted systems, eight unreadable fixtures, and Home resolved to codemble.cli without amber understanding light.`}
               width="1440"
               height="720"
               fetchpriority="high"
@@ -377,7 +384,7 @@ codemble</code></pre>
           </details>
           <details>
             <summary>Are these screenshots from the downloadable app?</summary>
-            <p>Yes. The captures, PyPI package, and current source all report v{VERSION}. Each frame is reproduced from the real local app, not a mockup.</p>
+            <p>Yes. The captures and published PyPI package report v{VERSION}; the current application source preserves that user-facing behavior. Each frame is reproduced from the real local app, not a mockup.</p>
           </details>
           <details>
             <summary>What happens when Codemble cannot prove a relationship?</summary>

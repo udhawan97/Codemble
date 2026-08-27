@@ -8,6 +8,8 @@
  */
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const shot = (file: string) => `${base}/shots/${file}`;
+import release from "../../release.json";
+const VERSION = release.version;
 
 const scenes = [
   {
@@ -17,7 +19,7 @@ const scenes = [
     body: "All 217 systems are visible and colourful on the first frame inside a luminous deterministic sky. Free exploration keeps the whole project alive; a guided First Flight may quiet distant context while it teaches one parser-owned route.",
     image: "galaxy.png",
     focus: "center",
-    alt: "Codemble v0.22.0 galaxy with 217 visible, colourful systems across nine languages, a luminous spiral starfield, parser-proven route corridors, ranked labels, 37 charted systems, and Home resolved to codemble.cli without amber understanding light.",
+    alt: `Codemble v${VERSION} galaxy with 217 visible, colourful systems across nine languages, a luminous spiral starfield, parser-proven route corridors, ranked labels, 37 charted systems, and Home resolved to codemble.cli without amber understanding light.`,
   },
   {
     id: "map",
@@ -41,7 +43,7 @@ const scenes = [
     id: "impact",
     label: "Inspect",
     title: "Follow the feature route before a model speaks.",
-    body: "Study leads with one parser-owned journey from Home to the selected feature. Easy guides a cited step; Expert keeps that step and adds its parser rule, while selected-feature impact, connections, and test candidates stay clearly scoped.",
+    body: "Study follows parser-owned evidence only as far as it reaches from Home toward the selected feature. A visible proof break stops the journey before any separate possible frontier. Easy guides a cited step; Expert keeps that step and adds its parser rule, while selected-feature impact, connections, and test candidates stay clearly scoped.",
     image: "study-impact.png",
     focus: "end",
     alt: "Codemble Expert study panel for the server app module, scrolled to integrated Impact over the Architecture map.",
@@ -80,7 +82,7 @@ const scenes = [
         ))
       }
     </div>
-    <p class="journey-caption"><span>Codemble v0.22.0</span><span>same project · same Home</span></p>
+    <p class="journey-caption"><span>Codemble v{VERSION}</span><span>same project · same Home</span></p>
   </div>
 
   <ol class="journey-steps">
