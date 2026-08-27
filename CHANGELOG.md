@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Added
+- A local `ShareArtifact` interface now compiles the render-ready graph into an
+  immutable read-only snapshot with per-artifact keyed IDs, source-ID-independent
+  collision-aware placement, RFC 8785 canonical bytes, an exact payload digest,
+  source-safe provenance, and an absolute expiry capped at 30 days. It adds no
+  upload, provider, server route, account, or cloud request.
+
+### Privacy
+- Raw source, snippets, filesystem paths, dedicated filename metadata, file
+  hashes, source positions, external targets, narration/provider data, checks,
+  visits, recents, and logs are excluded. Source-derived labels (which can still
+  reveal file or module names) and learner understanding are separate,
+  false-by-default publisher choices. The compiler closes language/schema/value
+  bounds, rejects contradictory or incomplete certain relationships, recomputes
+  Home/routes/orbits over represented edges, and deduplicates viewer marks.
+
 ## [0.22.0] - 2026-08-25
 
 ### Added

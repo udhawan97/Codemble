@@ -33,6 +33,10 @@ dependencies = [
   # is `anyio>=3.6.2,<5` and therefore permits exactly that.
   "anyio>=4.1",
   "fastapi>=0.115",
+  # Share artifacts are hashed over standards-compliant RFC 8785 bytes. Keep
+  # float, negative-zero, and Unicode property ordering in one dedicated
+  # implementation; conformance vectors pin the byte contract locally.
+  "rfc8785>=0.1.4,<0.2",
   # Hard upper bound, not caution, and re-verified against every shipped
   # grammars now shipped. tree-sitter 0.26.0 SIGSEGVs (exit 139) inside the
   # JS/TS adapter; 0.25.2 parses the same tree cleanly.

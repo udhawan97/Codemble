@@ -204,21 +204,22 @@ The audience cannot detect when the tool is wrong. Therefore:
 
 ## Roadmap — NOW / NEXT / LATER
 
-**NOW — the explorable galaxy, then tester evidence.** The 2026-08-02 redesign
-(spec: `docs/superpowers/specs/2026-08-02-explorable-galaxy-redesign.md`) is
-approved in four phases: Rescue (reliability), Sky (exploration), Teacher
-(learning revamp), Languages. The first three have shipped. Phase 1 tester
-evidence continues in parallel — exercise the loop on real learner projects.
-The v0.1.0 Python learner-acceptance issue stays open; technical completion
-does not claim those external runs passed.
+**NOW — the privacy boundary for read-only sharing.** UD promoted M20 on
+2026-08-26. Its first slice defines the complete source-exclusion, provenance,
+expiry, and deletion contract and compiles one canonical local artifact with
+per-artifact keyed identities and source-ID-independent graph-owned placement
+before any provider, upload route, or cloud authority exists. Phase 1 tester
+evidence continues in parallel — the v0.1.0 Python learner-acceptance issue
+stays open, and technical completion does not claim those external runs passed.
 
-**NEXT — the privacy boundary for read-only sharing.** The parser and scale
-slate is now complete through the v0.21.1 candidate: Python's call resolution
-and lens (v0.11.0), JS/TS builtin classification and entrypoint ranking
-(v0.12.0), bounded parser evidence (v0.19.0), Ruby/PHP parsing (v0.21.1), and a
-complete canvas Map that passes the 5,000-module backend, Chromium, and WebKit gate. The next build phase
-must define provenance, expiry, deletion, and source-exclusion for the planned
-shareable read-only galaxy link before adding its only cloud touch.
+**NEXT — accountless share delivery after the privacy gates.** The parser and
+scale slate is complete through v0.22.0: nine languages, bounded parser
+evidence, and a complete canvas Map that passes the 5,000-module backend,
+Chromium, and WebKit gate. Delivery may begin only after the exact local preview
+and explicit exposure confirmation exist. The provider-neutral design then
+needs independent view/delete capabilities, immutable expiry, active and backup
+purge deadlines, authenticated source-free storage, token-safe HTTP/browser
+delivery, and operational deletion proof.
 
 The prior scale decisions remain recorded because the measurements are reusable:
 
@@ -246,23 +247,39 @@ refused on the evidence.** Recorded because the measurements are reusable:
 The canvas Map changes delivery only: every module remains represented,
 searchable, keyboard reachable, and recoverable; logical LOD that hides modules
 is still not acceptable. The ordinary cap is 5,000 after the schema-4 candidate
-gate passed both engines. Phase 3 remains the shareable read-only galaxy link
-and extra quest types.
+gate passed both engines.
 
-**LATER — Phase 3 (months ~7–9).** Shareable read-only galaxy link (the only
-cloud touch). Extra quest types: trace-a-request, fix-the-failing-test.
-Polish, then the coordinated launch (Show HN / X; lit-galaxy GIF as hero).
+**LATER — learning depth and launch.** Extra quest types: trace-a-request and
+fix-the-failing-test. Polish, then the coordinated launch (Show HN / X;
+lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Current milestone: M19 luminous galaxies and living solar systems** · Last
-updated: 2026-08-25 · Session note: verified stable v0.22.0 keeps every system
-colourful and legible in free Explore, turns the parser-owned module anchor into
-the System Sun, names every structure world, gives each parsed language a
-deterministic visual character, and exposes parser-owned neighbouring imports without
-changing certainty, checks, progression, or the bounded camera.
+**Current milestone: M20 private read-only share foundation** · Last updated:
+2026-08-26 · Session note: the first local-only slice defines the privacy
+contract and compiles the render-ready graph into one canonical raw-source-free
+artifact. Fresh CSPRNG-seeded identities plus graph-owned layout over the opaque
+graph prevent the fixed-coordinate label oracle; labels and learner understanding
+require separate explicit choices;
+provenance and a 30-day maximum absolute expiry travel with the bytes. No upload,
+server route, provider, account, deployment, or cloud request exists.
 
-**The implementation loop and full release gate are complete.**
+**The local artifact slice is complete; delivery remains gated.** The deep
+`ShareArtifact.from_graph(graph, policy, created_at)` interface owns the closed
+allowlist, keyed remapping plus graph-owned re-layout, opt-ins, RFC 8785 bytes, manifest payload
+digest, source-safe coverage, and expiry validation. It fails closed when an
+internal node, region, Home, or closed-schema fact cannot be represented. The
+research contract and approved design separately name the future capability,
+deletion, cache, browser, storage, and operational gates; none is implied by
+this local module.
+
+Previously (2026-08-25) · Session note: verified stable v0.22.0 keeps every
+system colourful and legible in free Explore, turns the parser-owned module
+anchor into the System Sun, names every structure world, gives each parsed
+language a deterministic visual character, and exposes parser-owned neighbouring
+imports without changing certainty, checks, progression, or the bounded camera.
+
+**The M19 implementation loop and full release gate are complete.**
 Explore no longer blacks out unrelated systems during hover or selection, and
 unvisited systems retain their language atmosphere. Within a selected module,
 the safe module anchor is a central language-coloured star; functions and
@@ -1877,10 +1894,47 @@ acceptance, native Safari semantics, Hallmark, Graphify, exactly two council
 rounds, deterministic artifacts, candidate/main CI, exact-tag trusted publish,
 outside-in package proof, cold install, and Pages pass.
 
+### M20 — Private read-only share foundation (started 2026-08-26)
+- [x] Define the primary-source-backed threat model and exact requirements for
+      source exclusion, label/understanding disclosure, expiry, deletion, browser
+      delivery, logging, storage, provenance, and release evidence
+- [x] Add one local `ShareArtifact` interface with an immutable, versioned,
+      canonical RFC 8785 payload and source-safe manifest
+- [x] Replace source-derived IDs and coordinates with fresh CSPRNG-seeded,
+      HMAC-derived snapshot-local identities and run the existing collision-aware
+      layout over the opaque graph; exclude source,
+      paths, file hashes, source positions, external targets, checks, narration,
+      provider state, visits, recents, and logs
+- [x] Require separate label/understanding opt-ins, absolute future expiry, and a
+      30-day maximum; bind the exact payload digest without self-reference
+- [x] Close ordinary construction; validate schema/language/value/coverage
+      bounds; recompute centrality, routes, Home distance, and orbit meaning;
+      omit unresolved possible targets; fail on missing certain truth; deduplicate
+      viewer edges; prove fixed-entropy order invariance and fresh-ID placement
+- [ ] Preview the exact local artifact and confirm each sensitive opt-in before
+      any upload authority is available
+- [ ] Add independent unguessable view/delete capabilities, strict immutable
+      storage validation, server-enforced expiry, and confirmed idempotent
+      revocation behind a provider-neutral storage port
+- [ ] Prove no-store/no-referrer/CSP browser delivery, token-safe logs,
+      encrypted least-privilege storage, active/backup purge deadlines, and
+      deletion without resurrection before public release
+
+**Acceptance is partial:** 23 focused share-artifact cases, the full 565-test
+Python suite, repository-wide Ruff, sample-project and current self-parse
+artifact/digest/path-exclusion checks, 5,001-node/one-region and 5,000-region
+scale probes, a targeted 53,478-node/one-region acceptance, and two fresh
+5,000-region runs with greater than 43-unit minimum separation all pass.
+Wheel/sdist inclusion with the RFC 8785 runtime dependency and the refreshed
+Graphify query also pass. M20 does
+not authorize a cloud touch, claim deletion, or advance to release until every
+unchecked delivery gate is implemented and evidenced.
+
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-26 | M20 begins with one local `ShareArtifact` seam and no storage adapter: fresh per-artifact IDs plus graph-owned opaque placement, separate label/understanding opt-ins, a required absolute expiry capped at 30 days, and a source-safe manifest whose digest covers the exact RFC 8785 payload | `/api/graph` contains local-only paths, hashes, snippets, line evidence, external targets, learner state, and fixed source-ID-derived coordinates, so uploading it or filtering it in a caller would make privacy depend on every future call site. The deep module keeps allowlisting, keyed remapping, collision-aware re-layout, derived-truth validation, provenance, and canonicalization in one test surface. Labels-off is explicitly not anonymity: topology and orbit structure remain fingerprints. The primary-source contract requires independent view/delete capabilities, inert GET, idempotent revocation, finite purge deadlines, token-safe delivery, and authenticated storage later; no provider, route, account, or cloud request enters this slice. |
 | 2026-08-25 | v0.22.0 becomes stable only after the luminous Galaxy candidate passes exactly two council rounds and the complete tag-first outside-in release sequence | Annotated tag `v0.22.0` (`a3a2c5d`) peels to exact candidate commit `407a8aa`; PR #42 CI `32928613735`, trusted publish `32929397290`, main CI `32929522840`, and Pages `32929522861` are green. Fresh GitHub/PyPI bytes and `SHA256SUMS.txt` agree on wheel `ae8af55b…f0b25` and sdist `0bdba3e4…0e77`; a cold Python 3.12 install reports 0.22.0 and carries `index-C3498IDT.js` plus `index-ZndcOj-s.css`. Obscura and the maintained responsive-site gate prove the deployed v0.22.0 Pages surface. Native Safari proves the semantic Galaxy-to-System interaction but not the WebGL capture; Chromium/WebKit own that visual claim. This evidence-only follow-up must never move the fixed release tag. |
 | 2026-08-25 | System navigation reports certain and possible import counts separately, labels call roots without implying a call edge, cues every overflow, and focuses the destination System heading after travel | Two council rounds found three ways visual polish could outrun evidence: a mixed route list was collectively called proven, call roots shared a ring labelled direct calls, and the fifth route looked absent behind a silent scroller. The corrected console preserves direction and certainty in visible and accessible names; orbit plans carry both `guideCertain` and `containsCallRoots`; desktop and compact overflow state the continuation; and two consecutive fresh full runs each passed all 52 Chromium/WebKit receipts, including 320 px keyboard and reduced-motion travel. |
 | 2026-08-25 | Free Explore keeps the full galaxy luminous and colourful; guided Learning may soften unrelated context. The safe module anchor becomes the System Sun, structure worlds vary by parser-owned language, and connected-system navigation uses only existing import edges | The owner explicitly separated display/exploration from learning focus and requested a world-class solar-system metaphor. Visibility is not proof: amber remains check-only. Language is already parser evidence, so it can safely drive deterministic surface character; import direction and certainty already exist, so the nearby-systems console can improve continuation without inventing a connection. The bounded rail camera, one graph, and no-XP/non-cloud contracts remain unchanged |
@@ -2117,7 +2171,9 @@ outside-in package proof, cold install, and Pages pass.
   are no levels or streaks, and it may never light a star. Amber still comes
   only from checks
 - ❌ ~~A second 2D renderer/toggle in v1~~ — superseded 2026-07-19: the 2D Map layer is approved (see Decision Log); free-form/client-computed 2D layouts remain out
-- ❌ Accounts, cloud hosting, multi-user; share link waits for Phase 3
+- ❌ Accounts and multi-user. The read-only share is the only permitted cloud
+  touch, and it remains blocked until M20's local preview, expiry, deletion,
+  storage, browser, and operational evidence gates pass
 - ❌ Extra quest types before Phase 3
 - ❌ GitHub-URL ingestion in v1
 - ❌ ~~Elaborate game art before the loop teaches well~~ — **amended

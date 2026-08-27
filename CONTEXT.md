@@ -44,3 +44,11 @@ current pointer subject without allowing name plates to collide.
 
 The learner-facing view of the current project after language focus, proven
 progress, navigation selection, and view preferences are applied.
+
+## Share Artifact
+
+One immutable, raw-source-free read-only snapshot derived locally from the
+render-ready graph. Its small interface owns CSPRNG-seeded per-artifact IDs and
+source-ID-independent graph-owned placement, the exact allowlist, explicit
+label/understanding choices, absolute expiry, RFC 8785 bytes, provenance, and
+payload integrity; no storage or network adapter exists yet.
