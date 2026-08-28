@@ -210,7 +210,10 @@ expiry, and deletion contract and compiles one canonical local artifact with
 per-artifact keyed identities and source-ID-independent graph-owned placement
 before any provider, upload route, or cloud authority exists. Its local
 workbench now shows the exact artifact and binds explicit confirmation to that
-in-memory candidate. Phase 1 tester evidence continues in parallel — the v0.1.0
+in-memory candidate. A separate provider-neutral capability core now issues
+independent view/delete authority, rejects capability reuse, irreversibly
+tombstones observed expiry, and atomically revokes active bytes without adding
+an upload or delivery route. Phase 1 tester evidence continues in parallel — the v0.1.0
 Python learner-acceptance issue stays open, and technical completion does not
 claim those external runs passed.
 
@@ -218,10 +221,10 @@ claim those external runs passed.
 scale slate is complete through v0.22.0: nine languages, bounded parser
 evidence, and a complete canvas Map that passes the 5,000-module backend,
 Chromium, and WebKit gate. The exact local preview and explicit exposure
-confirmation now exist. The provider-neutral design still needs independent
-view/delete capabilities, immutable expiry, active and backup
-purge deadlines, authenticated source-free storage, token-safe HTTP/browser
-delivery, and operational deletion proof.
+confirmation now exist. Independent view/delete capabilities and irreversible
+local expiry are now complete. M20 still needs active and backup purge
+deadlines, authenticated source-free persistent
+storage, token-safe HTTP/browser delivery, and operational deletion proof.
 
 The prior scale decisions remain recorded because the measurements are reusable:
 
@@ -258,24 +261,32 @@ lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M20 private read-only share foundation** · Last updated:
-2026-08-26 · Session note: the local privacy workbench now compiles the active
-project into one canonical raw-source-free artifact, shows the exact bytes,
-expiry, exposure ledger, and digest, then binds confirmation to that in-memory
-candidate. Fresh CSPRNG-seeded identities plus graph-owned layout over the opaque
-graph prevent the fixed-coordinate label oracle; labels and learner understanding
-require separate explicit choices. No upload, bearer link, provider, account,
-deployment, persistent preview, or cloud request exists.
+2026-08-28 · Session note: the local privacy workbench still binds confirmation
+to one exact raw-source-free artifact, and a separate provider-neutral capability
+module now issues independent 256-bit view/delete authority over only validated
+canonical bytes. It stores derived lookups, reuse fingerprints, and
+capability-keyed record bindings rather than raw tokens, revalidates stored bytes
+and orbit meaning before every view, enforces absolute expiry from its server clock,
+irreversibly tombstones expiry once observed, and atomically removes active bytes
+on confirmed retry-safe revocation. No HTTP
+view/delete/upload route, bearer link, persistent or remote provider, account,
+deployment, or cloud request exists.
 
-**The local artifact and confirmation slices are complete; delivery remains gated.** The deep
+**The local artifact, confirmation, and capability-core slices are complete;
+HTTP and operational delivery remain gated.** The deep
 `ShareArtifact.from_graph(graph, policy, created_at)` interface owns the closed
 allowlist, keyed remapping plus graph-owned re-layout, opt-ins, RFC 8785 bytes, manifest payload
 digest, source-safe coverage, and expiry validation. It fails closed when an
 internal node, region, Home, or closed-schema fact cannot be represented. The
 project-owned preview service retains only one candidate, and strict no-store
 loopback routes plus the Formal Edo workbench expose and acknowledge it without
-upload authority. The research contract and approved design separately name the
-future capability, deletion, cache, browser, storage, and operational gates;
-none is implied by local confirmation.
+upload authority. `ShareDelivery.create/view/revoke` owns the capability lifecycle
+behind a three-operation `ShareStoragePort`; its in-memory reference adapter and
+an independent test adapter exercise create/read/revoke without coupling the
+service to the reference adapter; the reference adapter owns the atomicity. The
+research contract and approved design still gate HTTP/browser
+delivery, authenticated encrypted persistent storage, token-safe operations,
+active/backup purge deadlines, and deletion without resurrection.
 
 Previously (2026-08-25) · Session note: verified stable v0.22.0 keeps every
 system colourful and legible in free Explore, turns the parser-owned module
@@ -1937,15 +1948,15 @@ outside-in package proof, cold install, and Pages pass.
       viewer edges; prove fixed-entropy order invariance and fresh-ID placement
 - [x] Preview the exact local artifact and confirm each sensitive opt-in before
       any upload authority is available
-- [ ] Add independent unguessable view/delete capabilities, strict immutable
+- [x] Add independent unguessable view/delete capabilities, strict immutable
       storage validation, server-enforced expiry, and confirmed idempotent
       revocation behind a provider-neutral storage port
 - [ ] Prove no-store/no-referrer/CSP browser delivery, token-safe logs,
       encrypted least-privilege storage, active/backup purge deadlines, and
       deletion without resurrection before public release
 
-**Acceptance is partial:** 39 focused artifact/preview cases, the full 582-test
-Python suite, repository-wide Ruff, the complete frontend contract/build,
+**Acceptance is partial:** 61 focused artifact/preview/capability cases, the full
+604-test Python suite, repository-wide Ruff, the complete frontend contract/build,
 a live Chromium desktop exact-preview/confirmation journey, an observed WebKit
 320 px journey, and the maintained Chromium 320 px share-panel reach gate,
 documentation check/build, sample-project and current self-parse
@@ -1953,14 +1964,16 @@ artifact/digest/path-exclusion checks, 5,001-node/one-region and 5,000-region
 scale probes, a targeted 53,478-node/one-region acceptance, and two fresh
 5,000-region runs with greater than 43-unit minimum separation all pass.
 Wheel/sdist inclusion with the RFC 8785 runtime dependency and the refreshed
-Graphify update/query also pass. M20 does
-not authorize a cloud touch, claim deletion, or advance to release until every
-unchecked delivery gate is implemented and evidenced.
+Graphify update/query also pass. M20 does not authorize a cloud touch, claim
+operational erasure, or advance to release until every unchecked delivery gate
+is implemented and evidenced.
 
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-28 | **Corrects the capability-storage row below:** capability-derived view/delete record bindings authenticate the immutable metadata and artifact digest without storing either bearer secret; stored orbit meaning is independently recomputed from represented certain calls, and a valid revocation receipt remains retry-safe across a server-clock rollback | Shape and digest checks alone let a faulty adapter return self-consistent altered bytes, while a tombstone timestamp compared with the current clock made a successful revocation look invalid after rollback. Each bearer capability can authenticate only its own operation, the view binding also fixes the retained deletion binding, and semantic orbit recomputation prevents relationship-derived falsehoods before serving. Persistent encrypted/authenticated storage, purge deadlines, and operational erasure remain separate unchecked gates. |
+| 2026-08-28 | The accountless capability lifecycle is one deep `ShareDelivery.create/view/revoke` module behind a three-operation `ShareStoragePort`; view and deletion each receive independent 256-bit authority, storage sees only derived lookups/fingerprints, and the reference adapter removes active bytes atomically while retaining a non-serving tombstone for retry-safe revocation | Capability generation, strict artifact revalidation, absolute server-clock expiry, uniform invalid/expired/revoked view failure, and explicit confirmed revocation are security behavior that must not be rebuilt in HTTP routes or a future provider adapter. The in-memory adapter plus an independent recording adapter make the port real without choosing a cloud. Cross-role fingerprints prevent a token from being reassigned even if a faulty entropy source repeats it; record representations suppress raw capabilities, derived lookups, and artifact bytes. This slice adds no route, link, persistent provider, encryption claim, purge deadline, deployment, account, or cloud touch; those remain the final M20 gate. |
 | 2026-08-26 | Exact share preview and confirmation stay owned by the active project: one in-memory candidate, strict same-origin loopback JSON routes, and a three-step app workbench with no upload callback or delivery port | Confirmation is meaningful only if it refers to the same bytes the learner inspected. A preview ID plus payload digest binds the request to the retained artifact; replacement invalidates the older candidate, project release drops the service with the graph, and process exit erases everything. Labels and learner understanding default off and each included choice earns its own acknowledgement after the exact canonical JSON is visible. `Cache-Control: no-store`, rejected unknown/form fields, and an explicit `upload_available: false` keep the local HTTP seam narrow. The exposure ledger and artifact seal use ruri interaction semantics rather than amber, which remains understanding-only. Chromium proves the desktop journey, WebKit proves the observed 320 px journey, and the maintained Chromium reach gate proves the compact scroll cue; no provider, persistent state, bearer link, network upload, tag, or release enters this slice. |
 | 2026-08-26 | M20 begins with one local `ShareArtifact` seam and no storage adapter: fresh per-artifact IDs plus graph-owned opaque placement, separate label/understanding opt-ins, a required absolute expiry capped at 30 days, and a source-safe manifest whose digest covers the exact RFC 8785 payload | `/api/graph` contains local-only paths, hashes, snippets, line evidence, external targets, learner state, and fixed source-ID-derived coordinates, so uploading it or filtering it in a caller would make privacy depend on every future call site. The deep module keeps allowlisting, keyed remapping, collision-aware re-layout, derived-truth validation, provenance, and canonicalization in one test surface. Labels-off is explicitly not anonymity: topology and orbit structure remain fingerprints. The primary-source contract requires independent view/delete capabilities, inert GET, idempotent revocation, finite purge deadlines, token-safe delivery, and authenticated storage later; no provider, route, account, or cloud request enters this slice. |
 | 2026-08-26 | The v0.22.0 public surface keeps the approved Formal Edo Workbench and real product captures; this refresh tightens route truth, completes registry-checked nine-language installation coverage, adds explicit local-server recovery, and makes landing metadata canonical from one source | The full live/source pass found no visual redesign gap or release-ledger drift, so replacing the proven landing would add churn rather than clarity. It did find one concrete contradiction: Installation listed only the first seven languages' extensions while every other current surface says nine. “Fly through” and a guaranteed Home-to-surface route also outran the bounded camera and proof-break contract. The corrected copy, active-server-first recovery path, metadata and image-alt parity gate, parser-registry documentation test, and current-version checks improve first-run trust without changing package code, the app, brand, published release bytes, or fixed tag. `README.md` feeds future wheel metadata, and the tracked documentation test changes a future source archive, so locally rebuilt artifacts would differ from published v0.22.0. The test skips only when the intentionally excluded docs tree is absent from an extracted sdist. A fresh schema-4 v0.22.0 source run retains all 5,000 modules / 4,999 routes and passes Chromium/WebKit budgets with 99 DOM elements and zero compact overflow. |

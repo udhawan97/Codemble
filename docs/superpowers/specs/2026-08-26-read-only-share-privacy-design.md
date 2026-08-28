@@ -1,8 +1,8 @@
 # Read-only share privacy boundary — design spec
 
 Date: 2026-08-26 · Approved by: UD (promoted the next phase and confirmed the
-artifact seam) · Status: M20 local preview and confirmation implemented; delivery
-remains gated
+artifact seam) · Status: M20 local artifact, confirmation, and provider-neutral
+capability lifecycle implemented; HTTP and operational delivery remain gated
 
 Primary-source research and the complete future delivery contract live in
 [`docs/research/2026-08-26-read-only-share-privacy-boundary.md`](../../research/2026-08-26-read-only-share-privacy-boundary.md).
@@ -93,17 +93,35 @@ Current source adds one app workbench plus strict same-origin loopback routes fo
 preview and confirmation. They retain one exact candidate in process memory,
 return `Cache-Control: no-store`, and deliberately expose `upload_available:
 false`. Project release, replacement, or process exit discards the candidate.
-There is still no CLI publishing option, view/delete token, storage adapter,
-provider dependency, deployment, account, analytics, upload, or cloud request.
+
+Behind that still-local boundary, `ShareDelivery` now owns three operations:
+`create(artifact)`, `view(view_capability)`, and
+`revoke(delete_capability, confirmed=True)`. It issues independent 256-bit
+capabilities, stores only domain-separated derived lookups, reuse-detection
+fingerprints, and capability-keyed record bindings, validates the closed schema,
+bounds, relationships, digests, and bound storage identity on every view,
+enforces expiry from its server clock, and makes revocation atomic and retry-safe
+even across clock rollback.
+`ShareStoragePort` is the provider-neutral seam; `InMemoryShareStorage` is the
+reference adapter and an independent recording adapter exercises the same port in
+tests. Revocation immediately removes active artifact bytes while retaining a
+non-serving tombstone through expiry for idempotent confirmation.
+
+The capability module is not connected to the preview routes. There is still no
+CLI publishing option, bearer URL, HTTP view/delete endpoint, persistent or
+remote storage adapter, provider dependency, deployment, account, analytics,
+upload, or cloud request.
 
 Before any upload is authorized, M20 requires:
 
 1. **Complete:** a local preview of the exact artifact and explicit confirmation
    of label and understanding exposure;
-2. independent unguessable view and deletion capabilities;
-3. immutable storage with server-enforced expiry, inert `GET`, confirmed
-   idempotent deletion, active/back-up purge deadlines, and uniform revoked
-   responses;
+2. **Complete in the provider-neutral core:** independent unguessable view and
+   deletion capabilities, not yet exposed through HTTP;
+3. **Partial:** immutable validation, server-enforced expiry, inert core reads,
+   confirmed idempotent revocation, removal from the active in-memory adapter,
+   and uniform view failures are complete; persistent active/back-up purge
+   deadlines and deletion without resurrection remain gated;
 4. strict schema/bounds validation, HTTPS, no-store/no-referrer responses,
    restrictive CSP, no third parties, token-safe logs, encrypted least-privilege
    storage, and authenticated payload/manifest verification;
@@ -134,3 +152,9 @@ Before any upload is authorized, M20 requires:
 - The workbench remains usable at 320 px and restores focus to the rail after
   Close or Escape in Chromium and WebKit.
 - Focused tests, Ruff, full pytest, and Graphify update pass before integration.
+- Capability tests additionally prove independent generation, derived-only
+  storage values, cross-role non-reuse, inert repeated reads, uniform
+  invalid/expired/revoked view results, explicit deletion confirmation, atomic
+  retry-safe revocation, irreversible observed expiry, closed-schema and derived-
+  orbit-relationship revalidation after storage tampering, and capability-keyed
+  stored identity/metadata/digest binding for both view and revocation receipts.

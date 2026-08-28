@@ -1,9 +1,11 @@
 # Accountless read-only share: technical privacy boundary
 
 **Date:** 2026-08-26
-**Status:** requirements contract. The local artifact compiler is selected in
-`docs/superpowers/specs/2026-08-26-read-only-share-privacy-design.md`; no provider,
-account system, storage adapter, or delivery implementation is selected.
+**Status:** requirements contract. The local artifact compiler, exact preview,
+and provider-neutral in-process capability lifecycle are selected in
+`docs/superpowers/specs/2026-08-26-read-only-share-privacy-design.md`; no remote
+provider, account system, persistent storage adapter, HTTP delivery, or cloud
+implementation is selected.
 
 `MUST` and `SHOULD` below are proposed Codemble product requirements, not quotations
 from the cited sources or a claim of legal compliance. The sources establish the
@@ -117,7 +119,8 @@ risk-policy decision and is a launch blocker until recorded.
 Because there is no account, creation **MUST** display once an independent, equally
 strong **deletion capability** that never appears in the view URL, viewer payload, or
 viewer page. It remains retryable until revocation succeeds or the share expires, then
-becomes invalid. The service stores only derived lookup values for both capabilities. Losing
+becomes invalid. The service stores only derived lookup, reuse-detection, and
+record-authentication values for both capabilities. Losing
 the deletion capability means expiry is the only recovery path; the creation UI **MUST**
 state that plainly. This is the accountless inference from W3C’s revocation requirement
 and least-authority capability model

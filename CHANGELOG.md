@@ -17,6 +17,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   then acknowledge only the fields present. Its same-origin preview and
   confirmation routes retain one candidate in process memory and expose no upload
   capability.
+- A provider-neutral capability module now issues independent 256-bit view and
+  deletion capabilities for one immutable artifact, stores only derived lookup,
+  reuse-detection, and capability-keyed authentication values, irreversibly
+  tombstones observed expiry, revalidates the closed schema, relationships,
+  digests, and bound storage identity, and atomically revokes access with
+  retry-safe results even across a server-clock rollback.
+  Its reference adapter is process-local; no HTTP route, provider, or cloud
+  storage is enabled.
 
 ### Privacy
 - Raw source, snippets, filesystem paths, dedicated filename metadata, file
@@ -30,6 +38,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   bind confirmation to the current preview ID and payload digest, and disappear
   with the active project or process. A confirmed preview creates no link and
   performs no outbound or cloud request.
+- Invalid, expired, and revoked view capabilities have one indistinguishable
+  result. Deletion requires an explicit confirmation, removes active bytes on
+  the first atomic revocation, and retains only a non-serving tombstone so a
+  lost response can be retried without restoring access. Raw capabilities and
+  artifact bytes are excluded from storage-record representations.
 
 ## [0.22.0] - 2026-08-25
 
