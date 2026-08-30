@@ -1,0 +1,25 @@
+schema_version = 2
+role = "operator"
+deployment_id = "codemble-share-production"
+active_root = "/var/lib/codemble/share/active"
+journal_root = "/var/lib/codemble/share/retirement-journal"
+recovery_key_file = "/media/offline-recovery/codemble-share-storage.key"
+restic_cache_root = "/var/cache/codemble-share-operator/restic"
+restic_executable = "/usr/local/libexec/restic"
+restic_sha256 = "sha256:REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"
+repository = "/mnt/codemble-restic/codemble-writer/codemble"
+repository_id = "REPLACE_WITH_THE_WRITER_BACKUP_REPOSITORY_ID"
+repository_password_file = "/etc/codemble/restic-operator-repository.key"
+writer_uid = 0 # REPLACE_WITH_OUTPUT_OF: id -u codemble-share
+writer_gid = 0 # REPLACE_WITH_OUTPUT_OF: id -g codemble-share
+backup_keep_days = 7
+deletion_deadline_days = 8
+security_margin_hours = 48
+
+[journal_replicas.backup-node]
+path = "/srv/codemble-retirement-journal"
+repository_id = "REPLACE_WITH_BACKUP_NODE_JOURNAL_REPOSITORY_ID"
+
+[journal_replicas.recovery-node]
+path = "/media/offline-recovery/codemble-retirement-journal"
+repository_id = "REPLACE_WITH_RECOVERY_NODE_JOURNAL_REPOSITORY_ID"

@@ -2,8 +2,9 @@
 
 Date: 2026-08-26 · Approved by: UD (promoted the next phase and confirmed the
 artifact seam) · Status: M20 local artifact, confirmation, capability lifecycle,
-standalone HTTPS/browser delivery, and encrypted persistent reference storage
-implemented; provider connection, backups, and operational deletion remain gated
+standalone HTTPS/browser delivery, encrypted persistence, and the free
+backup/anti-resurrection reference implementation are complete; public delivery
+connection and independent-node operational evidence remain gated
 
 Primary-source research and the complete future delivery contract live in
 [`docs/research/2026-08-26-read-only-share-privacy-boundary.md`](../../research/2026-08-26-read-only-share-privacy-boundary.md).
@@ -24,11 +25,14 @@ repair an unsafe artifact after upload.
 ```python
 ShareArtifact.from_graph(graph, policy, created_at) -> ShareArtifact
 artifact.to_bytes() -> bytes
+interpret_share_artifact(encoded) -> ShareArtifactDocument
 ```
 
 This is one in-process deep module. Callers do not select fields, remap IDs,
-canonicalize JSON, compute digests, or reason about source exclusions. Tests use
-the same interface and inspect only its returned bytes.
+canonicalize JSON, compute digests, or reason about source exclusions. The
+interpreter is the one trusted consumer of those bytes: it either returns the
+closed document plus derived facts or rejects the artifact. Preview, delivery,
+and storage do not maintain competing validators. Tests use the same interfaces.
 
 `SharePolicy` contains the only publisher choices:
 
@@ -55,10 +59,11 @@ The payload contains only:
 - source-derived labels and understood state only under their explicit flags.
 
 External targets and unresolved possible targets are omitted. A present target
-marked external or an absent target claimed certain fails closed. Region routes,
-Home distance, centrality, and orbit semantics are cross-checked against the
-represented graph; line-distinct edges that project to the same viewer mark are
-deduplicated.
+marked external or an absent target claimed certain fails closed. The parser's
+full region routes are first checked against its full internal imports. The
+private graph then lays out and derives route weights, Home distance, centrality,
+and orbit semantics from the exact deduplicated viewer marks it serializes;
+line-distinct edges cannot survive only as an inflated region weight.
 
 The original graph's hash-seeded coordinates are not published because they can
 act as an oracle for guessed labels. Every compilation draws a fresh 256-bit key,
@@ -95,6 +100,13 @@ preview and confirmation. They retain one exact candidate in process memory,
 return `Cache-Control: no-store`, and deliberately expose `upload_available:
 false`. Project release, replacement, or process exit discards the candidate.
 
+One `SharePreviewRun` owns the learner-visible lifecycle from choosing policy
+through compilation, exact inspection, acknowledgement, and confirmation. It
+assigns request identities, refuses stale responses, derives readiness from the
+current artifact's exposure flags, invalidates confirmation on restart or project
+release, and names the next focus destination. `LearnerSession` performs network
+effects; the dialog renders the run and owns only DOM focus.
+
 Behind that still-local boundary, `ShareDelivery` now owns three operations:
 `create(artifact)`, `view(view_capability)`, and
 `revoke(delete_capability, confirmed=True)`. It issues independent 256-bit
@@ -127,9 +139,60 @@ also expires shares that were never viewed and makes the share row plus serving
 index linkage eligible for removal after a configured terminal-retention
 threshold—measured from revocation time or absolute expiry—24 hours by default.
 Actual removal time includes sweep latency. Detached reuse/nonce guards remain
-until key-store retirement. This is executable active-store machinery, not proof
-of an `ACTIVE_PURGE_DEADLINE`, a scheduled sweep, finite security-metadata
-retirement, or protection against resurrection from provider backups.
+until key-store retirement.
+
+The selected operations reference uses only free and open-source software:
+Caddy (Apache-2.0), restic (BSD-2-Clause), and rest-server (BSD-2-Clause).
+Zero license cost does not promise zero operating cost; independently controlled
+hardware or storage, media, electricity, DNS, and network access may still cost
+money. The application writer can append encrypted snapshots only through TLS
+rest-server endpoints started append-only. Every terminal event must receive a
+named receipt binding replica, authenticated repository, snapshot, and entry
+digest from two distinct configured repositories before the journal's anchored
+high-water advances. A separately configured local
+operator alone can run `check --read-data`, retain seven days, prune, inventory,
+restore to quarantine, or explicitly remove snapshots. Configuration rejects
+reused writer authority paths, mismatched journal inventories, unpinned restic
+bytes, duplicate or non-HTTPS writer repositories, and non-local primary
+operator repositories. Role-local attestations authenticate the live repository
+IDs and prove the separately held recovery key matches the active store's exact
+32-byte encryption key without co-locating either configuration; shared
+authority material is rejected.
+
+Every revocation or expiry creates a token-free `ShareRetirementEvent` in a
+create-only chained Retirement Journal and requires an off-host anchor before an
+eligible row is acknowledged as unlinkable. A consistent backup contains the
+encrypted SQLite database plus a manifest binding its digest, journal high-water,
+authenticated backup-repository ID, and exact name-to-repository replica
+inventory. The operations runner captures the fully anchored high-water before
+taking the SQLite snapshot, so any concurrent later retirement must either
+already be reflected in the database or remain eligible for replay. One
+store-wide operation lock prevents concurrent writer cycles or retirement from
+deleting each other's staging or racing the final seal. The journal uses thread
+and process serialization, refuses a new event behind a partially anchored
+predecessor, and binds its immutable replica inventory. An independent
+journal-node operator can materialize its repository into repository-bound local
+evidence. `RestoreGuard` authenticates the quarantine, requires all named
+replicas to present one complete agreeing chain, replays every later terminal
+event, purges, revalidates, atomically rehydrates the writer journal, and permits
+promotion only with an explicit rollback path. Final backup removal first
+atomically installs an authenticated retirement seal that closes future Share
+creates and writer cycles, then deletes only an exact live snapshot inventory.
+`SecurityMetadataRetirementGuard` authorizes—but does not perform—whole-key-store
+retirement only after the sealed active store and live authenticated snapshot
+inventory are empty, every repository-bound replica agrees, and the eight-day
+deadline plus a 48-hour safety margin has elapsed.
+
+`codemble share-ops` exposes bounded writer cycle and attestation, operator
+maintenance, authenticated inventory, restore, journal materialization, explicit
+backup retirement, retirement authorization, operator attestation, and offline
+attestation-validation commands without adding a publishing entrypoint. Failed
+writer cycles remove only their two expected staging files while an unexpected
+file or lock contention fails closed. Systemd, Caddy, and TOML templates
+document the intended independent topology. This is executable
+backup and anti-resurrection machinery, not operational proof: an actual
+independent-node restore drill, timers, alerts, complete-copy inventory,
+deletion observation, and approved key/media erasure remain release gates.
 
 `create_share_delivery_app(delivery, allowed_hosts=...)` now wraps that core in
 one standalone ASGI module. It accepts only HTTPS, exact configured Host values,
@@ -155,9 +218,10 @@ enforcement, no cookies or other browser storage/service worker, no third-party 
 reload, revocation, and token-redacted Uvicorn access logs.
 
 The standalone application is not connected to the local preview routes. There
-is still no CLI publishing option, preview-to-delivery handoff, remote storage
-adapter, provider dependency, deployment, account, analytics, upload, or cloud
-request. The encrypted SQLite adapter is also disconnected from that application.
+is still no CLI publishing option, preview-to-delivery handoff, remote delivery
+provider, deployment, account, analytics, upload, or cloud request. The encrypted
+SQLite adapter remains disconnected from that application; the operations CLI
+can sweep and back up that store but cannot publish it.
 
 Before any upload is authorized, M20 requires:
 
@@ -165,19 +229,28 @@ Before any upload is authorized, M20 requires:
    of label and understanding exposure;
 2. **Complete in the provider-neutral core:** independent unguessable view and
    deletion capabilities;
-3. **Partial:** immutable validation, server-enforced expiry, inert core reads,
+3. **Implemented; operational proof pending:** immutable validation,
+   server-enforced expiry, inert core reads,
    confirmed idempotent revocation, uniform view failures, persistent encrypted
    active storage, immediate transactional byte removal, and a finite terminal
-   share-unlink sweep are complete. Finite retirement of detached security guards,
-   provider backup purge, and restore-without-resurrection remain gated;
-4. **Partial:** strict schema/bounds validation, HTTPS, no-store/no-referrer
+   share-unlink sweep are complete. The replicated retirement journal, restore
+   replay, bounded backup purge, and whole-key-store retirement guard are complete
+   in source; real independent-node restoration, deletion, and media erasure
+   remain gated;
+4. **Implemented; deployment proof pending:** strict schema/bounds validation,
+   HTTPS, no-store/no-referrer
    responses, restrictive CSP, no third parties, token-safe application/access
    logs, and authenticated payload/manifest verification are complete. Local
    POSIX file permissions prove the reference adapter's local least-privilege
-   floor and unsupported permission models fail closed; provider/operator access
-   configuration and encrypted backups remain gated;
+   floor and unsupported permission models fail closed. Separate append-only
+   writer-service and application-host root-operator configurations plus encrypted
+   backup commands are complete. The operator uses a root-only mounted independent
+   repository, refuses to create a missing active-store shadow, and shares the
+   live store's local operation lock; the intended independent multi-target
+   configuration, scheduled execution, alerts,
+   and authority probes remain gated;
 5. automated, configuration, and operational release evidence for all of the
-   above.
+   above, including the actual no-resurrection restore drill.
 
 ## 5. Local acceptance
 
@@ -190,6 +263,9 @@ Before any upload is authorized, M20 requires:
 - Naive, non-future, and over-30-day expiry is rejected.
 - Contradictory external flags, missing certain endpoints, fabricated region
   routes, stale Home distance, and inconsistent orbit meaning fail closed.
+- Duplicate line-level relationships cannot inflate a region route that the
+  serialized viewer graph represents only once; the resulting artifact passes
+  the same trusted interpreter used by preview, storage, and delivery.
 - Ordinary construction from arbitrary bytes is impossible; only `from_graph`
   can create the immutable value.
 - Preview defaults both sensitive choices off, offers only one-, seven-, or
@@ -202,6 +278,9 @@ Before any upload is authorized, M20 requires:
   closed.
 - The workbench remains usable at 320 px and restores focus to the rail after
   Close or Escape in Chromium and WebKit.
+- The Share Preview Run refuses stale create/confirm responses, derives exact
+  acknowledgement readiness, and clears retained preview state on restart,
+  close, and project release.
 - Focused tests, Ruff, full pytest, and Graphify update pass before integration.
 - Capability tests additionally prove independent generation, derived-only
   storage values, cross-role non-reuse, inert repeated reads, uniform
@@ -224,3 +303,18 @@ Before any upload is authorized, M20 requires:
   no cookies, service worker, or third-party request, inert reload, header-only confirmed
   revocation, uniform post-revocation failure, and token-free structured plus
   Uvicorn access logs.
+- Operations tests additionally prove create-only retryable journal anchoring,
+  repository/snapshot/entry-bound two-target receipts, cross-thread and
+  cross-process serialization, repository-retarget/fork/gap/stale-replica
+  refusal, anchored-high-water-before-snapshot ordering, manifest/database/
+  repository/high-water binding, concurrent post-backup retirement replay before
+  atomic promotion, writer-journal rehydration, and explicit rollback. They also
+  prove append-only writer versus local operator authority, disjoint primary and
+  journal repository identities/targets, role-local credential-derived
+  attestations, pinned restic execution, application-host-local store-wide cycle exclusion, exact
+  staging recovery after a transient failure, full-data checks around seven-day
+  prune, independent-node journal materialization, closed CLI errors, fixed
+  schedules, shadow-store refusal, exact live-inventory deletion behind a durable store seal, authenticated empty
+  inventory before retirement authorization, and the eight-day deadline plus
+  48-hour margin. These are local proofs, not the required real independent-node
+  drill.

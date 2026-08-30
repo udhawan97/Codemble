@@ -1,0 +1,33 @@
+schema_version = 1
+role = "writer"
+deployment_id = "codemble-share-production"
+active_root = "/var/lib/codemble/share/active"
+journal_root = "/var/lib/codemble/share/retirement-journal"
+staging_root = "/var/lib/codemble/share/backup-staging"
+storage_key_file = "/etc/codemble/share-storage.key"
+restic_cache_root = "/var/cache/codemble-share-writer/restic"
+restic_executable = "/usr/local/libexec/restic"
+restic_sha256 = "sha256:REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"
+repository = "rest:https://backup.example.invalid/codemble-writer/codemble/"
+repository_id = "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"
+repository_password_file = "/etc/codemble/restic-writer-repository.key"
+rest_username = "codemble-writer"
+rest_password_file = "/etc/codemble/rest-server-writer.password"
+backup_interval_minutes = 60
+deletion_deadline_days = 8
+
+[journal_anchors.backup-node]
+repository = "rest:https://backup.example.invalid/codemble-journal-backup-writer/codemble-journal/"
+repository_id = "REPLACE_WITH_DISTINCT_64_LOWERCASE_HEX_CHARACTERS"
+repository_password_file = "/etc/codemble/restic-journal-backup-writer.key"
+rest_username = "codemble-journal-backup-writer"
+rest_password_file = "/etc/codemble/rest-server-journal-backup-writer.password"
+restic_cache_root = "/var/cache/codemble-share-writer/backup-node"
+
+[journal_anchors.recovery-node]
+repository = "rest:https://recovery.example.invalid/codemble-journal-recovery/codemble-journal/"
+repository_id = "REPLACE_WITH_ANOTHER_64_LOWERCASE_HEX_CHARACTERS"
+repository_password_file = "/etc/codemble/restic-journal-recovery.key"
+rest_username = "codemble-journal-recovery"
+rest_password_file = "/etc/codemble/rest-server-journal-recovery.password"
+restic_cache_root = "/var/cache/codemble-share-writer/recovery-node"

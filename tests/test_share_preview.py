@@ -72,6 +72,11 @@ def test_preview_returns_the_exact_source_free_artifact_and_exposure_ledger() ->
         "understanding_included": False,
         "understood_regions": 0,
     }
+    assert preview["facts"] == {
+        "bytes": len(encoded),
+        "nodes": len(document["payload"]["nodes"]),
+        "regions": len(document["payload"]["regions"]),
+    }
     assert preview["payload_digest"] == f"sha256:{sha256(payload_bytes).hexdigest()}"
     assert encoded == rfc8785.dumps(document), "the browser previews the canonical bytes"
     assert str(FIXTURE.resolve()).encode() not in encoded

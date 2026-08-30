@@ -76,6 +76,7 @@ class ShareArtifact:
         _validate_policy(policy)
         _validate_expiry(created_at, policy.expires_at)
         represented_edges = _validate_graph(graph, include_labels=policy.include_labels)
+        projected_edges = _project_edges(represented_edges)
         identity_key = token_bytes(_IDENTITY_KEY_BYTES)
         if len(identity_key) != _IDENTITY_KEY_BYTES:
             raise RuntimeError("share identity entropy must contain 32 bytes")
@@ -91,7 +92,7 @@ class ShareArtifact:
             raise RuntimeError("share-local identity collision")
         private_graph = _compile_private_graph(
             graph,
-            represented_edges=represented_edges,
+            represented_edges=projected_edges,
             node_ids=node_ids,
             region_ids=region_ids,
         )
@@ -240,6 +241,18 @@ def _share_edges(edges: tuple[Edge, ...]) -> list[dict[str, object]]:
     ]
 
 
+def _project_edges(edges: tuple[Edge, ...]) -> tuple[Edge, ...]:
+    """Return the exact relationship marks the closed share schema can express."""
+
+    projected: dict[tuple[str, str, str, bool], Edge] = {}
+    for edge in edges:
+        mark = (edge.src, edge.dst, edge.kind, edge.certain)
+        current = projected.get(mark)
+        if current is None or edge.lineno < current.lineno:
+            projected[mark] = edge
+    return tuple(projected[mark] for mark in sorted(projected))
+
+
 def _canonical_json(value: object) -> bytes:
     return rfc8785.dumps(value)
 
@@ -292,14 +305,15 @@ def _validate_derived_truth(
     node_ids: dict[str, str],
     region_ids: dict[str, str],
 ) -> None:
-    expected_routes = sorted(
-        (region_ids[edge.src], region_ids[edge.dst], edge.weight, edge.certain)
-        for edge in graph.region_edges
+    source_routes = sorted(
+        (edge.src, edge.dst, edge.weight, edge.certain) for edge in graph.region_edges
     )
+    expected_source_routes = _region_route_marks(graph.nodes, graph.edges)
     private_routes = sorted(
         (edge.src, edge.dst, edge.weight, edge.certain) for edge in private_graph.region_edges
     )
-    if expected_routes != private_routes:
+    expected_private_routes = _region_route_marks(private_graph.nodes, private_graph.edges)
+    if source_routes != expected_source_routes or private_routes != expected_private_routes:
         raise ValueError("region edges do not match represented imports")
 
     private_regions = {region.id: region for region in private_graph.regions}
@@ -336,6 +350,30 @@ def _validate_derived_truth(
         for value in (region.x, region.y, region.z)
     ):
         raise ValueError("compiled share layout exceeds the render-safe coordinate bound")
+
+
+def _region_route_marks(
+    nodes: tuple[Node, ...],
+    edges: tuple[Edge, ...],
+) -> list[tuple[str, str, int, bool]]:
+    node_regions = {node.id: node.region for node in nodes}
+    certainties: dict[tuple[str, str], list[bool]] = defaultdict(list)
+    for edge in edges:
+        source_region = node_regions.get(edge.src)
+        target_region = node_regions.get(edge.dst)
+        if (
+            edge.kind != "import"
+            or edge.external
+            or source_region is None
+            or target_region is None
+            or source_region == target_region
+        ):
+            continue
+        certainties[(source_region, target_region)].append(edge.certain)
+    return sorted(
+        (source, target, len(values), all(values))
+        for (source, target), values in certainties.items()
+    )
 
 
 def _format_time(value: datetime) -> str:

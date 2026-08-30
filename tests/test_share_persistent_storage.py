@@ -23,6 +23,7 @@ from codemble.share import (
     ShareStorageIntegrityError,
     UnknownShareCapabilityError,
 )
+from codemble.share.retirement import ShareRetirementEvent
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 CREATED_AT = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
@@ -245,6 +246,81 @@ def test_purge_expires_unobserved_bytes_then_unlinks_after_retention(
         assert connection.execute("SELECT count(*) FROM encryption_nonces").fetchone()[0] >= 2
 
 
+def test_retirement_is_anchored_before_purge_unlinks_and_online_backup_reopens(
+    tmp_path: Path,
+) -> None:
+    class Recorder:
+        def __init__(self) -> None:
+            self.events: list[ShareRetirementEvent] = []
+            self.fail = False
+
+        def record(self, event: ShareRetirementEvent) -> None:
+            if self.fail:
+                raise RuntimeError("independent retirement anchor unavailable")
+            if event not in self.events:
+                self.events.append(event)
+
+    recorder = Recorder()
+    root = tmp_path / "share-store"
+    backup = tmp_path / "quarantine" / "shares.sqlite3"
+    storage = EncryptedSQLiteShareStorage(
+        root,
+        KEY,
+        terminal_retention=timedelta(hours=1),
+        retirement_recorder=recorder,
+    )
+    delivery = _delivery(storage, [CREATED_AT])
+    delivery.create(_artifact(lifetime=timedelta(days=1)))
+
+    recorder.fail = True
+    with pytest.raises(RuntimeError, match="anchor unavailable"):
+        storage.purge(CREATED_AT + timedelta(days=1, hours=1))
+    with sqlite3.connect(storage.database_path) as connection:
+        assert connection.execute("SELECT count(*) FROM shares").fetchone()[0] == 1
+
+    recorder.fail = False
+    result = storage.purge(CREATED_AT + timedelta(days=1, hours=1))
+    assert result.deleted == 1
+    assert len(recorder.events) == 1
+    assert recorder.events[0].kind == "expired"
+    assert recorder.events[0].terminal_at == CREATED_AT + timedelta(days=1)
+
+    second_storage = EncryptedSQLiteShareStorage(
+        tmp_path / "second-store",
+        KEY,
+        retirement_recorder=recorder,
+    )
+    second_delivery = _delivery(second_storage, [CREATED_AT])
+    second_grant = second_delivery.create(_artifact())
+    second_delivery.revoke(second_grant.delete_capability, confirmed=True)
+    assert recorder.events[-1].kind == "revoked"
+
+    second_storage.backup_to(backup)
+    restored = EncryptedSQLiteShareStorage(backup.parent, KEY)
+    assert restored.validate_all() == 1
+    assert _delivery(restored, [CREATED_AT]).revoke(
+        second_grant.delete_capability,
+        confirmed=True,
+    ).status == "already_revoked"
+
+    third_storage = EncryptedSQLiteShareStorage(
+        tmp_path / "third-store",
+        KEY,
+        retirement_recorder=recorder,
+    )
+    third_now = [CREATED_AT]
+    third_delivery = _delivery(third_storage, third_now)
+    third_grant = third_delivery.create(_artifact(lifetime=timedelta(days=1)))
+    third_now[0] = CREATED_AT + timedelta(days=2)
+    recorder.fail = True
+    with pytest.raises(RuntimeError, match="anchor unavailable"):
+        third_delivery.view(third_grant.view_capability)
+    recorder.fail = False
+    with pytest.raises(UnknownShareCapabilityError, match="Share not found"):
+        third_delivery.view(third_grant.view_capability)
+    assert recorder.events[-1].kind == "expired"
+
+
 def test_early_revocation_unlinks_from_its_own_retention_without_reassignment(
     tmp_path: Path,
 ) -> None:
@@ -443,3 +519,21 @@ def test_failed_create_cannot_release_a_reserved_nonce_for_later_reuse(tmp_path:
         _delivery(storage, now).create(artifact)
     with pytest.raises(ShareStorageIntegrityError, match="repeated encryption nonces"):
         storage.purge(CREATED_AT + timedelta(days=8))
+
+
+def test_retirement_seal_is_idempotent_authenticated_and_blocks_create(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "share-store"
+    storage = EncryptedSQLiteShareStorage(root, KEY)
+    seal = storage.seal_for_retirement(CREATED_AT)
+    assert storage.seal_for_retirement(CREATED_AT + timedelta(days=1)) == seal
+    with pytest.raises(ShareStorageConflictError, match="sealed"):
+        _delivery(storage, [CREATED_AT]).create(_artifact())
+
+    connection = sqlite3.connect(storage.database_path)
+    connection.execute("UPDATE retirement_seal SET epoch = ?", ("f" * 64,))
+    connection.commit()
+    connection.close()
+    with pytest.raises(ShareStorageIntegrityError, match="history failed authentication"):
+        storage.retirement_seal()

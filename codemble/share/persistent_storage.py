@@ -7,6 +7,7 @@ import binascii
 import hmac
 import json
 import os
+import re
 import sqlite3
 import stat
 from collections.abc import Callable
@@ -25,11 +26,12 @@ from codemble.share.delivery import (
     StoredShare,
     StoredShareRevocation,
 )
+from codemble.share.retirement import ShareRetirementEvent, ShareRetirementRecorder
 
 DEFAULT_TERMINAL_RETENTION = timedelta(hours=24)
 
 _DATABASE_NAME = "shares.sqlite3"
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 _NONCE_BYTES = 12
 _IDENTITY_PLAINTEXT = b"codemble-share-storage-key-check:v1"
 _IDENTITY_AAD = b"codemble-share-storage-identity:v1"
@@ -50,7 +52,7 @@ _RECORD_KEYS = {
     "view_fingerprint",
     "view_lookup",
 }
-_SCHEMA_OBJECTS = (
+_SCHEMA_OBJECTS_V1 = (
     (
         "table",
         "shares",
@@ -128,6 +130,21 @@ _SCHEMA_OBJECTS = (
         ),
     ),
 )
+_SCHEMA_OBJECTS = (
+    *_SCHEMA_OBJECTS_V1,
+    (
+        "table",
+        "retirement_seal",
+        "retirement_seal",
+        (
+            "CREATE TABLE retirement_seal (\n"
+            "    identity INTEGER PRIMARY KEY CHECK (identity = 1),\n"
+            "    epoch TEXT NOT NULL,\n"
+            "    sealed_at TEXT NOT NULL\n"
+            ") STRICT"
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +153,14 @@ class SharePurgeResult:
 
     expired: int
     deleted: int
+
+
+@dataclass(frozen=True, slots=True)
+class ShareStorageRetirementSeal:
+    """Durable final-transition marker that excludes every later create/backup."""
+
+    epoch: str
+    sealed_at: datetime
 
 
 class EncryptedSQLiteShareStorage:
@@ -160,6 +185,7 @@ class EncryptedSQLiteShareStorage:
         *,
         terminal_retention: timedelta = DEFAULT_TERMINAL_RETENTION,
         nonce_entropy: Callable[[int], bytes] | None = None,
+        retirement_recorder: ShareRetirementRecorder | None = None,
     ) -> None:
         if not isinstance(root, Path):
             raise TypeError("share storage root must be a pathlib.Path")
@@ -182,8 +208,31 @@ class EncryptedSQLiteShareStorage:
         )
         self._terminal_retention = terminal_retention
         self._nonce_entropy = nonce_entropy or token_bytes
+        self._retirement_recorder = retirement_recorder
         self._prepare_root()
         self._initialize()
+
+    @classmethod
+    def open_existing(
+        cls,
+        root: Path,
+        encryption_key: bytes,
+    ) -> EncryptedSQLiteShareStorage:
+        """Open an authenticated live store without creating a shadow database."""
+
+        database_path = root / _DATABASE_NAME
+        if (
+            not root.exists()
+            or root.is_symlink()
+            or not root.is_dir()
+            or not database_path.exists()
+            or database_path.is_symlink()
+            or not database_path.is_file()
+        ):
+            raise ShareStorageIntegrityError(
+                "existing share storage root and database are required"
+            )
+        return cls(root, encryption_key)
 
     @property
     def database_path(self) -> Path:
@@ -197,40 +246,175 @@ class EncryptedSQLiteShareStorage:
 
         return self._terminal_retention
 
+    def retirement_seal(self) -> ShareStorageRetirementSeal | None:
+        """Return the authenticated durable retirement seal, when present."""
+
+        with self._read_transaction() as connection:
+            return self._read_retirement_seal(connection)
+
+    def seal_for_retirement(self, now: datetime) -> ShareStorageRetirementSeal:
+        """Atomically prove the store empty and close it to every future create."""
+
+        checked_now = _aware_utc(now)
+        with self._transaction() as connection:
+            existing = self._read_retirement_seal(connection)
+            if existing is not None:
+                return existing
+            remaining = connection.execute("SELECT COUNT(*) FROM shares").fetchone()[0]
+            if remaining != 0:
+                raise ShareStorageConflictError(
+                    "share storage cannot retire while active or terminal records remain"
+                )
+            epoch = token_bytes(32).hex()
+            connection.execute(
+                "INSERT INTO retirement_seal (identity, epoch, sealed_at) VALUES (1, ?, ?)",
+                (epoch, _format_time(checked_now)),
+            )
+            self._write_history_commitment(connection)
+            return ShareStorageRetirementSeal(epoch=epoch, sealed_at=checked_now)
+
+    def backup_to(self, destination: Path) -> None:
+        """Create one consistent SQLite online backup in a private quarantine path."""
+
+        if not isinstance(destination, Path) or destination.name != _DATABASE_NAME:
+            raise ValueError(f"share backup destination must end in {_DATABASE_NAME}")
+        destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        _require_private_mode(destination.parent, directory=True)
+        if destination.exists():
+            if destination.is_symlink() or not destination.is_file():
+                raise ValueError("share backup destination must be a regular file")
+            _require_private_mode(destination, directory=False)
+        with self._read_transaction() as source:
+            target = sqlite3.connect(destination)
+            try:
+                source.backup(target)
+            finally:
+                target.close()
+        os.chmod(destination, 0o600)
+
+    def validate_all(self) -> int:
+        """Authenticate schema, identity, history, every record, and every index."""
+
+        with self._read_transaction() as connection:
+            rows = connection.execute(
+                "SELECT share_id, nonce, ciphertext FROM shares ORDER BY share_id"
+            ).fetchall()
+            for row in rows:
+                record = self._open(row["share_id"], row["nonce"], row["ciphertext"])
+                self._authenticate_indexes(connection, record)
+            return len(rows)
+
+    def apply_retirements(self, events: tuple[ShareRetirementEvent, ...]) -> int:
+        """Replay independently anchored terminal facts into a quarantined restore."""
+
+        if not isinstance(events, tuple) or any(
+            not isinstance(event, ShareRetirementEvent) for event in events
+        ):
+            raise TypeError("restore retirements must be a tuple of events")
+        applied = 0
+        for event in events:
+            with self._read_transaction() as connection:
+                record = self._load_by_share_id(connection, event.share_id)
+            if record is None:
+                continue
+            if (
+                record.payload_digest != event.payload_digest
+                or record.expires_at != event.expires_at
+            ):
+                raise ShareStorageIntegrityError(
+                    "retirement journal contradicts restored share metadata"
+                )
+            if record.revoked_at is not None or record.expired_at is not None:
+                actual_kind = "revoked" if record.revoked_at is not None else "expired"
+                actual_time = record.revoked_at or record.expired_at
+                if actual_kind != event.kind or actual_time != event.terminal_at:
+                    raise ShareStorageIntegrityError(
+                        "retirement journal contradicts restored terminal state"
+                    )
+                continue
+            nonce = self._reserve_nonce()
+            with self._transaction() as connection:
+                record = self._load_by_share_id(connection, event.share_id)
+                if record is None:
+                    continue
+                if record.revoked_at is not None or record.expired_at is not None:
+                    raise ShareStorageIntegrityError(
+                        "restored share changed during retirement replay"
+                    )
+                retired = replace(
+                    record,
+                    artifact=None,
+                    revoked_at=event.terminal_at if event.kind == "revoked" else None,
+                    expired_at=event.terminal_at if event.kind == "expired" else None,
+                )
+                self._replace(connection, retired, nonce)
+                self._write_history_commitment(connection)
+            applied += 1
+        return applied
+
     def create(self, record: StoredShare) -> None:
         """Atomically reserve all identities and write one encrypted record."""
 
         if not isinstance(record, StoredShare) or record.artifact is None:
             raise ShareStorageIntegrityError("persistent storage requires an active share")
-        nonce = self._reserve_nonce()
-        ciphertext = self._seal(record, nonce)
-        try:
-            with self._transaction() as connection:
-                connection.execute(
-                    "INSERT INTO shares (share_id, nonce, ciphertext) VALUES (?, ?, ?)",
-                    (record.share_id, nonce, ciphertext),
+        for _ in range(4):
+            nonce = self._nonce_entropy(_NONCE_BYTES)
+            if not isinstance(nonce, bytes) or len(nonce) != _NONCE_BYTES:
+                raise RuntimeError(
+                    "share storage nonce entropy must contain exactly 12 bytes"
                 )
-                connection.executemany(
-                    "INSERT INTO capability_lookups (lookup, role, share_id) "
-                    "VALUES (?, ?, ?)",
-                    (
-                        (record.view_lookup, "view", record.share_id),
-                        (record.delete_lookup, "delete", record.share_id),
-                    ),
-                )
-                connection.executemany(
-                    "INSERT INTO capability_fingerprints (fingerprint, share_id) "
-                    "VALUES (?, ?)",
-                    (
-                        (record.view_fingerprint, record.share_id),
-                        (record.delete_fingerprint, record.share_id),
-                    ),
-                )
-                self._write_history_commitment(connection)
-        except sqlite3.IntegrityError as error:
-            raise ShareStorageConflictError(
-                "share identities and capability lookups are create-only"
-            ) from error
+            try:
+                with self._transaction() as connection:
+                    if self._read_retirement_seal(connection) is not None:
+                        raise ShareStorageConflictError(
+                            "share storage is durably sealed for retirement"
+                        )
+                    reserved = connection.execute(
+                        "INSERT OR IGNORE INTO encryption_nonces (nonce) VALUES (?)",
+                        (nonce,),
+                    )
+                    if reserved.rowcount != 1:
+                        continue
+                    ciphertext = self._seal(record, nonce)
+                    conflict = False
+                    connection.execute("SAVEPOINT create_share")
+                    try:
+                        connection.execute(
+                            "INSERT INTO shares (share_id, nonce, ciphertext) VALUES (?, ?, ?)",
+                            (record.share_id, nonce, ciphertext),
+                        )
+                        connection.executemany(
+                            "INSERT INTO capability_lookups (lookup, role, share_id) "
+                            "VALUES (?, ?, ?)",
+                            (
+                                (record.view_lookup, "view", record.share_id),
+                                (record.delete_lookup, "delete", record.share_id),
+                            ),
+                        )
+                        connection.executemany(
+                            "INSERT INTO capability_fingerprints (fingerprint, share_id) "
+                            "VALUES (?, ?)",
+                            (
+                                (record.view_fingerprint, record.share_id),
+                                (record.delete_fingerprint, record.share_id),
+                            ),
+                        )
+                    except sqlite3.IntegrityError:
+                        connection.execute("ROLLBACK TO create_share")
+                        conflict = True
+                    finally:
+                        connection.execute("RELEASE create_share")
+                    self._write_history_commitment(connection)
+                if conflict:
+                    raise ShareStorageConflictError(
+                        "share identities and capability lookups are create-only"
+                    )
+                return
+            except sqlite3.IntegrityError as error:
+                raise ShareStorageConflictError(
+                    "share identities and capability lookups are create-only"
+                ) from error
+        raise ShareStorageIntegrityError("share storage refused repeated encryption nonces")
 
     def read(self, view_lookup: str, now: datetime) -> StoredShare | None:
         """Return active bytes or atomically persist observed expiry."""
@@ -244,6 +428,10 @@ class EncryptedSQLiteShareStorage:
             or record.expired_at is not None
             or record.artifact is None
         ):
+            if record is not None and (
+                record.revoked_at is not None or record.expired_at is not None
+            ):
+                self._record_retirement(record)
             return None
         if checked_now < record.expires_at:
             return record
@@ -264,14 +452,16 @@ class EncryptedSQLiteShareStorage:
                 replace(record, artifact=None, expired_at=record.expires_at),
                 nonce,
             )
-            return None
+            expired = replace(record, artifact=None, expired_at=record.expires_at)
+        self._record_retirement(expired)
+        return None
 
     def revoke(
         self,
         delete_lookup: str,
         now: datetime,
     ) -> StoredShareRevocation | None:
-        """Atomically revoke serving authority and replace active ciphertext."""
+        """Atomically revoke serving authority, then anchor the terminal fact."""
 
         checked_now = _aware_utc(now)
         with self._read_transaction() as connection:
@@ -281,10 +471,13 @@ class EncryptedSQLiteShareStorage:
         if record.revoked_at is not None:
             if checked_now >= record.expires_at:
                 return None
+            self._record_retirement(record)
             return StoredShareRevocation(record, already_revoked=True)
         if checked_now < record.created_at:
             return None
         nonce = self._reserve_nonce()
+        result: StoredShareRevocation | None = None
+        terminal: StoredShare | None = None
         with self._transaction() as connection:
             record = self._load_by_lookup(connection, delete_lookup, "delete")
             if record is None or record.expired_at is not None:
@@ -292,26 +485,30 @@ class EncryptedSQLiteShareStorage:
             if record.revoked_at is not None:
                 if checked_now >= record.expires_at:
                     return None
-                return StoredShareRevocation(record, already_revoked=True)
-            if checked_now < record.created_at:
+                result = StoredShareRevocation(record, already_revoked=True)
+                terminal = record
+            elif checked_now < record.created_at:
                 return None
-            if checked_now >= record.expires_at:
-                self._replace(
-                    connection,
-                    replace(record, artifact=None, expired_at=record.expires_at),
-                    nonce,
+            elif checked_now >= record.expires_at:
+                terminal = replace(
+                    record,
+                    artifact=None,
+                    expired_at=record.expires_at,
                 )
-                return None
-            revoked = replace(record, artifact=None, revoked_at=checked_now)
-            self._replace(connection, revoked, nonce)
-            return StoredShareRevocation(revoked, already_revoked=False)
+                self._replace(connection, terminal, nonce)
+            else:
+                terminal = replace(record, artifact=None, revoked_at=checked_now)
+                self._replace(connection, terminal, nonce)
+                result = StoredShareRevocation(terminal, already_revoked=False)
+        assert terminal is not None
+        self._record_retirement(terminal)
+        return result
 
     def purge(self, now: datetime) -> SharePurgeResult:
-        """Expire unobserved shares and unlink records after the retention threshold."""
+        """Expire, anchor every terminal fact, then unlink eligible records."""
 
         checked_now = _aware_utc(now)
         expired = 0
-        deleted = 0
         with self._read_transaction() as connection:
             rows = connection.execute(
                 "SELECT share_id, nonce, ciphertext FROM shares ORDER BY share_id"
@@ -329,6 +526,7 @@ class EncryptedSQLiteShareStorage:
         expiry_nonces = {
             share_id: self._reserve_nonce() for share_id in expiry_share_ids
         }
+        terminal_records: list[StoredShare] = []
         with self._transaction() as connection:
             rows = connection.execute(
                 "SELECT share_id, nonce, ciphertext FROM shares ORDER BY share_id"
@@ -337,16 +535,31 @@ class EncryptedSQLiteShareStorage:
                 record = self._open(row["share_id"], row["nonce"], row["ciphertext"])
                 self._authenticate_indexes(connection, record)
                 if record.artifact is not None and checked_now >= record.expires_at:
+                    nonce = expiry_nonces.get(record.share_id)
+                    if nonce is None:
+                        continue
                     record = replace(
                         record,
                         artifact=None,
                         expired_at=record.expires_at,
                     )
-                    nonce = expiry_nonces.get(record.share_id)
-                    if nonce is None:
-                        continue
                     self._replace(connection, record, nonce)
                     expired += 1
+                if record.revoked_at is not None or record.expired_at is not None:
+                    terminal_records.append(record)
+            self._write_history_commitment(connection)
+
+        for record in terminal_records:
+            self._record_retirement(record)
+
+        deleted = 0
+        with self._transaction() as connection:
+            rows = connection.execute(
+                "SELECT share_id, nonce, ciphertext FROM shares ORDER BY share_id"
+            ).fetchall()
+            for row in rows:
+                record = self._open(row["share_id"], row["nonce"], row["ciphertext"])
+                self._authenticate_indexes(connection, record)
                 terminal_at = record.revoked_at or record.expired_at
                 if (
                     terminal_at is not None
@@ -360,6 +573,21 @@ class EncryptedSQLiteShareStorage:
             self._write_history_commitment(connection)
         return SharePurgeResult(expired=expired, deleted=deleted)
 
+    def _record_retirement(self, record: StoredShare) -> None:
+        if self._retirement_recorder is None:
+            return
+        terminal_at = record.revoked_at or record.expired_at
+        if terminal_at is None:
+            raise ShareStorageIntegrityError("active share cannot enter retirement history")
+        self._retirement_recorder.record(
+            ShareRetirementEvent(
+                share_id=record.share_id,
+                kind="revoked" if record.revoked_at is not None else "expired",
+                terminal_at=terminal_at,
+                expires_at=record.expires_at,
+                payload_digest=record.payload_digest,
+            )
+        )
     def _prepare_root(self) -> None:
         if self._root.exists():
             if self._root.is_symlink() or not self._root.is_dir():
@@ -403,6 +631,18 @@ class EncryptedSQLiteShareStorage:
                     "VALUES (1, ?, ?, ?)",
                     (nonce, ciphertext, self._history_commitment(connection)),
                 )
+            elif version == 1 and objects == self._schema_objects_from(
+                _SCHEMA_OBJECTS_V1
+            ):
+                self._authenticate_storage_contract(
+                    connection,
+                    schema_objects=_SCHEMA_OBJECTS_V1,
+                    schema_version=1,
+                    include_retirement_seal=False,
+                )
+                connection.execute(_SCHEMA_OBJECTS[-1][3])
+                connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+                self._write_history_commitment(connection)
             else:
                 self._authenticate_storage(connection)
         os.chmod(self._path, 0o600)
@@ -446,13 +686,34 @@ class EncryptedSQLiteShareStorage:
             )
         }
 
-    def _authenticate_storage(self, connection: sqlite3.Connection) -> None:
-        expected = {
+    @staticmethod
+    def _schema_objects_from(
+        schema_objects: tuple[tuple[str, str, str, str], ...],
+    ) -> dict[tuple[str, str, str], str]:
+        return {
             (kind, name, table): statement
-            for kind, name, table, statement in _SCHEMA_OBJECTS
+            for kind, name, table, statement in schema_objects
         }
+
+    def _authenticate_storage(self, connection: sqlite3.Connection) -> None:
+        self._authenticate_storage_contract(
+            connection,
+            schema_objects=_SCHEMA_OBJECTS,
+            schema_version=_SCHEMA_VERSION,
+            include_retirement_seal=True,
+        )
+
+    def _authenticate_storage_contract(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        schema_objects: tuple[tuple[str, str, str, str], ...],
+        schema_version: int,
+        include_retirement_seal: bool,
+    ) -> None:
+        expected = self._schema_objects_from(schema_objects)
         version = connection.execute("PRAGMA user_version").fetchone()[0]
-        if version != _SCHEMA_VERSION or self._schema_objects(connection) != expected:
+        if version != schema_version or self._schema_objects(connection) != expected:
             raise ShareStorageIntegrityError(
                 "share storage schema does not match its authenticated contract"
             )
@@ -468,7 +729,10 @@ class EncryptedSQLiteShareStorage:
         try:
             history_matches = hmac.compare_digest(
                 identity["history_commitment"],
-                self._history_commitment(connection),
+                self._history_commitment(
+                    connection,
+                    include_retirement_seal=include_retirement_seal,
+                ),
             )
         except TypeError as error:
             raise ShareStorageIntegrityError(
@@ -493,7 +757,12 @@ class EncryptedSQLiteShareStorage:
         if plaintext != _IDENTITY_PLAINTEXT:
             raise ShareStorageIntegrityError("share storage identity failed authentication")
 
-    def _history_commitment(self, connection: sqlite3.Connection) -> bytes:
+    def _history_commitment(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        include_retirement_seal: bool = True,
+    ) -> bytes:
         document = {
             "capability_fingerprints": [
                 [row["fingerprint"], row["share_id"]]
@@ -516,8 +785,39 @@ class EncryptedSQLiteShareStorage:
                 )
             ],
         }
+        if include_retirement_seal:
+            document["retirement_seal"] = [
+                [row["identity"], row["epoch"], row["sealed_at"]]
+                for row in connection.execute(
+                    "SELECT identity, epoch, sealed_at FROM retirement_seal ORDER BY identity"
+                )
+            ]
         encoded = json.dumps(document, separators=(",", ":"), sort_keys=True).encode()
         return hmac.digest(self._history_key, encoded, "sha256")
+
+    @staticmethod
+    def _read_retirement_seal(
+        connection: sqlite3.Connection,
+    ) -> ShareStorageRetirementSeal | None:
+        rows = connection.execute(
+            "SELECT epoch, sealed_at FROM retirement_seal ORDER BY identity"
+        ).fetchall()
+        if not rows:
+            return None
+        if len(rows) != 1:
+            raise ShareStorageIntegrityError("share retirement seal is malformed")
+        row = rows[0]
+        try:
+            if not isinstance(row["epoch"], str) or re.fullmatch(
+                r"[0-9a-f]{64}", row["epoch"]
+            ) is None:
+                raise ValueError
+            return ShareStorageRetirementSeal(
+                epoch=row["epoch"],
+                sealed_at=_parse_time(row["sealed_at"]),
+            )
+        except (TypeError, ValueError) as error:
+            raise ShareStorageIntegrityError("share retirement seal is malformed") from error
 
     def _write_history_commitment(self, connection: sqlite3.Connection) -> None:
         cursor = connection.execute(
@@ -547,6 +847,21 @@ class EncryptedSQLiteShareStorage:
         record = self._open(row["share_id"], row["nonce"], row["ciphertext"])
         if getattr(record, f"{role}_lookup") != lookup:
             raise ShareStorageIntegrityError("share capability index failed authentication")
+        self._authenticate_indexes(connection, record)
+        return record
+
+    def _load_by_share_id(
+        self,
+        connection: sqlite3.Connection,
+        share_id: str,
+    ) -> StoredShare | None:
+        row = connection.execute(
+            "SELECT share_id, nonce, ciphertext FROM shares WHERE share_id = ?",
+            (share_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        record = self._open(row["share_id"], row["nonce"], row["ciphertext"])
         self._authenticate_indexes(connection, record)
         return record
 

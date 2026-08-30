@@ -56,6 +56,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser = _parser()
     raw_arguments = list(argv) if argv is not None else list(sys.argv[1:])
+    if raw_arguments and raw_arguments[0] == "share-ops":
+        from codemble.share.ops_cli import main as share_operations_main
+
+        return share_operations_main(raw_arguments[1:])
     if not raw_arguments or raw_arguments[0] not in {
         "parse",
         "serve",

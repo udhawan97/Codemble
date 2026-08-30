@@ -2,6 +2,7 @@ import { LEVELS, defaultRegion } from "./graphData.js";
 import { createLearnerProjection } from "./learnerProjection.js";
 import { readOnlyRequestErrorMessage } from "./localServerErrors.js";
 import { createProjectMapping } from "./projectMapping.js";
+import { createSharePreviewRun } from "./sharePreviewRun.js";
 
 const DEFAULT_CLOCK = Object.freeze({
   setTimeout(callback, delay) {
@@ -18,6 +19,7 @@ export function createLearnerSession({
 } = {}) {
   const listeners = new Set();
   const learnerProjection = createLearnerProjection();
+  const sharePreviewRun = createSharePreviewRun();
   let snapshot = learnerProjection.derive({
     status: "idle",
     error: "",
@@ -31,12 +33,7 @@ export function createLearnerSession({
     explanationLoading: false,
     explanationError: "",
     showChart: false,
-    sharePreviewOpen: false,
-    sharePreviewData: null,
-    sharePreviewLoading: false,
-    sharePreviewConfirming: false,
-    sharePreviewError: "",
-    sharePreviewConfirmation: null,
+    sharePreviewRun: sharePreviewRun.getSnapshot(),
     studiedNodeIds: new Set(),
     // The explorer's trail. Persisted server-side, unlike studiedNodeIds above
     // which is deliberately session-local: flying somewhere is a fact about
@@ -124,6 +121,13 @@ export function createLearnerSession({
     }
     snapshot = Object.freeze(next);
     for (const listener of listeners) listener();
+  }
+
+  function transitionSharePreview(event) {
+    const previous = sharePreviewRun.getSnapshot();
+    const next = sharePreviewRun.dispatch(event);
+    if (next !== previous) commit({ sharePreviewRun: next });
+    return next;
   }
 
   const projectMapping = createProjectMapping({
@@ -284,41 +288,30 @@ export function createLearnerSession({
   }
 
   function openSharePreview() {
-    commit({
-      sharePreviewOpen: true,
-      sharePreviewData: null,
-      sharePreviewLoading: false,
-      sharePreviewConfirming: false,
-      sharePreviewError: "",
-      sharePreviewConfirmation: null,
-    });
+    transitionSharePreview({ type: "OPEN" });
   }
 
   function closeSharePreview() {
     abortController(sharePreviewController);
     sharePreviewController = null;
-    commit({
-      sharePreviewOpen: false,
-      sharePreviewData: null,
-      sharePreviewLoading: false,
-      sharePreviewConfirming: false,
-      sharePreviewError: "",
-      sharePreviewConfirmation: null,
-    });
+    transitionSharePreview({ type: "CLOSE" });
+  }
+
+  function restartSharePreview() {
+    abortController(sharePreviewController);
+    sharePreviewController = null;
+    transitionSharePreview({ type: "RESTART" });
   }
 
   async function createSharePreview(selection) {
+    if (sharePreviewRun.getSnapshot().phase !== "choosing") return undefined;
     const requestLifecycle = lifecycle;
     abortController(sharePreviewController);
     sharePreviewController = new AbortController();
     const controller = sharePreviewController;
-    commit({
-      sharePreviewLoading: true,
-      sharePreviewConfirming: false,
-      sharePreviewData: null,
-      sharePreviewError: "",
-      sharePreviewConfirmation: null,
-    });
+    const started = transitionSharePreview({ type: "BEGIN_CREATE" });
+    if (started.phase !== "compiling") return undefined;
+    const requestId = started.activeRequestId;
     try {
       const preview = await adapter.createSharePreview(selection, {
         signal: controller.signal,
@@ -326,75 +319,83 @@ export function createLearnerSession({
       if (
         requestLifecycle !== lifecycle ||
         controller.signal.aborted ||
-        !snapshot.sharePreviewOpen
+        sharePreviewRun.getSnapshot().phase === "closed"
       ) {
         return undefined;
       }
-      commit({ sharePreviewData: preview, sharePreviewLoading: false });
-      return preview;
+      const next = transitionSharePreview({
+        type: "CREATE_SUCCEEDED",
+        requestId,
+        preview,
+      });
+      return next.preview === preview ? preview : undefined;
     } catch (requestError) {
       if (
         sharePreviewController === controller &&
         requestLifecycle === lifecycle &&
         !controller.signal.aborted &&
-        snapshot.sharePreviewOpen &&
+        sharePreviewRun.getSnapshot().phase !== "closed" &&
         !isAbortError(requestError)
       ) {
-        commit({
-          sharePreviewLoading: false,
-          sharePreviewError: errorMessage(requestError),
+        transitionSharePreview({
+          type: "CREATE_FAILED",
+          requestId,
+          error: errorMessage(requestError),
         });
       }
       return undefined;
     }
   }
 
-  async function confirmSharePreview(acknowledgement) {
-    const preview = snapshot.sharePreviewData;
-    if (!preview) return undefined;
+  async function confirmSharePreview() {
+    const current = sharePreviewRun.getSnapshot();
+    const preview = current.preview;
+    if (!preview || current.phase !== "inspecting" || !current.readyToConfirm) {
+      return undefined;
+    }
     const requestLifecycle = lifecycle;
     abortController(sharePreviewController);
     sharePreviewController = new AbortController();
     const controller = sharePreviewController;
-    commit({
-      sharePreviewConfirming: true,
-      sharePreviewError: "",
-      sharePreviewConfirmation: null,
-    });
+    const started = transitionSharePreview({ type: "BEGIN_CONFIRM" });
+    if (started.phase !== "confirming") return undefined;
+    const requestId = started.activeRequestId;
     try {
       const confirmation = await adapter.confirmSharePreview(
         {
           preview_id: preview.preview_id,
           payload_digest: preview.payload_digest,
-          reviewed: acknowledgement.reviewed,
-          labels_confirmed: acknowledgement.labelsConfirmed,
-          understanding_confirmed: acknowledgement.understandingConfirmed,
+          reviewed: started.acknowledgements.reviewed,
+          labels_confirmed: started.acknowledgements.labelsConfirmed,
+          understanding_confirmed: started.acknowledgements.understandingConfirmed,
         },
         { signal: controller.signal },
       );
       if (
         requestLifecycle !== lifecycle ||
         controller.signal.aborted ||
-        !snapshot.sharePreviewOpen
+        sharePreviewRun.getSnapshot().phase === "closed"
       ) {
         return undefined;
       }
-      commit({
-        sharePreviewConfirming: false,
-        sharePreviewConfirmation: confirmation,
+      const next = transitionSharePreview({
+        type: "CONFIRM_SUCCEEDED",
+        requestId,
+        confirmation,
       });
-      return confirmation;
+      return next.confirmation === confirmation ? confirmation : undefined;
     } catch (requestError) {
       if (
         sharePreviewController === controller &&
         requestLifecycle === lifecycle &&
         !controller.signal.aborted &&
-        snapshot.sharePreviewOpen &&
+        sharePreviewRun.getSnapshot().phase !== "closed" &&
         !isAbortError(requestError)
       ) {
-        commit({
-          sharePreviewConfirming: false,
-          sharePreviewError: errorMessage(requestError),
+        transitionSharePreview({
+          type: "CONFIRM_FAILED",
+          requestId,
+          error: errorMessage(requestError),
         });
       }
       return undefined;
@@ -421,6 +422,7 @@ export function createLearnerSession({
     modeController = null;
     abortController(sharePreviewController);
     sharePreviewController = null;
+    sharePreviewRun.dispatch({ type: "RELEASE_PROJECT" });
     commit({
       graph: null,
       parseProgress: null,
@@ -434,12 +436,7 @@ export function createLearnerSession({
       explanationError: "",
       explanationLoading: false,
       showChart: false,
-      sharePreviewOpen: false,
-      sharePreviewData: null,
-      sharePreviewLoading: false,
-      sharePreviewConfirming: false,
-      sharePreviewError: "",
-      sharePreviewConfirmation: null,
+      sharePreviewRun: sharePreviewRun.getSnapshot(),
       studiedNodeIds: new Set(),
       showChecks: false,
       checkData: null,
@@ -494,10 +491,20 @@ export function createLearnerSession({
       case "CLOSE_SHARE_PREVIEW":
         closeSharePreview();
         return undefined;
+      case "RESTART_SHARE_PREVIEW":
+        restartSharePreview();
+        return undefined;
       case "CREATE_SHARE_PREVIEW":
         return createSharePreview(event.selection);
       case "CONFIRM_SHARE_PREVIEW":
-        return confirmSharePreview(event.acknowledgement);
+        return confirmSharePreview();
+      case "SET_SHARE_PREVIEW_ACKNOWLEDGEMENT":
+        transitionSharePreview({
+          type: "SET_ACKNOWLEDGEMENT",
+          name: event.name,
+          value: event.value,
+        });
+        return undefined;
       case "OPEN_CHECKS":
         return openChecks();
       case "CLOSE_CHECKS":
@@ -1112,6 +1119,7 @@ export function createLearnerSession({
     mapController = null;
     modeController = null;
     sharePreviewController = null;
+    sharePreviewRun.dispatch({ type: "RELEASE_PROJECT" });
     unsubscribeProjectMapping();
     projectMapping.dispose();
     if (illuminationTimer !== null) {

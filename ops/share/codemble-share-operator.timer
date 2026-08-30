@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule Codemble backup verification and prune daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30m
+Unit=codemble-share-operator.service
+
+[Install]
+WantedBy=timers.target

@@ -30,6 +30,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   deletion-capability header, context-encodes artifact labels into a script-free
   viewer, and normalizes every bearer-bearing or unknown target before ASGI access
   logging. It is not connected to the local preview or any upload route.
+- One trusted Share Artifact interpreter now validates canonical bytes and
+  derives the preview and delivery facts consumed by every boundary. The
+  compiler lays out and summarizes the exact deduplicated relationship
+  projection it serializes while separately validating the parser's full graph.
+- The Share Preview Run now owns the complete choose, compile, inspect,
+  acknowledge, confirm, restart, and project-release lifecycle, including stale
+  response refusal and focus handoffs, instead of spreading that state between
+  the session and dialog.
+- A zero-license-cost operations reference uses Caddy, restic, and rest-server
+  with separate append-only writer and local operator roles. It adds hourly
+  sweep/backup and daily full-data-check/prune commands, pinned restic bytes,
+  operator-managed Caddy configuration and a fixed absolute rest-server path,
+  closed configuration templates, a process-serialized create-only Retirement
+  Journal that advances only after two named authenticated repositories return
+  snapshot- and entry-bound receipts, role-local credential-derived deployment
+  attestations, independent journal materialization, application-host-local
+  production restore with writer-journal rehydration, a stable application-host
+  operation lock outside the replaceable store whose root-owned parent is not
+  replaceable by the non-root writer, with trusted-directory and inode checks
+  plus process-level exclusion proof for writer and root-operator transitions.
+  The public writer cycle acquires that lock before opening its store or journal,
+  every writer-owned sibling path is pre-provisioned, and root restores verify a
+  recursive ownership handoff to the configured non-root writer before promotion.
+  Exact snapshot retirement stays behind a durable creation seal, with
+  repository-bound finite whole-key-store retirement authorization.
+  Hardware, storage, DNS, electricity, and network access may still cost money.
 
 ### Privacy
 - Raw source, snippets, filesystem paths, dedicated filename metadata, file
@@ -56,6 +82,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   interface. A failed telemetry sink is non-authoritative and cannot strand an
   active share or change view/revocation state. Chromium and WebKit verify no
   cookie or other browser storage, service worker, or third-party request is created.
+- Backups bind the authenticated database digest and backup-repository identity
+  to the exact Retirement Journal fully anchored high-water and immutable
+  name-to-repository replica inventory, captured before the SQLite snapshot so a
+  concurrent retirement cannot be skipped. Restore requires independently
+  materialized replicas and their repository-bound receipts to agree, replays
+  every later revocation or expiry, rehydrates the writer journal, and fails
+  closed on gaps, forks, stale copies, or missing rollback authority. Only the
+  independently held operator role can check, restore, prune, inventory, or
+  remove snapshots. Explicit removal installs an authenticated durable seal that
+  closes later creates and writer cycles, then deletes only the exact live
+  inventory; final authorization re-queries that repository rather than
+  accepting caller-asserted emptiness. The separately held recovery-key copy
+  must authenticate the same active storage key while role-local attestations
+  prove authority credentials stay different without bringing both secret
+  configurations together.
+  These mechanisms are implemented and tested, but release remains blocked until
+  the intended independent node, timers, alerts, restore drill, deletion deadline,
+  and approved media-erasure procedure are observed in operation.
 
 ## [0.22.0] - 2026-08-25
 

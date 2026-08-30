@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const LIFETIME_OPTIONS = Object.freeze([
@@ -25,48 +19,40 @@ export function SharePreviewDialog({
   confirming,
   error,
   confirmation,
+  acknowledgements,
+  readyToConfirm,
+  focusRequest,
   onCreate,
   onConfirm,
+  onAcknowledgementChange,
   onRestart,
   onClose,
 }) {
   const dialogRef = useRef(null);
-  const firstControlRef = useRef(null);
+  const closeControlRef = useRef(null);
   const selectedLifetimeRef = useRef(null);
-  const returningToChoicesRef = useRef(false);
+  const artifactRef = useRef(null);
+  const confirmationRef = useRef(null);
   const [lifetimeDays, setLifetimeDays] = useState(7);
   const [includeLabels, setIncludeLabels] = useState(false);
   const [includeUnderstanding, setIncludeUnderstanding] = useState(false);
-  const [reviewed, setReviewed] = useState(false);
-  const [labelsConfirmed, setLabelsConfirmed] = useState(false);
-  const [understandingConfirmed, setUnderstandingConfirmed] = useState(false);
-  const facts = useMemo(() => previewFacts(preview), [preview]);
+  const facts = preview?.facts ?? { bytes: 0, nodes: 0, regions: 0 };
+  const { reviewed, labelsConfirmed, understandingConfirmed } = acknowledgements;
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
-    firstControlRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    setReviewed(false);
-    setLabelsConfirmed(false);
-    setUnderstandingConfirmed(false);
-  }, [preview?.preview_id]);
-
   useLayoutEffect(() => {
-    if (!preview && returningToChoicesRef.current) {
-      returningToChoicesRef.current = false;
-      selectedLifetimeRef.current?.focus();
-    }
-  }, [preview]);
-
-  const readyToConfirm = Boolean(
-    preview &&
-      reviewed &&
-      (!preview.exposure.labels_included || labelsConfirmed) &&
-      (!preview.exposure.understanding_included || understandingConfirmed),
-  );
+    const targets = {
+      close: closeControlRef,
+      "selected-lifetime": selectedLifetimeRef,
+      artifact: artifactRef,
+      confirmation: confirmationRef,
+    };
+    targets[focusRequest?.target]?.current?.focus({ preventScroll: true });
+  }, [focusRequest?.id, focusRequest?.target]);
 
   function buildPreview(event) {
     event.preventDefault();
@@ -76,16 +62,7 @@ export function SharePreviewDialog({
   function confirmPreview(event) {
     event.preventDefault();
     if (!readyToConfirm) return;
-    onConfirm({
-      reviewed,
-      labelsConfirmed: preview.exposure.labels_included,
-      understandingConfirmed: preview.exposure.understanding_included,
-    });
-  }
-
-  function restartPreview() {
-    returningToChoicesRef.current = true;
-    onRestart();
+    onConfirm();
   }
 
   return createPortal(
@@ -104,7 +81,7 @@ export function SharePreviewDialog({
           <h1 id="share-preview-heading">Inspect the boundary before a link exists.</h1>
         </div>
         <button
-          ref={firstControlRef}
+          ref={closeControlRef}
           type="button"
           className="share-preview__close"
           onClick={onClose}
@@ -215,7 +192,7 @@ export function SharePreviewDialog({
             <code>{preview.payload_digest}</code>
           </section>
 
-          <details className="share-preview__artifact" open>
+          <details ref={artifactRef} className="share-preview__artifact" open tabIndex={-1}>
             <summary>Exact canonical artifact · {facts.bytes.toLocaleString()} bytes</summary>
             <textarea
               readOnly
@@ -226,7 +203,12 @@ export function SharePreviewDialog({
           </details>
 
           {confirmation ? (
-            <section className="share-preview__confirmed" role="status">
+            <section
+              ref={confirmationRef}
+              className="share-preview__confirmed"
+              role="status"
+              tabIndex={-1}
+            >
               <p>Local confirmation recorded</p>
               <h2>This exact preview is ready for a future delivery step.</h2>
               <p>
@@ -241,7 +223,9 @@ export function SharePreviewDialog({
                 <input
                   type="checkbox"
                   checked={reviewed}
-                  onChange={(event) => setReviewed(event.target.checked)}
+                  onChange={(event) =>
+                    onAcknowledgementChange("reviewed", event.target.checked)
+                  }
                 />
                 <span>
                   I reviewed the exact artifact above. A future bearer link would
@@ -253,7 +237,9 @@ export function SharePreviewDialog({
                   <input
                     type="checkbox"
                     checked={labelsConfirmed}
-                    onChange={(event) => setLabelsConfirmed(event.target.checked)}
+                    onChange={(event) =>
+                      onAcknowledgementChange("labelsConfirmed", event.target.checked)
+                    }
                   />
                   <span>
                     I intend to expose the {preview.exposure.label_count} names
@@ -266,7 +252,12 @@ export function SharePreviewDialog({
                   <input
                     type="checkbox"
                     checked={understandingConfirmed}
-                    onChange={(event) => setUnderstandingConfirmed(event.target.checked)}
+                    onChange={(event) =>
+                      onAcknowledgementChange(
+                        "understandingConfirmed",
+                        event.target.checked,
+                      )
+                    }
                   />
                   <span>
                     I intend to expose my {preview.exposure.understood_regions}{" "}
@@ -279,7 +270,7 @@ export function SharePreviewDialog({
 
           {error ? <p className="share-preview__error" role="alert">{error}</p> : null}
           <div className="share-preview__actions">
-            <button type="button" onClick={restartPreview} disabled={confirming}>
+            <button type="button" onClick={onRestart} disabled={confirming}>
               Change choices
             </button>
             {confirmation ? (
@@ -301,20 +292,6 @@ export function SharePreviewDialog({
     </dialog>,
     document.body,
   );
-}
-
-export function previewFacts(preview) {
-  if (!preview?.artifact_json) return { bytes: 0, nodes: 0, regions: 0 };
-  try {
-    const document = JSON.parse(preview.artifact_json);
-    return {
-      bytes: new TextEncoder().encode(preview.artifact_json).byteLength,
-      nodes: document?.payload?.nodes?.length ?? 0,
-      regions: document?.payload?.regions?.length ?? 0,
-    };
-  } catch {
-    return { bytes: 0, nodes: 0, regions: 0 };
-  }
 }
 
 function formatUtc(value) {

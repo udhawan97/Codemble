@@ -1,0 +1,20 @@
+[Unit]
+Description=Codemble append-only encrypted backup receiver
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=codemble-backup
+Group=codemble-backup
+UMask=0077
+ExecStart=/usr/local/libexec/rest-server --path /srv/codemble-restic --listen 127.0.0.1:8040 --append-only --private-repos --htpasswd-file /etc/codemble/rest-server.htpasswd
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/codemble-restic
+
+[Install]
+WantedBy=multi-user.target

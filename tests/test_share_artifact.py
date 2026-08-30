@@ -23,7 +23,12 @@ from codemble.adapters.base import (
     SystemOrbit,
     UnsupportedSource,
 )
-from codemble.share import ShareArtifact, SharePolicy
+from codemble.share import (
+    InvalidShareArtifactError,
+    ShareArtifact,
+    SharePolicy,
+    interpret_share_artifact,
+)
 from codemble.share import artifact as share_artifact
 
 CREATED_AT = datetime(2026, 8, 26, 12, 0, tzinfo=UTC)
@@ -421,6 +426,30 @@ def test_share_artifact_cannot_be_constructed_from_unvalidated_bytes() -> None:
         ShareArtifact()
 
 
+def test_share_artifact_interpretation_is_the_trusted_consumer_interface() -> None:
+    artifact = ShareArtifact.from_graph(
+        _sensitive_graph(),
+        SharePolicy(
+            expires_at=CREATED_AT + timedelta(days=7),
+            include_labels=True,
+            include_understanding=True,
+        ),
+        CREATED_AT,
+    )
+
+    interpreted = interpret_share_artifact(artifact.to_bytes())
+
+    assert interpreted.facts.byte_length == len(artifact.to_bytes())
+    assert interpreted.facts.node_count == len(interpreted.payload["nodes"])
+    assert interpreted.facts.region_count == len(interpreted.payload["regions"])
+    assert interpreted.facts.labels_included is True
+    assert interpreted.facts.understanding_included is True
+    assert interpreted.manifest["payload_digest"] == interpreted.facts.payload_digest
+
+    with pytest.raises(InvalidShareArtifactError):
+        interpret_share_artifact(artifact.to_bytes() + b" ")
+
+
 @pytest.mark.parametrize(
     ("created_at", "expires_at", "message"),
     (
@@ -592,6 +621,77 @@ def test_possible_unresolved_edges_are_omitted_and_projected_edges_are_deduplica
     payload = json.loads(encoded)["payload"]
     assert len(payload["edges"]) == 1
     assert b"possible.private.target" not in encoded
+
+
+def test_region_routes_are_derived_from_the_deduplicated_share_projection() -> None:
+    graph = _sensitive_graph()
+    worker = Node(
+        id="secret.worker",
+        kind="module",
+        name="secret.worker",
+        language="python",
+        file="private/worker.py",
+        lineno=1,
+        end_lineno=25,
+        loc=25,
+        region="secret.worker",
+        system_orbit=SystemOrbit(ring=0, radius=0.0, call_depth=0, kind="origin"),
+    )
+    worker_region = Region(
+        id="secret.worker",
+        language="python",
+        loc=25,
+        centrality=0,
+        node_count=1,
+        understood=False,
+        home=False,
+        x=0.0,
+        y=0.0,
+        z=0.0,
+        community=1,
+        hops_from_home=1,
+        community_family=1,
+    )
+    first_import = Edge(
+        src="secret.app",
+        dst="secret.worker",
+        kind="import",
+        certain=True,
+        lineno=2,
+    )
+    duplicate_import = replace(first_import, lineno=3)
+    graph = replace(
+        graph,
+        nodes=(*graph.nodes, worker),
+        edges=(*graph.edges, first_import, duplicate_import),
+        regions=(*graph.regions, worker_region),
+        region_edges=(
+            RegionEdge(
+                src="secret.app",
+                dst="secret.worker",
+                weight=2,
+                certain=True,
+            ),
+        ),
+        file_hashes={**graph.file_hashes, "private/worker.py": "worker-hash"},
+    )
+
+    artifact = ShareArtifact.from_graph(
+        graph,
+        SharePolicy(expires_at=CREATED_AT + timedelta(days=7)),
+        CREATED_AT,
+    )
+    interpreted = interpret_share_artifact(artifact.to_bytes())
+
+    assert len(interpreted.payload["edges"]) == 2
+    assert interpreted.payload["region_edges"] == [
+        {
+            "certain": True,
+            "source_id": _opaque_id("region", "secret.app"),
+            "target_id": _opaque_id("region", "secret.worker"),
+            "weight": 1,
+        }
+    ]
 
 
 def test_artifact_fails_closed_on_incomplete_render_relationships() -> None:

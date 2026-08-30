@@ -421,6 +421,38 @@ try {
           true,
           "changing choices hands focus to the restored selected lifetime",
         );
+        await page.getByRole("button", { name: "Build exact local preview" }).click();
+        await page.locator(".share-preview__inspection").waitFor();
+        await page.getByLabel(/I reviewed the exact artifact above/).check();
+        const confirm = page.getByRole("button", {
+          name: "Confirm this exact preview",
+        });
+        assert.equal(await confirm.isEnabled(), true, "review did not enable exact confirmation");
+        await confirm.click();
+        const confirmed = page.locator(".share-preview__confirmed");
+        await confirmed.waitFor();
+        await page.waitForFunction(
+          () => document.activeElement?.classList.contains("share-preview__confirmed"),
+        );
+        assert.match(
+          await confirmed.innerText(),
+          /No link was created and nothing was uploaded/,
+          "confirmation overstates the local-only outcome",
+        );
+        await page.getByRole("button", { name: "Close workbench" }).click();
+        await page.locator(".share-preview").waitFor({ state: "detached" });
+        await page.waitForFunction(
+          () => document.activeElement?.classList.contains("mobile-menu-trigger"),
+          undefined,
+          { timeout: 1000 },
+        );
+        assert.equal(
+          await page.evaluate(() =>
+            document.activeElement?.classList.contains("mobile-menu-trigger") ?? false,
+          ),
+          true,
+          "closing the compact workbench does not restore rail focus",
+        );
       } catch (error) {
         failures += 1;
         console.error(`  FAIL ${error.message}`);

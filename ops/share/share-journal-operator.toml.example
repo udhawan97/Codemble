@@ -1,0 +1,14 @@
+schema_version = 1
+role = "journal-operator"
+deployment_id = "codemble-share-production"
+replica_name = "backup-node"
+repository = "/srv/codemble-restic/codemble-journal-backup-writer/codemble-journal"
+repository_id = "REPLACE_WITH_BACKUP_NODE_JOURNAL_REPOSITORY_ID"
+repository_password_file = "/etc/codemble/journal-operator-repository.key"
+restic_cache_root = "/var/cache/codemble-journal-operator/restic"
+restic_executable = "/usr/local/libexec/restic"
+restic_sha256 = "sha256:REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"
+
+[replica_ids]
+backup-node = "REPLACE_WITH_BACKUP_NODE_JOURNAL_REPOSITORY_ID"
+recovery-node = "REPLACE_WITH_RECOVERY_NODE_JOURNAL_REPOSITORY_ID"

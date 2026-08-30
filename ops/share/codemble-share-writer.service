@@ -1,0 +1,17 @@
+[Unit]
+Description=Codemble hourly share sweep and encrypted backup
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/codemble/share/.active.share-operations.lock
+
+[Service]
+Type=oneshot
+User=codemble-share
+Group=codemble-share
+UMask=0077
+ExecStart=/opt/codemble/bin/codemble share-ops writer-cycle --config /etc/codemble/share-writer.toml
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/codemble/share /var/cache/codemble-share-writer

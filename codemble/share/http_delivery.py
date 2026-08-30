@@ -18,6 +18,7 @@ from codemble.share.delivery import (
     ShareStorageIntegrityError,
     UnknownShareCapabilityError,
 )
+from codemble.share.interpretation import interpret_share_artifact
 
 _MAX_REQUEST_BODY_BYTES = 128
 _VIEW_PREFIX = "/v/"
@@ -363,10 +364,10 @@ async def _respond(
 
 
 def _render_artifact(artifact: bytes) -> bytes:
-    document = json.loads(artifact)
-    manifest = document["manifest"]
-    payload = document["payload"]
-    coverage = manifest["coverage"]
+    interpretation = interpret_share_artifact(artifact)
+    manifest = interpretation.manifest
+    payload = interpretation.payload
+    facts = interpretation.facts
     labels_included = payload["labels_included"]
     understanding_included = payload["understanding_included"]
     nodes_by_region: dict[str, list[Mapping[str, object]]] = {}
@@ -385,18 +386,20 @@ def _render_artifact(artifact: bytes) -> bytes:
             node_title = (
                 node_label if isinstance(node_label, str) else f"Structure {node_index}"
             )
-            facts = [
+            node_tags = [
                 _tag(node["kind"]),
                 _tag(node["language"]),
                 _tag(f"{node['loc']} lines"),
             ]
             if node.get("entrypoint") is True:
-                facts.append(_tag("Home"))
+                node_tags.append(_tag("Home"))
             if node.get("partial") is True:
-                facts.append(_tag("Partial source"))
+                node_tags.append(_tag("Partial source"))
             if understanding_included and node.get("understood") is True:
-                facts.append(_tag("Understood"))
-            node_rows.append(f"<li><strong>{_text(node_title)}</strong><br>{''.join(facts)}</li>")
+                node_tags.append(_tag("Understood"))
+            node_rows.append(
+                f"<li><strong>{_text(node_title)}</strong><br>{''.join(node_tags)}</li>"
+            )
         understanding = (
             f'<span class="tag">{status}</span>' if understanding_included else ""
         )
@@ -425,14 +428,14 @@ def _render_artifact(artifact: bytes) -> bytes:
         "<div class=\"ledger\">"
         f"{_metric('Labels', 'Included' if labels_included else 'Omitted')}"
         f"{_metric('Understanding', 'Included' if understanding_included else 'Omitted')}"
-        f"{_metric('Routes', str(len(payload['region_edges'])))}"
+        f"{_metric('Routes', str(facts.route_count))}"
         "</div></section>"
         "<section aria-labelledby=\"coverage-title\"><h2 id=\"coverage-title\">Parser coverage</h2>"
         "<div class=\"coverage\">"
-        f"{_metric('Source files', coverage['source_files'])}"
-        f"{_metric('Structures', coverage['nodes'])}"
-        f"{_metric('Regions', coverage['regions'])}"
-        f"{_metric('Partial sources', coverage['partial_sources'])}"
+        f"{_metric('Source files', facts.source_file_count)}"
+        f"{_metric('Structures', facts.node_count)}"
+        f"{_metric('Regions', facts.region_count)}"
+        f"{_metric('Partial sources', facts.partial_source_count)}"
         "</div></section>"
         "<section aria-labelledby=\"regions-title\"><h2 id=\"regions-title\">Structural snapshot</h2>"
         f"<div class=\"regions\">{''.join(region_cards)}</div></section>"

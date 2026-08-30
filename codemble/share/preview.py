@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -11,6 +10,7 @@ from secrets import token_urlsafe
 
 from codemble.adapters.base import Graph
 from codemble.share.artifact import ShareArtifact, SharePolicy
+from codemble.share.interpretation import ShareArtifactDocument, interpret_share_artifact
 
 _ALLOWED_LIFETIME_DAYS = frozenset((1, 7, 30))
 _PREVIEW_ID_BYTES = 24
@@ -28,7 +28,7 @@ class SharePreviewConfirmationError(ValueError):
 class _PreviewRecord:
     preview_id: str
     artifact: ShareArtifact
-    document: dict[str, object]
+    interpretation: ShareArtifactDocument
     expires_at: datetime
     confirmed: bool = False
 
@@ -100,7 +100,7 @@ class SharePreviewService:
                 created_at,
             )
             encoded = artifact.to_bytes()
-            document = json.loads(encoded)
+            interpretation = interpret_share_artifact(encoded)
             # Compilation is the long-running part. A project release may have
             # invalidated this service while it was in progress.
             self._ensure_open()
@@ -110,7 +110,7 @@ class SharePreviewService:
             record = _PreviewRecord(
                 preview_id=preview_id,
                 artifact=artifact,
-                document=document,
+                interpretation=interpretation,
                 expires_at=expires_at,
             )
             self._current = record
@@ -139,13 +139,9 @@ class SharePreviewService:
             if now >= record.expires_at:
                 self._current = None
                 raise UnknownSharePreviewError("That local share preview has expired.")
-            manifest = record.document["manifest"]
-            payload = record.document["payload"]
-            assert isinstance(manifest, dict)
-            assert isinstance(payload, dict)
-            expected_digest = manifest["payload_digest"]
-            labels_included = payload["labels_included"]
-            understanding_included = payload["understanding_included"]
+            manifest = record.interpretation.manifest
+            facts = record.interpretation.facts
+            expected_digest = facts.payload_digest
             if reviewed is not True:
                 raise SharePreviewConfirmationError(
                     "Review the exact local artifact before confirming it."
@@ -154,11 +150,11 @@ class SharePreviewService:
                 raise SharePreviewConfirmationError(
                     "The preview changed; build and review it again."
                 )
-            if labels_confirmed is not labels_included:
+            if labels_confirmed is not facts.labels_included:
                 raise SharePreviewConfirmationError(
                     "The label acknowledgement does not match this preview."
                 )
-            if understanding_confirmed is not understanding_included:
+            if understanding_confirmed is not facts.understanding_included:
                 raise SharePreviewConfirmationError(
                     "The understanding acknowledgement does not match this preview."
                 )
@@ -189,16 +185,8 @@ class SharePreviewService:
 
 
 def _preview_response(record: _PreviewRecord) -> dict[str, object]:
-    manifest = record.document["manifest"]
-    payload = record.document["payload"]
-    assert isinstance(manifest, dict)
-    assert isinstance(payload, dict)
-    nodes = payload["nodes"]
-    regions = payload["regions"]
-    assert isinstance(nodes, list)
-    assert isinstance(regions, list)
-    labels_included = payload["labels_included"] is True
-    understanding_included = payload["understanding_included"] is True
+    manifest = record.interpretation.manifest
+    facts = record.interpretation.facts
     return {
         "status": "preview",
         "preview_id": record.preview_id,
@@ -206,20 +194,16 @@ def _preview_response(record: _PreviewRecord) -> dict[str, object]:
         "created_at": manifest["created_at"],
         "expires_at": manifest["expires_at"],
         "artifact_json": record.artifact.to_bytes().decode("utf-8"),
+        "facts": {
+            "bytes": facts.byte_length,
+            "nodes": facts.node_count,
+            "regions": facts.region_count,
+        },
         "exposure": {
-            "labels_included": labels_included,
-            "label_count": (
-                sum("label" in item for item in nodes)
-                + sum("label" in item for item in regions)
-                if labels_included
-                else 0
-            ),
-            "understanding_included": understanding_included,
-            "understood_regions": (
-                sum(item.get("understood") is True for item in regions)
-                if understanding_included
-                else 0
-            ),
+            "labels_included": facts.labels_included,
+            "label_count": facts.label_count,
+            "understanding_included": facts.understanding_included,
+            "understood_regions": facts.understood_region_count,
         },
         "confirmed": record.confirmed,
         "upload_available": False,

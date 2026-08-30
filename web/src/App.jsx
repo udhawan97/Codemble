@@ -210,17 +210,18 @@ export function App() {
     showAll,
     showChart,
     showChecks,
-    sharePreviewConfirmation,
-    sharePreviewConfirming,
-    sharePreviewData,
-    sharePreviewError,
-    sharePreviewLoading,
-    sharePreviewOpen,
+    sharePreviewRun,
     sidebarOpen,
     status,
     studyData,
     studyError,
   } = state;
+  const sharePreviewOpen = sharePreviewRun.phase !== "closed";
+  const sharePreviewData = sharePreviewRun.preview;
+  const sharePreviewLoading = sharePreviewRun.phase === "compiling";
+  const sharePreviewConfirming = sharePreviewRun.phase === "confirming";
+  const sharePreviewError = sharePreviewRun.error;
+  const sharePreviewConfirmation = sharePreviewRun.confirmation;
 
   function closeSharePreview() {
     session.dispatch({ type: "CLOSE_SHARE_PREVIEW" });
@@ -1234,13 +1235,21 @@ export function App() {
           confirming={sharePreviewConfirming}
           error={sharePreviewError}
           confirmation={sharePreviewConfirmation}
+          acknowledgements={sharePreviewRun.acknowledgements}
+          readyToConfirm={sharePreviewRun.readyToConfirm}
+          focusRequest={sharePreviewRun.focusRequest}
           onCreate={(selection) =>
             session.dispatch({ type: "CREATE_SHARE_PREVIEW", selection })
           }
-          onConfirm={(acknowledgement) =>
-            session.dispatch({ type: "CONFIRM_SHARE_PREVIEW", acknowledgement })
+          onConfirm={() => session.dispatch({ type: "CONFIRM_SHARE_PREVIEW" })}
+          onAcknowledgementChange={(name, value) =>
+            session.dispatch({
+              type: "SET_SHARE_PREVIEW_ACKNOWLEDGEMENT",
+              name,
+              value,
+            })
           }
-          onRestart={() => session.dispatch({ type: "OPEN_SHARE_PREVIEW" })}
+          onRestart={() => session.dispatch({ type: "RESTART_SHARE_PREVIEW" })}
           onClose={closeSharePreview}
         />
       ) : null}

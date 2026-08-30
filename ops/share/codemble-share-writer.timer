@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule Codemble share sweep and backup every hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=5m
+Unit=codemble-share-writer.service
+
+[Install]
+WantedBy=timers.target

@@ -124,7 +124,7 @@ assert.equal(snapshot.mode, "easy", "the session adopts the server's persisted m
 assert.equal(snapshot.llmStatus.ollama.recommended, "gemma4:12b");
 
 await session.dispatch({ type: "OPEN_SHARE_PREVIEW" });
-assert.equal(session.getSnapshot().sharePreviewOpen, true);
+assert.equal(session.getSnapshot().sharePreviewRun.phase, "choosing");
 await session.dispatch({
   type: "CREATE_SHARE_PREVIEW",
   selection: {
@@ -138,15 +138,18 @@ assert.deepEqual(previewSelection, {
   includeLabels: true,
   includeUnderstanding: false,
 });
-assert.equal(session.getSnapshot().sharePreviewData, sharePreview);
+assert.equal(session.getSnapshot().sharePreviewRun.preview, sharePreview);
 await session.dispatch({
-  type: "CONFIRM_SHARE_PREVIEW",
-  acknowledgement: {
-    reviewed: true,
-    labelsConfirmed: true,
-    understandingConfirmed: false,
-  },
+  type: "SET_SHARE_PREVIEW_ACKNOWLEDGEMENT",
+  name: "reviewed",
+  value: true,
 });
+await session.dispatch({
+  type: "SET_SHARE_PREVIEW_ACKNOWLEDGEMENT",
+  name: "labelsConfirmed",
+  value: true,
+});
+await session.dispatch({ type: "CONFIRM_SHARE_PREVIEW" });
 assert.deepEqual(previewAcknowledgement, {
   preview_id: "local-preview",
   payload_digest: "sha256:preview-digest",
@@ -154,15 +157,15 @@ assert.deepEqual(previewAcknowledgement, {
   labels_confirmed: true,
   understanding_confirmed: false,
 });
-assert.equal(session.getSnapshot().sharePreviewConfirmation, shareConfirmation);
+assert.equal(session.getSnapshot().sharePreviewRun.confirmation, shareConfirmation);
 assert.equal(
-  session.getSnapshot().sharePreviewConfirmation.upload_available,
+  session.getSnapshot().sharePreviewRun.confirmation.upload_available,
   false,
   "confirmation exposes no upload authority",
 );
 await session.dispatch({ type: "CLOSE_SHARE_PREVIEW" });
-assert.equal(session.getSnapshot().sharePreviewOpen, false);
-assert.equal(session.getSnapshot().sharePreviewData, null);
+assert.equal(session.getSnapshot().sharePreviewRun.phase, "closed");
+assert.equal(session.getSnapshot().sharePreviewRun.preview, null);
 
 await session.dispatch({ type: "SET_MODE", mode: "expert" });
 assert.equal(session.getSnapshot().mode, "expert");
@@ -1541,11 +1544,11 @@ resolveStaleSharePreview(sharePreview);
 await staleShareCreateRequest;
 assert.equal(shareCreateRaceSession.getSnapshot().status, "picking");
 assert.equal(
-  shareCreateRaceSession.getSnapshot().sharePreviewData,
+  shareCreateRaceSession.getSnapshot().sharePreviewRun.preview,
   null,
   "a stale preview response cannot repopulate the released project",
 );
-assert.equal(shareCreateRaceSession.getSnapshot().sharePreviewOpen, false);
+assert.equal(shareCreateRaceSession.getSnapshot().sharePreviewRun.phase, "closed");
 shareCreateRaceSession.dispose();
 
 let resolveStaleShareConfirmation;
@@ -1575,24 +1578,29 @@ await shareConfirmRaceSession.dispatch({
     includeUnderstanding: false,
   },
 });
+await shareConfirmRaceSession.dispatch({
+  type: "SET_SHARE_PREVIEW_ACKNOWLEDGEMENT",
+  name: "reviewed",
+  value: true,
+});
+await shareConfirmRaceSession.dispatch({
+  type: "SET_SHARE_PREVIEW_ACKNOWLEDGEMENT",
+  name: "labelsConfirmed",
+  value: true,
+});
 const staleShareConfirmRequest = shareConfirmRaceSession.dispatch({
   type: "CONFIRM_SHARE_PREVIEW",
-  acknowledgement: {
-    reviewed: true,
-    labelsConfirmed: true,
-    understandingConfirmed: false,
-  },
 });
 await shareConfirmRaceSession.dispatch({ type: "RESET_PROJECT" });
 resolveStaleShareConfirmation(shareConfirmation);
 await staleShareConfirmRequest;
 assert.equal(shareConfirmRaceSession.getSnapshot().status, "picking");
 assert.equal(
-  shareConfirmRaceSession.getSnapshot().sharePreviewConfirmation,
+  shareConfirmRaceSession.getSnapshot().sharePreviewRun.confirmation,
   null,
   "a stale confirmation response cannot repopulate the released project",
 );
-assert.equal(shareConfirmRaceSession.getSnapshot().sharePreviewOpen, false);
+assert.equal(shareConfirmRaceSession.getSnapshot().sharePreviewRun.phase, "closed");
 shareConfirmRaceSession.dispose();
 
 // Regression: a stale SELECT_ENTRYPOINT response arriving after RESET_PROJECT
