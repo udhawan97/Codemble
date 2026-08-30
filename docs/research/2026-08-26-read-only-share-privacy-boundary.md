@@ -2,11 +2,11 @@
 
 **Date:** 2026-08-26
 **Status:** requirements contract. The local artifact compiler, exact preview,
-provider-neutral in-process capability lifecycle, and standalone HTTPS/browser
-delivery seam are selected in
+provider-neutral capability lifecycle, standalone HTTPS/browser delivery seam,
+and disconnected encrypted SQLite reference adapter are selected in
 `docs/superpowers/specs/2026-08-26-read-only-share-privacy-design.md`; no remote
-provider, account system, persistent storage adapter, preview-to-delivery handoff,
-deployment, or cloud implementation is selected.
+provider, account system, preview-to-delivery handoff, deployment, backup
+retention system, or cloud implementation is selected.
 
 `MUST` and `SHOULD` below are proposed Codemble product requirements, not quotations
 from the cited sources or a claim of legal compliance. The sources establish the

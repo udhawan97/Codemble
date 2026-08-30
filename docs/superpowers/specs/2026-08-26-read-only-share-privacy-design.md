@@ -2,8 +2,8 @@
 
 Date: 2026-08-26 · Approved by: UD (promoted the next phase and confirmed the
 artifact seam) · Status: M20 local artifact, confirmation, capability lifecycle,
-and standalone HTTPS/browser delivery implemented; provider connection and
-operational storage/deletion remain gated
+standalone HTTPS/browser delivery, and encrypted persistent reference storage
+implemented; provider connection, backups, and operational deletion remain gated
 
 Primary-source research and the complete future delivery contract live in
 [`docs/research/2026-08-26-read-only-share-privacy-boundary.md`](../../research/2026-08-26-read-only-share-privacy-boundary.md).
@@ -108,6 +108,29 @@ reference adapter and an independent recording adapter exercises the same port i
 tests. Revocation immediately removes active artifact bytes while retaining a
 non-serving tombstone through expiry for idempotent confirmation.
 
+`EncryptedSQLiteShareStorage(root, encryption_key)` is a second production-shaped,
+POSIX-only adapter behind the same three-operation seam. It keeps the 256-bit key
+outside the storage directory, binds one database to that key with an authenticated
+sentinel, validates the exact schema before touching an existing store, and
+AES-GCM encrypts and authenticates the complete record body. A keyed commitment
+authenticates the complete retained nonce and capability-guard history on every
+operation, including detached guards.
+Share-derived sensitive plaintext is limited to internal share IDs, ciphertext
+lengths, nonces, and capability-derived lookup/fingerprint guards. Every 96-bit record nonce is
+durably reserved before encryption; committed capability guards detach rather than
+disappear after purge so neither authority nor nonces can be reassigned while the
+key store lives. Strict SQLite tables plus immediate transactions own concurrency.
+The adapter rejects non-POSIX systems and group/world-readable roots or database
+files, rechecking modes on every use; SQLite secure deletion is enabled before
+record mutation. Revocation replaces the active ciphertext atomically. `purge(now)`
+also expires shares that were never viewed and makes the share row plus serving
+index linkage eligible for removal after a configured terminal-retention
+threshold—measured from revocation time or absolute expiry—24 hours by default.
+Actual removal time includes sweep latency. Detached reuse/nonce guards remain
+until key-store retirement. This is executable active-store machinery, not proof
+of an `ACTIVE_PURGE_DEADLINE`, a scheduled sweep, finite security-metadata
+retirement, or protection against resurrection from provider backups.
+
 `create_share_delivery_app(delivery, allowed_hosts=...)` now wraps that core in
 one standalone ASGI module. It accepts only HTTPS, exact configured Host values,
 and query-free `GET /v/<view capability>`; normalizes view and unknown paths in
@@ -132,9 +155,9 @@ enforcement, no cookies or other browser storage/service worker, no third-party 
 reload, revocation, and token-redacted Uvicorn access logs.
 
 The standalone application is not connected to the local preview routes. There
-is still no CLI publishing option, preview-to-delivery handoff, persistent or
-remote storage adapter, provider dependency, deployment, account, analytics,
-upload, or cloud request.
+is still no CLI publishing option, preview-to-delivery handoff, remote storage
+adapter, provider dependency, deployment, account, analytics, upload, or cloud
+request. The encrypted SQLite adapter is also disconnected from that application.
 
 Before any upload is authorized, M20 requires:
 
@@ -143,14 +166,16 @@ Before any upload is authorized, M20 requires:
 2. **Complete in the provider-neutral core:** independent unguessable view and
    deletion capabilities;
 3. **Partial:** immutable validation, server-enforced expiry, inert core reads,
-   confirmed idempotent revocation, removal from the active in-memory adapter,
-   and uniform view failures are complete; persistent active/back-up purge
-   deadlines and deletion without resurrection remain gated;
+   confirmed idempotent revocation, uniform view failures, persistent encrypted
+   active storage, immediate transactional byte removal, and a finite terminal
+   share-unlink sweep are complete. Finite retirement of detached security guards,
+   provider backup purge, and restore-without-resurrection remain gated;
 4. **Partial:** strict schema/bounds validation, HTTPS, no-store/no-referrer
    responses, restrictive CSP, no third parties, token-safe application/access
-   logs, and authenticated payload/manifest verification are complete in the
-   standalone in-memory application. Encrypted least-privilege persistent and
-   backup storage remains gated;
+   logs, and authenticated payload/manifest verification are complete. Local
+   POSIX file permissions prove the reference adapter's local least-privilege
+   floor and unsupported permission models fail closed; provider/operator access
+   configuration and encrypted backups remain gated;
 5. automated, configuration, and operational release evidence for all of the
    above.
 
@@ -184,6 +209,15 @@ Before any upload is authorized, M20 requires:
   retry-safe revocation, irreversible observed expiry, closed-schema and derived-
   orbit-relationship revalidation after storage tampering, and capability-keyed
   stored identity/metadata/digest binding for both view and revocation receipts.
+- Persistent-storage tests additionally prove an externally supplied key with no
+  adjacent key file, authenticated database/key binding including concurrent
+  initialization, exact-schema and sentinel reauthentication on every operation,
+  fail-closed database replacement, authenticated retained guard history, no plaintext artifact
+  in the database, POSIX mode revalidation/non-POSIX refusal, reopen,
+  multi-instance uniqueness, persistent revocation and expiry across clock
+  rollback, revocation/expiry-relative unlink timing, post-purge capability
+  non-reassignment, ciphertext/index/history tamper rejection, and durable
+  nonce-reuse refusal even after a failed create or deleted reservation.
 - HTTP tests and disposable Chromium/WebKit TLS journeys additionally prove
   exact Host and HTTPS refusal, known/unknown path plus header/query redaction, static context
   encoding, hardened headers on success and every failure, no browser storage,

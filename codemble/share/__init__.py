@@ -19,6 +19,11 @@ from codemble.share.delivery import (
     UnknownShareCapabilityError,
 )
 from codemble.share.http_delivery import create_share_delivery_app
+from codemble.share.persistent_storage import (
+    DEFAULT_TERMINAL_RETENTION,
+    EncryptedSQLiteShareStorage,
+    SharePurgeResult,
+)
 from codemble.share.preview import (
     SharePreviewConfirmationError,
     SharePreviewService,
@@ -26,6 +31,8 @@ from codemble.share.preview import (
 )
 
 __all__ = [
+    "DEFAULT_TERMINAL_RETENTION",
+    "EncryptedSQLiteShareStorage",
     "InMemoryShareLifecycleLog",
     "InMemoryShareStorage",
     "ShareArtifact",
@@ -36,6 +43,7 @@ __all__ = [
     "SharePolicy",
     "SharePreviewConfirmationError",
     "SharePreviewService",
+    "SharePurgeResult",
     "ShareRevocation",
     "ShareRevocationConfirmationError",
     "ShareStorageConflictError",

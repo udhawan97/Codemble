@@ -219,18 +219,25 @@ static viewing, header-authorized revocation, hardened browser responses, and
 token-redacted lifecycle/access logs without connecting preview to delivery or
 choosing storage. Lifecycle telemetry is best-effort and non-authoritative so a
 failed sink cannot strand an active share; monitored operational logging remains
-part of the deployment gate. Phase 1 tester evidence continues in parallel — the v0.1.0
-Python learner-acceptance issue stays open, and technical completion does not
-claim those external runs passed.
+part of the deployment gate. A disconnected encrypted SQLite adapter now accepts
+an external key without writing an adjacent key file, authenticates database/key
+identity, exact schema, retained guard history, and record bodies, enforces
+fail-closed POSIX permissions, atomically removes active bytes, sweeps unobserved
+expiry, and provides a finite terminal share-unlink mechanism without choosing a
+remote provider. Detached reuse/nonce guards remain until key-store retirement. Phase 1 tester
+evidence continues in parallel — the v0.1.0 Python learner-acceptance issue stays
+open, and technical completion does not claim those external runs passed.
 
 **NEXT — accountless share delivery after the privacy gates.** The parser and
 scale slate is complete through v0.22.0: nine languages, bounded parser
 evidence, and a complete canvas Map that passes the 5,000-module backend,
 Chromium, and WebKit gate. The exact local preview and explicit exposure
 confirmation now exist. Independent view/delete capabilities, irreversible local
-expiry, and standalone token-safe HTTP/browser delivery are now complete. M20
-still needs encrypted least-privilege authenticated persistent storage, active
-and backup purge deadlines, provider connection, and operational deletion proof.
+expiry, standalone token-safe HTTP/browser delivery, and encrypted authenticated
+local persistence with a finite terminal-unlink mechanism are now complete. M20
+still needs finite security-metadata retirement, encrypted provider backups,
+backup purge/restore without resurrection, provider connection/configuration,
+scheduled-sweep evidence, and operational deletion proof.
 
 The prior scale decisions remain recorded because the measurements are reusable:
 
@@ -276,12 +283,15 @@ logging, serves a static context-encoded viewer with no-store/no-referrer/CSP an
 no third-party/cookie/browser-persistence surface, and accepts deletion only through a
 confirmed header-authorized POST. Closed lifecycle events contain only an internal
 share ID, UTC time, operation, and outcome; sink failure cannot alter capability
-state. The module remains disconnected from
-preview: no upload, persistent or remote provider, account, deployment, or cloud
-request exists.
+state. A separate encrypted SQLite adapter persists the same storage interface
+using an externally supplied key and strict local file permissions, without
+writing an adjacent key file or claiming custody for that key; it is
+not connected to preview or the standalone application. No upload, remote
+provider, account, deployment, or cloud request exists.
 
-**The local artifact, confirmation, capability-core, and standalone browser-
-delivery slices are complete; persistent and operational delivery remain gated.** The deep
+**The local artifact, confirmation, capability-core, standalone browser-delivery,
+and encrypted local persistence slices are complete; provider backup and operational
+delivery remain gated.** The deep
 `ShareArtifact.from_graph(graph, policy, created_at)` interface owns the closed
 allowlist, keyed remapping plus graph-owned re-layout, opt-ins, RFC 8785 bytes, manifest payload
 digest, source-safe coverage, and expiry validation. It fails closed when an
@@ -292,12 +302,25 @@ upload authority. `ShareDelivery.create/view/revoke` owns the capability lifecyc
 behind a three-operation `ShareStoragePort`; its in-memory reference adapter and
 an independent test adapter exercise create/read/revoke without coupling the
 service to the reference adapter; the reference adapter owns the atomicity. The
+`EncryptedSQLiteShareStorage` adapter keeps its 256-bit key outside the database,
+binds the database to that key, and authenticates the complete record body with
+AES-GCM. Its keyed history commitment also authenticates every retained nonce and
+capability guard; exact-schema validation precedes any existing-store mutation.
+Share-derived sensitive plaintext is limited to the internal share ID,
+ciphertext length, nonces, and derived lookup/fingerprint guards. It durably refuses nonce and capability
+reuse, fails closed outside POSIX, rechecks private modes on every use, and uses
+immediate SQLite transactions plus secure deletion for record mutations. Revocation replaces active
+ciphertext; its maintenance pass expires unobserved shares and removes the share
+row plus serving-index linkage once the configured terminal-retention threshold
+has elapsed after revocation or expiry. The default threshold is 24 hours; actual
+removal includes sweep latency. Detached guards deliberately remain until key-store
+retirement; a true active-purge deadline, scheduling, and their finite operational deletion stay gated. The
 standalone `create_share_delivery_app` interface owns HTTPS/Host admission,
 bearer/unknown-target redaction, static rendering, security headers, and strict revocation
 delivery behind the same core. The research contract and approved design still
-gate preview-to-delivery connection, authenticated encrypted persistent and
-backup storage, active/backup purge deadlines, provider configuration, and
-operational deletion without resurrection.
+gate preview-to-delivery connection, encrypted provider backups, backup purge
+and restore without resurrection, provider configuration, scheduled active
+purging, finite security-metadata retirement, and operational deletion proof.
 
 Previously (2026-08-25) · Session note: verified stable v0.22.0 keeps every
 system colourful and legible in free Explore, turns the parser-owned module
@@ -1965,12 +1988,19 @@ outside-in package proof, cold install, and Pages pass.
 - [x] Prove HTTPS-only no-store/no-referrer/CSP browser delivery, static
       context encoding, no browser persistence or third parties, header-only
       revocation, and token-safe lifecycle/access logs in a standalone app
-- [ ] Prove encrypted least-privilege persistent and backup storage,
-      active/backup purge deadlines, provider configuration, and deletion
-      without resurrection before public release
+- [x] Add authenticated encrypted SQLite persistence with an externally supplied
+      key and no adjacent key file,
+      authenticated key/schema/retained-history binding, fail-closed POSIX
+      permissions, durable nonce/capability-reuse refusal, transactional
+      revocation, unobserved-expiry sweeping, and a finite terminal share-unlink
+      mechanism
+- [ ] Prove encrypted least-privilege provider backup storage, backup purge and
+      restore without resurrection, provider configuration, scheduled active
+      sweeping, finite security-metadata retirement, and operational deletion
+      before public release
 
-**Acceptance is partial:** 75 focused artifact/preview/capability/HTTP cases, the full
-618-test Python suite, repository-wide Ruff, the complete frontend contract/build,
+**Acceptance is partial:** 96 focused artifact/preview/capability/HTTP/storage cases, the full
+639-test Python suite, repository-wide Ruff, the complete frontend contract/build,
 a live Chromium desktop exact-preview/confirmation journey, an observed WebKit
 320 px journey, and the maintained Chromium 320 px share-panel reach gate,
 four disposable Chromium/WebKit TLS delivery receipts covering compact rendering,
@@ -1980,7 +2010,7 @@ documentation check/build, sample-project and current self-parse
 artifact/digest/path-exclusion checks, 5,001-node/one-region and 5,000-region
 scale probes, a targeted 53,478-node/one-region acceptance, and two fresh
 5,000-region runs with greater than 43-unit minimum separation all pass.
-Wheel/sdist inclusion with the RFC 8785 runtime dependency and the refreshed
+Wheel/sdist inclusion with the RFC 8785 and cryptography runtime dependencies and the refreshed
 Graphify update/query also pass. The browser-delivery module is not connected to
 preview or a provider. M20 does not authorize a cloud touch, claim operational
 erasure, or advance to release until every unchecked delivery gate is implemented
@@ -1990,6 +2020,7 @@ and evidenced.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-29 | Persistent share storage is one POSIX-only `EncryptedSQLiteShareStorage(root, encryption_key)` adapter behind the unchanged `ShareStoragePort`; it authenticates database/key identity and the complete record body with AES-GCM, validates the exact schema before touching an existing store, authenticates retained nonce/capability history with a keyed commitment, revalidates private modes, and owns expiry sweeping plus terminal-retention eligibility | A provider adapter should not reimplement serialization, crypto, concurrency, tombstones, or retention mechanics. Keeping the existing three-operation seam gives both in-memory and SQLite adapters the same capability lifecycle while concentrating persistence policy in one deep module. One immediate transaction initializes only a genuinely empty file; every later operation reauthenticates identity, schema, and retained guards inside the same read snapshot or immediate write transaction that owns the operation, and SQLite secure deletion is requested for record changes. Once 24 hours have elapsed after revocation or expiry, the default policy makes the share row and serving-index linkage eligible for removal on the next sweep; actual maximum includes sweep latency and remains operationally gated. Share-derived sensitive plaintext still includes internal share IDs, ciphertext lengths, nonces, and derived guards. Detached lookup/fingerprint guards and nonce reservations remain until key-store retirement so committed capabilities and encryption nonces cannot be reassigned. Tests prove concurrent exact-key binding, 120 distinct successful creates across eight adapters, reopen, wrong-key/sentinel/schema/database-replacement failure, authenticated detached history, durable nonce refusal across failed creates or deleted reservations, clock-rollback-safe revocation/expiry, unobserved expiry, revocation-relative retention eligibility, and post-purge non-reassignment. This is a local executable reference, not provider configuration or operational proof: preview and HTTP delivery remain disconnected, the key is supplied rather than managed, and an active-purge deadline, finite guard retirement, encrypted backups, scheduled sweeping, restore without resurrection, operator access, cloud deployment, and public release remain gated. |
 | 2026-08-29 | The browser-delivery seam is one standalone `create_share_delivery_app` ASGI module over `ShareDelivery`: exact Host plus HTTPS admission, query-free `GET /v/<view capability>`, confirmed `POST /revoke` with deletion authority in `Authorization`, bearer removal and all-target normalization before dispatch, static context-encoded HTML, and one hardened response-header set for every outcome. `ShareDelivery` also owns a closed lifecycle-log port with structured and in-memory adapters; telemetry failure is non-authoritative and never changes capability state | Connecting the local preview to a provider before storage and erasure policy exists would widen authority, while postponing browser delivery would leave capability-URL leakage and inert-GET semantics untested. The standalone module makes the HTTP/browser contract executable without adding upload, persistence, deployment, account, analytics, or cloud state. Its CSP permits only the exact inline stylesheet hash and denies scripts, connections, forms, frames, fonts, images, and objects; Chromium/WebKit TLS receipts prove compact rendering, no cookies or other browser stores/service workers/third-party requests, reload, revocation, and Uvicorn path redaction. Lifecycle records have fields only for internal share ID, UTC time, closed operation, and closed outcome, so raw capabilities, full targets, artifacts, IP/User-Agent data, and free-form metadata have no logging interface. Making a failed sink best-effort prevents the create-log ordering from withholding capabilities while leaving active bytes; sink monitoring remains an operational deployment gate. Encrypted persistent/backup storage, provider configuration, upstream proxy/CDN/crash-trace redaction, purge deadlines, and deletion without resurrection remain the final unchecked M20 gate. |
 | 2026-08-28 | **Corrects the capability-storage row below:** capability-derived view/delete record bindings authenticate the immutable metadata and artifact digest without storing either bearer secret; stored orbit meaning is independently recomputed from represented certain calls, and a valid revocation receipt remains retry-safe across a server-clock rollback | Shape and digest checks alone let a faulty adapter return self-consistent altered bytes, while a tombstone timestamp compared with the current clock made a successful revocation look invalid after rollback. Each bearer capability can authenticate only its own operation, the view binding also fixes the retained deletion binding, and semantic orbit recomputation prevents relationship-derived falsehoods before serving. Persistent encrypted/authenticated storage, purge deadlines, and operational erasure remain separate unchecked gates. |
 | 2026-08-28 | The accountless capability lifecycle is one deep `ShareDelivery.create/view/revoke` module behind a three-operation `ShareStoragePort`; view and deletion each receive independent 256-bit authority, storage sees only derived lookups/fingerprints, and the reference adapter removes active bytes atomically while retaining a non-serving tombstone for retry-safe revocation | Capability generation, strict artifact revalidation, absolute server-clock expiry, uniform invalid/expired/revoked view failure, and explicit confirmed revocation are security behavior that must not be rebuilt in HTTP routes or a future provider adapter. The in-memory adapter plus an independent recording adapter make the port real without choosing a cloud. Cross-role fingerprints prevent a token from being reassigned even if a faulty entropy source repeats it; record representations suppress raw capabilities, derived lookups, and artifact bytes. This slice adds no route, link, persistent provider, encryption claim, purge deadline, deployment, account, or cloud touch; those remain the final M20 gate. |
