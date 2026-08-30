@@ -2,9 +2,12 @@
 
 from codemble.share.artifact import ShareArtifact, SharePolicy
 from codemble.share.delivery import (
+    InMemoryShareLifecycleLog,
     InMemoryShareStorage,
     ShareDelivery,
     ShareGrant,
+    ShareLifecycleEvent,
+    ShareLifecycleLogPort,
     ShareRevocation,
     ShareRevocationConfirmationError,
     ShareStorageConflictError,
@@ -12,8 +15,10 @@ from codemble.share.delivery import (
     ShareStoragePort,
     StoredShare,
     StoredShareRevocation,
+    StructuredShareLifecycleLog,
     UnknownShareCapabilityError,
 )
+from codemble.share.http_delivery import create_share_delivery_app
 from codemble.share.preview import (
     SharePreviewConfirmationError,
     SharePreviewService,
@@ -21,10 +26,13 @@ from codemble.share.preview import (
 )
 
 __all__ = [
+    "InMemoryShareLifecycleLog",
     "InMemoryShareStorage",
     "ShareArtifact",
     "ShareDelivery",
     "ShareGrant",
+    "ShareLifecycleEvent",
+    "ShareLifecycleLogPort",
     "SharePolicy",
     "SharePreviewConfirmationError",
     "SharePreviewService",
@@ -35,6 +43,8 @@ __all__ = [
     "ShareStoragePort",
     "StoredShare",
     "StoredShareRevocation",
+    "StructuredShareLifecycleLog",
     "UnknownShareCapabilityError",
     "UnknownSharePreviewError",
+    "create_share_delivery_app",
 ]

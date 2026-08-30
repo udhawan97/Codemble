@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -14,6 +15,7 @@ import rfc8785
 
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.share import (
+    InMemoryShareLifecycleLog,
     InMemoryShareStorage,
     ShareArtifact,
     ShareDelivery,
@@ -48,6 +50,7 @@ def _delivery(
     values = iter(entropy or (bytes([1]) * 32, bytes([2]) * 32))
     return ShareDelivery(
         storage or InMemoryShareStorage(),
+        InMemoryShareLifecycleLog(),
         clock=clock,
         entropy=lambda size: next(values),
     )
@@ -65,6 +68,31 @@ def test_create_issues_independent_256_bit_capabilities_and_exact_view_bytes() -
     assert grant.expires_at == CREATED_AT + timedelta(days=7)
     assert grant.payload_digest.startswith("sha256:")
     assert delivery.view(grant.view_capability) == artifact.to_bytes()
+
+
+def test_lifecycle_sink_failure_never_orphans_or_changes_capability_state(caplog) -> None:
+    class FailingLifecycleLog:
+        def record(self, event) -> None:
+            raise RuntimeError("sink contains a secret that must not be echoed")
+
+    values = iter((bytes([1]) * 32, bytes([2]) * 32))
+    delivery = ShareDelivery(
+        InMemoryShareStorage(),
+        FailingLifecycleLog(),
+        clock=lambda: CREATED_AT,
+        entropy=lambda size: next(values),
+    )
+    artifact = _artifact()
+
+    with caplog.at_level(logging.ERROR, logger="codemble.share.lifecycle.failure"):
+        grant = delivery.create(artifact)
+        assert delivery.view(grant.view_capability) == artifact.to_bytes()
+        assert delivery.revoke(grant.delete_capability, confirmed=True).status == "revoked"
+
+    assert "Share lifecycle event could not be recorded" in caplog.text
+    assert "sink contains" not in caplog.text
+    assert grant.view_capability not in caplog.text
+    assert grant.delete_capability not in caplog.text
 
 
 def test_storage_port_receives_only_derived_lookups_not_raw_capabilities() -> None:

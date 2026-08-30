@@ -23,8 +23,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   tombstones observed expiry, revalidates the closed schema, relationships,
   digests, and bound storage identity, and atomically revokes access with
   retry-safe results even across a server-clock rollback.
-  Its reference adapter is process-local; no HTTP route, provider, or cloud
-  storage is enabled.
+  Its reference adapter is process-local; no provider or cloud storage is
+  enabled.
+- A standalone share-delivery application now serves one immutable capability
+  over HTTPS-only `GET`, accepts confirmed revocation only through a protected
+  deletion-capability header, context-encodes artifact labels into a script-free
+  viewer, and normalizes every bearer-bearing or unknown target before ASGI access
+  logging. It is not connected to the local preview or any upload route.
 
 ### Privacy
 - Raw source, snippets, filesystem paths, dedicated filename metadata, file
@@ -43,6 +48,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   the first atomic revocation, and retains only a non-serving tombstone so a
   lost response can be retried without restoring access. Raw capabilities and
   artifact bytes are excluded from storage-record representations.
+- Every viewer, revocation, validation-error, and not-found response carries
+  `no-store`, `no-referrer`, a self-contained restrictive CSP, no-index and
+  opener/resource isolation headers. Lifecycle logs accept only an internal share
+  ID, UTC timestamp, closed operation, and closed outcome; raw capabilities,
+  request targets, artifacts, IP addresses, and User-Agent data have no logging
+  interface. A failed telemetry sink is non-authoritative and cannot strand an
+  active share or change view/revocation state. Chromium and WebKit verify no
+  cookie or other browser storage, service worker, or third-party request is created.
 
 ## [0.22.0] - 2026-08-25
 

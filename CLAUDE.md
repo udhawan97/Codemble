@@ -36,6 +36,7 @@ npm run build                   # what the Pages workflow runs
 | `codemble/llm/` | Anthropic + OpenAI providers, BYO key, disk cache; narration only |
 | `codemble/server/` | FastAPI: serves SPA + graph/checks JSON API |
 | `codemble/progress/` | Local persistence: illumination + star chart (`~/.codemble/`) |
+| `codemble/share/` | Raw-source-free artifacts, exact local preview, least-authority capabilities, and standalone token-redacted HTTPS delivery |
 | `web/` | Galaxy renderer source (Vite + React + 3d-force-graph) |
 | `codemble/web_dist/` | Versioned production SPA bundled in the Python wheel |
 | `tests/` | Pytest suite |
@@ -213,7 +214,12 @@ workbench now shows the exact artifact and binds explicit confirmation to that
 in-memory candidate. A separate provider-neutral capability core now issues
 independent view/delete authority, rejects capability reuse, irreversibly
 tombstones observed expiry, and atomically revokes active bytes without adding
-an upload or delivery route. Phase 1 tester evidence continues in parallel — the v0.1.0
+an upload route. A standalone provider-neutral application now proves HTTPS-only
+static viewing, header-authorized revocation, hardened browser responses, and
+token-redacted lifecycle/access logs without connecting preview to delivery or
+choosing storage. Lifecycle telemetry is best-effort and non-authoritative so a
+failed sink cannot strand an active share; monitored operational logging remains
+part of the deployment gate. Phase 1 tester evidence continues in parallel — the v0.1.0
 Python learner-acceptance issue stays open, and technical completion does not
 claim those external runs passed.
 
@@ -221,10 +227,10 @@ claim those external runs passed.
 scale slate is complete through v0.22.0: nine languages, bounded parser
 evidence, and a complete canvas Map that passes the 5,000-module backend,
 Chromium, and WebKit gate. The exact local preview and explicit exposure
-confirmation now exist. Independent view/delete capabilities and irreversible
-local expiry are now complete. M20 still needs active and backup purge
-deadlines, authenticated source-free persistent
-storage, token-safe HTTP/browser delivery, and operational deletion proof.
+confirmation now exist. Independent view/delete capabilities, irreversible local
+expiry, and standalone token-safe HTTP/browser delivery are now complete. M20
+still needs encrypted least-privilege authenticated persistent storage, active
+and backup purge deadlines, provider connection, and operational deletion proof.
 
 The prior scale decisions remain recorded because the measurements are reusable:
 
@@ -261,19 +267,21 @@ lit-galaxy GIF as hero).
 ## Current State **[AGENT-MAINTAINED]**
 
 **Current milestone: M20 private read-only share foundation** · Last updated:
-2026-08-28 · Session note: the local privacy workbench still binds confirmation
+2026-08-29 · Session note: the local privacy workbench still binds confirmation
 to one exact raw-source-free artifact, and a separate provider-neutral capability
-module now issues independent 256-bit view/delete authority over only validated
-canonical bytes. It stores derived lookups, reuse fingerprints, and
-capability-keyed record bindings rather than raw tokens, revalidates stored bytes
-and orbit meaning before every view, enforces absolute expiry from its server clock,
-irreversibly tombstones expiry once observed, and atomically removes active bytes
-on confirmed retry-safe revocation. No HTTP
-view/delete/upload route, bearer link, persistent or remote provider, account,
-deployment, or cloud request exists.
+module issues independent 256-bit view/delete authority over only validated
+canonical bytes. A standalone ASGI delivery module now admits only HTTPS and an
+exact Host, normalizes view and unknown paths plus query strings and deletion headers before access
+logging, serves a static context-encoded viewer with no-store/no-referrer/CSP and
+no third-party/cookie/browser-persistence surface, and accepts deletion only through a
+confirmed header-authorized POST. Closed lifecycle events contain only an internal
+share ID, UTC time, operation, and outcome; sink failure cannot alter capability
+state. The module remains disconnected from
+preview: no upload, persistent or remote provider, account, deployment, or cloud
+request exists.
 
-**The local artifact, confirmation, and capability-core slices are complete;
-HTTP and operational delivery remain gated.** The deep
+**The local artifact, confirmation, capability-core, and standalone browser-
+delivery slices are complete; persistent and operational delivery remain gated.** The deep
 `ShareArtifact.from_graph(graph, policy, created_at)` interface owns the closed
 allowlist, keyed remapping plus graph-owned re-layout, opt-ins, RFC 8785 bytes, manifest payload
 digest, source-safe coverage, and expiry validation. It fails closed when an
@@ -284,9 +292,12 @@ upload authority. `ShareDelivery.create/view/revoke` owns the capability lifecyc
 behind a three-operation `ShareStoragePort`; its in-memory reference adapter and
 an independent test adapter exercise create/read/revoke without coupling the
 service to the reference adapter; the reference adapter owns the atomicity. The
-research contract and approved design still gate HTTP/browser
-delivery, authenticated encrypted persistent storage, token-safe operations,
-active/backup purge deadlines, and deletion without resurrection.
+standalone `create_share_delivery_app` interface owns HTTPS/Host admission,
+bearer/unknown-target redaction, static rendering, security headers, and strict revocation
+delivery behind the same core. The research contract and approved design still
+gate preview-to-delivery connection, authenticated encrypted persistent and
+backup storage, active/backup purge deadlines, provider configuration, and
+operational deletion without resurrection.
 
 Previously (2026-08-25) · Session note: verified stable v0.22.0 keeps every
 system colourful and legible in free Explore, turns the parser-owned module
@@ -1951,27 +1962,35 @@ outside-in package proof, cold install, and Pages pass.
 - [x] Add independent unguessable view/delete capabilities, strict immutable
       storage validation, server-enforced expiry, and confirmed idempotent
       revocation behind a provider-neutral storage port
-- [ ] Prove no-store/no-referrer/CSP browser delivery, token-safe logs,
-      encrypted least-privilege storage, active/backup purge deadlines, and
-      deletion without resurrection before public release
+- [x] Prove HTTPS-only no-store/no-referrer/CSP browser delivery, static
+      context encoding, no browser persistence or third parties, header-only
+      revocation, and token-safe lifecycle/access logs in a standalone app
+- [ ] Prove encrypted least-privilege persistent and backup storage,
+      active/backup purge deadlines, provider configuration, and deletion
+      without resurrection before public release
 
-**Acceptance is partial:** 61 focused artifact/preview/capability cases, the full
-604-test Python suite, repository-wide Ruff, the complete frontend contract/build,
+**Acceptance is partial:** 75 focused artifact/preview/capability/HTTP cases, the full
+618-test Python suite, repository-wide Ruff, the complete frontend contract/build,
 a live Chromium desktop exact-preview/confirmation journey, an observed WebKit
 320 px journey, and the maintained Chromium 320 px share-panel reach gate,
+four disposable Chromium/WebKit TLS delivery receipts covering compact rendering,
+hardened success/error headers, no browser storage/service worker/third-party
+request, inert reload, revocation, and token-redacted Uvicorn access logs,
 documentation check/build, sample-project and current self-parse
 artifact/digest/path-exclusion checks, 5,001-node/one-region and 5,000-region
 scale probes, a targeted 53,478-node/one-region acceptance, and two fresh
 5,000-region runs with greater than 43-unit minimum separation all pass.
 Wheel/sdist inclusion with the RFC 8785 runtime dependency and the refreshed
-Graphify update/query also pass. M20 does not authorize a cloud touch, claim
-operational erasure, or advance to release until every unchecked delivery gate
-is implemented and evidenced.
+Graphify update/query also pass. The browser-delivery module is not connected to
+preview or a provider. M20 does not authorize a cloud touch, claim operational
+erasure, or advance to release until every unchecked delivery gate is implemented
+and evidenced.
 
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-29 | The browser-delivery seam is one standalone `create_share_delivery_app` ASGI module over `ShareDelivery`: exact Host plus HTTPS admission, query-free `GET /v/<view capability>`, confirmed `POST /revoke` with deletion authority in `Authorization`, bearer removal and all-target normalization before dispatch, static context-encoded HTML, and one hardened response-header set for every outcome. `ShareDelivery` also owns a closed lifecycle-log port with structured and in-memory adapters; telemetry failure is non-authoritative and never changes capability state | Connecting the local preview to a provider before storage and erasure policy exists would widen authority, while postponing browser delivery would leave capability-URL leakage and inert-GET semantics untested. The standalone module makes the HTTP/browser contract executable without adding upload, persistence, deployment, account, analytics, or cloud state. Its CSP permits only the exact inline stylesheet hash and denies scripts, connections, forms, frames, fonts, images, and objects; Chromium/WebKit TLS receipts prove compact rendering, no cookies or other browser stores/service workers/third-party requests, reload, revocation, and Uvicorn path redaction. Lifecycle records have fields only for internal share ID, UTC time, closed operation, and closed outcome, so raw capabilities, full targets, artifacts, IP/User-Agent data, and free-form metadata have no logging interface. Making a failed sink best-effort prevents the create-log ordering from withholding capabilities while leaving active bytes; sink monitoring remains an operational deployment gate. Encrypted persistent/backup storage, provider configuration, upstream proxy/CDN/crash-trace redaction, purge deadlines, and deletion without resurrection remain the final unchecked M20 gate. |
 | 2026-08-28 | **Corrects the capability-storage row below:** capability-derived view/delete record bindings authenticate the immutable metadata and artifact digest without storing either bearer secret; stored orbit meaning is independently recomputed from represented certain calls, and a valid revocation receipt remains retry-safe across a server-clock rollback | Shape and digest checks alone let a faulty adapter return self-consistent altered bytes, while a tombstone timestamp compared with the current clock made a successful revocation look invalid after rollback. Each bearer capability can authenticate only its own operation, the view binding also fixes the retained deletion binding, and semantic orbit recomputation prevents relationship-derived falsehoods before serving. Persistent encrypted/authenticated storage, purge deadlines, and operational erasure remain separate unchecked gates. |
 | 2026-08-28 | The accountless capability lifecycle is one deep `ShareDelivery.create/view/revoke` module behind a three-operation `ShareStoragePort`; view and deletion each receive independent 256-bit authority, storage sees only derived lookups/fingerprints, and the reference adapter removes active bytes atomically while retaining a non-serving tombstone for retry-safe revocation | Capability generation, strict artifact revalidation, absolute server-clock expiry, uniform invalid/expired/revoked view failure, and explicit confirmed revocation are security behavior that must not be rebuilt in HTTP routes or a future provider adapter. The in-memory adapter plus an independent recording adapter make the port real without choosing a cloud. Cross-role fingerprints prevent a token from being reassigned even if a faulty entropy source repeats it; record representations suppress raw capabilities, derived lookups, and artifact bytes. This slice adds no route, link, persistent provider, encryption claim, purge deadline, deployment, account, or cloud touch; those remain the final M20 gate. |
 | 2026-08-26 | Exact share preview and confirmation stay owned by the active project: one in-memory candidate, strict same-origin loopback JSON routes, and a three-step app workbench with no upload callback or delivery port | Confirmation is meaningful only if it refers to the same bytes the learner inspected. A preview ID plus payload digest binds the request to the retained artifact; replacement invalidates the older candidate, project release drops the service with the graph, and process exit erases everything. Labels and learner understanding default off and each included choice earns its own acknowledgement after the exact canonical JSON is visible. `Cache-Control: no-store`, rejected unknown/form fields, and an explicit `upload_available: false` keep the local HTTP seam narrow. The exposure ledger and artifact seal use ruri interaction semantics rather than amber, which remains understanding-only. Chromium proves the desktop journey, WebKit proves the observed 320 px journey, and the maintained Chromium reach gate proves the compact scroll cue; no provider, persistent state, bearer link, network upload, tag, or release enters this slice. |

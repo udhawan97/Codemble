@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hmac
 import json
+import logging
 import math
 import re
 import threading
@@ -40,6 +41,18 @@ _NODE_ID_PATTERN = re.compile(r"^n[0-9a-f]{32}$")
 _REGION_ID_PATTERN = re.compile(r"^r[0-9a-f]{32}$")
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _SHARE_ID_PATTERN = re.compile(r"^s[0-9a-f]{32}$")
+_LIFECYCLE_OPERATIONS = frozenset(("create", "view", "revoke"))
+_LIFECYCLE_OUTCOMES = frozenset(
+    (
+        "created",
+        "viewed",
+        "revoked",
+        "already_revoked",
+        "not_found",
+        "rejected",
+        "integrity_error",
+    )
+)
 
 
 class UnknownShareCapabilityError(LookupError):
@@ -56,6 +69,71 @@ class ShareStorageConflictError(RuntimeError):
 
 class ShareStorageIntegrityError(RuntimeError):
     """Stored bytes or metadata no longer match the validated artifact."""
+
+
+@dataclass(frozen=True, slots=True)
+class ShareLifecycleEvent:
+    """One token-free, closed-schema lifecycle record."""
+
+    share_id: str | None
+    occurred_at: datetime
+    operation: Literal["create", "view", "revoke"]
+    outcome: Literal[
+        "created",
+        "viewed",
+        "revoked",
+        "already_revoked",
+        "not_found",
+        "rejected",
+        "integrity_error",
+    ]
+
+
+class ShareLifecycleLogPort(Protocol):
+    """Append only allowlisted lifecycle facts without request targets or tokens."""
+
+    def record(self, event: ShareLifecycleEvent) -> None:
+        """Best-effort one event; never accept free-form fields or control lifecycle."""
+
+
+class StructuredShareLifecycleLog:
+    """Standard-library JSON logger whose records cannot accept bearer secrets."""
+
+    def __init__(self, logger: logging.Logger | None = None) -> None:
+        self._logger = logger or logging.getLogger("codemble.share.lifecycle")
+
+    def record(self, event: ShareLifecycleEvent) -> None:
+        occurred_at = _validate_lifecycle_event(event)
+        self._logger.info(
+            json.dumps(
+                {
+                    "operation": event.operation,
+                    "outcome": event.outcome,
+                    "occurred_at": occurred_at.isoformat().replace("+00:00", "Z"),
+                    "share_id": event.share_id,
+                },
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+
+
+class InMemoryShareLifecycleLog:
+    """Thread-safe recording adapter for interface-level lifecycle tests."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._events: list[ShareLifecycleEvent] = []
+
+    def record(self, event: ShareLifecycleEvent) -> None:
+        _validate_lifecycle_event(event)
+        with self._lock:
+            self._events.append(event)
+
+    @property
+    def events(self) -> tuple[ShareLifecycleEvent, ...]:
+        with self._lock:
+            return tuple(self._events)
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,11 +292,13 @@ class ShareDelivery:
     def __init__(
         self,
         storage: ShareStoragePort,
+        lifecycle_log: ShareLifecycleLogPort,
         *,
         clock: Callable[[], datetime] | None = None,
         entropy: Callable[[int], bytes] | None = None,
     ) -> None:
         self._storage = storage
+        self._lifecycle_log = lifecycle_log
         self._clock = clock or (lambda: datetime.now(UTC))
         self._entropy = entropy or token_bytes
 
@@ -270,6 +350,7 @@ class ShareDelivery:
             ),
         )
         self._storage.create(record)
+        self._record("create", "created", share_id=share_id, occurred_at=now)
         return ShareGrant(
             view_capability=view_capability,
             delete_capability=delete_capability,
@@ -280,21 +361,42 @@ class ShareDelivery:
     def view(self, view_capability: str) -> bytes:
         """Return one exact immutable artifact without changing its lifecycle."""
 
-        secret = _decode_capability(view_capability)
-        lookup = _lookup("view", secret)
         now = self._now()
+        try:
+            secret = _decode_capability(view_capability)
+        except UnknownShareCapabilityError:
+            self._record("view", "not_found", share_id=None, occurred_at=now)
+            raise
+        lookup = _lookup("view", secret)
         record = self._storage.read(lookup, now)
         if record is None:
+            self._record("view", "not_found", share_id=None, occurred_at=now)
             raise UnknownShareCapabilityError("Share not found.")
-        metadata = _validate_stored_share(
-            record,
-            lookup=lookup,
-            secret=secret,
-            now=now,
-        )
+        try:
+            metadata = _validate_stored_share(
+                record,
+                lookup=lookup,
+                secret=secret,
+                now=now,
+            )
+        except ShareStorageIntegrityError:
+            self._record(
+                "view",
+                "integrity_error",
+                share_id=None,
+                occurred_at=now,
+            )
+            raise
         assert record.artifact is not None
         if metadata.payload_digest != record.payload_digest:
+            self._record(
+                "view",
+                "integrity_error",
+                share_id=record.share_id,
+                occurred_at=now,
+            )
             raise ShareStorageIntegrityError("stored share metadata does not match its bytes")
+        self._record("view", "viewed", share_id=record.share_id, occurred_at=now)
         return record.artifact
 
     def revoke(
@@ -305,26 +407,80 @@ class ShareDelivery:
     ) -> ShareRevocation:
         """Atomically revoke view access; repeated confirmed calls are safe."""
 
-        if confirmed is not True:
-            raise ShareRevocationConfirmationError("share deletion requires explicit confirmation")
-        secret = _decode_capability(delete_capability)
-        lookup = _lookup("delete", secret)
         now = self._now()
+        if confirmed is not True:
+            self._record("revoke", "rejected", share_id=None, occurred_at=now)
+            raise ShareRevocationConfirmationError("share deletion requires explicit confirmation")
+        try:
+            secret = _decode_capability(delete_capability)
+        except UnknownShareCapabilityError:
+            self._record("revoke", "not_found", share_id=None, occurred_at=now)
+            raise
+        lookup = _lookup("delete", secret)
         result = self._storage.revoke(lookup, now)
         if result is None:
+            self._record("revoke", "not_found", share_id=None, occurred_at=now)
             raise UnknownShareCapabilityError("Share not found.")
         record = result.share
-        _validate_revoked_share(
-            record,
-            lookup=lookup,
-            secret=secret,
-            now=now,
+        try:
+            _validate_revoked_share(
+                record,
+                lookup=lookup,
+                secret=secret,
+                now=now,
+            )
+        except ShareStorageIntegrityError:
+            self._record(
+                "revoke",
+                "integrity_error",
+                share_id=None,
+                occurred_at=now,
+            )
+            raise
+        outcome: Literal["already_revoked", "revoked"] = (
+            "already_revoked" if result.already_revoked else "revoked"
         )
+        self._record("revoke", outcome, share_id=record.share_id, occurred_at=now)
         return ShareRevocation(
-            status="already_revoked" if result.already_revoked else "revoked",
+            status=outcome,
             expires_at=record.expires_at,
             payload_digest=record.payload_digest,
         )
+
+    def _record(
+        self,
+        operation: Literal["create", "view", "revoke"],
+        outcome: Literal[
+            "created",
+            "viewed",
+            "revoked",
+            "already_revoked",
+            "not_found",
+            "rejected",
+            "integrity_error",
+        ],
+        *,
+        share_id: str | None,
+        occurred_at: datetime,
+    ) -> None:
+        try:
+            self._lifecycle_log.record(
+                ShareLifecycleEvent(
+                    share_id=share_id,
+                    occurred_at=occurred_at,
+                    operation=operation,
+                    outcome=outcome,
+                )
+            )
+        except Exception:  # noqa: BLE001 - adapters are an external failure boundary
+            # Telemetry is deliberately non-authoritative: a failed sink must
+            # never strand active bytes after create or alter view/revoke truth.
+            try:
+                logging.getLogger("codemble.share.lifecycle.failure").error(
+                    "Share lifecycle event could not be recorded"
+                )
+            except Exception as fallback_error:  # noqa: BLE001
+                _ = fallback_error
 
     def _secret(self) -> bytes:
         value = self._entropy(_CAPABILITY_BYTES)
@@ -915,6 +1071,22 @@ def _valid_label(value: object) -> bool:
         return len(value.encode("utf-8")) <= MAX_LABEL_UTF8_BYTES
     except UnicodeEncodeError:
         return False
+
+
+def _validate_lifecycle_event(event: ShareLifecycleEvent) -> datetime:
+    if not isinstance(event, ShareLifecycleEvent):
+        raise TypeError("share lifecycle log accepts ShareLifecycleEvent only")
+    if event.operation not in _LIFECYCLE_OPERATIONS or event.outcome not in _LIFECYCLE_OUTCOMES:
+        raise ValueError("share lifecycle event has an invalid operation or outcome")
+    if event.share_id is not None and _SHARE_ID_PATTERN.fullmatch(event.share_id) is None:
+        raise ValueError("share lifecycle event has an invalid internal share ID")
+    if (
+        not isinstance(event.occurred_at, datetime)
+        or event.occurred_at.tzinfo is None
+        or event.occurred_at.utcoffset() is None
+    ):
+        raise ValueError("share lifecycle event time must be timezone-aware")
+    return event.occurred_at.astimezone(UTC)
 
 
 def _encode_capability(secret: bytes) -> str:

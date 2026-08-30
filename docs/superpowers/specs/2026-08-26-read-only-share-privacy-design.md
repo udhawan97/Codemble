@@ -1,8 +1,9 @@
 # Read-only share privacy boundary — design spec
 
 Date: 2026-08-26 · Approved by: UD (promoted the next phase and confirmed the
-artifact seam) · Status: M20 local artifact, confirmation, and provider-neutral
-capability lifecycle implemented; HTTP and operational delivery remain gated
+artifact seam) · Status: M20 local artifact, confirmation, capability lifecycle,
+and standalone HTTPS/browser delivery implemented; provider connection and
+operational storage/deletion remain gated
 
 Primary-source research and the complete future delivery contract live in
 [`docs/research/2026-08-26-read-only-share-privacy-boundary.md`](../../research/2026-08-26-read-only-share-privacy-boundary.md).
@@ -87,7 +88,7 @@ Always excluded:
 - concept evidence, narration, prompts, provider configuration, and caches;
 - check questions/answers/attempts, visits, recents, and local logs.
 
-## 4. Exact preview is local; delivery remains blocked
+## 4. Exact preview is local; provider connection remains blocked
 
 Current source adds one app workbench plus strict same-origin loopback routes for
 preview and confirmation. They retain one exact candidate in process memory,
@@ -107,8 +108,31 @@ reference adapter and an independent recording adapter exercises the same port i
 tests. Revocation immediately removes active artifact bytes while retaining a
 non-serving tombstone through expiry for idempotent confirmation.
 
-The capability module is not connected to the preview routes. There is still no
-CLI publishing option, bearer URL, HTTP view/delete endpoint, persistent or
+`create_share_delivery_app(delivery, allowed_hosts=...)` now wraps that core in
+one standalone ASGI module. It accepts only HTTPS, exact configured Host values,
+and query-free `GET /v/<view capability>`; normalizes view and unknown paths in
+the ASGI scope before access logging; renders context-encoded artifact facts in static
+HTML with no script, form, service worker, third-party asset, or outbound link;
+and applies `no-store`, `no-referrer`, restrictive CSP, no-index, MIME, frame,
+permissions, and cross-origin headers to success and error responses alike.
+Confirmed revocation is `POST /revoke` with the deletion capability in the
+`Authorization` header and one exact JSON field. The header is removed from the
+scope before dispatch, `GET` cannot revoke, and invalid, expired, revoked, and
+tampered view authority stays one `404` response.
+
+`ShareDelivery` also owns a closed lifecycle-log port. Its structured adapter
+accepts only internal non-capability share ID, UTC timestamp, operation, and
+outcome; it has no field for capabilities, request targets, artifacts, IP
+addresses, User-Agent data, or free-form metadata. Telemetry is best-effort and
+non-authoritative so an unavailable sink cannot strand active bytes after create
+or alter view/revocation truth; operational sink monitoring remains a deployment
+configuration gate. Chromium and WebKit run the
+standalone module through disposable TLS and prove compact rendering, header
+enforcement, no cookies or other browser storage/service worker, no third-party request, inert
+reload, revocation, and token-redacted Uvicorn access logs.
+
+The standalone application is not connected to the local preview routes. There
+is still no CLI publishing option, preview-to-delivery handoff, persistent or
 remote storage adapter, provider dependency, deployment, account, analytics,
 upload, or cloud request.
 
@@ -117,14 +141,16 @@ Before any upload is authorized, M20 requires:
 1. **Complete:** a local preview of the exact artifact and explicit confirmation
    of label and understanding exposure;
 2. **Complete in the provider-neutral core:** independent unguessable view and
-   deletion capabilities, not yet exposed through HTTP;
+   deletion capabilities;
 3. **Partial:** immutable validation, server-enforced expiry, inert core reads,
    confirmed idempotent revocation, removal from the active in-memory adapter,
    and uniform view failures are complete; persistent active/back-up purge
    deadlines and deletion without resurrection remain gated;
-4. strict schema/bounds validation, HTTPS, no-store/no-referrer responses,
-   restrictive CSP, no third parties, token-safe logs, encrypted least-privilege
-   storage, and authenticated payload/manifest verification;
+4. **Partial:** strict schema/bounds validation, HTTPS, no-store/no-referrer
+   responses, restrictive CSP, no third parties, token-safe application/access
+   logs, and authenticated payload/manifest verification are complete in the
+   standalone in-memory application. Encrypted least-privilege persistent and
+   backup storage remains gated;
 5. automated, configuration, and operational release evidence for all of the
    above.
 
@@ -158,3 +184,9 @@ Before any upload is authorized, M20 requires:
   retry-safe revocation, irreversible observed expiry, closed-schema and derived-
   orbit-relationship revalidation after storage tampering, and capability-keyed
   stored identity/metadata/digest binding for both view and revocation receipts.
+- HTTP tests and disposable Chromium/WebKit TLS journeys additionally prove
+  exact Host and HTTPS refusal, known/unknown path plus header/query redaction, static context
+  encoding, hardened headers on success and every failure, no browser storage,
+  no cookies, service worker, or third-party request, inert reload, header-only confirmed
+  revocation, uniform post-revocation failure, and token-free structured plus
+  Uvicorn access logs.
