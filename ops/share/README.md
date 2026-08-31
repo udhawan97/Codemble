@@ -105,6 +105,36 @@ co-locating either role's credentials.
    digest all match that node. A missing receipt, changed repository ID, gapped
    chain, fork, or disagreement blocks high-water. Never reuse a repository
    password or REST credential across roles or repositories.
+7. On every application, backup, and recovery node, install
+   `codemble-share-alert@.service` and
+   `codemble-share-alert-tmpfiles.conf`, then provision a private
+   `/etc/codemble/share-alert.toml` from the example. The configured notifier
+   must be an absolute, operator-owned executable whose SHA-256 digest matches
+   the config. It reads one canonical JSON event from stdin and must return zero
+   only after the operator's chosen notification channel has durably accepted
+   the event. The event contains only a random alert ID, UTC time, the closed
+   `service-failure` kind, and one of the three monitored unit names. The
+   notifier must deduplicate retries by alert ID and must not add capabilities,
+   request targets, repository credentials, or artifact bytes to its output.
+
+## Failure alert handoff
+
+The writer, operator, and append-only receiver units each trigger
+`codemble-share-alert@%n.service` on failure. The relay writes the event to the
+root-owned private spool before invoking the pinned local notifier. A failed or
+timed-out notifier leaves that exact event pending; systemd retries every five
+minutes with the same alert ID. Success moves the immutable event into the
+delivered directory, allowing the next failure of that unit to receive a fresh
+identity. This is at-least-once delivery: the notifier must use the alert ID as
+its deduplication key because a process can stop after the external handoff and
+before the local success rename.
+
+Before enabling the operational timers, start one alert instance deliberately
+on every node and verify both the external notification and the matching
+delivered event. Then cause one safe foreground failure for each monitored unit
+and confirm `OnFailure` reaches the same channel. A unit file, local spool, or
+green test is not alert evidence; retain a token-free operator receipt naming
+the unit, alert ID, channel acknowledgement time, and result.
 
 The examples use systemd. Equivalent launchd or NAS scheduling is acceptable
 only when it preserves the exact commands, service identities, hourly/daily

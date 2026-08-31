@@ -1,0 +1,5 @@
+schema_version = 1
+role = "alert-relay"
+spool_root = "/var/lib/codemble/share-alerts"
+notifier_executable = "/usr/local/libexec/codemble-share-alert"
+notifier_sha256 = "sha256:REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"

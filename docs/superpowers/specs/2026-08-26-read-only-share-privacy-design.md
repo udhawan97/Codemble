@@ -186,12 +186,15 @@ deadline plus a 48-hour safety margin has elapsed.
 `codemble share-ops` exposes bounded writer cycle and attestation, operator
 maintenance, authenticated inventory, restore, journal materialization, explicit
 backup retirement, retirement authorization, operator attestation, and offline
-attestation-validation commands without adding a publishing entrypoint. Failed
+attestation-validation commands without adding a publishing entrypoint. A
+provider-neutral failure relay durably spools one closed token-free event before
+calling a pinned operator-owned notifier; systemd retries the same event ID on
+writer, operator, or append-only receiver failure. Failed
 writer cycles remove only their two expected staging files while an unexpected
 file or lock contention fails closed. Systemd, Caddy, and TOML templates
 document the intended independent topology. This is executable
 backup and anti-resurrection machinery, not operational proof: an actual
-independent-node restore drill, timers, alerts, complete-copy inventory,
+independent-node restore drill, timers, observed alert delivery, complete-copy inventory,
 deletion observation, and approved key/media erasure remain release gates.
 
 `create_share_delivery_app(delivery, allowed_hosts=...)` now wraps that core in
@@ -244,10 +247,10 @@ Before any upload is authorized, M20 requires:
    POSIX file permissions prove the reference adapter's local least-privilege
    floor and unsupported permission models fail closed. Separate append-only
    writer-service and application-host root-operator configurations plus encrypted
-   backup commands are complete. The operator uses a root-only mounted independent
+   backup commands and the durable pinned-notifier alert relay are complete. The operator uses a root-only mounted independent
    repository, refuses to create a missing active-store shadow, and shares the
    live store's local operation lock; the intended independent multi-target
-   configuration, scheduled execution, alerts,
+   configuration, scheduled execution, observed alert delivery,
    and authority probes remain gated;
 5. automated, configuration, and operational release evidence for all of the
    above, including the actual no-resurrection restore drill.
@@ -314,7 +317,8 @@ Before any upload is authorized, M20 requires:
   attestations, pinned restic execution, application-host-local store-wide cycle exclusion, exact
   staging recovery after a transient failure, full-data checks around seven-day
   prune, independent-node journal materialization, closed CLI errors, fixed
-  schedules, shadow-store refusal, exact live-inventory deletion behind a durable store seal, authenticated empty
+  schedules, durable alert-before-notify ordering, same-ID retry, pinned local
+  notifier execution, shadow-store refusal, exact live-inventory deletion behind a durable store seal, authenticated empty
   inventory before retirement authorization, and the eight-day deadline plus
   48-hour margin. These are local proofs, not the required real independent-node
   drill.

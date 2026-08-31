@@ -2,6 +2,7 @@
 Description=Codemble append-only encrypted backup receiver
 After=network-online.target
 Wants=network-online.target
+OnFailure=codemble-share-alert@%n.service
 
 [Service]
 Type=simple

@@ -3,6 +3,7 @@ Description=Codemble hourly share sweep and encrypted backup
 After=network-online.target
 Wants=network-online.target
 ConditionPathExists=/var/lib/codemble/share/.active.share-operations.lock
+OnFailure=codemble-share-alert@%n.service
 
 [Service]
 Type=oneshot

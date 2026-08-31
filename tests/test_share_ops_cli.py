@@ -266,3 +266,57 @@ def test_retirement_refuses_to_create_and_seal_a_shadow_store(
         == 2
     )
     assert not active_root.exists()
+
+
+def test_failure_alert_public_command_uses_pinned_local_notifier(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    spool = tmp_path / "alerts"
+    spool.mkdir(mode=0o700)
+    (spool / "pending").mkdir(mode=0o700)
+    (spool / "delivered").mkdir(mode=0o700)
+    _private(spool / ".relay.lock", b"")
+    notifier = tmp_path / "alert-notifier"
+    notifier.write_text(
+        "#!/bin/sh\n"
+        f"cat > '{tmp_path / 'relayed-alert.json'}'\n"
+    )
+    notifier.chmod(0o700)
+    notifier_digest = "sha256:" + hashlib.sha256(notifier.read_bytes()).hexdigest()
+    config = tmp_path / "share-alert.toml"
+    config.write_text(
+        f'''schema_version = 1
+role = "alert-relay"
+spool_root = "{spool}"
+notifier_executable = "{notifier}"
+notifier_sha256 = "{notifier_digest}"
+'''
+    )
+    config.chmod(0o600)
+
+    assert (
+        main(
+            (
+                "relay-failure",
+                "--config",
+                str(config),
+                "--unit",
+                "codemble-share-writer.service",
+            )
+        )
+        == 0
+    )
+    output = json.loads(capsys.readouterr().out)
+    assert output["alerted"] is True
+    assert output["unit"] == "codemble-share-writer.service"
+    assert output["alert_event_id"].startswith("alert-")
+    relayed = json.loads((tmp_path / "relayed-alert.json").read_bytes())
+    assert relayed["event_id"] == output["alert_event_id"]
+    assert set(relayed) == {
+        "event_id",
+        "kind",
+        "occurred_at",
+        "schema_version",
+        "unit",
+    }

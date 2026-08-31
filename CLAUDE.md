@@ -231,7 +231,9 @@ operator, repository-bound replicated Retirement Journal, role-local deployment
 attestations, consistent backup manifest, independent journal materialization,
 quarantined Restore Guard with writer-journal rehydration, durable retirement
 seal, explicit snapshot retirement, and finite key-store-retirement
-authorization. These mechanisms are not connected to public delivery, and the
+authorization. A provider-neutral alert relay now durably spools a closed
+token-free service-failure event before invoking a digest-pinned local notifier
+and retries the same event identity after a failed handoff. These mechanisms are not connected to public delivery, and the
 required independent-node restore/deletion evidence has not been produced. Phase 1 tester
 evidence continues in parallel — the v0.1.0 Python learner-acceptance issue stays
 open, and technical completion does not claim those external runs passed.
@@ -243,11 +245,11 @@ Chromium, and WebKit gate. The exact local preview and explicit exposure
 confirmation now exist. Independent view/delete capabilities, irreversible local
 expiry, standalone token-safe HTTP/browser delivery, and encrypted authenticated
 local persistence with a finite terminal-unlink mechanism are now complete. The
-free backup, journal replay, restore, role-separation, and retirement machinery is
-implemented and configured in source. M20 still needs public-delivery connection
+free backup, journal replay, restore, role-separation, retirement, and
+failure-alert machinery is implemented and configured in source. M20 still needs public-delivery connection
 and real independent-target evidence for scheduled sweeping, append-only authority,
-full-data verification/prune, restore without resurrection, deletion deadlines,
-complete-copy inventory, alerts, and approved key/media erasure.
+full-data verification/prune, alert delivery, restore without resurrection,
+deletion deadlines, complete-copy inventory, and approved key/media erasure.
 
 The prior scale decisions remain recorded because the measurements are reusable:
 
@@ -300,6 +302,9 @@ not connected to preview or the standalone application. No upload, remote
 provider, account, deployment, or cloud request exists. One trusted artifact
 interpreter now supplies derived facts to preview, storage, and delivery, and one
 Share Preview Run owns the learner-visible lifecycle and stale-response refusal.
+The operations source now also routes writer, operator, and append-only receiver
+failures through one private durable alert spool and a digest-pinned local
+notifier; this is deployable alert machinery, not observed channel delivery.
 
 **The local artifact, confirmation, capability-core, standalone browser-delivery,
 encrypted persistence, and free backup/anti-resurrection source slices are
@@ -367,7 +372,8 @@ empty active store and empty backup inventory plus the eight-day deadline and
 does not erase media. The research contract and approved design still gate
 preview-to-delivery connection and actual independent-target timers, alerts, authority
 probes, restore-without-resurrection, deletion, complete-copy inventory, and
-approved key/media-erasure evidence.
+approved key/media-erasure evidence. Alert delivery remains in that operational
+gate even though its provider-neutral relay and systemd wiring now exist in source.
 
 Previously (2026-08-25) · Session note: verified stable v0.22.0 keeps every
 system colourful and legible in free Explore, turns the parser-owned module
@@ -2050,13 +2056,17 @@ outside-in package proof, cold install, and Pages pass.
 restore replay plus writer-journal rehydration before atomic promotion, stable
 non-replaceable operation locking with process-level exclusion proof, exact live-inventory deletion behind a durable retirement
       seal, and bounded whole-key-store retirement authorization
+- [x] Add a provider-neutral scheduled-failure relay that durably spools one
+      closed token-free event before a digest-pinned local notifier, retries the
+      same event ID after failure, and wires writer/operator/receiver `OnFailure`
+      without choosing a notification provider
 - [ ] Prove the intended independent-node configuration, scheduled active
       sweeping, alerts, append-only least authority, full-data prune, backup
       restore without resurrection, complete-copy inventory, operational
       deletion, and approved key/media erasure before public release
 
-**Acceptance is partial:** 126 focused artifact/preview/capability/HTTP/storage/operations
-cases, the full 669-test Python suite, repository-wide Ruff, the complete frontend contract/build,
+**Acceptance is partial:** 133 focused artifact/preview/capability/HTTP/storage/operations/alert
+cases, the full 676-test Python suite, repository-wide Ruff, the complete frontend contract/build,
 a live Chromium desktop exact-preview/confirmation journey, an observed WebKit
 320 px journey, and the maintained Chromium 320 px share-panel reach gate,
 four disposable Chromium/WebKit TLS delivery receipts covering compact rendering,
@@ -2076,6 +2086,7 @@ and evidenced.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-08-30 | Scheduled writer, operator, and append-only receiver failures enter one root-owned `ShareFailureAlertRelay`: it accepts only those three units, persists one canonical token-free event before invoking an absolute digest-pinned local notifier, retains the same pending event across failure, and moves it to delivered history only after a zero exit. systemd retries every five minutes through one template unit; the notifier receives the event on stdin and owns channel-specific delivery plus event-ID deduplication | The operations reference required alerts but its services had no executable failure path, so a failed hourly sweep or daily full-data check could remain only in a local journal. Keeping the relay provider-neutral avoids adding an account or choosing email, webhook, or paging infrastructure. Persist-before-notify prevents a transient channel failure from erasing the incident; the stable ID makes at-least-once retry deduplicable; a closed schema excludes capabilities, request targets, artifacts, repository credentials, IPs, and free-form text. The source and local tests prove the handoff contract only. M20 still requires a deliberate failure on every intended node, external channel acknowledgement, timer history, and token-free operator receipts before alerting is operational evidence. |
 | 2026-08-30 | Share bytes have one trusted `interpret_share_artifact` consumer, while `ShareArtifact.from_graph` separately validates the parser's full routes and derives the private layout and region weights from the exact deduplicated edge marks it serializes. One `SharePreviewRun` owns choose/compile/inspect/acknowledge/confirm/restart/release state, request identity, readiness, stale-response refusal, and focus requests; `LearnerSession` owns effects and the dialog owns DOM focus only | Preview, HTTP delivery, and storage previously repeated artifact interpretation, and the session/dialog divided one learner attempt across two state machines. One closed interpreter makes schema evolution and derived facts local, while distinct raw-graph and projected-graph checks prevent line-level duplicate imports from surviving only as inflated viewer route weights. The run module gives the volatile workbench one release boundary without moving network authority or DOM behavior into it. The repository's self-parse exposed and now proves the duplicate-import projection case; the compact acceptance proves restart, confirmation, local-only truth, and focus return. |
 | 2026-08-30 | M20's selected operations reference is the free/open-source Caddy + restic + rest-server topology with a writer that must anchor every terminal event to two named, distinct append-only repositories and a separately held local operator. Each receipt binds replica, authenticated repository, snapshot, and entry digest; backups bind that immutable repository inventory and the fully anchored Retirement Journal high-water to one consistent encrypted SQLite copy. Restore Guard replays later facts and rehydrates the writer journal before promotion. Final snapshot removal installs a durable authenticated seal on the existing application-host store that closes creates and writer cycles before deleting one exact live inventory, and Security Metadata Retirement re-queries that repository before authorizing whole-key-store erasure after the eight-day deadline plus 48-hour margin | This is the smallest owned topology that can prove encrypted backup, bounded retention, restore without resurrection, and separate destructive authority without introducing a paid service or a second application storage model. The writer service has no restore/prune surface; the root-only operator runs on the application host against the same live-store lock and a private mount of the independently hosted repository, and it refuses to create a missing shadow store. The primary repository identity and target must be disjoint from every journal anchor. Independent journal-node operators materialize their local repositories. Role-local credential-derived attestations prove the live repository topology, matching active/recovery storage key, and distinct authority without bringing both secret configurations into either service process; operators handle those proofs as sensitive review material. Journal writes are thread/process serialized, writer and retirement cycles share one nonblocking operation lock, restic bytes are pinned, checks read all data, and explicit inventory/removal, restore, and authorization have production CLI paths. The code, CLI, tests, and service templates are complete, but free software is not necessarily zero-cost infrastructure. Unit tests, loopback, or directories on one disk cannot satisfy independent-target failure or media-erasure proof, so M20 and a fresh release remain blocked until the intended timers, alerts, authority probe, restore/deletion drill, complete-copy inventory, and approved erasure receipt exist. |
 | 2026-08-29 | Persistent share storage is one POSIX-only `EncryptedSQLiteShareStorage(root, encryption_key)` adapter behind the unchanged `ShareStoragePort`; it authenticates database/key identity and the complete record body with AES-GCM, validates the exact schema before touching an existing store, authenticates retained nonce/capability history with a keyed commitment, revalidates private modes, and owns expiry sweeping plus terminal-retention eligibility | A provider adapter should not reimplement serialization, crypto, concurrency, tombstones, or retention mechanics. Keeping the existing three-operation seam gives both in-memory and SQLite adapters the same capability lifecycle while concentrating persistence policy in one deep module. One immediate transaction initializes only a genuinely empty file; every later operation reauthenticates identity, schema, and retained guards inside the same read snapshot or immediate write transaction that owns the operation, and SQLite secure deletion is requested for record changes. Once 24 hours have elapsed after revocation or expiry, the default policy makes the share row and serving-index linkage eligible for removal on the next sweep; actual maximum includes sweep latency and remains operationally gated. Share-derived sensitive plaintext still includes internal share IDs, ciphertext lengths, nonces, and derived guards. Detached lookup/fingerprint guards and nonce reservations remain until key-store retirement so committed capabilities and encryption nonces cannot be reassigned. Tests prove concurrent exact-key binding, 120 distinct successful creates across eight adapters, reopen, wrong-key/sentinel/schema/database-replacement failure, authenticated detached history, durable nonce refusal across failed creates or deleted reservations, clock-rollback-safe revocation/expiry, unobserved expiry, revocation-relative retention eligibility, and post-purge non-reassignment. This is a local executable reference, not provider configuration or operational proof: preview and HTTP delivery remain disconnected, the key is supplied rather than managed, and an active-purge deadline, finite guard retirement, encrypted backups, scheduled sweeping, restore without resurrection, operator access, cloud deployment, and public release remain gated. |

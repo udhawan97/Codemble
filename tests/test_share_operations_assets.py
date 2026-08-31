@@ -15,11 +15,25 @@ def test_writer_and_operator_templates_keep_schedules_and_authority_separate() -
     writer_config = (ROOT / "share-writer.toml.example").read_text()
     operator_config = (ROOT / "share-operator.toml.example").read_text()
     journal_operator_config = (ROOT / "share-journal-operator.toml.example").read_text()
+    alert_service = (ROOT / "codemble-share-alert@.service").read_text()
+    alert_tmpfiles = (ROOT / "codemble-share-alert-tmpfiles.conf").read_text()
+    alert_config = (ROOT / "share-alert.toml.example").read_text()
 
     assert "writer-cycle" in writer_service
     assert "OnCalendar=hourly" in writer_timer
     assert "Persistent=true" in writer_timer
     assert "operator-maintain" in operator_service
+    assert "OnFailure=codemble-share-alert@%n.service" in writer_service
+    assert "OnFailure=codemble-share-alert@%n.service" in operator_service
+    assert "relay-failure" in alert_service
+    assert "Restart=on-failure" in alert_service
+    assert "RestartSec=5m" in alert_service
+    assert "User=root" in alert_service
+    assert "ReadWritePaths=/var/lib/codemble/share-alerts" in alert_service
+    assert "0700 root root" in alert_tmpfiles
+    assert ".relay.lock 0600 root root" in alert_tmpfiles
+    assert 'role = "alert-relay"' in alert_config
+    assert 'notifier_executable = "/usr/local/libexec/codemble-share-alert"' in alert_config
     assert "User=root" in operator_service
     assert "Group=codemble-share" in operator_service
     assert "Group=codemble-share" in writer_service
@@ -83,6 +97,7 @@ def test_backup_node_is_append_only_over_tls_and_operator_is_local() -> None:
     runbook = (ROOT / "README.md").read_text()
 
     assert "--append-only" in rest_server
+    assert "OnFailure=codemble-share-alert@%n.service" in rest_server
     assert "--private-repos" in rest_server
     assert "127.0.0.1:8040" in rest_server
     assert "reverse_proxy 127.0.0.1:8040" in caddy

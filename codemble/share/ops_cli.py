@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from codemble.share.alerts import ShareAlertConfig, ShareFailureAlertRelay
 from codemble.share.operations import (
     JournalReplicaOperatorConfig,
     ResticBackupWriter,
@@ -302,6 +303,9 @@ def _parser() -> argparse.ArgumentParser:
     validation = commands.add_parser("validate-deployment")
     validation.add_argument("--writer-attestation", type=Path, required=True)
     validation.add_argument("--operator-attestation", type=Path, required=True)
+    alert = commands.add_parser("relay-failure")
+    alert.add_argument("--config", type=Path, required=True)
+    alert.add_argument("--unit", required=True)
     return parser
 
 
@@ -390,6 +394,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "journal_digest": head.digest,
                 "journal_sequence": head.sequence,
                 "materialized": True,
+            }
+        elif arguments.command == "relay-failure":
+            alert = ShareFailureAlertRelay(
+                ShareAlertConfig.load(arguments.config)
+            ).relay(arguments.unit, now=datetime.now(UTC))
+            output = {
+                "alert_event_id": alert.event_id,
+                "alerted": True,
+                "unit": alert.unit,
             }
         else:
             validate_role_separation(

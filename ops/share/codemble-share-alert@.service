@@ -1,0 +1,19 @@
+[Unit]
+Description=Relay a durable Codemble share failure alert for %i
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/opt/codemble/bin/codemble share-ops relay-failure --config /etc/codemble/share-alert.toml --unit %i
+Restart=on-failure
+RestartSec=5m
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/codemble/share-alerts

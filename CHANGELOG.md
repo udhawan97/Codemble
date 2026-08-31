@@ -56,6 +56,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   Exact snapshot retirement stays behind a durable creation seal, with
   repository-bound finite whole-key-store retirement authorization.
   Hardware, storage, DNS, electricity, and network access may still cost money.
+- Scheduled writer, operator, and append-only receiver failures now enter one
+  provider-neutral alert relay. It writes a closed token-free event to a private
+  root-owned spool before invoking a digest-pinned local notifier, retries a
+  failed handoff with the same alert ID, and keeps delivered evidence separate
+  from the next failure. Real channel delivery remains an operational gate.
 
 ### Privacy
 - Raw source, snippets, filesystem paths, dedicated filename metadata, file
