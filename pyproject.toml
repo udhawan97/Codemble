@@ -64,7 +64,7 @@ dependencies = [
   # only ever showed up at scale.
   "tree-sitter-go>=0.23,<0.24",
   "tree-sitter-java>=0.23,<0.24",
-  "tree-sitter-rust>=0.23,<0.24",
+  "tree-sitter-rust>=0.23,<0.25",
   "tree-sitter-c-sharp>=0.23,<0.24",
   # Official upstream grammars, each tested against tree-sitter 0.25.2 before
   # entering the default registry. Keep the grammar minors bounded until their
