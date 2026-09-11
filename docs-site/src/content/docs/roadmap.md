@@ -7,7 +7,7 @@ The authoritative roadmap lives in the repo's
 [CLAUDE.md](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md) and moves
 only when milestones actually complete. The shape:
 
-## NOW — prove the operational privacy boundary
+## NOW — current source and operational proof
 
 Packaged v0.22.0 maps Python, JavaScript, TypeScript, Go,
 Java, Rust, C#, Ruby, PHP, and mixed projects through one local parser-proven
@@ -29,7 +29,7 @@ evidence. Learner evidence and correctness reports continue in parallel; the
 original learner-acceptance issue remains open and is not treated as passed by
 technical completion.
 
-## NEXT — observe the real deployment gate
+### Remaining operational evidence
 
 Run the intended independent deployment's timers, alert delivery, authority
 probes, append-only backup receiver, daily prune, complete-copy inventory,
@@ -37,6 +37,13 @@ independent-node restore, operational deletion, key retirement, and approved
 media-erasure procedure. Only the resulting receipts can authorize Codemble's
 first public sharing connection and a new stable release. The completed scale
 evidence is recorded in [Parser evidence and scale](../parser-scale/).
+
+## NEXT — connect public delivery
+
+Connect the local disclosure/confirmation flow to the independently proven
+delivery target only after every operational receipt above passes. Preserve the
+same source-free artifact, explicit opt-ins, expiring view authority, separate
+deletion authority, and token-safe browser contract.
 
 ## LATER — reach
 

@@ -2091,7 +2091,7 @@ non-replaceable operation locking with process-level exclusion proof, exact live
       deletion, and approved key/media erasure before public release
 
 **Acceptance is partial:** 133 focused artifact/preview/capability/HTTP/storage/operations/alert
-cases, the full 676-test Python suite, repository-wide Ruff, the complete frontend contract/build,
+cases, the full 683-test Python suite, repository-wide Ruff, the complete frontend contract/build,
 a live Chromium desktop exact-preview/confirmation journey, an observed WebKit
 320 px journey, and the maintained Chromium 320 px share-panel reach gate,
 four disposable Chromium/WebKit TLS delivery receipts covering compact rendering,

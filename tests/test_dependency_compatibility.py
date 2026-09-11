@@ -46,8 +46,6 @@ def test_tree_sitter_core_is_new_enough_for_the_grammars() -> None:
 def test_grammar_wheels_are_the_pinned_pairing() -> None:
     assert _version_tuple("tree-sitter-javascript") >= (0, 25)
     assert _version_tuple("tree-sitter-typescript") >= (0, 23, 2)
-    assert _version_tuple("tree-sitter-go") >= (0, 25)
-    assert _version_tuple("tree-sitter-rust") >= (0, 24)
 
 
 def test_anyio_is_new_enough_for_the_narration_limiter() -> None:

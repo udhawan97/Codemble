@@ -325,7 +325,7 @@ The Map needs no WebGL, so it still works where the galaxy cannot draw.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="System product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/system.png" alt="The codemble.cli solar system with a luminous Python module Sun, four named worlds on labelled call guides, and a Nearby systems console showing five parser-owned import routes with certainty preserved.">
+    <img src="/Codemble/shots/system.png" alt="The codemble.cli solar system with a luminous Python module Sun, four named worlds on labelled call guides, and a Nearby systems console showing seven parser-owned import routes with certainty preserved.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>

@@ -11,8 +11,9 @@ stays lit after restart.
 
 ## Install
 
-The command below runs packaged v0.22.0. An editable checkout produces the same
-app; state which [run or download route](/Codemble/download/) you used.
+The command below runs packaged v0.22.0. For an editable copy of that exact app,
+check out tag `v0.22.0`; `main` contains the newer current-source preview. State
+which [run or download route](/Codemble/download/) you used.
 
 Install [uv](https://docs.astral.sh/uv/) once, then run Codemble through it:
 
