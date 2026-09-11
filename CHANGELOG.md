@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Documentation
+- Separate stable v0.22.0 install and artifact facts from current-source product
+  previews across the README and public site, and refresh Study captures with
+  the selected world visible beside its parser evidence.
+
 ### Fixed
 - Missing scheduled-maintenance locks now fail startup instead of silently
   skipping the service, making failures eligible for the existing alert relay.

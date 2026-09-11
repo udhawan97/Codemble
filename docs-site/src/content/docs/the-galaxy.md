@@ -3,8 +3,9 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
-:::note[v0.22.0 product guide]
-This page matches the packaged app, current source, and fresh product captures.
+:::note[Current source preview]
+This page and its fresh product captures follow the current source. The verified
+download remains v0.22.0; newer planetary detail is not yet published.
 [Choose a run or download route](/Codemble/download/).
 :::
 

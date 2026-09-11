@@ -3,10 +3,11 @@ title: Study a feature
 description: Follow one parser-proven journey in Easy or Expert mode, then inspect source, impact, connections, and checks.
 ---
 
-:::note[v0.22.0 product guide]
+:::note[Current source preview]
 Study now begins with a landing brief and one shared, parser-owned feature
 journey. Easy and Expert change the teaching depth, never the evidence or your
-place in the route.
+place in the route. The verified download remains v0.22.0; the selected-world
+framing pictured here is from newer, unreleased source.
 :::
 
 ## Land first, then choose depth

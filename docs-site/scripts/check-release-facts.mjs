@@ -130,12 +130,26 @@ assert(
 );
 assert(
   landing.includes("v{VERSION}") && !/v0\.\d+\.\d+/.test(landing),
-  "landing current-version labels must derive from release.json",
+  "landing stable-version labels must derive from release.json",
 );
 assert(
-  atlasJourney.includes("v{VERSION}") && !/v0\.\d+\.\d+/.test(atlasJourney),
-  "Atlas journey current-version labels must derive from release.json",
+  atlasJourney.includes("Current source preview") && !/v\{VERSION\}|v0\.\d+\.\d+/.test(atlasJourney),
+  "Atlas journey must label repository captures as a version-independent source preview",
 );
+for (const [surface, text] of [
+  ["README", readme],
+  ["landing", landing],
+  ["download guide", downloadGuide],
+  ["installation guide", installationGuide],
+  ["quickstart guide", quickstartGuide],
+  ["introduction guide", introductionGuide],
+]) {
+  assert.doesNotMatch(
+    text,
+    /(?:everything pictured ships|screenshots? (?:all )?(?:match|describe|cover|are both)|screen[^\n.]{0,80}(?:and|,) (?:the )?(?:packaged app|downloads?)[^\n.]{0,40}(?:are|is|match))[^\n.]*v0\.22\.0/i,
+    `${surface} conflates current-source captures with the stable release`,
+  );
+}
 assert(
   installationGuide.includes(`git clone --branch ${release.tag} --depth 1`),
   "installation source-build command is not pinned to the current release tag",

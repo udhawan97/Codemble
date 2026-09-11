@@ -4,8 +4,8 @@
  *
  * Macrostructure: Hallmark Workbench. Real product captures lead; the Formal
  * Edo system supplies material and typography without turning the site into a
- * decorative atlas. The current product and packaged release share the version
- * recorded in release.json.
+ * decorative atlas. release.json owns stable package facts; repository captures
+ * show the newer current-source preview and are labelled separately.
  */
 import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
@@ -151,7 +151,7 @@ const contract = [
         <div class="hero-copy">
           <p class="release-status">
             <span>Stable v{VERSION}</span>
-            <span>Nine languages · PyPI published</span>
+            <span>Current source preview pictured</span>
           </p>
           <h1>Explore the code AI left behind.</h1>
           <p class="hero-lede">
@@ -178,8 +178,8 @@ const contract = [
             </button>
           </div>
           <p class="version-note">
-            The screen, one-command route, and downloads are all v{VERSION}.
-            PyPI publishes the package; GitHub mirrors the exact artifacts and checksum ledger.
+            The screen shows the current source preview. The command and downloads
+            remain pinned to stable v{VERSION}, mirrored on GitHub with checksums.
           </p>
         </div>
 
@@ -191,7 +191,7 @@ const contract = [
           >
             <img
               src={shot("galaxy.png")}
-              alt={`Codemble v${VERSION} showing 217 visible, colourful systems across Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, and PHP in a luminous spiral galaxy, with parser-proven routes, ranked labels, 37 charted systems, eight unreadable fixtures, and Home resolved to codemble.cli without amber understanding light.`}
+              alt="Current Codemble source preview showing 217 visible, colourful systems across nine languages in a luminous spiral galaxy, with parser-proven routes, ranked labels, 37 charted systems, eight unreadable fixtures, and Home resolved to codemble.cli without amber understanding light."
               width="1440"
               height="720"
               fetchpriority="high"
@@ -199,7 +199,7 @@ const contract = [
             />
           </div>
           <figcaption>
-            <span>Current app · luminous Explore galaxy</span>
+            <span>Current source preview · luminous Explore galaxy</span>
             <span>217 systems · nine languages · local only</span>
           </figcaption>
         </figure>
@@ -207,8 +207,8 @@ const contract = [
 
       <section class="release-band" aria-label="Release status">
         <p>
-          <strong>Everything pictured ships in v{VERSION}.</strong> Run it in one
-          command, download the verified release artifacts, or build the same release from source.
+          <strong>These captures preview the current source.</strong> Verified
+          downloads remain v{VERSION}; the newer planetary visuals are not yet a published package.
         </p>
         <a href="#download">Choose a route →</a>
       </section>
@@ -230,7 +230,7 @@ const contract = [
           <h2>Choose the route that fits today.</h2>
           <p>
             Run without installing, download the exact wheel, or keep an editable
-            source checkout. All three routes lead to v{VERSION}.
+            source checkout. The command and artifacts below lead to stable v{VERSION}.
           </p>
         </header>
 
@@ -384,7 +384,7 @@ codemble</code></pre>
           </details>
           <details>
             <summary>Are these screenshots from the downloadable app?</summary>
-            <p>Yes. The captures and published PyPI package report v{VERSION}; the current application source preserves that user-facing behavior. Each frame is reproduced from the real local app, not a mockup.</p>
+            <p>They are fresh captures of the real current-source app. Stable v{VERSION} is the verified download; newer planetary detail shown here remains a preview until the next release passes its operational gate.</p>
           </details>
           <details>
             <summary>What happens when Codemble cannot prove a relationship?</summary>

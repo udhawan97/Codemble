@@ -32,23 +32,20 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/shots/galaxy.png" alt="Codemble v0.22.0 showing 217 colourful star systems across nine languages in a luminous spiral galaxy, with named modules, parser-proven routes, 37 charted systems, and Home resolved to codemble.cli without claiming it is understood." width="1000">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Current Codemble source preview showing 217 colourful star systems across nine languages in a luminous spiral galaxy, with named modules, parser-proven routes, 37 charted systems, and Home resolved to codemble.cli without claiming it is understood." width="1000">
 </p>
 
 <p align="center"><sub>
-  Codemble v0.22.0 · choose free exploration or a guided First Flight ·
+  Current source preview · choose free exploration or a guided First Flight ·
   land on a world for Easy or Expert evidence ·
   visiting charts a route; passing checks lights a system amber
 </sub></p>
 
 > [!IMPORTANT]
-> **The screen above and the packaged app are both v0.22.0.** The PyPI release
-> maps Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixed
-> projects. At launch, choose free exploration or a guided First Flight; land
-> on any parser-owned world to switch between Easy and Expert evidence, inspect
-> its inbound and outbound connections, then read source or prove understanding.
-> The pinned command and direct downloads below resolve to the same verified
-> release.
+> **The screen above is a current source preview; the stable package remains
+> v0.22.0.** The pinned command and direct downloads below resolve to that
+> verified release. Newer planetary detail and the disconnected sharing
+> foundation remain unreleased until Codemble's operational release gate passes.
 
 ## Start here
 
@@ -119,12 +116,12 @@ compilers, or tests.
 
 | 01 · Explore | 02 · Map |
 | --- | --- |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/shots/galaxy.png" alt="Current Codemble galaxy with a seeded spiral starfield, visible named modules, and selective import routes." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/shots/map-architecture.png" alt="Current Codemble canvas Architecture map with Home, connected modules, and complete bottom rows for modules without a proven import route." width="600"> |
+| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Current Codemble source preview with a seeded spiral starfield, visible named modules, and selective import routes." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/map-architecture.png" alt="Current Codemble source preview of the canvas Architecture map with Home, connected modules, and complete bottom rows for modules without a proven import route." width="600"> |
 | Choose free exploration or First Flight; guided stops can land directly into Study and checks. | Follow real imports from Home; unreachable modules are counted, not erased. |
 
 | 03 · Inspect | 04 · Prove |
 | --- | --- |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/shots/study-panel.png" alt="Current Codemble landing panel with the selected world, Easy or Expert explanation control, and parser-owned connections." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/shots/home-proved.png" alt="Current Codemble Home system after its graph-derived checks were passed, with all four parser-proven structures glowing amber." width="600"> |
+| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/study-panel.png" alt="Current Codemble source preview with the selected world beside the Study panel, Easy or Expert explanation control, and parser-owned connections." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/home-proved.png" alt="Current Codemble source preview of Home after its graph-derived checks were passed, with all four parser-proven structures glowing amber." width="600"> |
 | Land on a structure, change its explanation register in place, and follow its real connections. | Pass checks drawn from the graph; only then does the system turn amber. |
 
 ### One graph, two useful views
@@ -238,8 +235,8 @@ project:
 
 | Horizon | Work |
 | --- | --- |
-| **Now** | Build and prove the privacy boundary for the planned read-only galaxy link; current source stops at an exact local preview and confirmation |
-| **Next** | Add independently revocable, expiring delivery only after the remaining privacy gates pass |
+| **Now** | Operate and prove the disconnected read-only sharing foundation already present in source: capability delivery, encrypted persistence, expiry/revocation, backup, restore, deletion, key retirement, and alerts |
+| **Next** | Connect public delivery only after independent-host timers, alerts, authority probes, restore/deletion drills, complete-copy inventory, and approved media-erasure evidence pass |
 | **Later** | New quest types and a coordinated public launch |
 
 Milestones move only when their acceptance evidence exists. See the

@@ -8,8 +8,6 @@
  */
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const shot = (file: string) => `${base}/shots/${file}`;
-import release from "../../release.json";
-const VERSION = release.version;
 
 const scenes = [
   {
@@ -19,7 +17,7 @@ const scenes = [
     body: "All 217 systems are visible and colourful on the first frame inside a luminous deterministic sky. Free exploration keeps the whole project alive; a guided First Flight may quiet distant context while it teaches one parser-owned route.",
     image: "galaxy.png",
     focus: "center",
-    alt: `Codemble v${VERSION} galaxy with 217 visible, colourful systems across nine languages, a luminous spiral starfield, parser-proven route corridors, ranked labels, 37 charted systems, and Home resolved to codemble.cli without amber understanding light.`,
+    alt: "Current Codemble source preview with 217 visible, colourful systems across nine languages, a luminous spiral starfield, parser-proven route corridors, ranked labels, 37 charted systems, and Home resolved to codemble.cli without amber understanding light.",
   },
   {
     id: "map",
@@ -82,7 +80,7 @@ const scenes = [
         ))
       }
     </div>
-    <p class="journey-caption"><span>Codemble v{VERSION}</span><span>same project · same Home</span></p>
+    <p class="journey-caption"><span>Current source preview</span><span>same project · same Home</span></p>
   </div>
 
   <ol class="journey-steps">
@@ -110,7 +108,7 @@ const scenes = [
                 decoding="async"
               />
             </div>
-            <figcaption>Current app · {scene.label}</figcaption>
+            <figcaption>Current source preview · {scene.label}</figcaption>
           </figure>
           <p class="journey-label">{String(index + 1).padStart(2, "0")} · {scene.label}</p>
           <h3>{scene.title}</h3>

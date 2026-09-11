@@ -3,8 +3,8 @@ title: Download
 description: Run Codemble, download its verified release artifacts, or build v0.22.0 from source.
 ---
 
-The one-command route, direct downloads, current source, and screenshots all
-match **Codemble v0.22.0**.
+The one-command route and direct downloads resolve to verified **Codemble
+v0.22.0**. Screenshots on this site may show the labelled current-source preview.
 
 <div class="cm-version-ledger" role="list" aria-label="Codemble download routes">
   <section class="cm-version-route cm-version-route--recommended" role="listitem">
@@ -37,7 +37,7 @@ match **Codemble v0.22.0**.
 <dl class="cm-choice-list">
   <div>
     <dt>Try this exact release</dt>
-    <dd><code>uvx --from codemble==0.22.0 codemble</code><span>One isolated command, pinned to the screens on this site.</span></dd>
+    <dd><code>uvx --from codemble==0.22.0 codemble</code><span>One isolated command, pinned to the verified stable release.</span></dd>
   </div>
   <div>
     <dt>Keep the command</dt>

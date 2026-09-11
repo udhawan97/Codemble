@@ -194,7 +194,7 @@ await setLayer("galaxy");
 await capture("system.png");
 
 await selectModule(appModulePath);
-await setLayer("map");
+await setLayer("galaxy");
 await page.getByRole("button", { name: "Read the source", exact: true }).click();
 await page.waitForTimeout(700);
 await page.locator(".study-preview").evaluate((scroller) => {

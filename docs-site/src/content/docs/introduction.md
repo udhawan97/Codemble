@@ -56,9 +56,9 @@ journey follows proven evidence only as far as it reaches, then exposes the
 proof break; guided stops continue from landing into the existing graph-derived
 checks.
 Impact, dependencies, and verification candidates are selected-feature facts,
-not claims about every route step. The downloadable package, screenshots, and
-these product guides describe v0.22.0; the current application source preserves
-that user-facing behavior. The original
+not claims about every route step. The downloadable package is v0.22.0. Product
+captures and guides also show the newer current-source preview and label it as
+unreleased. The original
 unaided learner-acceptance issue remains open; technical completion does not
 substitute for human evidence. [Choose a run or download route](/Codemble/download/).
 :::

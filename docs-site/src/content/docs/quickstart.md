@@ -3,10 +3,10 @@ title: Quickstart
 description: From one command to your first lit star system.
 ---
 
-:::note[This quickstart matches v0.22.0]
-The published one-command package and screenshots cover the same nine-language
-v0.22.0 app. The current application source preserves that user-facing
-behavior. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
+:::note[Stable install, current-source pictures]
+The commands below install the verified nine-language v0.22.0 package. Pictures
+elsewhere in the guide may show the newer current-source preview and are labelled
+accordingly. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
 :::
 
 ## 1. Install uv

@@ -3,11 +3,11 @@ title: Installation
 description: Run Codemble v0.22.0 and configure optional narration.
 ---
 
-:::note[One current version]
-The published package, screenshots, and these instructions describe **v0.22.0**.
-The current application source preserves that user-facing behavior; this
-checkout may also contain post-release documentation. [Download the wheel or
-source archive](/Codemble/download/) when you do not want the one-command route.
+:::note[Stable install]
+These instructions install verified **v0.22.0**. Product screenshots may show
+the newer current-source preview; those changes are not yet a published package.
+[Download the wheel or source archive](/Codemble/download/) when you do not want
+the one-command route.
 :::
 
 ## Requirements
@@ -48,7 +48,7 @@ codemble==0.22.0`, then `codemble`. Plain `pip install codemble==0.22.0` also wo
 virtual environment.
 
 The shorter `uvx codemble` intentionally follows the newest PyPI release. The
-version-pinned command above stays aligned with this guide and its screenshots.
+version-pinned command above stays aligned with the verified stable release.
 
 Codemble opens an in-app picker. To skip it, pass a folder:
 
