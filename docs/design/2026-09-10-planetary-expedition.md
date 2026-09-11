@@ -1,6 +1,6 @@
 # Planetary expedition — design review candidate
 
-Status: implemented and locally verified; hosted CI and final promotion remain pending. Owner request (2026-09-10): full creative control for a lifelike, game-quality Galaxy, design council before implementation, validation, main cleanup, deployment and a new release.
+Status: implemented, verified and merged through PR #47; public release remains gated. Owner request (2026-09-10): full creative control for a lifelike, game-quality Galaxy, design council before implementation, validation, main cleanup, deployment and a new release.
 
 ## Direction
 
@@ -56,7 +56,7 @@ Visible Chromium 149, DPR 1, 1440×900 on the documented Mac: 5 s warmup and 15 
 
 The 19-capture matrix covers all nine languages, partial/module-only systems, Study landing briefs for real code, narrow layouts, serial selection and actual check-earned understanding. Its CSS-magnified frame is exploratory, not full-browser zoom acceptance. The separate interaction gate reaches actual source, Key, Find and Map at a 720×450 effective viewport (1440×900 at 200% zoom); this proves responsive reachability rather than browser zoom rasterization. Three overlapping selections complete at the last selected structure; changing motion preference during its 420 ms arrival preserves selection. Settled frames 600 ms apart allow only isolated one-level GPU rounding, with the pointer parked outside the scene so hover labels do not affect the comparison. Native Safari rendered Galaxy, System and Study. The scene is detailed illustrative space art; no photorealism claim.
 
-The unchanged 5,000-module acceptance gate exposed repeated whole-project scans in Python import resolution and check generation. A dotted-prefix index preserves implicit namespace and alias behavior; check generation only unions tiny option pools. Pinned check suites and namespace/external-prefix regression coverage pass. Full Python suite: 677 passed. The complete 5,000-module gate passes unchanged in Chromium and WebKit: 2.294 s cold activation, 1.097 s warm activation, 204,636,160-byte peak RSS. Earlier loaded-host failures remain in the local evidence directory. Hosted CI remains required before promotion.
+The unchanged 5,000-module acceptance gate exposed repeated whole-project scans in Python import resolution and check generation. A dotted-prefix index preserves implicit namespace and alias behavior; check generation only unions tiny option pools. Pinned check suites and namespace/external-prefix regression coverage pass. Full Python suite: 677 passed. The complete 5,000-module gate passes unchanged in Chromium and WebKit: 2.294 s cold activation, 1.097 s warm activation, 204,636,160-byte peak RSS. Earlier loaded-host failures remain in the local evidence directory. All five hosted checks passed on final candidate `7cffd7d` in run `34548695851`.
 
 
 ## Cleanup disposition
@@ -73,4 +73,7 @@ Baseline `566624e`; candidate PR [#47](https://github.com/udhawan97/Codemble/pul
 | Root backup markers | `.git-backup-remote` and `.last-git-backup-ts` are intentional user state; preserve. |
 | Planetary candidate and detached comparison | Owned by this run; remove only after candidate integration and final evidence capture. |
 
-Implementation council completed two rounds with all four roles. Reviewers accepted the evidence-bounded candidate; coverage required the complete-Map, interrupted-travel and effective-zoom checks above. The coverage reviewer re-inspected the completed gates and approved local graphics acceptance; hosted checks remain required before promotion. M20 operational proof and any public-release exception remain separate, explicit gates.
+Implementation council completed two rounds with all four roles. Reviewers accepted the evidence-bounded candidate; coverage required the complete-Map, interrupted-travel and effective-zoom checks above. The coverage reviewer re-inspected the completed gates and approved local graphics acceptance; hosted checks then passed on the final candidate. M20 operational proof and any public-release exception remain separate, explicit gates.
+
+
+Promotion receipt: PR #47 squash-merged as `e1cf18f8ce0fecc17d9f02bc4d8e682dc05ee389`; candidate and merge share tree `263c2a8469f7d9b34f0ed90ea19ab822f416e0f8` and identical combined patches. Both owned worktrees and the local/remote planetary branch were removed after proof. The two superseded Codex tasks were archived. All 32 protected files retained their exact pre-merge hashes. Main's graph was refreshed and a scoped Study-resize query passed. This subsequent documentation-only receipt records completion without altering the verified application. Public stable remains v0.22.0; no release tag or provider deployment was created.
