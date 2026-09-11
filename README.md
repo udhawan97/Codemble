@@ -32,7 +32,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Current Codemble source preview showing 217 colourful star systems across nine languages in a luminous spiral galaxy, with named modules, parser-proven routes, 37 charted systems, and Home resolved to codemble.cli without claiming it is understood." width="1000">
+  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Current Codemble source preview showing 245 colourful star systems across nine languages in a luminous spiral galaxy, with named modules, parser-proven routes, 47 charted systems, and Home resolved to codemble.cli without claiming it is understood." width="1000">
 </p>
 
 <p align="center"><sub>

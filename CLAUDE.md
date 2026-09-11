@@ -285,10 +285,26 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**Release preparation and public-doc sync (2026-09-11):** The preservation-first
+main cleanup audited every local/remote branch and worktree; one superseded but
+unique planning ref, one dirty historical graphics worktree, and four open
+Dependabot refs were preserved until relevance was proved. The four dependency
+heads are now integrated on the release-preparation branch: cryptography 50,
+tree-sitter-go 0.25, tree-sitter-rust 0.24, and JetBrains Mono 5.3 pass the full
+683-test suite, Ruff, the nine-language semantic oracle, focused encrypted-share
+and parser suites, real Go/Rust corpus parses, package metadata, web checks, and
+docs checks. The README and public site now distinguish verified stable v0.22.0
+downloads from current-source product previews, and fresh 1440×720 captures show
+the 245-system Galaxy and selected-world Study framing. A new stable release is
+still gated by the intended independent deployment's timers, alerts, authority
+probes, restore/deletion drill, complete-copy inventory, key retirement, and
+approved media-erasure evidence; no version, tag, or published release advances
+without those receipts.
+
 **Graphics expedition (2026-09-10):** Owner explicitly requested full creative control for lifelike game-inspired Galaxy/System graphics, pre-implementation council, verification, main cleanup and release. The two-round design council passed before implementation; see `docs/design/2026-09-10-planetary-expedition.md`. The graphics implementation, live reduced-motion/resource checks, 19-capture visual matrix and same-host baseline comparison are complete; 677 Python tests pass. The complete 5,000-module Map passes in Chromium/WebKit (2.294 s cold, 1.097 s warm), and interrupted-arrival/reduced-motion plus effective-200%-viewport control reachability pass. Two complete implementation council rounds and targeted coverage closure approve local graphics acceptance. PR #47 passed all five hosted checks on `7cffd7d` (run `34548695851`) and was squash-merged as `e1cf18f` with an identical tree; local and remote main synchronized. Redundant branches and owned validation worktrees were removed, both superseded graphics/cleanup tasks archived, and all 32 protected files retained exact bytes. The scale gate exposed two existing repeated scans, replaced with equivalent indexed/short-circuit lookups. M20 operational/public-sharing gates remain open.
 
 **Current milestone: M20 private read-only share foundation** · Last updated:
-2026-09-10 · Session note: scheduled writer/operator lock prerequisites now use
+2026-09-11 · Session note: scheduled writer/operator lock prerequisites now use
 failing pre-start commands: missing locks fail instead of silently skipping
 startup, making failures eligible for the existing alert relay. The preflight
 also rejects paths that do not resolve to regular files. Local verification:
@@ -2331,6 +2347,9 @@ and evidenced.
 | 2026-09-10 | Owner authorizes the Planetary Expedition graphics redesign and its verification/cleanup/release preparation; design council passed in two complete rounds before implementation | Original detailed seeded System worlds, richer bounded Galaxy scenery and measured Study close-ups serve exploration while parser truth, check-only amber, bounded orbit, reduced motion and complete Map remain intact. This authorization does not fabricate the separate M20 operational-release evidence. |
 
 | 2026-09-10 | Required writer/operator lock preflights fail the service through `ExecStartPre` instead of a start condition | `ConditionPathExists` silently skipped scheduled maintenance when provisioning was missing, so `OnFailure` never reached the durable alert relay. A required regular-file preflight preserves refusal to run while making the failure eligible for alerting. It does not create a lock, replace runtime validation, or prove real systemd/channel execution; the operational gate remains unchecked. |
+| 2026-09-11 | Public documentation separates the verified v0.22.0 install and artifacts from current-source product previews; repository captures are regenerated from current source and labelled without a release number | Post-v0.22.0 planetary graphics and sharing-foundation code made the prior “everything pictured ships” claim false. Stable commands, checksums, and downloads still derive from `release.json`, while current screenshots and roadmap language describe unreleased source without implying that the release gate passed. |
+| 2026-09-11 | Accept cryptography 50, tree-sitter-go 0.25, tree-sitter-rust 0.24, and JetBrains Mono 5.3 together; keep tree-sitter core below 0.26 and align the app and docs font package | Cryptography 50.0.1 preserves the AES-GCM storage/delivery contract across the focused suite; the Go and Rust grammar wheels pass the nine-language semantic oracle and parse 910-node upstream Go plus 162-, 2,380-, and 56-node real Rust corpora with no partial files on core 0.25.2. Fontsource 5.3 adds package typing metadata and produces the same committed app bundle. The JavaScript/core 0.26 crash boundary is unchanged. |
+| 2026-09-11 | Cleanup preserves unique or dirty user work and integrates only the four verified Dependabot heads; release publication stays blocked | Branch age and CI alone do not prove redundancy. The planning ref remains unique, the historical graphics worktree contains uncommitted differences, and the dependency refs become removable only after their exact heads reach verified `main`. Local and hosted checks cannot substitute for the independent operational receipts required by M20, so no version bump, tag, or release is created from this pass unless that evidence appears. |
 
 
 ## Non-Goals — do NOT build (point here when asked)

@@ -78,7 +78,7 @@ record. Charting, checks, and understood state retain their existing meanings.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Study journey and Impact product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/study-impact.png" alt="The current Expert Study panel scrolled to its integrated Impact lists over the Architecture map.">
+    <img src="/Codemble/shots/study-impact.png" alt="The current source preview with the selected server app world beside the Expert Study panel, scrolled to its integrated Impact lists.">
   </div>
   <figcaption>Codemble v0.22.0 · one landing, one journey, with Impact and Connections integrated once.</figcaption>
 </figure>

@@ -10,6 +10,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   previews across the README and public site, and refresh Study captures with
   the selected world visible beside its parser evidence.
 
+### Dependencies
+- Accept cryptography 50, tree-sitter-go 0.25, tree-sitter-rust 0.24, and
+  JetBrains Mono 5.3 after focused compatibility, semantic-oracle, real-corpus,
+  package, and full-suite verification.
+
 ### Fixed
 - Missing scheduled-maintenance locks now fail startup instead of silently
   skipping the service, making failures eligible for the existing alert relay.

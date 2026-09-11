@@ -13,7 +13,7 @@ download remains v0.22.0; newer planetary detail is not yet published.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.22.0 at galaxy level: 217 visible, colourful star systems across nine languages in a luminous spiral sky, with parser-owned names, proven and possible routes kept distinct, ranked labels, 37 charted systems, Home resolved to codemble.cli without amber understanding light, and eight unreadable test fixtures called out.">
+    <img src="/Codemble/shots/galaxy.png" alt="Current Codemble source preview at galaxy level: 245 visible, colourful star systems across nine languages in a luminous spiral sky, with parser-owned names, proven and possible routes kept distinct, ranked labels, 47 charted systems, Home resolved to codemble.cli without amber understanding light, and eight unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
