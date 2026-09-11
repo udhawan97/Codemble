@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed
+- Missing scheduled-maintenance locks now fail startup instead of silently
+  skipping the service, making failures eligible for the existing alert relay.
+  The preflight also rejects paths that do not resolve to regular files.
+
 ### Performance
 - Avoid repeated whole-project scans while resolving Python import namespaces and generating check options, preserving parser meaning and pinned check answers.
 

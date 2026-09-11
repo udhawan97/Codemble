@@ -2,7 +2,6 @@
 Description=Codemble hourly share sweep and encrypted backup
 After=network-online.target
 Wants=network-online.target
-ConditionPathExists=/var/lib/codemble/share/.active.share-operations.lock
 OnFailure=codemble-share-alert@%n.service
 
 [Service]
@@ -10,6 +9,8 @@ Type=oneshot
 User=codemble-share
 Group=codemble-share
 UMask=0077
+# A missing prerequisite must fail the service so OnFailure can alert.
+ExecStartPre=/bin/test -f /var/lib/codemble/share/.active.share-operations.lock
 ExecStart=/opt/codemble/bin/codemble share-ops writer-cycle --config /etc/codemble/share-writer.toml
 NoNewPrivileges=true
 PrivateTmp=true

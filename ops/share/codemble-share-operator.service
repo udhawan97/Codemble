@@ -2,7 +2,6 @@
 Description=Codemble daily full-data backup check and seven-day prune
 After=local-fs.target
 RequiresMountsFor=/mnt/codemble-restic
-ConditionPathExists=/var/lib/codemble/share/.active.share-operations.lock
 OnFailure=codemble-share-alert@%n.service
 
 [Service]
@@ -10,6 +9,8 @@ Type=oneshot
 User=root
 Group=codemble-share
 UMask=0077
+# A missing prerequisite must fail the service so OnFailure can alert.
+ExecStartPre=/bin/test -f /var/lib/codemble/share/.active.share-operations.lock
 ExecStart=/opt/codemble/bin/codemble share-ops operator-maintain --config /etc/codemble/share-operator.toml
 NoNewPrivileges=true
 PrivateTmp=true

@@ -119,6 +119,16 @@ co-locating either role's credentials.
 
 ## Failure alert handoff
 
+The writer and operator use a required `ExecStartPre=/bin/test -f` check for
+the pre-provisioned operations lock. A missing lock or directory in its place
+fails startup before maintenance runs and lets `OnFailure` invoke the alert
+relay. It must not be a `ConditionPathExists` or assertion: those can skip/fail
+the start job without putting the service into the failed state that triggers
+`OnFailure`. See the upstream [unit condition semantics](https://github.com/systemd/systemd/blob/main/man/systemd.unit.xml)
+and [pre-start failure semantics](https://github.com/systemd/systemd/blob/main/man/systemd.service.xml).
+This checks the prerequisite's file type; it does not replace the writer's
+runtime ownership, permissions, or lock-acquisition checks.
+
 The writer, operator, and append-only receiver units each trigger
 `codemble-share-alert@%n.service` on failure. The relay writes the event to the
 root-owned private spool before invoking the pinned local notifier. A failed or
@@ -135,6 +145,13 @@ delivered event. Then cause one safe foreground failure for each monitored unit
 and confirm `OnFailure` reaches the same channel. A unit file, local spool, or
 green test is not alert evidence; retain a token-free operator receipt naming
 the unit, alert ID, channel acknowledgement time, and result.
+
+Include missing-lock startup in the failure drill on a **disposable deployment**:
+confirm maintenance never starts, the unit fails at `ExecStartPre`, and the alert
+reaches the configured channel. Then provision the lock through the normal
+tmpfiles procedure and verify startup can proceed. Never remove or rename a live
+operations lock to simulate this fault. Local command tests prove only the
+preflight outcomes; they do not prove a real systemd or notification-channel run.
 
 The examples use systemd. Equivalent launchd or NAS scheduling is acceptable
 only when it preserves the exact commands, service identities, hourly/daily

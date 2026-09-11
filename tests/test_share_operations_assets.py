@@ -1,9 +1,42 @@
 """Deployment templates preserve the selected free least-authority topology."""
 
+import configparser
+import shlex
+import subprocess
 import tomllib
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).parents[1] / "ops" / "share"
+
+
+@pytest.mark.parametrize("role", ["writer", "operator"])
+@pytest.mark.parametrize("lock_state", ["missing", "directory", "file"])
+def test_scheduled_lock_preflight_fails_instead_of_skipping(
+    tmp_path: Path, role: str, lock_state: str,
+) -> None:
+    unit = configparser.ConfigParser(interpolation=None)
+    unit.optionxform = str
+    unit.read(ROOT / f"codemble-share-{role}.service")
+    # Conditions/assertions do not put the unit into the failed state and
+    # therefore cannot activate its OnFailure alert. ExecStartPre must fail.
+    assert not any(key.startswith(("Condition", "Assert")) for key in unit["Unit"])
+    assert "ExecCondition" not in unit["Service"]
+    assert unit["Unit"]["OnFailure"] == "codemble-share-alert@%n.service"
+    command = shlex.split(unit["Service"]["ExecStartPre"])
+    assert command == [
+        "/bin/test", "-f", "/var/lib/codemble/share/.active.share-operations.lock",
+    ]
+    lock = tmp_path / "lock"
+    if lock_state == "directory":
+        lock.mkdir()
+    elif lock_state == "file":
+        lock.touch()  # tmpfiles provisions an empty regular file.
+    command[-1] = str(lock)
+    result = subprocess.run(command, capture_output=True, timeout=5, check=False)
+    assert result.returncode == (0 if lock_state == "file" else 1)
+    assert result.stdout == result.stderr == b""
 
 
 def test_writer_and_operator_templates_keep_schedules_and_authority_separate() -> None:

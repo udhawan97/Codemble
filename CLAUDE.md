@@ -288,7 +288,12 @@ lit-galaxy GIF as hero).
 **Graphics expedition (2026-09-10):** Owner explicitly requested full creative control for lifelike game-inspired Galaxy/System graphics, pre-implementation council, verification, main cleanup and release. The two-round design council passed before implementation; see `docs/design/2026-09-10-planetary-expedition.md`. The graphics implementation, live reduced-motion/resource checks, 19-capture visual matrix and same-host baseline comparison are complete; 677 Python tests pass. The complete 5,000-module Map passes in Chromium/WebKit (2.294 s cold, 1.097 s warm), and interrupted-arrival/reduced-motion plus effective-200%-viewport control reachability pass. Two complete implementation council rounds and targeted coverage closure approve local graphics acceptance. PR #47 passed all five hosted checks on `7cffd7d` (run `34548695851`) and was squash-merged as `e1cf18f` with an identical tree; local and remote main synchronized. Redundant branches and owned validation worktrees were removed, both superseded graphics/cleanup tasks archived, and all 32 protected files retained exact bytes. The scale gate exposed two existing repeated scans, replaced with equivalent indexed/short-circuit lookups. M20 operational/public-sharing gates remain open.
 
 **Current milestone: M20 private read-only share foundation** · Last updated:
-2026-08-30 · Session note: the local privacy workbench still binds confirmation
+2026-09-10 · Session note: scheduled writer/operator lock prerequisites now use
+failing pre-start commands: missing locks fail instead of silently skipping
+startup, making failures eligible for the existing alert relay. The preflight
+also rejects paths that do not resolve to regular files. Local verification:
+683 Python tests, 14 focused deployment/alert tests, and Ruff pass. Real host
+and channel evidence remains required. The local privacy workbench still binds confirmation
 to one exact raw-source-free artifact, and a separate provider-neutral capability
 module issues independent 256-bit view/delete authority over only validated
 canonical bytes. A standalone ASGI delivery module now admits only HTTPS and an
@@ -2062,6 +2067,8 @@ non-replaceable operation locking with process-level exclusion proof, exact live
       closed token-free event before a digest-pinned local notifier, retries the
       same event ID after failure, and wires writer/operator/receiver `OnFailure`
       without choosing a notification provider
+- [x] Make missing scheduled-maintenance locks fail startup instead of silently
+      skipping the unit, and reject paths that do not resolve to regular files
 - [ ] Prove the intended independent-node configuration, scheduled active
       sweeping, alerts, append-only least authority, full-data prune, backup
       restore without resurrection, complete-copy inventory, operational
@@ -2322,6 +2329,8 @@ and evidenced.
 | 2026-08-25 | Ruby and PHP join the adapter seam with conservative certainty and official MIT grammar wheels | Both adapters extract modules, types, methods/functions, imports/includes, explicit calls, entrypoint evidence, and syntax-anchored concepts; Ruby also emits native entrypoint roles, while PHP intentionally emits no role evidence. Dynamic dispatch stays possible and partial files fail closed to module evidence. The ten-case oracle and pinned Rails/Laravel corpora guard omission, invented certainty, scale, and deterministic bytes. tree-sitter-ruby `ad907a69…` and tree-sitter-php `3fda2fb…` were license-verified; no implementation code or assets were copied |
 
 | 2026-09-10 | Owner authorizes the Planetary Expedition graphics redesign and its verification/cleanup/release preparation; design council passed in two complete rounds before implementation | Original detailed seeded System worlds, richer bounded Galaxy scenery and measured Study close-ups serve exploration while parser truth, check-only amber, bounded orbit, reduced motion and complete Map remain intact. This authorization does not fabricate the separate M20 operational-release evidence. |
+
+| 2026-09-10 | Required writer/operator lock preflights fail the service through `ExecStartPre` instead of a start condition | `ConditionPathExists` silently skipped scheduled maintenance when provisioning was missing, so `OnFailure` never reached the durable alert relay. A required regular-file preflight preserves refusal to run while making the failure eligible for alerting. It does not create a lock, replace runtime validation, or prove real systemd/channel execution; the operational gate remains unchecked. |
 
 
 ## Non-Goals — do NOT build (point here when asked)
