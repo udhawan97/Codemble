@@ -148,6 +148,7 @@ function harness({ reducedMotion = false, dawnReady = true, size = { width: 900,
     _destructor() {
       events.push("renderer:destructor");
     },
+    renderer() { return { forceContextLoss() { events.push("renderer:contextLost"); } }; },
   };
   const chainMethods = [
     "backgroundColor", "showNavInfo", "enableNavigationControls", "enableNodeDrag",
@@ -437,6 +438,8 @@ first.runtime.dispose();
 const disposalCount = first.events.length;
 first.runtime.dispose();
 assert.equal(first.events.length, disposalCount, "dispose is idempotent");
+assert.equal(first.events.filter(event => event === "renderer:contextLost").length, 1, "dispose releases its GPU context exactly once");
+assert.ok(first.events.indexOf("renderer:destructor") < first.events.indexOf("renderer:contextLost"), "objects are released before the driver context");
 assert.ok(first.events.includes("observer:disconnect"));
 assert.ok(first.events.includes("controls:remove:start"));
 assert.ok(first.events.includes("pointer:remove"));

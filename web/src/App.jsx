@@ -1022,6 +1022,9 @@ export function App() {
         >
           {layer === "galaxy" ? (
             <>
+              <span className="legend-world-note">
+                World surfaces and clouds are illustrative; they do not describe code behaviour.
+              </span>
               <span>
                 <i className="legend-size" />
                 Size · {mode === "easy" ? "how much code" : "lines of code"}

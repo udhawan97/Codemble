@@ -585,16 +585,16 @@ void main(){
   float radius = length(point);
   if (radius > 1.0) discard;
   float angle = atan(point.y, point.x);
-  float turbulence = cbDiscNoise(point * 4.4 + uSeed * 5.0);
-  float spiral = 0.5 + 0.5 * cos(angle * 4.0 - radius * 24.0 + turbulence * 2.8 + uSeed * 6.28318);
-  spiral = pow(smoothstep(0.28, 0.9, spiral), 2.0);
-  float dustLane = 1.0 - smoothstep(0.39, 0.53, abs(spiral - 0.43));
-  float envelope = (1.0 - smoothstep(0.72, 1.0, radius)) * smoothstep(0.02, 0.18, radius);
-  float core = exp(-radius * 5.2);
-  float alpha = envelope * (0.018 + spiral * 0.09 + turbulence * 0.024);
-  alpha += core * 0.18;
-  alpha *= mix(0.72, 1.0, dustLane);
-  vec3 color = mix(uEdge, uCore, clamp(core * 1.6 + spiral * 0.32, 0.0, 1.0));
+  float turbulence = cbDiscNoise(point * 5.4 + uSeed * 5.0);
+  float fineDust = cbDiscNoise(point * 42.0 + turbulence * 3.0);
+  float spiral = 0.5 + 0.5 * cos(angle * 3.0 - log(radius + 0.12) * 9.0 + turbulence * 3.4 + uSeed * 6.28318);
+  float filaments = pow(smoothstep(0.3, 0.94, spiral), 2.0);
+  float darkLane = smoothstep(0.32, 0.52, fineDust + turbulence * 0.16);
+  float envelope = (1.0 - smoothstep(0.64, 1.0, radius));
+  float core = exp(-radius * 8.5);
+  float alpha = envelope * (0.01 + filaments * 0.17) * darkLane;
+  alpha += core * 0.22;
+  vec3 color = mix(uEdge, uCore, clamp(core * 1.4 + fineDust * 0.34, 0.0, 1.0));
   gl_FragColor = vec4(color, alpha);
 }
 `;
@@ -708,7 +708,7 @@ export function createGalacticGlow(seedText, palette, radius = 1050) {
   core.renderOrder = -7;
   core.name = "codemble-galactic-core";
   group.rotation.y = skySeed(`${seedText}:galactic-orientation`) * Math.PI * 2;
-  group.add(disc, createSpiralDust(seedText, palette, 1200, radius * 0.9), core);
+  group.add(disc, createSpiralDust(seedText, palette, 1200, radius * 0.9), core, createNebulaVault(seedText, palette));
   group.userData.codembleSeed = skySeed(seedText);
   return group;
 }
@@ -747,24 +747,70 @@ export function createSystemAura(seedText, palette, languageColor, radius = 180)
   haze.position.y = -18;
   haze.renderOrder = -7;
 
-  const planeMaterial = new THREE.MeshBasicMaterial({
-    color: tint,
-    transparent: true,
-    opacity: 0.055,
+  group.add(haze, createNebulaVault(seedText, palette));
+  return group;
+}
+
+// A single distant sky shell. The cloud bank has volume cues and dark lanes,
+// but no landmarks that could be confused with graph nodes or routes.
+const NEBULA_VERTEX = `
+varying vec3 vDirection;
+void main(){
+  vDirection = normalize(position);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+const NEBULA_FRAGMENT = `
+uniform vec3 uCool;
+uniform vec3 uPale;
+uniform float uSeed;
+varying vec3 vDirection;
+float nvHash(vec3 p){
+  p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float nvNoise(vec3 p){
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(nvHash(i),nvHash(i+vec3(1,0,0)),f.x),
+    mix(nvHash(i+vec3(0,1,0)),nvHash(i+vec3(1,1,0)),f.x),f.y),
+    mix(mix(nvHash(i+vec3(0,0,1)),nvHash(i+vec3(1,0,1)),f.x),
+    mix(nvHash(i+vec3(0,1,1)),nvHash(i+vec3(1,1,1)),f.x),f.y),f.z);
+}
+void main(){
+  vec3 direction = normalize(vDirection);
+  vec3 p = direction * 4.2 + vec3(uSeed * 17.0);
+  float coarse = nvNoise(p);
+  float grain = nvNoise(p * 3.1 + coarse * 2.3);
+  float fine = nvNoise(p * 10.7 + grain);
+  float latitude = direction.y + direction.x * 0.28 + direction.z * 0.12;
+  float bank = exp(-pow((latitude + (coarse - 0.5) * 0.32) * 3.8, 2.0));
+  float lane = smoothstep(0.3, 0.69, grain);
+  float filaments = smoothstep(0.32, 0.76, coarse * 0.52 + grain * 0.3 + fine * 0.18);
+  float alpha = bank * filaments * lane * 0.34;
+  vec3 tint = mix(uCool, uPale, grain * 0.34);
+  gl_FragColor = vec4(tint, alpha);
+}
+`;
+export const NEBULA_VAULT_SHADER_SOURCE = Object.freeze({vertex: NEBULA_VERTEX, fragment: NEBULA_FRAGMENT});
+function createNebulaVault(seedText, palette) {
+  const material = new THREE.ShaderMaterial({
+    vertexShader: NEBULA_VERTEX,
+    fragmentShader: NEBULA_FRAGMENT,
+    uniforms: {
+      uCool: {value: new THREE.Color(palette.starCool ?? palette.nodeBright)},
+      uPale: {value: new THREE.Color(palette.starPale ?? palette.nodeBright)},
+      uSeed: {value: skySeed(`${seedText}:vault`)},
+    },
+    side: THREE.BackSide,
     depthWrite: false,
     depthTest: false,
-    side: THREE.DoubleSide,
+    transparent: true,
     blending: THREE.AdditiveBlending,
   });
-  const plane = new THREE.Mesh(
-    new THREE.RingGeometry(radius * 0.18, radius, 96),
-    planeMaterial,
-  );
-  plane.name = "codemble-system-light-plane";
-  plane.rotation.x = -Math.PI / 2;
-  plane.position.y = -20;
-  plane.rotation.z = skySeed(`${seedText}:system-aura`) * Math.PI * 2;
-  plane.renderOrder = -8;
-  group.add(plane, haze);
-  return group;
+  const vault = new THREE.Mesh(new THREE.SphereGeometry(6000, 32, 16), material);
+  vault.name = "codemble-nebula-vault";
+  vault.renderOrder = -20;
+  return vault;
 }

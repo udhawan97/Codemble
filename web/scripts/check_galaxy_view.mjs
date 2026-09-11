@@ -7,6 +7,7 @@ import {
   clearRegion,
   frameLevel,
   frameStudy,
+  frameStudyAfterResize,
   viewportAspect,
 } from "../src/galaxyView.js";
 import { LEVELS, drawnRadius, nodeRadius } from "../src/graphData.js";
@@ -246,6 +247,25 @@ assert.equal(
   "a structure the layout never placed is not framed at a guess",
 );
 
+// A close-up must land in the canvas beside source, including its outer ring.
+for (const viewport of [{width:1440,height:680},{width:900,height:600},{width:320,height:480}]) {
+  const chrome = viewport.width >= 900
+    ? [{left:viewport.width * 0.54,right:viewport.width,top:0,bottom:viewport.height}]
+    : [{left:0,right:viewport.width,top:viewport.height * 0.28,bottom:viewport.height}];
+  const renderNode = {val:8,fx:10,fy:-4,fz:2};
+  const close = frameStudy({system_x:10,system_y:-4,system_z:2}, {renderNode,fov:50,viewport,chrome});
+  const clear = clearRegion(viewport,chrome);
+  const seen = screenSpread(close,[renderNode],viewport.width/viewport.height,50,n=>nodeRadius(n)*2.1);
+  const centreX = (seen.skewX + 1) * viewport.width / 2;
+  const centreY = (1 - seen.skewY) * viewport.height / 2;
+  assert.ok(centreX-seen.fillX*viewport.width/2 >= clear.left, "Study ring clears left chrome");
+  assert.ok(centreX+seen.fillX*viewport.width/2 <= clear.right, "Study ring clears source panel");
+  assert.ok(centreY-seen.fillY*viewport.height/2 >= clear.top, "Study ring clears top chrome");
+  assert.ok(centreY+seen.fillY*viewport.height/2 <= clear.bottom, "Study ring clears bottom chrome");
+  const body = screenSpread(close,[renderNode],viewport.width/viewport.height,50,n=>nodeRadius(n)*1.42);
+  if(clear.width>=360) assert.ok(body.fillY*viewport.height>=180 && body.fillY*viewport.height<=320,"Study body is prominent");
+}
+
 // ── The arithmetic underneath is unchanged ─────────────────────────────────
 
 assert.ok(
@@ -422,7 +442,7 @@ for (const [label, aspect] of [
     systemNodes,
     aspect,
     50,
-    (point) => nodeRadius(point) * (point.isSystemCore ? 3.7 : 1.78),
+    (point) => nodeRadius(point) * (point.isSystemCore ? 5.88 : 2.1),
   );
   assert.ok(
     Math.abs(seen.skewX) < 0.03,
@@ -574,3 +594,14 @@ for (const point of after) {
 }
 
 console.log("galaxy-view contracts passed");
+
+const orbitNode={system_x:0,system_y:0,system_z:0};
+const orbitOptions={renderNode:{val:8},fov:50,viewport:{width:1440,height:680},chrome:[],position:{x:60,y:20,z:90},target:{x:0,y:0,z:0}};
+assert.equal(frameStudyAfterResize(orbitNode,orbitOptions),null,"a safe deliberate orbit stays untouched");
+const safety=frameStudyAfterResize(orbitNode,{...orbitOptions,viewport:{width:320,height:480},chrome:[{left:0,right:320,top:134,bottom:480}]});
+assert.ok(safety,"narrow resize corrects clipping after orbit");
+const originalAxis={x:60,y:20,z:90};
+const safeAxis={x:safety.position.x-safety.target.x,y:safety.position.y-safety.target.y,z:safety.position.z-safety.target.z};
+assert.ok(Math.abs(safeAxis.x/safeAxis.z-originalAxis.x/originalAxis.z)<1e-10,"safety preserves orbit azimuth");
+assert.ok(Math.abs(safeAxis.y/safeAxis.z-originalAxis.y/originalAxis.z)<1e-10,"safety preserves orbit elevation");
+assert.equal(frameStudyAfterResize(orbitNode,{...orbitOptions,position:safety.position,target:safety.target,viewport:{width:320,height:480},chrome:[{left:0,right:320,top:134,bottom:480}]}),null,"safety fit is complete and idempotent");

@@ -405,7 +405,9 @@ def _node_options(
     index: _CheckIndex, answers: tuple[str, ...], *, kind: str
 ) -> tuple[CheckOption, ...]:
     pool = index.ids_by_kind.get(kind, ())
-    if len(set(pool) | set(answers)) < 2:
+    # The shared index already makes pool unique. Only a zero/one-item pool
+    # needs the union; large projects must not rebuild it for every question.
+    if len(pool) < 2 and len(set(pool) | set(answers)) < 2:
         pool = index.all_ids
     return _options(index, answers, pool)
 

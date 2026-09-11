@@ -80,6 +80,26 @@ def _calls(graph, src: str) -> list:
     return [edge for edge in graph.edges if edge.kind == "call" and edge.src == src]
 
 
+def test_dotted_imports_preserve_namespace_bindings_and_external_prefixes(tmp_path: Path) -> None:
+    namespace = tmp_path / "space" / "deep"
+    namespace.mkdir(parents=True)
+    (namespace / "world.py").write_text("def work():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "main.py").write_text(
+        "import space.deep.world\n"
+        "import space.deep.world as planet\n"
+        "import spacex\n"
+        "def run():\n"
+        "    space.deep.world.work()\n"
+        "    planet.work()\n"
+        "    spacex.work()\n",
+        encoding="utf-8",
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    calls = _calls(graph, "main.run")
+    assert len([edge for edge in calls if edge.dst == "space.deep.world.work" and edge.certain]) == 2
+    assert any(edge.external and "spacex" in edge.dst for edge in calls)
+
+
 def test_an_inherited_method_resolves_through_the_base_class(project: Path) -> None:
     """`self.shared()` is defined on the base, not on Child.
 

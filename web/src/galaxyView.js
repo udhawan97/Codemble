@@ -103,7 +103,7 @@ const layoutPoints = (nodes, level) =>
     radius:
       level === LEVELS.GALAXY
         ? drawnRadius(node)
-        : nodeRadius(node) * (node.isSystemCore ? 3.7 : 1.78),
+        : nodeRadius(node) * (node.isSystemCore ? 5.88 : 2.1),
   }));
 
 /**
@@ -404,12 +404,60 @@ export function cameraBoundsFor(level) {
  *
  * @returns {{position: {x,y,z}, target: {x,y,z}}|null}
  */
-export function frameStudy(node) {
+export function frameStudy(node, options = {}) {
   if (!node) return null;
   const { system_x: x, system_y: y, system_z: z } = node;
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+  const { renderNode, fov, viewport, chrome, direction = STUDY_OFFSET, minimumDistance = 0 } = options;
+  const clear = clearRegion(viewport, chrome);
+  if (renderNode && clear && Number.isFinite(fov) && fov > 0 && fov < 180) {
+    const bodyRadius = nodeRadius(renderNode) * (renderNode.isSystemCore ? 2.45 : 1.42);
+    const extent = nodeRadius(renderNode) * (renderNode.isSystemCore ? 5.88 : 2.1);
+    const diameter = Math.min(280, clear.width * 0.70, clear.height * 0.70);
+    // Fit the sphere and its complete semantic rings inside the clear canvas.
+    const focal = viewport.height / (2 * Math.tan(fov * Math.PI / 360));
+    const distance = Math.max(
+      minimumDistance,
+      bodyRadius * Math.sqrt(1 + (2 * focal / Math.max(1, diameter)) ** 2),
+      extent * Math.sqrt(1 + (2 * focal / Math.max(1, Math.min(clear.width, clear.height) * 0.88)) ** 2),
+    );
+    const framed = aimIntoClearRegion({
+      target: { x, y, z }, distance,
+      points: [{ x, y, z, radius: extent }], direction,
+      fov, viewport, chrome, margin: 0.08,
+    });
+    const offset = cameraPositionAt(direction, framed.distance);
+    return {
+      ...framed,
+      position: { x: framed.target.x + offset.x, y: framed.target.y + offset.y, z: framed.target.z + offset.z },
+      min: Math.min(22, framed.distance * 0.8),
+      max: Math.max(170, framed.distance * 1.5),
+    };
+  }
   return {
     position: { x: x + STUDY_OFFSET.x, y: y + STUDY_OFFSET.y, z: z + STUDY_OFFSET.z },
     target: { x, y, z },
   };
+}
+
+/** Preserve a deliberate orbit unless the selected world is clipped by resize. */
+export function frameStudyAfterResize(node, options) {
+  const {position, target, renderNode, fov, viewport, chrome} = options;
+  if (!node || !position || !target || !renderNode || !viewport) return null;
+  const direction = {x:position.x-target.x,y:position.y-target.y,z:position.z-target.z};
+  const axis = unitVector(direction);
+  const clear = clearRegion(viewport,chrome);
+  if (!axis || !clear || !Number.isFinite(fov)) return null;
+  const right = unitVector(crossProduct({x:0,y:1,z:0},axis));
+  if (!right) return null;
+  const up = crossProduct(axis,right);
+  const relative = {x:node.system_x-position.x,y:node.system_y-position.y,z:node.system_z-position.z};
+  const depth = -dotProduct(relative,axis);
+  const radius = nodeRadius(renderNode)*(renderNode.isSystemCore?5.88:2.1);
+  const focal = viewport.height/(2*Math.tan(fov*Math.PI/360));
+  const x = viewport.width/2+dotProduct(relative,right)*focal/depth;
+  const y = viewport.height/2-dotProduct(relative,up)*focal/depth;
+  const pad = radius*focal/Math.sqrt(Math.max(0.000001,depth*depth-radius*radius));
+  if(depth>radius && x-pad>=clear.left && x+pad<=clear.right && y-pad>=clear.top && y+pad<=clear.bottom) return null;
+  return frameStudy(node,{...options,direction,minimumDistance:Math.hypot(direction.x,direction.y,direction.z)});
 }

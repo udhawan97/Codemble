@@ -38,7 +38,13 @@ export function GalaxyCanvas({
   const [renderError, setRenderError] = useState("");
   const [runtimeGeneration, setRuntimeGeneration] = useState(0);
   const palette = useMemo(readPalette, []);
-  const reducedMotion = useMemo(prefersReducedMotion, []);
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const refresh = () => setReducedMotion(preference.matches);
+    preference.addEventListener("change", refresh);
+    return () => preference.removeEventListener("change", refresh);
+  }, []);
   const runtimeDelay = galaxyRuntimeStartDelay(Object.keys(graph.file_hashes ?? {}).length);
   const [runtimePreparing, setRuntimePreparing] = useState(runtimeDelay > 0);
   const starfieldSeed = seedFromHashes(graph.file_hashes);

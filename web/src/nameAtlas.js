@@ -50,16 +50,26 @@ export function createNameAtlas(nodes) {
       const star = sprite.parent;
       if (!star) continue;
       star.getWorldPosition(origin);
-      const base = sprite.userData.baseOffsetY ?? 0;
-      const anchor = project(origin, base, camera, width, height, projected);
+      const direction = sprite.userData.surfaceRadius
+        ? new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion)
+        : new THREE.Vector3(0, 1, 0);
+      let base = sprite.userData.baseOffsetY ?? 0;
+      if (sprite.userData.surfaceRadius) {
+        const centre = project(origin, 0, camera, width, height, projected, direction);
+        const unit = project(origin, 1, camera, width, height, projected, direction);
+        const scale = centre && unit ? Math.abs(unit.screenY - centre.screenY) : 0;
+        if (scale > 0) base = sprite.userData.surfaceRadius * 1.08 + (height * LABEL_SCREEN_HEIGHT / 2 + 6) / scale;
+      }
+      const anchor = project(origin, base, camera, width, height, projected, direction);
       if (!anchor) continue;
-      const oneUnit = project(origin, base + 1, camera, width, height, projected);
+      const oneUnit = project(origin, base + 1, camera, width, height, projected, direction);
       const pixelsPerUnit = oneUnit ? Math.abs(oneUnit.screenY - anchor.screenY) : 0;
       candidates.push({
         sprite,
         nodeId,
         origin: origin.clone(),
         base,
+        direction,
         pixelsPerUnit,
         anchor,
         halfWidth: ((sprite.userData.screenWidthFraction ?? 0.14) * height) / 2,
@@ -95,7 +105,7 @@ export function createNameAtlas(nodes) {
       });
       if (!placement) continue;
       for (const cell of placement.cells) taken.add(cell);
-      candidate.sprite.position.y = candidate.base + placement.offset;
+      candidate.sprite.position.copy(candidate.direction).multiplyScalar(candidate.base + placement.offset);
       candidate.sprite.visible = true;
       visibleIds.push(candidate.nodeId);
     }
@@ -147,8 +157,8 @@ function labelBudget(distance, bounds) {
   );
 }
 
-function project(origin, offsetY, camera, width, height, projected) {
-  projected.set(origin.x, origin.y + offsetY, origin.z).project(camera);
+function project(origin, offsetY, camera, width, height, projected, direction = {x:0,y:1,z:0}) {
+  projected.set(origin.x + direction.x * offsetY, origin.y + direction.y * offsetY, origin.z + direction.z * offsetY).project(camera);
   if (projected.z > 1) return null;
   const screenX = (projected.x * 0.5 + 0.5) * width;
   const screenY = (-projected.y * 0.5 + 0.5) * height;
@@ -172,6 +182,7 @@ function chooseSlot(candidate, { camera, width, height, projected, taken, chrome
             width,
             height,
             projected,
+            candidate.direction,
           );
     if (!at) continue;
     // `project` only checks the star's own anchor, but a plate is drawn around

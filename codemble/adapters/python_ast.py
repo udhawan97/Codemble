@@ -381,6 +381,13 @@ class PythonAstAdapter:
         definition_by_id: dict[str, _Definition] = {}
         parsed_by_module = {parsed.module: parsed for parsed in parsed_files}
         modules = set(parsed_by_module)
+        # Imports can bind an implicit namespace package as well as an exact
+        # module. Index every dotted prefix once instead of scanning the entire
+        # project for each import (quadratic on large import chains).
+        module_prefixes: set[str] = set()
+        for module in modules:
+            parts = module.split(".")
+            module_prefixes.update(".".join(parts[:end]) for end in range(1, len(parts) + 1))
 
         for parsed in parsed_files:
             module_node = _module_node(parsed)
@@ -416,12 +423,12 @@ class PythonAstAdapter:
                 continue
             for syntax in ast.walk(parsed.tree):
                 if isinstance(syntax, (ast.Import, ast.ImportFrom)):
-                    edges, _ = _resolve_import(parsed, syntax, modules, node_by_id)
+                    edges, _ = _resolve_import(parsed, syntax, modules, node_by_id, module_prefixes)
                     import_edges.update(edges)
 
             module_facts = _ScopeFacts().collect(parsed.tree.body)
             for syntax in module_facts.imports:
-                _, bindings = _resolve_import(parsed, syntax, modules, node_by_id)
+                _, bindings = _resolve_import(parsed, syntax, modules, node_by_id, module_prefixes)
                 module_bindings[parsed.module].extend(bindings)
 
         definition_by_id = {definition.node_id: definition for definition in definitions}
@@ -429,7 +436,7 @@ class PythonAstAdapter:
             facts = _ScopeFacts().collect(definition.syntax.body)
             parsed = parsed_by_module[_module_from_node_id(definition.node_id, modules)]
             for syntax in facts.imports:
-                _, bindings = _resolve_import(parsed, syntax, modules, node_by_id)
+                _, bindings = _resolve_import(parsed, syntax, modules, node_by_id, module_prefixes)
                 scope_bindings[definition.node_id].extend(bindings)
 
         note_detail("Resolving calls")
@@ -975,6 +982,7 @@ def _resolve_import(
     syntax: ast.Import | ast.ImportFrom,
     modules: set[str],
     node_by_id: dict[str, Node],
+    module_prefixes: set[str],
 ) -> tuple[list[Edge], list[_ImportBinding]]:
     edges: list[Edge] = []
     bindings: list[_ImportBinding] = []
@@ -989,10 +997,7 @@ def _resolve_import(
             )
             local_name = alias.asname or target.split(".", 1)[0]
             binding_target = target if alias.asname else target.split(".", 1)[0]
-            binding_external = not any(
-                module == binding_target or module.startswith(f"{binding_target}.")
-                for module in modules
-            )
+            binding_external = binding_target not in module_prefixes
             bindings.append(_ImportBinding(local_name, binding_target, binding_external))
         return edges, bindings
 
