@@ -62,7 +62,7 @@ dependencies = [
   # are: a grammar release is only safe once it has been run against the pinned
   # core on a project of real size, and the segfault that produced that rule
   # only ever showed up at scale.
-  "tree-sitter-go>=0.23,<0.24",
+  "tree-sitter-go>=0.23,<0.26",
   "tree-sitter-java>=0.23,<0.24",
   "tree-sitter-rust>=0.23,<0.25",
   "tree-sitter-c-sharp>=0.23,<0.24",
