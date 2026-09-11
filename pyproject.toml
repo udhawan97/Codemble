@@ -36,7 +36,7 @@ dependencies = [
   # than assembling encryption and authentication from lower-level primitives.
   # Keep the major boundary explicit so a cryptographic dependency change is
   # reviewed instead of arriving through an unrelated install refresh.
-  "cryptography>=45,<50",
+  "cryptography>=45,<51",
   "fastapi>=0.115",
   # Share artifacts are hashed over standards-compliant RFC 8785 bytes. Keep
   # float, negative-zero, and Unicode property ordering in one dedicated
