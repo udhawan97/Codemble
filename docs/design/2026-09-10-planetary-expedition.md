@@ -1,6 +1,6 @@
 # Planetary expedition — design review candidate
 
-Status: implemented; final verification and implementation council in progress. Owner request (2026-09-10): full creative control for a lifelike, game-quality Galaxy, design council before implementation, validation, main cleanup, deployment and a new release.
+Status: implemented and locally verified; hosted CI and final promotion remain pending. Owner request (2026-09-10): full creative control for a lifelike, game-quality Galaxy, design council before implementation, validation, main cleanup, deployment and a new release.
 
 ## Direction
 
@@ -30,7 +30,7 @@ Primary files: celestialBodies.js (surfaces/atmosphere/Sun), galaxyMaterials.js 
 
 ## Delivery boundary
 
-Current main is 566624e; public stable is v0.22.0. Main contains M20 local share machinery with an explicit independent-node operational release gate. This design does not enable or deploy share delivery, weaken that gate, or claim independent infrastructure evidence. Finish graphics and all local gates first; prepare a concrete release candidate. Publication must satisfy the existing gate or obtain an explicit, narrowly scoped owner amendment after the candidate is reviewable. The connected GitHub API and existing SSH authentication are available; the expired local gh credential is not used.
+Current main is 566624e; public stable is v0.22.0. Main contains M20 local share machinery with an explicit independent-node operational release gate. This design does not enable or deploy share delivery, weaken that gate, or claim independent infrastructure evidence. Finish graphics and all local gates first; prepare a concrete release candidate. Publication must satisfy the existing gate or obtain an explicit, narrowly scoped owner amendment after the candidate is reviewable. GitHub reads and SSH pushes work; PR #47 was created through the authenticated browser because connector writes are unavailable.
 
 Main cleanup inventories every local/remote branch and worktree, preserves the dirty high-end-galaxy worktree and two intentional root backup markers, integrates only independently verified unique relevant source, and removes only proven redundant refs after synchronization. The prior interrupted Codex task “Clean up Codemble branches” can be archived once its work is actually superseded; do not archive unrelated work or unresolved decisions. No false release-completion claim if authentication or existing operational gates remain blocked.
 
@@ -54,6 +54,23 @@ The implementation adds four seeded surface archetypes, integrated moving clouds
 
 Visible Chromium 149, DPR 1, 1440×900 on the documented Mac: 5 s warmup and 15 s samples. Baseline/candidate p95: fixture System 17.4/17.5 ms, Study 17.4/17.6 ms, 250-world dense System 17.4/17.6 ms; same-source self-parse System 17.6/17.2 ms and Study 17.5/17.3 ms. All medians approximately 16.7 ms. Ten navigation loops plateaued live GPU allocations; switching to reduced motion preserved selection and produced identical rendered frames 600 ms apart. These are host-specific frame intervals, not universal FPS guarantees.
 
-The 19-capture visual matrix passed all nine languages, partial/module-only systems, real source Study, narrow/zoomed layouts, rapid final selection and actual check-earned understanding. Native Safari rendered Galaxy, System and Study. The scene is detailed illustrative space art; no photorealism claim.
+The 19-capture matrix covers all nine languages, partial/module-only systems, Study landing briefs for real code, narrow layouts, serial selection and actual check-earned understanding. Its CSS-magnified frame is exploratory, not full-browser zoom acceptance. The separate interaction gate reaches actual source, Key, Find and Map at a 720×450 effective viewport (1440×900 at 200% zoom); this proves responsive reachability rather than browser zoom rasterization. Three overlapping selections complete at the last selected structure; changing motion preference during its 420 ms arrival preserves selection. Settled frames 600 ms apart allow only isolated one-level GPU rounding, with the pointer parked outside the scene so hover labels do not affect the comparison. Native Safari rendered Galaxy, System and Study. The scene is detailed illustrative space art; no photorealism claim.
 
-The unchanged 5,000-module acceptance gate exposed repeated whole-project scans in Python import resolution and check generation. A dotted-prefix index preserves implicit namespace and alias behavior; check generation only unions tiny option pools. Pinned check suites and namespace/external-prefix regression coverage pass. Full Python suite: 677 passed. Final complete-Map gate and hosted CI remain required before promotion.
+The unchanged 5,000-module acceptance gate exposed repeated whole-project scans in Python import resolution and check generation. A dotted-prefix index preserves implicit namespace and alias behavior; check generation only unions tiny option pools. Pinned check suites and namespace/external-prefix regression coverage pass. Full Python suite: 677 passed. The complete 5,000-module gate passes unchanged in Chromium and WebKit: 2.294 s cold activation, 1.097 s warm activation, 204,636,160-byte peak RSS. Earlier loaded-host failures remain in the local evidence directory. Hosted CI remains required before promotion.
+
+
+## Cleanup disposition
+
+Baseline `566624e`; candidate PR [#47](https://github.com/udhawan97/Codemble/pull/47). Source changes and matching built assets are at `b2aaa29`; performance receipts predate that commit but match its recorded graphics digest. Evidence directory: `/tmp/codemble-planetary-evidence`.
+
+| Candidate | Evidence and disposition |
+| --- | --- |
+| m20-ops-alerting, m20-share-ops-deepening, userflow-v0.19.2 | Ancestor-merged, no unique relevant work, unattached; removed local branches. |
+| M20 encrypted-storage and privacy worktrees | Clean, already merged tips `01288d6` and `5b6dfb9`; removed exact worktrees and branches. |
+| high-end-galaxy | Committed tip is already ancestral; dirty files remain user-owned. Rescued citation grid/wrapping fixes and a maintained containment gate into this candidate. Preserve the worktree and branch. |
+| friendly-wizard-claude/work-planning-f2e933 | Unique `34c740e` pause/resume planning record; preserve. |
+| Dependabot PRs #43–46 | Unique parser/cryptography/font dependency changes need their own compatibility review; preserve all four remote branches. |
+| Root backup markers | `.git-backup-remote` and `.last-git-backup-ts` are intentional user state; preserve. |
+| Planetary candidate and detached comparison | Owned by this run; remove only after candidate integration and final evidence capture. |
+
+Implementation council completed two rounds with all four roles. Reviewers accepted the evidence-bounded candidate; coverage required the complete-Map, interrupted-travel and effective-zoom checks above. The coverage reviewer re-inspected the completed gates and approved local graphics acceptance; hosted checks remain required before promotion. M20 operational proof and any public-release exception remain separate, explicit gates.

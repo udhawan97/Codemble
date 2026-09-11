@@ -17,6 +17,7 @@
     "check:text": "node scripts/check_text_containment.mjs",
     "check:graphics": "node scripts/check_planetary_graphics.mjs",
     "check:visuals": "node scripts/check_planetary_visuals.mjs",
+    "check:interactions": "node scripts/check_planetary_interactions.mjs",
     "benchmark:projection": "node scripts/benchmark_learner_projection.mjs"
   },
   "dependencies": {
