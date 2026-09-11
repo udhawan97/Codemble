@@ -1123,7 +1123,7 @@ input:focus-visible {
 
 .orientation-copy--system {
   inset-block-start: var(--cm-space-lg);
-  width: min(27rem, calc(100% - var(--cm-space-lg)));
+  width: min(22rem, calc(100% - var(--cm-space-lg)));
   padding: var(--cm-space-md);
   border: 1px solid color-mix(in srgb, var(--cm-orbit) 32%, var(--cm-hairline));
   border-block-start: 2px solid var(--cm-orbit);
@@ -2349,6 +2349,7 @@ input:focus-visible {
 }
 
 .study-preview__path {
+  overflow-wrap: anywhere;
   color: var(--cm-orbit) !important;
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
@@ -2529,6 +2530,7 @@ input:focus-visible {
 }
 
 .source-citation {
+  overflow-wrap: anywhere;
   color: var(--cm-orbit);
   font-family: var(--cm-font-mono);
   font-size: var(--cm-text-xs);
@@ -2593,11 +2595,14 @@ input:focus-visible {
 
 .lens-note {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   gap: var(--cm-space-sm);
   padding-block: var(--cm-space-md);
   border-block-end: 1px solid var(--cm-hairline);
 }
+
+.lens-note > * { min-width: 0; }
 
 .lens-note h3 {
   margin: 0 0 var(--cm-space-xs);

@@ -137,3 +137,19 @@ atlas.hide(scene);
 assert([...sprites.values()].every((sprite) => sprite.visible === false));
 
 console.log("name-atlas contracts passed");
+
+// Close-up names follow the screen-up direction just outside their own world.
+const closeScene = new THREE.Scene();
+const world = new THREE.Group();closeScene.add(world);
+const worldPlate=configureNamePlate(new THREE.Sprite(),{radius:3,aspect:4});
+worldPlate.userData.nodeId="world";worldPlate.userData.surfaceRadius=4.26;world.add(worldPlate);
+const closeCamera=new THREE.PerspectiveCamera(50,1.5,0.1,1000);
+closeCamera.position.set(12,9,25);closeCamera.lookAt(0,0,0);closeCamera.updateMatrixWorld(true);closeScene.updateMatrixWorld(true);
+createNameAtlas([{id:"world",label:"world"}]).place({scene:closeScene,camera:closeCamera,width:1200,height:800,distance:29,distanceBounds:{min:5,max:100},activeNodeId:"world"});
+closeScene.updateMatrixWorld(true);
+const projectedWorld=world.getWorldPosition(new THREE.Vector3()).project(closeCamera);
+const projectedPlate=worldPlate.getWorldPosition(new THREE.Vector3()).project(closeCamera);
+assert.ok(worldPlate.visible,"selected close-up name is visible");
+assert.ok(Math.abs(projectedWorld.x-projectedPlate.x)<1e-8,"name stays over its own body's projected centre while orbiting");
+assert.ok(projectedPlate.y>projectedWorld.y,"name rests above the world");
+assert.ok((projectedPlate.y-projectedWorld.y)*400<190,"name stays attached to the close-up silhouette");

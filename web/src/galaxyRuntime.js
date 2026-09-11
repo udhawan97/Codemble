@@ -11,6 +11,7 @@ import {
   cameraBoundsFor,
   frameLevel,
   frameStudy,
+  frameStudyAfterResize,
   viewportAspect,
 } from "./galaxyView.js";
 import {
@@ -145,11 +146,12 @@ export function createGalaxyRuntime({
     });
   const linkWidth = (link) => {
     if (link.focusDim) return 0.4;
-    const base = Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25);
+    const scale = snapshot?.level === LEVELS.STUDY ? 0.12 : 1;
+    const base = Math.min(2.2, 0.45 + (link.weight ?? 1) * 0.25) * scale;
     if (!highlight.activeId) return base;
     const source = linkEndId(link.source);
     const target = linkEndId(link.target);
-    return source === highlight.activeId || target === highlight.activeId ? base + 0.9 : base;
+    return source === highlight.activeId || target === highlight.activeId ? base + 0.9 * scale : base;
   };
   const linkParticles = (link) => {
     if (reducedMotion || !link.certain || link.focusDim) return 0;
@@ -248,6 +250,19 @@ export function createGalaxyRuntime({
       renderer.width(width).height(height);
       const aspect = viewportAspect(entry.contentRect);
       if (!userFramed && aspect !== null) reframe?.(aspect);
+      else if (snapshot?.level === LEVELS.STUDY) {
+        const occlusion = measureCanvasOcclusion({host,renderer});
+        const safe = frameStudyAfterResize(snapshot.selectedNode, {
+          position: renderer.camera()?.position, target: controls.target,
+          renderNode: snapshot.data.nodes.find(node=>node.id===snapshot.selectedNode?.id),
+          fov: renderer.camera()?.fov, viewport: occlusion.viewport, chrome: occlusion.clickObstructions,
+        });
+        if (safe) {
+          controls.minDistance = safe.min;
+          controls.maxDistance = safe.max;
+          renderer.cameraPosition(safe.position,safe.target,0);
+        }
+      }
     });
     resizeObserver.observe(host);
   }
@@ -256,7 +271,13 @@ export function createGalaxyRuntime({
     if (!snapshot) return;
     const { data, level, orbitPlan } = snapshot;
     const occlusion = measureCanvasOcclusion({ host, renderer });
-    const framed = frameLevel({
+    const study = level === LEVELS.STUDY ? frameStudy(snapshot.selectedNode, {
+      renderNode: data.nodes.find((node) => node.id === snapshot.selectedNode?.id),
+      fov: renderer.camera()?.fov,
+      viewport: occlusion.viewport,
+      chrome: occlusion.clickObstructions,
+    }) : null;
+    const framed = study ?? frameLevel({
       level,
       nodes: data.nodes,
       orbitPlan,
@@ -268,8 +289,8 @@ export function createGalaxyRuntime({
       viewport: occlusion.viewport,
       chrome: level === LEVELS.SYSTEM ? occlusion.clickObstructions : [],
     });
-    controls.minDistance = framed.min;
-    controls.maxDistance = framed.max;
+    controls.minDistance = framed.min ?? 22;
+    controls.maxDistance = framed.max ?? 170;
     renderer.cameraPosition(framed.position, framed.target, duration);
   }
 
@@ -281,12 +302,18 @@ export function createGalaxyRuntime({
       deps.disposeSystemOrbitGuides(guides);
       guides = null;
     }
-    if (snapshot.level === LEVELS.GALAXY || !snapshot.orbitPlan.length) return;
+    if (snapshot.level === LEVELS.GALAXY) return;
+    stopSpin = deps.createBodySpin(renderer.scene(), { reducedMotion });
+    if (!snapshot.orbitPlan.length) return;
     guides = deps.createSystemOrbitGuides(snapshot.orbitPlan, palette, dressing, {
       languageColor: snapshot.data.nodes.find((node) => node.languageColor)?.languageColor,
     });
+    // The orientation panel retains the full parser-owned orbit explanation.
+    // Duplicating it on the scene collided with the worlds' own names.
+    guides.traverse?.((object) => {
+      if (object.userData?.codembleOrbitGuideLabel) object.visible = false;
+    });
     renderer.scene().add(guides);
-    stopSpin = deps.createBodySpin(renderer.scene(), { reducedMotion });
   }
 
   function replaceSky() {
@@ -458,7 +485,7 @@ export function createGalaxyRuntime({
         .linkOpacity(next.level === LEVELS.GALAXY ? 0.64 : 0.82)
         .linkDirectionalParticleWidth(next.level === LEVELS.GALAXY ? 1.22 : 1.72)
         .linkVisibility((link) => !(next.mode === "easy" && link.focusDim))
-        .linkDirectionalArrowLength(next.level === LEVELS.GALAXY ? 0 : 3.2)
+        .linkDirectionalArrowLength(next.level === LEVELS.GALAXY ? 0 : next.level === LEVELS.STUDY ? 0.65 : 3.2)
         .graphData(next.data);
       applyFraming(
         flightCameraDuration(CAMERA_DURATION, {
@@ -544,8 +571,8 @@ export function createGalaxyRuntime({
       next.level === LEVELS.STUDY &&
       (!previous || previous.level !== next.level || previous.selectedNode !== next.selectedNode)
     ) {
-      const framed = frameStudy(next.selectedNode);
-      if (framed) renderer.cameraPosition(framed.position, framed.target, CAMERA_DURATION);
+      if (!graphChanged) applyFraming(reducedMotion ? 0 : CAMERA_DURATION);
+      userFramed = false;
     }
   }
 
@@ -580,7 +607,11 @@ export function createGalaxyRuntime({
     renderer?.pauseAnimation();
     bloom?.dispose();
     bloom = null;
+    const gpu = renderer?.renderer?.();
     renderer?._destructor();
+    // The wrapper disposes objects but leaves the canvas context alive. On a
+    // Galaxy/Map remount those orphan contexts retain driver-owned allocations.
+    gpu?.forceContextLoss?.();
     dressing?.dispose();
     dressing = null;
     releaseBodyGeometry();
@@ -639,6 +670,7 @@ function makeMarker(
   if (node.label) {
     const plate = dressing.label(node.label, radius);
     plate.userData.nodeId = node.id;
+    if (worldTier) plate.userData.surfaceRadius = radius * (node.isSystemCore ? 2.45 : 1.42);
     group.add(plate);
   }
   if (node.home) {
@@ -651,13 +683,13 @@ function makeMarker(
   }
   if (node.kind === "class" && !node.focusDim) {
     const classRing = new THREE.Mesh(
-      new THREE.TorusGeometry(radius * 1.45, Math.max(0.1, radius * 0.045), 6, 28),
+      new THREE.TorusGeometry(radius * 1.82, Math.max(0.06, radius * 0.024), 8, 64),
       new THREE.MeshBasicMaterial({ color: palette.route }),
     );
     classRing.rotation.x = Math.PI / 2.4;
     group.add(classRing);
   }
-  if (node.selected) {
+  if (node.selected && level !== LEVELS.STUDY) {
     const selectedRing = new THREE.Mesh(
       new THREE.TorusGeometry(radius * 2.1, Math.max(0.16, radius * 0.05), 6, 24),
       new THREE.MeshBasicMaterial({ color: palette.orbit }),

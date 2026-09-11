@@ -81,13 +81,19 @@ export function languageWorldProfile(language) {
   return LANGUAGE_WORLD_PROFILES[language] ?? DEFAULT_WORLD_PROFILE;
 }
 
+// Both layers share one sphere buffer. Terrain stays in object space while
+// illumination is coherent in view space; derivatives add relief without a
+// second geometry or a per-world texture allocation.
 const BODY_VERTEX = `
 varying vec3 vObject;
 varying vec3 vViewNormal;
+varying vec3 vViewPosition;
 void main(){
   vObject = normalize(position);
   vViewNormal = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+  vViewPosition = viewPosition.xyz;
+  gl_Position = projectionMatrix * viewPosition;
 }
 `;
 
@@ -98,6 +104,7 @@ uniform vec3 uAmber;
 uniform vec3 uCool;
 uniform vec3 uLanguage;
 uniform float uSeed;
+uniform float uWorld;
 uniform float uLit;
 uniform float uPartial;
 uniform float uClass;
@@ -108,111 +115,110 @@ uniform float uShimmer;
 uniform float uTime;
 varying vec3 vObject;
 varying vec3 vViewNormal;
+varying vec3 vViewPosition;
 
 void main(){
-  vec3 normal = normalize(vViewNormal);
+  vec3 sphereNormal = normalize(vViewNormal);
+  vec3 eye = normalize(-vViewPosition);
+  vec3 key = normalize(vec3(-0.58, 0.48, 0.66));
+  vec3 p = vObject * (3.1 + uTerrain) + vec3(uSeed * 47.0);
+  float warp = cbNoise(p * 0.64);
+  float continent = cbFbm(p + warp * 1.4);
+  float detail = cbFbm(p * 5.8 + vec3(4.7, 1.2, 8.3));
+  float ridges = 1.0 - abs(detail * 2.0 - 1.0);
+  float latitude = abs(vObject.y);
+  float strata = 0.5 + 0.5 * sin(vObject.y * (36.0 + uBands * 28.0) + continent * 17.0);
+  float land = smoothstep(0.43, 0.49, continent);
+  float coast = smoothstep(0.39, 0.44, continent) * (1.0 - land);
+  float ice = smoothstep(0.72, 0.9, latitude + (continent - 0.5) * 0.3);
+  float relief = continent * 0.65 + ridges * 0.35;
+  vec3 pale = mix(uCool, uBase, 0.16);
+  vec3 albedo;
+  float water = 0.0;
+  if (uWorld < 0.5) {
+    water = 1.0 - land;
+    vec3 ocean = mix(uBase * 0.13, uLanguage * 0.48, coast);
+    vec3 terrain = mix(uBase * 0.48, pale * 0.78, smoothstep(0.45, 0.76, continent));
+    terrain *= 0.65 + ridges * 0.5;
+    albedo = mix(ocean, terrain, land);
+    albedo = mix(albedo, pale * 0.92, ice);
+    relief *= land;
+  } else if (uWorld < 1.5) {
+    float fissure = 1.0 - smoothstep(0.012, 0.065, abs(continent - 0.49));
+    albedo = mix(pale * (0.6 + detail * 0.52), uLanguage * 0.22, fissure * 0.76);
+    relief += fissure * 0.18;
+  } else if (uWorld < 2.5) {
+    float basin = smoothstep(0.29, 0.55, continent);
+    albedo = mix(uBase * 0.26, uBase * 0.95, basin) * (0.56 + ridges * 0.58);
+    albedo = mix(albedo, pale * 0.62, pow(ridges, 14.0) * 0.45);
+    relief += detail * 0.24;
+  } else {
+    float storm = cbNoise(p * 1.8 + vec3(strata * 0.8));
+    albedo = mix(uBase * 0.3, pale * 0.76, strata * 0.7 + storm * 0.3);
+    albedo = mix(albedo, uLanguage * 0.72, smoothstep(0.65, 0.86, storm) * 0.48);
+    relief = strata * 0.08;
+  }
+  // Class strata repeat the already-labelled kind; they never invent a role.
+  albedo *= 1.0 - uClass * 0.11 * (1.0 - strata);
 
-  // Crust, read in OBJECT space so it turns with the body rather than swimming
-  // when the camera orbits.
-  //
-  // Deliberately NOT named after the GLSL ES reserved word for a texture read:
-  // naming a local that makes the whole program fail to link, and three.js
-  // reports that only as a console flood of "useProgram: program not valid"
-  // while silently drawing nothing -- so the bodies looked like faint specks
-  // rather than an error. check_celestial_bodies.mjs scans for the whole class.
-  vec3 crustPoint = vObject * 2.6 + vec3(uSeed * 41.0);
-  float crust = cbFbm(crustPoint);
-  float band = cbFbm(crustPoint * 0.6 + vec3(0.0, uSeed * 9.0, 0.0));
-  float latitude = 0.5 + 0.5 * sin(vObject.y * (8.0 + uBands * 12.0) + uSeed * 14.0);
-  float continental = smoothstep(0.28, 0.78, cbFbm(crustPoint * (0.72 + uTerrain * 0.58)));
-  float current = 0.5 + 0.5 * sin(
-    (vObject.x + vObject.z * 1.7) * (9.0 + uTerrain * 7.0) +
-    uSeed * 24.0 + uTime * uShimmer
-  );
-  crust = mix(crust, continental, uTerrain * 0.56);
-  crust = mix(crust, latitude, uBands * 0.34);
-  crust += (current - 0.5) * uShimmer * 0.18;
-  band = mix(band, latitude, uBands * 0.42);
-  float ridge = smoothstep(0.34, 0.78, crust);
-  float shade = 0.62 + 0.62 * crust;
-
-  // A class is a container of methods -- a parser fact -- so it wears strata.
-  // The ring in makeMarker already says "class"; this only gives the same fact
-  // a surface treatment, and says nothing the ring does not.
-  shade *= 1.0 + uClass * 0.16 * sin(vObject.y * 13.0 + uSeed * 20.0);
-
-  // One key light fixed in view space, so a system reads as one engraved plate
-  // rather than a scatter of independently lit balls.
-  vec3 key = normalize(vec3(-0.45, 0.55, 0.72));
+  vec3 dpdx = dFdx(vViewPosition);
+  vec3 dpdy = dFdy(vViewPosition);
+  vec3 tangentX = cross(dpdy, sphereNormal);
+  vec3 tangentY = cross(sphereNormal, dpdx);
+  float determinant = dot(dpdx, tangentX);
+  vec3 gradient = sign(determinant) * (dFdx(relief) * tangentX + dFdy(relief) * tangentY);
+  vec3 normal = normalize(max(abs(determinant), 0.000001) * sphereNormal - gradient * 0.24);
+  float incidence = dot(sphereNormal, key);
+  float daylight = smoothstep(-0.18, 0.24, incidence);
   float diffuse = max(dot(normal, key), 0.0);
-  float fill = max(dot(normal, normalize(vec3(0.62, -0.18, -0.76))), 0.0);
-  float rim = pow(1.0 - max(normal.z, 0.0), 2.4);
-  vec3 halfVector = normalize(key + vec3(0.0, 0.0, 1.0));
-  float mineralGlint = pow(max(dot(normal, halfVector), 0.0), 28.0) * smoothstep(0.56, 0.82, band);
+  float rim = pow(1.0 - max(dot(sphereNormal, eye), 0.0), 3.4);
+  float specular = pow(max(dot(reflect(-key, sphereNormal), eye), 0.0), 70.0);
+  vec3 color = albedo * (0.14 + diffuse * 0.94);
+  color += pale * specular * water * daylight * 0.46;
 
-  // An unlit body has illuminated terrain but makes no light of its own. That
-  // keeps Explore mode readable while amber still reads as light ARRIVING,
-  // rather than as merely a warmer surface tint.
-  vec3 terrain = mix(uBase * 0.58, uBase * 1.08, ridge);
-  vec3 color = terrain * shade * (0.22 + diffuse * 0.84 + fill * 0.18);
+  // One cloud field, composited into the surface: a bounded third fBm call.
+  // Offset advection moves clouds, never the coastline or parser-owned body.
+  vec3 cloudPoint = vObject * 4.7 + vec3(uSeed * 13.0, 0.0, uTime * (0.008 + uShimmer * 0.015));
+  float cloudField = cbFbm(cloudPoint + vec3(warp * 1.2));
+  float clouds = smoothstep(0.51, 0.67, cloudField);
+  clouds *= uWorld < 0.5 ? 0.85 : uWorld < 1.5 ? 0.22 : uWorld < 2.5 ? 0.12 : 0.4;
+  color *= 1.0 - clouds * daylight * 0.25;
+  color = mix(color, pale * (0.2 + max(incidence, 0.0) * 0.85), clouds);
+  color += mix(uBase, uLanguage, 0.58) * rim * (0.1 + daylight * 0.33);
 
-  // The language tint moves through mineral seams and cloud bands rather than
-  // replacing the community-owned surface colour. A Python world and a Ruby
-  // world therefore feel different while neither claims a different import
-  // community or a different understanding state.
-  float languageVein = smoothstep(0.58, 0.84, mix(continental, current, uShimmer));
-  color = mix(color, uLanguage * (0.52 + diffuse * 0.48), languageVein * 0.42);
-  color += uLanguage * (0.035 + crust * 0.055) * (1.0 - uLit);
-
-  // Atmosphere: a rim band in the body's own community hue. Never amber --
-  // amber means understood and nothing else.
-  color += uBase * rim * 0.46;
-  color += uCool * rim * 0.12 * (1.0 - uLit);
-  color += uBase * mineralGlint * 0.16;
-
-  // Understanding. Emissive, because it is the only light the body makes.
-  color = mix(color, uAmber * (0.55 + 0.75 * shade), uLit * 0.85);
-  color += uAmber * rim * uLit * 0.9;
-
-  // Uncertainty gets a SHAPE channel, not only a colour: a file the parser
-  // could not read is visibly fractured, so the claim survives greyscale and
-  // colour-blindness.
+  // Preserve the visible material after earning understanding, and reserve
+  // the emissive amber channel exclusively for that parser/check-owned state.
+  color = mix(color, uAmber * (0.42 + diffuse * 0.48 + detail * 0.24), uLit * 0.84);
+  color += uAmber * rim * uLit * 0.66;
   if (uPartial > 0.5) {
     float fracture = step(0.42, fract((vObject.x + vObject.y * 1.7 + vObject.z * 0.6) * 5.5 + uSeed * 7.0));
     color = mix(color * 0.30, color, fracture);
   }
-
-  // Study level recedes everything the selection does not touch.
-  color = mix(color, color * 0.22, uDim);
-
+  color *= 1.0 - uDim * 0.78;
   gl_FragColor = vec4(color, 1.0);
 }
 `;
 
-const ATMOSPHERE_VERTEX = `
-varying vec3 vViewNormal;
-void main(){
-  vViewNormal = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
+const ATMOSPHERE_VERTEX = BODY_VERTEX;
 const ATMOSPHERE_FRAGMENT = `
 uniform vec3 uBase;
 uniform vec3 uCool;
 uniform vec3 uLanguage;
 uniform float uDim;
 varying vec3 vViewNormal;
-
+varying vec3 vViewPosition;
 void main(){
   vec3 normal = normalize(vViewNormal);
-  float rim = pow(1.0 - abs(normal.z), 2.15);
-  float crown = pow(1.0 - abs(normal.z), 5.0);
-  vec3 coolAir = mix(uCool, uLanguage, 0.62);
-  coolAir = mix(coolAir, uBase, 0.18);
-  vec3 color = mix(coolAir, uCool, crown * 0.24);
-  float alpha = (0.028 + rim * 0.25 + crown * 0.16) * (1.0 - uDim * 0.72);
-  gl_FragColor = vec4(color, alpha);
+  vec3 eye = normalize(-vViewPosition);
+  float grazing = 1.0 - abs(dot(normal, eye));
+  float rim = pow(grazing, 4.0);
+  float edge = pow(grazing, 12.0);
+  float daylight = smoothstep(-0.4, 0.6, dot(normal, normalize(vec3(-0.58, 0.48, 0.66))));
+  vec3 air = mix(uLanguage, uCool, 0.36);
+  air = mix(air, uBase, 0.12);
+  vec3 color = mix(air, uCool, edge * 0.45);
+  float alpha = (rim * 0.38 + edge * 0.23) * (0.18 + daylight * 0.82);
+  gl_FragColor = vec4(color, alpha * (1.0 - uDim * 0.78));
 }
 `;
 
@@ -234,6 +240,7 @@ uniform vec3 uCool;
 uniform vec3 uAmber;
 uniform float uSeed;
 uniform float uLit;
+uniform float uPartial;
 uniform float uDim;
 uniform float uTime;
 varying vec3 vObject;
@@ -242,13 +249,19 @@ varying vec3 vViewNormal;
 void main(){
   vec3 point = vObject * 3.4 + vec3(uSeed * 31.0);
   float plasma = cbFbm(point + vec3(uTime * 0.035, -uTime * 0.02, uTime * 0.025));
-  float filament = 0.5 + 0.5 * sin((vObject.y + plasma * 0.34) * 24.0 + uTime * 0.28);
+  float granules = cbNoise(point * 9.0 + vec3(uTime * 0.05));
+  float filament = pow(1.0 - abs(plasma * 2.0 - 1.0), 6.0);
   float rim = pow(1.0 - abs(normalize(vViewNormal).z), 2.2);
   vec3 coolCore = mix(uLanguage, uCool, 0.56);
   vec3 color = mix(uBase * 0.68, coolCore * 0.94, 0.38 + plasma * 0.46);
-  color += uLanguage * filament * 0.2;
+  color *= 0.9 + granules * 0.34;
+  color += uLanguage * filament * 0.12;
   color += coolCore * rim * 0.42;
   color = mix(color, uAmber * (0.92 + plasma * 0.55), uLit * 0.86);
+  if (uPartial > 0.5) {
+    float fracture = step(0.42, fract((vObject.x + vObject.y * 1.7 + vObject.z * 0.6) * 5.5 + uSeed * 7.0));
+    color *= 0.25 + fracture * 0.75;
+  }
   color = mix(color, color * 0.3, uDim);
   gl_FragColor = vec4(color, 1.0);
 }
@@ -279,6 +292,10 @@ export const SYSTEM_STAR_SHADER_SOURCE = Object.freeze({
 });
 
 /** FNV-1a over the node id: same code, same world, every run. */
+export function worldArchetype(nodeId) {
+  return Math.floor(bodySeed(`${nodeId}:world`) * 4);
+}
+
 export function bodySeed(nodeId) {
   let hash = 0x811c9dc5;
   const text = String(nodeId ?? "");
@@ -295,7 +312,7 @@ export function bodySeed(nodeId) {
  * Bodies differ by uniform, never by geometry, so a system of sixty members
  * uploads one buffer rather than sixty.
  */
-export function createBodyGeometry(segments = 32) {
+export function createBodyGeometry(segments = 64) {
   return new THREE.SphereGeometry(1, segments, Math.max(8, segments / 2));
 }
 
@@ -321,6 +338,7 @@ export function createBodyMaterial({ node, color, palette }) {
         value: new THREE.Color(node.languageColor ?? palette.nebula?.[node.language] ?? color),
       },
       uSeed: { value: bodySeed(node.id) },
+      uWorld: { value: worldArchetype(node.id) },
       uLit: { value: node.understood ? 1 : 0 },
       uPartial: { value: node.partial ? 1 : 0 },
       uClass: { value: node.kind === "class" ? 1 : 0 },
@@ -361,6 +379,7 @@ export function createSystemStarMaterial({ node, color, languageColor, palette }
       uAmber: { value: new THREE.Color(palette.star) },
       uSeed: { value: bodySeed(node.id) },
       uLit: { value: node.understood ? 1 : 0 },
+      uPartial: { value: node.partial ? 1 : 0 },
       uDim: { value: node.focusDim ? 1 : 0 },
       uTime: { value: 0 },
     },
@@ -406,8 +425,8 @@ function createSystemStarGlow(color) {
     map,
     color: new THREE.Color(color),
     transparent: true,
-    opacity: 0.72,
-    depthTest: false,
+    opacity: 0.36,
+    depthTest: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   });
@@ -418,7 +437,7 @@ function createSystemStarGlow(color) {
   };
   const glow = new THREE.Sprite(material);
   glow.name = "codemble-system-star-glow";
-  glow.scale.setScalar(6.4);
+  glow.scale.setScalar(4.8);
   glow.renderOrder = 5;
   return glow;
 }
@@ -430,30 +449,29 @@ export function createSystemStar({ node, color, languageColor, palette, radius, 
   core.name = "codemble-system-star-core";
   core.userData.codembleAnimatedMaterial = coreMaterial;
   const coronaColor = node.understood ? palette.star : languageColor ?? color;
-  const innerCorona = new THREE.Mesh(
-    geometry,
-    new THREE.MeshBasicMaterial({
-      color: new THREE.Color(coronaColor),
-      transparent: true,
-      opacity: node.focusDim ? 0.035 : 0.13,
-      depthWrite: false,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-    }),
-  );
+  const coronaMaterial = (strength) => new THREE.ShaderMaterial({
+    vertexShader: BODY_VERTEX,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uStrength;
+      varying vec3 vViewNormal;
+      varying vec3 vViewPosition;
+      void main(){
+        float facing = abs(dot(normalize(vViewNormal), normalize(-vViewPosition)));
+        gl_FragColor = vec4(uColor, pow(facing, 3.0) * uStrength);
+      }
+    `,
+    uniforms: {
+      uColor: { value: new THREE.Color(coronaColor) },
+      uStrength: { value: strength * (node.focusDim ? 0.25 : 1) },
+    },
+    transparent: true, depthWrite: false, side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const innerCorona = new THREE.Mesh(geometry, coronaMaterial(0.24));
   innerCorona.name = "codemble-system-star-corona";
   innerCorona.scale.setScalar(1.42);
-  const outerCorona = new THREE.Mesh(
-    geometry,
-    new THREE.MeshBasicMaterial({
-      color: new THREE.Color(coronaColor),
-      transparent: true,
-      opacity: node.focusDim ? 0.018 : 0.055,
-      depthWrite: false,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-    }),
-  );
+  const outerCorona = new THREE.Mesh(geometry, coronaMaterial(0.11));
   outerCorona.scale.setScalar(1.9);
   group.add(core, innerCorona, outerCorona, createSystemStarGlow(coronaColor));
   group.scale.setScalar(radius * 2.45);
@@ -496,7 +514,7 @@ export function createBody({
     createAtmosphereMaterial({ node, communityColor, languageColor, palette }),
   );
   atmosphere.name = "codemble-world-atmosphere";
-  atmosphere.scale.setScalar(1.16);
+  atmosphere.scale.setScalar(1.085);
   atmosphere.renderOrder = 1;
   group.add(surface, atmosphere);
   group.scale.setScalar(radius * 1.42);

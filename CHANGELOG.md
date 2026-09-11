@@ -5,7 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Performance
+- Avoid repeated whole-project scans while resolving Python import namespaces and generating check options, preserving parser meaning and pinned check answers.
+
 ### Added
+- Seeded ocean, ice, rocky, and banded worlds with cloud cover, relief lighting,
+  thin atmospheres, a granular Sun, and layered nebula scenery. Surface patterns
+  are illustrative; parser-owned positions, roles, routes, and progress retain
+  their existing meanings.
+- Study now frames the selected world beside source evidence, with slimmer
+  close-up routes and live reduced-motion support. System panels leave more
+  space for exploration and orbit explanations no longer overlap world names.
 - A local `ShareArtifact` interface now compiles the render-ready graph into an
   immutable read-only snapshot with per-artifact keyed IDs, source-ID-independent
   collision-aware placement, RFC 8785 canonical bytes, an exact payload digest,

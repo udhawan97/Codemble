@@ -14,6 +14,9 @@
     "check:userflows": "node scripts/check_userflow_repairs.mjs",
     "check:share-delivery": "node scripts/check_share_delivery.mjs",
     "check:large-project": "node scripts/check_large_project.mjs",
+    "check:text": "node scripts/check_text_containment.mjs",
+    "check:graphics": "node scripts/check_planetary_graphics.mjs",
+    "check:visuals": "node scripts/check_planetary_visuals.mjs",
     "benchmark:projection": "node scripts/benchmark_learner_projection.mjs"
   },
   "dependencies": {

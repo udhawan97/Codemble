@@ -6,6 +6,7 @@ import {
   LANGUAGE_WORLD_PROFILES,
   SYSTEM_STAR_SHADER_SOURCE,
   bodySeed,
+  worldArchetype,
   languageWorldProfile,
 } from "../src/celestialBodies.js";
 
@@ -117,3 +118,9 @@ const sameIdDifferentState = bodySeed("mod.fn");
 assert.equal(sameIdDifferentState, bodySeed("mod.fn"));
 
 console.log("celestial body contracts passed");
+
+const families = new Set(Array.from({length:100},(_,i)=>worldArchetype(`fixture.world_${i}`)));
+assert.deepEqual([...families].sort(),[0,1,2,3],"seeded worlds cover all four surface families");
+assert.equal(worldArchetype("fixture.world_3"),worldArchetype("fixture.world_3"));
+assert.equal((BODY_SHADER_SOURCE.fragment.match(/cbFbm\(/g)||[]).length-1,3,"planet fragments use three bounded fBm fields");
+assert.doesNotMatch(ATMOSPHERE_SHADER_SOURCE.fragment,/uAmber|uLit/,"atmosphere invents no progress state");

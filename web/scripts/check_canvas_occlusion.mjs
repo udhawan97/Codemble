@@ -22,12 +22,12 @@ const orientation = element({ left: 110, right: 310, top: 60, bottom: 90, width:
 const keyboard = element({ left: 120, right: 260, top: 500, bottom: 525, width: 140, height: 25 }, "none");
 const stage = {
   querySelectorAll(selector) {
-    if (selector === ".orientation-copy--system, .system-navigator, .legend-toggle") {
+    if (selector === ".orientation-copy--system, .system-navigator, .study-preview, .legend-toggle") {
       return [clickable, ignoredClick, emptyClick];
     }
     if (
       selector ===
-      ".orientation-bar, .orientation-copy--system, .system-navigator, .keyboard-focus"
+      ".orientation-bar, .orientation-copy--system, .system-navigator, .study-preview, .keyboard-focus"
     ) {
       return [orientation, keyboard];
     }

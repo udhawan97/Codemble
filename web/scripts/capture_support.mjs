@@ -66,7 +66,7 @@ async function waitForServer(child, url, stderr, spawnError) {
   throw new Error(`Disposable capture server did not become ready.\n${stderr()}`);
 }
 
-export async function startDisposableCaptureServer({ projectRoot, python = "python" }) {
+export async function startDisposableCaptureServer({ projectRoot, sourceRoot = projectRoot, python = "python" }) {
   const resolvedProject = resolve(projectRoot);
   const dataDirectory = await mkdtemp(join(tmpdir(), "codemble-docs-capture-"));
   const port = await reserveLoopbackPort();
@@ -77,7 +77,7 @@ export async function startDisposableCaptureServer({ projectRoot, python = "pyth
   let childError;
   const child = spawn(
     python,
-    ["-m", "codemble.cli", resolvedProject, "--host", "127.0.0.1", "--port", String(port), "--no-open"],
+    ["-m", "codemble.cli", resolve(sourceRoot), "--host", "127.0.0.1", "--port", String(port), "--no-open"],
     {
       cwd: resolvedProject,
       env: buildCaptureEnvironment(process.env, dataDirectory),

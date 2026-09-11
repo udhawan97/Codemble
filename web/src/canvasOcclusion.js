@@ -1,7 +1,7 @@
 const CLICK_OBSTRUCTION_SELECTOR =
-  ".orientation-copy--system, .system-navigator, .legend-toggle";
+  ".orientation-copy--system, .system-navigator, .study-preview, .legend-toggle";
 const NAME_OBSTRUCTION_SELECTOR =
-  ".orientation-bar, .orientation-copy--system, .system-navigator, .keyboard-focus";
+  ".orientation-bar, .orientation-copy--system, .system-navigator, .study-preview, .keyboard-focus";
 
 /**
  * Measure the usable canvas and classify the DOM drawn over it.
