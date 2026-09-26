@@ -159,27 +159,23 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** **v0.22.0 remains the verified stable release while
-  v0.23.0 is the owner-approved release candidate.** The candidate becomes
-  stable only after exact-tag publication, outside-in artifact checks, a cold
-  install, main CI, Pages, and browser acceptance agree. Annotated
-  tag `v0.22.0` (`a3a2c5d`) peels to exact release commit `407a8aa`. Candidate
-  PR #42 CI run `32928613735`, trusted publish run `32929397290`, main CI run
-  `32929522840`, and Pages run `32929522861` passed. Fresh GitHub and PyPI
-  bytes plus `SHA256SUMS.txt` agree on wheel
-  (`ae8af55bc415990970cb54095f4e2774278e2de26d983d61f9364fd5180f0b25`)
-  and sdist (`0bdba3e4faafbdf121004c8301c3d95712cb8932f33e9e14e47050f0bd3a0e77`).
+- **Public release truth:** **v0.23.0 is the verified stable release.** Annotated
+  tag `v0.23.0` (`11ec0e0`) peels to exact release commit `67440a6`. Candidate
+  PR #48 CI run `36215990548`, trusted publish run `36216559119`, main CI run
+  `36216656833`, and Pages run `36216656834` passed. Fresh GitHub and PyPI bytes
+  plus `SHA256SUMS.txt` agree on wheel
+  (`56c5e17c34beb0907fa275d6a5fa33e17a295a63d6ae6bba430ceeee238513b1`)
+  and sdist (`1246a071c688409e43359dbbfa1fe9d0d5e551fd68d5bb796e810dc19cce76b0`).
   `check:release:live` reconciled both registries and fresh downloaded bytes; a
-  cold Python 3.12 install reported `codemble 0.22.0` and carried
-  `index-C3498IDT.js` plus `index-ZndcOj-s.css`. Obscura rendered the deployed
-  217-system Pages surface, and the maintained public-site gate passed 320,
-  375, 414, 768, 1280, and 1440 px, 200% reflow, reduced motion, docs routes,
-  images, and console checks. Native Safari directly passed the Galaxy-to-System
-  semantic and keyboard/pointer journey; its automation capture omitted the
-  WebGL layer, so visual rendering remains claimed only from the Chromium and
-  WebKit acceptance suites.
-  Issue #13's unaided-learner gate remains open. A later tag is not stable until
-  it repeats all of that.
+  cold Python 3.12 `uvx --refresh` install reported `codemble 0.23.0` and carried
+  `index-C2MgA6Qs.js` plus `index--XyLmFn3.css`. Obscura rendered the deployed
+  245-system Pages surface with every image loaded and zero horizontal overflow,
+  and the maintained public-site gate passed 320, 375, 414, 768, 1280, and
+  1440 px, 200% reflow, reduced motion, docs routes, images, and console checks.
+  The unchanged packaged graphics retain their implementation-stage native
+  Safari receipt; Chromium/WebKit own the repeated release interaction matrix.
+  Issue #13's unaided-learner gate and M20's public-sharing operational evidence
+  remain open. A later tag is not stable until it repeats this release sequence.
 - **Digests are taken from the tree you are about to tag, never earlier.**
   `readme = "README.md"` embeds the README in the wheel's own METADATA, so a
   dist/ built before a README edit describes a wheel that no longer exists —
@@ -288,16 +284,18 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**v0.23.0 release candidate (2026-09-25):** The owner explicitly authorized a
+**v0.23.0 release (2026-09-25):** The owner explicitly authorized a
 narrow release-gate amendment for the graphics, local learning experience,
-dependency updates, documentation, and dormant M20 foundations. Public sharing
-remains disconnected: this candidate adds no upload/provider/account/cloud route
+dependency updates, documentation, local-only preview, and disconnected M20
+delivery foundations. Public sharing
+remains disconnected: this release adds no upload/provider/account/cloud route
 and makes no operational-erasure claim. The independent-node timers, alerts,
 authority probes, restore/deletion drill, complete-copy inventory, key
 retirement, and approved media-erasure receipts still gate the first public
-sharing connection. The candidate version, changelog, release notes, docs,
-captures, and artifact ledger are synchronized for v0.23.0; publication still
-requires the repository's exact-tag and outside-in release checks.
+sharing connection. Two release-council rounds approved the synchronized version,
+changelog, release notes, docs, captures, and artifact ledger. Exact-tag trusted
+publication, independent registry/download checks, a cold install, main CI,
+Pages, Obscura, and the maintained responsive public-site gate all passed.
 
 **Release preparation and public-doc sync (2026-09-11):** The preservation-first
 main cleanup audited every local/remote branch and worktree; one superseded but
@@ -2124,6 +2122,7 @@ implemented and evidenced.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-09-25 | v0.23.0 is stable at exact release commit `67440a6`; evidence-only follow-ups must never move its tag | Two complete release-council rounds approved the candidate after correcting the local-preview/public-delivery boundary. PR #48 CI `36215990548`, trusted publish `36216559119`, main CI `36216656833`, and Pages `36216656834` passed. Fresh GitHub/PyPI assets and `SHA256SUMS.txt` agree on wheel `56c5e17c…513b1` and sdist `1246a071…76b0`; a cold Python 3.12 install reports 0.23.0, and Obscura plus the maintained responsive-site gate verify the deployed 245-system public surface. M20 public-sharing connection and operational-erasure evidence remain separate open gates. |
 | 2026-09-25 | v0.23.0 may publish the graphics, local learning experience, dependency updates, documentation, and dormant disconnected M20 foundations while the public-sharing connection remains blocked | After the candidate became concrete and reviewable, the owner repeatedly and explicitly requested a new release. This is the narrowly scoped amendment allowed by the Planetary Expedition delivery boundary. It does not connect preview to delivery, add upload/provider/account/cloud authority, claim independent infrastructure evidence, or relax any timer, alert, restore, deletion, key-retirement, or media-erasure receipt required before public sharing is enabled. |
 | 2026-08-30 | Scheduled writer, operator, and append-only receiver failures enter one root-owned `ShareFailureAlertRelay`: it accepts only those three units, persists one canonical token-free event before invoking an absolute digest-pinned local notifier, retains the same pending event across failure, and moves it to delivered history only after a zero exit. systemd retries every five minutes through one template unit; the notifier receives the event on stdin and owns channel-specific delivery plus event-ID deduplication | The operations reference required alerts but its services had no executable failure path, so a failed hourly sweep or daily full-data check could remain only in a local journal. Keeping the relay provider-neutral avoids adding an account or choosing email, webhook, or paging infrastructure. Persist-before-notify prevents a transient channel failure from erasing the incident; the stable ID makes at-least-once retry deduplicable; a closed schema excludes capabilities, request targets, artifacts, repository credentials, IPs, and free-form text. The source and local tests prove the handoff contract only. M20 still requires a deliberate failure on every intended node, external channel acknowledgement, timer history, and token-free operator receipts before alerting is operational evidence. |
 | 2026-08-30 | Share bytes have one trusted `interpret_share_artifact` consumer, while `ShareArtifact.from_graph` separately validates the parser's full routes and derives the private layout and region weights from the exact deduplicated edge marks it serializes. One `SharePreviewRun` owns choose/compile/inspect/acknowledge/confirm/restart/release state, request identity, readiness, stale-response refusal, and focus requests; `LearnerSession` owns effects and the dialog owns DOM focus only | Preview, HTTP delivery, and storage previously repeated artifact interpretation, and the session/dialog divided one learner attempt across two state machines. One closed interpreter makes schema evolution and derived facts local, while distinct raw-graph and projected-graph checks prevent line-level duplicate imports from surviving only as inflated viewer route weights. The run module gives the volatile workbench one release boundary without moving network authority or DOM behavior into it. The repository's self-parse exposed and now proves the duplicate-import projection case; the compact acceptance proves restart, confirmation, local-only truth, and focus return. |
