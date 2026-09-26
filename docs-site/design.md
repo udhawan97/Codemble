@@ -130,10 +130,12 @@ determinism rule. Output is committed; the site never runs this script at build
 time.
 
 Product captures come from `web/scripts/capture_product_shots.mjs`, which owns
-its throwaway current-source server, random loopback port, and unique temporary
-data directory. It strips provider configuration, verifies its isolated reset,
-and refuses an external server URL. The 1440×720 outputs preserve the real UI
-and cover Galaxy, both Map registers, System, Study, Impact, and the lit result.
+its Git-filtered current-source snapshot, throwaway server, random loopback port,
+and unique temporary data directory. It strips provider configuration, verifies
+its isolated reset, refuses an external server URL, and normalizes the displayed
+project label to `Codemble` so checkout names and ignored build output cannot
+leak into public evidence. The 1440×720 outputs preserve the real UI and cover
+Galaxy, both Map registers, System, Study, Impact, and the lit result.
 
 ## Every page MUST share
 

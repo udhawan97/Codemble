@@ -1,8 +1,11 @@
-import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { copyFile, lstat, mkdir, mkdtemp, readlink, rm, symlink } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 export const PROVIDER_ENVIRONMENT_KEYS = Object.freeze([
   "ANTHROPIC_API_KEY",
@@ -27,6 +30,72 @@ export function assertLoopbackCaptureUrl(value) {
     throw new Error(`Capture server must use plain HTTP on loopback, not ${value}`);
   }
   return url;
+}
+
+export function canonicalCaptureGraph(graph, projectName = "Codemble") {
+  if (!graph || typeof graph !== "object" || Array.isArray(graph)) {
+    throw new TypeError("Capture graph must be an object.");
+  }
+  if (
+    typeof projectName !== "string" ||
+    !projectName.trim() ||
+    projectName.includes("/") ||
+    projectName.includes("\\")
+  ) {
+    throw new TypeError("Capture project name must be one path segment.");
+  }
+  return { ...graph, project_root: `/capture/${projectName.trim()}` };
+}
+
+export async function createCaptureSourceSnapshot(projectRoot) {
+  const resolvedProject = resolve(projectRoot);
+  const snapshotDirectory = await mkdtemp(join(tmpdir(), "codemble-capture-source-"));
+  const sourceRoot = join(snapshotDirectory, "Codemble");
+  await mkdir(sourceRoot);
+
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", resolvedProject, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+      { encoding: "buffer", maxBuffer: 16 * 1024 * 1024 },
+    );
+    const paths = stdout.toString("utf8").split("\0").filter(Boolean);
+    await Promise.all(
+      paths.map(async (path) => {
+        const source = resolve(resolvedProject, path);
+        const destination = resolve(sourceRoot, path);
+        const sourceRelative = relative(resolvedProject, source);
+        const destinationRelative = relative(sourceRoot, destination);
+        if (
+          sourceRelative === ".." ||
+          sourceRelative.startsWith(`..${sep}`) ||
+          isAbsolute(sourceRelative) ||
+          destinationRelative === ".." ||
+          destinationRelative.startsWith(`..${sep}`) ||
+          isAbsolute(destinationRelative)
+        ) {
+          throw new Error(`Capture source escaped the repository: ${path}`);
+        }
+        await mkdir(dirname(destination), { recursive: true });
+        const metadata = await lstat(source);
+        if (metadata.isSymbolicLink()) {
+          await symlink(await readlink(source), destination);
+          return;
+        }
+        if (!metadata.isFile()) {
+          throw new Error(`Capture source is not a regular file: ${path}`);
+        }
+        await copyFile(source, destination);
+      }),
+    );
+    return {
+      sourceRoot,
+      stop: () => rm(snapshotDirectory, { recursive: true, force: true }),
+    };
+  } catch (error) {
+    await rm(snapshotDirectory, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 async function reserveLoopbackPort() {

@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright";
 
-import { startDisposableCaptureServer } from "./capture_support.mjs";
+import {
+  canonicalCaptureGraph,
+  createCaptureSourceSnapshot,
+  startDisposableCaptureServer,
+} from "./capture_support.mjs";
 
 if (process.env.CODEMBLE_CAPTURE_URL) {
   throw new Error(
@@ -20,14 +24,18 @@ const homeCandidate = /^codemble\.cli codemble\/cli\.py:1/;
 const systemModulePath = "codemble/cli.py";
 const appModulePath = "server/app.py";
 
-const captureServer = await startDisposableCaptureServer({
-  projectRoot: repositoryRoot,
-  python: process.env.CODEMBLE_CAPTURE_PYTHON || "python",
-});
-const baseUrl = captureServer.url;
+let captureSource;
+let captureServer;
 let browser;
 
 try {
+captureSource = await createCaptureSourceSnapshot(repositoryRoot);
+captureServer = await startDisposableCaptureServer({
+  projectRoot: repositoryRoot,
+  sourceRoot: captureSource.sourceRoot,
+  python: process.env.CODEMBLE_CAPTURE_PYTHON || "python",
+});
+const baseUrl = captureServer.url;
 
 await mkdir(outputDirectory, { recursive: true });
 
@@ -40,6 +48,17 @@ const page = await browser.newPage({
   viewport: { width: 1440, height: 720 },
   deviceScaleFactor: 1,
   reducedMotion: "reduce",
+});
+await page.route("**/api/graph", async (route) => {
+  const response = await route.fetch();
+  if (!response.ok()) {
+    await route.fulfill({ response });
+    return;
+  }
+  await route.fulfill({
+    response,
+    json: canonicalCaptureGraph(await response.json()),
+  });
 });
 // A cold self-parse may share the machine with real-browser acceptance. Keep
 // capture deterministic under that load; individual interaction waits remain
@@ -54,6 +73,11 @@ page.on("console", (message) => {
 
 async function waitForApp() {
   await page.getByText("Local only", { exact: true }).waitFor();
+  const projectLabel = page.locator(".brand-lockup > div > span");
+  await projectLabel.waitFor();
+  if ((await projectLabel.textContent())?.trim() !== "Codemble") {
+    throw new Error("Product captures must use the canonical Codemble project label.");
+  }
   await page.waitForTimeout(900);
 }
 
@@ -246,5 +270,6 @@ if (pageErrors.length > 0) {
 }
 } finally {
   if (browser) await browser.close();
-  await captureServer.stop();
+  if (captureServer) await captureServer.stop();
+  if (captureSource) await captureSource.stop();
 }

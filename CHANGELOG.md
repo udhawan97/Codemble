@@ -16,6 +16,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   package, and full-suite verification.
 
 ### Fixed
+- Product capture now fixes the visible project label to `Codemble`, making the
+  committed screenshots reproducible from arbitrarily named clones and
+  worktrees, and parses a Git-filtered source snapshot so ignored build output
+  cannot alter the public counts.
 - Missing scheduled-maintenance locks now fail startup instead of silently
   skipping the service, making failures eligible for the existing alert relay.
   The preflight also rejects paths that do not resolve to regular files.

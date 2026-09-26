@@ -4,6 +4,7 @@ import {
   PROVIDER_ENVIRONMENT_KEYS,
   assertLoopbackCaptureUrl,
   buildCaptureEnvironment,
+  canonicalCaptureGraph,
 } from "./capture_support.mjs";
 
 const environment = buildCaptureEnvironment(
@@ -23,5 +24,13 @@ assert.equal(assertLoopbackCaptureUrl("http://127.0.0.1:8150").hostname, "127.0.
 assert.equal(assertLoopbackCaptureUrl("http://localhost:8150").hostname, "localhost");
 assert.throws(() => assertLoopbackCaptureUrl("https://127.0.0.1:8150"), /plain HTTP/);
 assert.throws(() => assertLoopbackCaptureUrl("http://example.com"), /loopback/);
+
+const graphFromArbitraryCheckout = canonicalCaptureGraph({
+  project_root: "/tmp/codemble-docs-refresh.gBtq6y",
+  regions: [],
+});
+assert.equal(graphFromArbitraryCheckout.project_root, "/capture/Codemble");
+assert.deepEqual(graphFromArbitraryCheckout.regions, []);
+assert.throws(() => canonicalCaptureGraph({}, "nested/name"), /one path segment/);
 
 process.stdout.write("capture safety contracts passed\n");

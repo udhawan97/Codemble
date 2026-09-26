@@ -11,12 +11,16 @@ npm install
 npm run capture:docs
 ```
 
-`capture_product_shots.mjs` starts its own current-source server on a random
-loopback port and a unique temporary `CODEMBLE_DATA_DIR`. It strips Anthropic,
-OpenAI, and Ollama configuration from that child, verifies the disposable
-progress reset, walks the real first-run UI, and uses the graph-check API to
-earn the lit-state capture. It refuses an external `CODEMBLE_CAPTURE_URL` and
-removes the server and temporary data afterward.
+`capture_product_shots.mjs` copies Git-tracked and non-ignored current source
+into a disposable `Codemble` snapshot, then starts its own server on a random
+loopback port with a unique temporary `CODEMBLE_DATA_DIR`. This keeps ignored
+build output and the checkout directory name out of the product evidence. It
+strips Anthropic, OpenAI, and Ollama configuration from that child, verifies the
+disposable progress reset, walks the real first-run UI, and uses the graph-check
+API to earn the lit-state capture. It refuses an external
+`CODEMBLE_CAPTURE_URL`, normalizes only the displayed graph root to
+`/capture/Codemble`, and removes the server, snapshot, and temporary data
+afterward.
 
 | File | Surface |
 | --- | --- |

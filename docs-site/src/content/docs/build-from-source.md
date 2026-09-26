@@ -59,10 +59,14 @@ web dependencies installed:
 (cd web && npm run capture:docs)
 ```
 
-The command starts its own current-source server on a random loopback port with
-a unique temporary `CODEMBLE_DATA_DIR`. Provider keys and provider settings are
-removed from that child process, the progress reset must succeed before capture
-continues, and the server plus temporary data are removed afterward. It refuses
-`CODEMBLE_CAPTURE_URL` so it cannot be pointed at a normal Codemble session.
+The command copies Git-tracked and non-ignored current source into a disposable
+`Codemble` snapshot, then starts its own server on a random loopback port with a
+unique temporary `CODEMBLE_DATA_DIR`. Ignored build output and clone/worktree
+names therefore cannot change the capture. Provider keys and provider settings
+are removed from that child process, the progress reset must succeed before
+capture continues, and the server, source snapshot, and temporary data are
+removed afterward. It refuses `CODEMBLE_CAPTURE_URL` so it cannot be pointed at
+a normal Codemble session, and the capture route fixes the displayed project
+label to `Codemble`.
 Set `CODEMBLE_CAPTURE_PYTHON` only when the desired Python executable is not
 named `python`.
