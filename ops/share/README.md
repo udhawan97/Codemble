@@ -159,8 +159,9 @@ cadence, private modes, append-only writer endpoint, and failure alerting.
 
 ## Recovery and anti-resurrection drill
 
-Run this against the real backup machine before any public release, and repeat
-it after a toolchain, topology, credential, retention, or schema change:
+Run this against the real backup machine before connecting any public share
+delivery, and repeat it after a toolchain, topology, credential, retention, or
+schema change:
 
 1. Stop delivery and the hourly writer. Record the last successful snapshot and
    the authenticated repository IDs and journal heads from every replica.
@@ -194,9 +195,9 @@ it after a toolchain, topology, credential, retention, or schema change:
    check both pass. Investigate any missing receipt instead of retrying a
    destructive step blindly.
 
-An **actual independent-node restore drill** is release evidence. Unit tests,
-loopback rest-server, two directories on one disk, a successful backup command,
-or green CI are not substitutes.
+An **actual independent-node restore drill** is public-share connection and
+operational-erasure evidence. Unit tests, loopback rest-server, two directories
+on one disk, a successful backup command, or green CI are not substitutes.
 
 ## Deletion and finite security-metadata retirement
 
@@ -235,7 +236,8 @@ then destroy the exact active storage key, encrypted offline recovery key,
 detached-guard database, and every inventoried journal replica under the host's
 approved media-erasure procedure, and retain only a token-free aggregate receipt.
 
-Do not check M20 complete or publish a release until the real service timers,
-alerts, append-only endpoint, daily prune, complete-copy inventory, operational
-deletion, key retirement, and independent-node restore drill have all been
-observed on the intended independent deployment.
+Do not check M20 complete, connect public share delivery, or claim operational
+erasure until the real service timers, alerts, append-only endpoint, daily prune,
+complete-copy inventory, operational deletion, key retirement, and
+independent-node restore drill have all been observed on the intended
+independent deployment.

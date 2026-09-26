@@ -4,8 +4,8 @@
  *
  * Macrostructure: Hallmark Workbench. Real product captures lead; the Formal
  * Edo system supplies material and typography without turning the site into a
- * decorative atlas. release.json owns stable package facts; repository captures
- * show the newer current-source preview and are labelled separately.
+ * decorative atlas. release.json owns package facts and the product captures
+ * show the exact tagged release.
  */
 import AtlasJourney from "../components/AtlasJourney.astro";
 import Search from "../components/Search.astro";
@@ -151,7 +151,7 @@ const contract = [
         <div class="hero-copy">
           <p class="release-status">
             <span>Stable v{VERSION}</span>
-            <span>Current source preview pictured</span>
+            <span>Release screen pictured</span>
           </p>
           <h1>Explore the code AI left behind.</h1>
           <p class="hero-lede">
@@ -178,8 +178,8 @@ const contract = [
             </button>
           </div>
           <p class="version-note">
-            The screen shows the current source preview. The command and downloads
-            remain pinned to stable v{VERSION}, mirrored on GitHub with checksums.
+            The screen, command, and downloads all describe v{VERSION}, mirrored
+            on GitHub with checksums.
           </p>
         </div>
 
@@ -187,11 +187,11 @@ const contract = [
           <div
             class="product-viewport"
             tabindex="0"
-            aria-label="Current Codemble galaxy. Scroll sideways to inspect the full-size app screen."
+            aria-label={`Codemble v${VERSION} galaxy. Scroll sideways to inspect the full-size app screen.`}
           >
             <img
               src={shot("galaxy.png")}
-              alt="Current Codemble source preview showing 245 visible, colourful systems across nine languages in a luminous spiral galaxy, with parser-proven routes, ranked labels, 47 charted systems, eight unreadable fixtures, and Home resolved to codemble.cli without amber understanding light."
+              alt={`Codemble v${VERSION} showing 245 visible, colourful systems across nine languages in a luminous spiral galaxy, with parser-proven routes, ranked labels, 47 charted systems, eight unreadable fixtures, and Home resolved to codemble.cli without amber understanding light.`}
               width="1440"
               height="720"
               fetchpriority="high"
@@ -199,7 +199,7 @@ const contract = [
             />
           </div>
           <figcaption>
-            <span>Current source preview · luminous Explore galaxy</span>
+            <span>Codemble v{VERSION} · luminous Explore galaxy</span>
             <span>245 systems · nine languages · local only</span>
           </figcaption>
         </figure>
@@ -207,8 +207,8 @@ const contract = [
 
       <section class="release-band" aria-label="Release status">
         <p>
-          <strong>These captures preview the current source.</strong> Verified
-          downloads remain v{VERSION}; the newer planetary visuals are not yet a published package.
+          <strong>These captures show Codemble v{VERSION}.</strong> The exact
+          wheel, source archive, and checksum ledger are linked below.
         </p>
         <a href="#download">Choose a route →</a>
       </section>
@@ -217,9 +217,8 @@ const contract = [
         <header class="section-head">
           <h2>See the whole project. Then follow one fact.</h2>
           <p>
-            These are not mockups. Each frame is a fresh capture of this repository
-            running through the current Codemble source, with the same Home and the
-            same parser-owned graph.
+            These are not mockups. Each frame is a fresh capture of the tagged
+            Codemble release, with the same Home and the same parser-owned graph.
           </p>
         </header>
         <AtlasJourney />
@@ -289,7 +288,7 @@ const contract = [
             <p>
               This checks out the stable v{VERSION} source that matches the
               verified package. Clone <code>main</code> only when you intentionally
-              want the newer preview pictured above.
+              want post-release development.
             </p>
             <pre><code>git clone --branch {release.tag} --depth 1 {REPO}.git
 cd Codemble
@@ -384,7 +383,7 @@ codemble</code></pre>
           </details>
           <details>
             <summary>Are these screenshots from the downloadable app?</summary>
-            <p>They are fresh captures of the real current-source app. Stable v{VERSION} is the verified download; newer planetary detail shown here remains a preview until the next release passes its operational gate.</p>
+            <p>Yes. They are fresh captures of v{VERSION}, the same release provided by the pinned command and verified downloads.</p>
           </details>
           <details>
             <summary>What happens when Codemble cannot prove a relationship?</summary>

@@ -3,9 +3,8 @@ title: The galaxy
 description: How your code becomes a sky — and why the camera stays on rails.
 ---
 
-:::note[Current source preview]
-This page and its fresh product captures follow the current source. The verified
-download remains v0.22.0; newer planetary detail is not yet published.
+:::note[v0.23.0 release]
+This page and its fresh product captures describe the verified v0.23.0 release.
 [Choose a run or download route](/Codemble/download/).
 :::
 
@@ -13,7 +12,7 @@ download remains v0.22.0; newer planetary detail is not yet published.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Galaxy product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/galaxy.png" alt="Current Codemble source preview at galaxy level: 245 visible, colourful star systems across nine languages in a luminous spiral sky, with parser-owned names, proven and possible routes kept distinct, ranked labels, 47 charted systems, Home resolved to codemble.cli without amber understanding light, and eight unreadable test fixtures called out.">
+    <img src="/Codemble/shots/galaxy.png" alt="Codemble v0.23.0 at galaxy level: 245 visible, colourful star systems across nine languages in a luminous spiral sky, with parser-owned names, proven and possible routes kept distinct, ranked labels, 47 charted systems, Home resolved to codemble.cli without amber understanding light, and eight unreadable test fixtures called out.">
   </div>
   <figcaption>Full-size product screen · drag, swipe, or use arrow keys to inspect the interface.</figcaption>
 </figure>
@@ -264,10 +263,10 @@ selected one, at every level including study, where it re-targets the panel.
 the star chart, returning focus to the control that opened it.
 
 On a wide screen the header keeps **Modules**, **Find**, the level exit and
-**Star chart** on screen, and the two occasional controls — **Change Home** and
-**Switch project** — sit behind a **More** disclosure. Six permanent buttons
+**Star chart** on screen, and three occasional controls — **Share preview**,
+**Change Home**, and **Switch project** — sit behind a **More** disclosure. Seven permanent buttons
 need more width than a header can give them without wrapping to a second row,
-and the stage pays for that in height, so the two you reach least often step
+and the stage pays for that in height, so the three you reach least often step
 aside. Below that, every secondary control lives behind a single **Menu**
 button instead, because a wide header that has to wrap costs more height than
 the compact one it replaces. Opening either disclosure never moves the stage.
@@ -382,10 +381,18 @@ row, a row for each language present, and certain versus possible relationships
 the same table, so the key and the sky cannot drift apart. In Easy mode the
 legend says the same things in plain language.
 
-## Switching project and changing Home
+## Previewing a share, switching project, and changing Home
 
-Both controls live behind the header's disclosure — **More** on a wide screen,
-**Menu** at narrow widths.
+All three controls live behind the header's disclosure — **More** on a wide
+screen, **Menu** at narrow widths.
+
+**Share preview** is a local disclosure check, not a published link. Choose a
+one-, seven-, or thirty-day lifetime, opt into source-derived labels and learner
+understanding separately, then inspect the exact canonical artifact and SHA-256
+digest. The final acknowledgement names only fields present in that artifact.
+Confirming keeps the candidate in process memory: it creates no link, performs
+no upload or outbound request, and connects to no provider or persistent
+delivery store. Switching projects or stopping Codemble discards it.
 
 **Switch project** releases the current project and returns you to the picker;
 progress is stored per project, so the galaxy comes back lit. This works whether

@@ -1,9 +1,8 @@
 # Codemble product captures
 
-The public README and website use real 1440×720 captures of the current Codemble
-source preview, not mockups. The verified stable download remains v0.22.0;
-newer visuals shown here are not a published package. Recreate them with the
-self-contained capture command:
+The public README and website use real 1440×720 captures of Codemble v0.23.0,
+not mockups. They match the tagged source and verified package. Recreate them
+with the self-contained capture command:
 
 ```bash
 cd web

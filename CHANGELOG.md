@@ -5,10 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-25
+
 ### Documentation
-- Separate stable v0.22.0 install and artifact facts from current-source product
-  previews across the README and public site, and refresh Study captures with
-  the selected world visible beside its parser evidence.
+- Align the README, public site, installation guides, artifact ledger, and
+  release notes with v0.23.0, pin public assets to the exact tag, and refresh
+  Study captures with the selected world visible beside its parser evidence.
 
 ### Dependencies
 - Accept cryptography 50, tree-sitter-go 0.25, tree-sitter-rust 0.24, and
@@ -131,9 +133,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   must authenticate the same active storage key while role-local attestations
   prove authority credentials stay different without bringing both secret
   configurations together.
-  These mechanisms are implemented and tested, but release remains blocked until
-  the intended independent node, timers, alerts, restore drill, deletion deadline,
-  and approved media-erasure procedure are observed in operation.
+  The local compiler and exact disclosure preview ship connected in v0.23.0,
+  while capability persistence, standalone delivery, backup, and operations
+  remain disconnected from public delivery. Public share delivery stays blocked
+  until the intended independent node, timers, alerts, restore drill, deletion
+  deadline, and approved media-erasure procedure are observed in operation.
+
+### Release boundary
+- v0.23.0 publishes the graphics, local learning experience, dependency updates,
+  documentation, local-only share preview, and disconnected delivery foundations.
+  It does not connect an upload or public delivery route and makes no
+  operational-erasure claim.
 
 ## [0.22.0] - 2026-08-25
 

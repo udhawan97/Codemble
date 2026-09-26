@@ -159,7 +159,10 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** **v0.22.0 is the verified stable release.** Annotated
+- **Public release truth:** **v0.22.0 remains the verified stable release while
+  v0.23.0 is the owner-approved release candidate.** The candidate becomes
+  stable only after exact-tag publication, outside-in artifact checks, a cold
+  install, main CI, Pages, and browser acceptance agree. Annotated
   tag `v0.22.0` (`a3a2c5d`) peels to exact release commit `407a8aa`. Candidate
   PR #42 CI run `32928613735`, trusted publish run `32929397290`, main CI run
   `32929522840`, and Pages run `32929522861` passed. Fresh GitHub and PyPI
@@ -285,6 +288,17 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**v0.23.0 release candidate (2026-09-25):** The owner explicitly authorized a
+narrow release-gate amendment for the graphics, local learning experience,
+dependency updates, documentation, and dormant M20 foundations. Public sharing
+remains disconnected: this candidate adds no upload/provider/account/cloud route
+and makes no operational-erasure claim. The independent-node timers, alerts,
+authority probes, restore/deletion drill, complete-copy inventory, key
+retirement, and approved media-erasure receipts still gate the first public
+sharing connection. The candidate version, changelog, release notes, docs,
+captures, and artifact ledger are synchronized for v0.23.0; publication still
+requires the repository's exact-tag and outside-in release checks.
+
 **Release preparation and public-doc sync (2026-09-11):** The preservation-first
 main cleanup audited every local/remote branch and worktree; one superseded but
 unique planning ref, one dirty historical graphics worktree, and four open
@@ -293,13 +307,10 @@ heads are now integrated on the release-preparation branch: cryptography 50,
 tree-sitter-go 0.25, tree-sitter-rust 0.24, and JetBrains Mono 5.3 pass the full
 683-test suite, Ruff, the nine-language semantic oracle, focused encrypted-share
 and parser suites, real Go/Rust corpus parses, package metadata, web checks, and
-docs checks. The README and public site now distinguish verified stable v0.22.0
-downloads from current-source product previews, and fresh 1440×720 captures show
-the 245-system Galaxy and selected-world Study framing. A new stable release is
-still gated by the intended independent deployment's timers, alerts, authority
-probes, restore/deletion drill, complete-copy inventory, key retirement, and
-approved media-erasure evidence; no version, tag, or published release advances
-without those receipts.
+docs checks. Fresh 1440×720 captures show the 245-system Galaxy and
+selected-world Study framing. The original all-release hold is superseded only
+by the narrow 2026-09-25 owner amendment above; the operational sharing gate is
+unchanged.
 
 **Graphics expedition (2026-09-10):** Owner explicitly requested full creative control for lifelike game-inspired Galaxy/System graphics, pre-implementation council, verification, main cleanup and release. The two-round design council passed before implementation; see `docs/design/2026-09-10-planetary-expedition.md`. The graphics implementation, live reduced-motion/resource checks, 19-capture visual matrix and same-host baseline comparison are complete; 677 Python tests pass. The complete 5,000-module Map passes in Chromium/WebKit (2.294 s cold, 1.097 s warm), and interrupted-arrival/reduced-motion plus effective-200%-viewport control reachability pass. Two complete implementation council rounds and targeted coverage closure approve local graphics acceptance. PR #47 passed all five hosted checks on `7cffd7d` (run `34548695851`) and was squash-merged as `e1cf18f` with an identical tree; local and remote main synchronized. Redundant branches and owned validation worktrees were removed, both superseded graphics/cleanup tasks archived, and all 32 protected files retained exact bytes. The scale gate exposed two existing repeated scans, replaced with equivalent indexed/short-circuit lookups. M20 operational/public-sharing gates remain open.
 
@@ -329,9 +340,10 @@ The operations source now also routes writer, operator, and append-only receiver
 failures through one private durable alert spool and a digest-pinned local
 notifier; this is deployable alert machinery, not observed channel delivery.
 
-**The local artifact, confirmation, capability-core, standalone browser-delivery,
-encrypted persistence, and free backup/anti-resurrection source slices are
-complete; public connection and operational release evidence remain gated.** The deep
+**The local artifact and confirmation flow is connected in the product; the
+capability core, standalone browser delivery, encrypted persistence, and free
+backup/anti-resurrection source slices remain disconnected from it. Public-sharing
+connection and operational evidence remain gated.** The deep
 `ShareArtifact.from_graph(graph, policy, created_at)` interface owns the closed
 allowlist, keyed remapping plus graph-owned re-layout, opt-ins, RFC 8785 bytes, manifest payload
 digest, source-safe coverage, and expiry validation. It fails closed when an
@@ -2088,7 +2100,8 @@ non-replaceable operation locking with process-level exclusion proof, exact live
 - [ ] Prove the intended independent-node configuration, scheduled active
       sweeping, alerts, append-only least authority, full-data prune, backup
       restore without resurrection, complete-copy inventory, operational
-      deletion, and approved key/media erasure before public release
+      deletion, and approved key/media erasure before public share delivery is
+      connected
 
 **Acceptance is partial:** 133 focused artifact/preview/capability/HTTP/storage/operations/alert
 cases, the full 683-test Python suite, repository-wide Ruff, the complete frontend contract/build,
@@ -2103,14 +2116,15 @@ scale probes, a targeted 53,478-node/one-region acceptance, and two fresh
 5,000-region runs with greater than 43-unit minimum separation all pass.
 Wheel/sdist inclusion with the RFC 8785 and cryptography runtime dependencies and the refreshed
 Graphify update/query also pass. The browser-delivery module is not connected to
-preview or a provider. M20 does not authorize a cloud touch, claim operational
-erasure, or advance to release until every unchecked delivery gate is implemented
-and evidenced.
+preview or a provider. M20 does not authorize a cloud touch, public-sharing
+connection, or operational-erasure claim until every unchecked delivery gate is
+implemented and evidenced.
 
 ## Decision Log **[AGENT-MAINTAINED — append only]**
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-09-25 | v0.23.0 may publish the graphics, local learning experience, dependency updates, documentation, and dormant disconnected M20 foundations while the public-sharing connection remains blocked | After the candidate became concrete and reviewable, the owner repeatedly and explicitly requested a new release. This is the narrowly scoped amendment allowed by the Planetary Expedition delivery boundary. It does not connect preview to delivery, add upload/provider/account/cloud authority, claim independent infrastructure evidence, or relax any timer, alert, restore, deletion, key-retirement, or media-erasure receipt required before public sharing is enabled. |
 | 2026-08-30 | Scheduled writer, operator, and append-only receiver failures enter one root-owned `ShareFailureAlertRelay`: it accepts only those three units, persists one canonical token-free event before invoking an absolute digest-pinned local notifier, retains the same pending event across failure, and moves it to delivered history only after a zero exit. systemd retries every five minutes through one template unit; the notifier receives the event on stdin and owns channel-specific delivery plus event-ID deduplication | The operations reference required alerts but its services had no executable failure path, so a failed hourly sweep or daily full-data check could remain only in a local journal. Keeping the relay provider-neutral avoids adding an account or choosing email, webhook, or paging infrastructure. Persist-before-notify prevents a transient channel failure from erasing the incident; the stable ID makes at-least-once retry deduplicable; a closed schema excludes capabilities, request targets, artifacts, repository credentials, IPs, and free-form text. The source and local tests prove the handoff contract only. M20 still requires a deliberate failure on every intended node, external channel acknowledgement, timer history, and token-free operator receipts before alerting is operational evidence. |
 | 2026-08-30 | Share bytes have one trusted `interpret_share_artifact` consumer, while `ShareArtifact.from_graph` separately validates the parser's full routes and derives the private layout and region weights from the exact deduplicated edge marks it serializes. One `SharePreviewRun` owns choose/compile/inspect/acknowledge/confirm/restart/release state, request identity, readiness, stale-response refusal, and focus requests; `LearnerSession` owns effects and the dialog owns DOM focus only | Preview, HTTP delivery, and storage previously repeated artifact interpretation, and the session/dialog divided one learner attempt across two state machines. One closed interpreter makes schema evolution and derived facts local, while distinct raw-graph and projected-graph checks prevent line-level duplicate imports from surviving only as inflated viewer route weights. The run module gives the volatile workbench one release boundary without moving network authority or DOM behavior into it. The repository's self-parse exposed and now proves the duplicate-import projection case; the compact acceptance proves restart, confirmation, local-only truth, and focus return. |
 | 2026-08-30 | M20's selected operations reference is the free/open-source Caddy + restic + rest-server topology with a writer that must anchor every terminal event to two named, distinct append-only repositories and a separately held local operator. Each receipt binds replica, authenticated repository, snapshot, and entry digest; backups bind that immutable repository inventory and the fully anchored Retirement Journal high-water to one consistent encrypted SQLite copy. Restore Guard replays later facts and rehydrates the writer journal before promotion. Final snapshot removal installs a durable authenticated seal on the existing application-host store that closes creates and writer cycles before deleting one exact live inventory, and Security Metadata Retirement re-queries that repository before authorizing whole-key-store erasure after the eight-day deadline plus 48-hour margin | This is the smallest owned topology that can prove encrypted backup, bounded retention, restore without resurrection, and separate destructive authority without introducing a paid service or a second application storage model. The writer service has no restore/prune surface; the root-only operator runs on the application host against the same live-store lock and a private mount of the independently hosted repository, and it refuses to create a missing shadow store. The primary repository identity and target must be disjoint from every journal anchor. Independent journal-node operators materialize their local repositories. Role-local credential-derived attestations prove the live repository topology, matching active/recovery storage key, and distinct authority without bringing both secret configurations into either service process; operators handle those proofs as sensitive review material. Journal writes are thread/process serialized, writer and retirement cycles share one nonblocking operation lock, restic bytes are pinned, checks read all data, and explicit inventory/removal, restore, and authorization have production CLI paths. The code, CLI, tests, and service templates are complete, but free software is not necessarily zero-cost infrastructure. Unit tests, loopback, or directories on one disk cannot satisfy independent-target failure or media-erasure proof, so M20 and a fresh release remain blocked until the intended timers, alerts, authority probe, restore/deletion drill, complete-copy inventory, and approved erasure receipt exist. |

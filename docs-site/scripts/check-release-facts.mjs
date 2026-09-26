@@ -134,13 +134,12 @@ assert(
   "landing stable-version labels must derive from release.json",
 );
 assert(
-  atlasJourney.includes("Current source preview") && !/v\{VERSION\}|v0\.\d+\.\d+/.test(atlasJourney),
-  "Atlas journey must label repository captures as a version-independent source preview",
+  atlasJourney.includes("Release capture") && !/current source preview/i.test(atlasJourney),
+  "Atlas journey must label the tagged-release captures",
 );
-const stableVersionPattern = release.version.replaceAll(".", "\\.");
-const stableCaptureParity = new RegExp(
-  `(?:screenshots?|captures?|screen)[^\\n.]{0,100}(?:match|describe|cover|same app)[^\\n.]{0,60}v${stableVersionPattern}`,
-  "i",
+assert(
+  readme.includes(`/raw/${release.tag}/docs-site/public/shots/galaxy.png`),
+  "README hero capture must be pinned to the release tag",
 );
 for (const [surface, text] of [
   ["README", readme],
@@ -150,27 +149,15 @@ for (const [surface, text] of [
   ["quickstart guide", quickstartGuide],
   ["introduction guide", introductionGuide],
 ]) {
-  assert.doesNotMatch(
-    text,
-    new RegExp(
-      `(?:everything pictured ships|screenshots? (?:all )?(?:match|describe|cover|are both)|screen[^\\n.]{0,80}(?:and|,) (?:the )?(?:packaged app|downloads?)[^\\n.]{0,40}(?:are|is|match))[^\\n.]*v${stableVersionPattern}`,
-      "i",
-    ),
-    `${surface} conflates current-source captures with the stable release`,
-  );
+  assert.doesNotMatch(text, /current.source preview/i, `${surface} still labels the release as a preview`);
 }
 const docsContentRoot = resolve(repositoryRoot, "docs-site/src/content/docs");
 for (const filename of await readdir(docsContentRoot)) {
   if (!filename.endsWith(".md")) continue;
   const text = await readFile(resolve(docsContentRoot, filename), "utf8");
   if (!text.includes("/Codemble/shots/")) continue;
-  assert.match(text, /current source preview/i, `${filename} must label current-source captures`);
-  assert.doesNotMatch(text, stableCaptureParity, `${filename} claims a preview capture matches stable`);
-  assert.doesNotMatch(
-    text,
-    new RegExp(`<figcaption>[^<]*v${stableVersionPattern}`, "i"),
-    `${filename} gives a current-source capture the stable release label`,
-  );
+  assert(text.includes(`v${release.version}`), `${filename} must label the tagged release`);
+  assert.doesNotMatch(text, /current.source preview/i, `${filename} still labels the release as a preview`);
 }
 assert.doesNotMatch(
   earlyTestingGuide,

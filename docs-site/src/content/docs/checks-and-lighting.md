@@ -3,9 +3,9 @@ title: Checks & lighting
 description: The game loop — prove you understand a region, light it up forever.
 ---
 
-:::note[Current source preview]
-The check-and-light loop and explorer trail ship in stable v0.22.0. The capture
-below comes from the newer current source and is not yet a published package.
+:::note[v0.23.0 release]
+The check-and-light loop, explorer trail, and capture below all ship in the
+verified v0.23.0 release.
 :::
 
 ## Why checks exist

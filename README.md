@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://udhawan97.github.io/Codemble/">
-    <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/mark-animated.svg" alt="Codemble — an open lapis ensō whose amber star systems light up" width="144">
+    <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/mark-animated.svg" alt="Codemble — an open lapis ensō whose amber star systems light up" width="144">
   </a>
 </p>
 
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.22.0"><img src="https://img.shields.io/badge/stable-v0.22.0-2b4d96?style=flat-square" alt="Stable release v0.22.0"></a>
+  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.23.0"><img src="https://img.shields.io/badge/stable-v0.23.0-2b4d96?style=flat-square" alt="Stable release v0.23.0"></a>
   <a href="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml"><img src="https://github.com/udhawan97/Codemble/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <img src="https://img.shields.io/badge/Python-3.11+-2b4d96?style=flat-square" alt="Python 3.11 or newer">
   <img src="https://img.shields.io/badge/maps-9_languages-3f6ac0?style=flat-square" alt="Maps nine languages">
@@ -32,60 +32,59 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Current Codemble source preview showing 245 colourful star systems across nine languages in a luminous spiral galaxy, with named modules, parser-proven routes, 47 charted systems, and Home resolved to codemble.cli without claiming it is understood." width="1000">
+  <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/shots/galaxy.png" alt="Codemble v0.23.0 showing 245 colourful star systems across nine languages in a luminous spiral galaxy, with named modules, parser-proven routes, 47 charted systems, and Home resolved to codemble.cli without claiming it is understood." width="1000">
 </p>
 
 <p align="center"><sub>
-  Current source preview · choose free exploration or a guided First Flight ·
+  Codemble v0.23.0 · choose free exploration or a guided First Flight ·
   land on a world for Easy or Expert evidence ·
   visiting charts a route; passing checks lights a system amber
 </sub></p>
 
 > [!IMPORTANT]
-> **The screen above is a current source preview; the stable package remains
-> v0.22.0.** The pinned command and direct downloads below resolve to that
-> verified release. Newer planetary detail and the disconnected sharing
-> foundation remain unreleased until Codemble's operational release gate passes.
+> **The screen above, the pinned command, and the direct downloads all describe
+> Codemble v0.23.0.** Public sharing remains disconnected. This release does not
+> claim deployed share infrastructure, operational deletion, or media erasure.
 
 ## Start here
 
-### Run v0.22.0 — recommended
+### Run v0.23.0 — recommended
 
 Install [uv](https://docs.astral.sh/uv/) once, then open Codemble whenever you
 need it:
 
 | | Step | Command |
 | :---: | --- | --- |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/install.svg" width="22" height="22" alt=""> | **Install uv** — a clean Python app runner | `brew install uv` |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/run.svg" width="22" height="22" alt=""> | **Open this release** — pick a project in the browser | `uvx --from codemble==0.22.0 codemble` |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/install.svg" width="22" height="22" alt=""> | **Install uv** — a clean Python app runner | `brew install uv` |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/run.svg" width="22" height="22" alt=""> | **Open this release** — pick a project in the browser | `uvx --from codemble==0.23.0 codemble` |
 
 No Homebrew? Use uv's [official installer](https://docs.astral.sh/uv/getting-started/installation/),
-or install permanently with `pipx install codemble==0.22.0` and run `codemble`.
+or install permanently with `pipx install codemble==0.23.0` and run `codemble`.
 Pass a folder to skip the project picker:
-`uvx --from codemble==0.22.0 codemble ./my-project`.
+`uvx --from codemble==0.23.0 codemble ./my-project`.
 Use the shorter `uvx codemble` when you intentionally want whatever release is
 newest on PyPI.
 
 <p align="center">
-  <a href="https://pypi.org/project/codemble/0.22.0/#files">
-    <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/download-codemble.svg" alt="Download Codemble — wheel, source archive, SHA256 digests, and release notes" width="760">
+  <a href="https://pypi.org/project/codemble/0.23.0/#files">
+    <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/download-codemble.svg" alt="Download Codemble — wheel, source archive, SHA256 digests, and release notes" width="760">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.22.0/codemble-0.22.0-py3-none-any.whl"><img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/download.svg" alt="" width="18"> Wheel</a> ·
-  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.22.0/codemble-0.22.0.tar.gz"><img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/package.svg" alt="" width="18"> Source archive</a> ·
-  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.22.0/SHA256SUMS.txt"><img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/shield.svg" alt="" width="18"> SHA256SUMS</a> ·
-  <a href="https://pypi.org/project/codemble/0.22.0/#files">PyPI files</a> ·
-  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.22.0"><img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/release.svg" alt="" width="18"> Release notes</a>
+  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.23.0/codemble-0.23.0-py3-none-any.whl"><img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/download.svg" alt="" width="18"> Wheel</a> ·
+  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.23.0/codemble-0.23.0.tar.gz"><img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/package.svg" alt="" width="18"> Source archive</a> ·
+  <a href="https://github.com/udhawan97/Codemble/releases/download/v0.23.0/SHA256SUMS.txt"><img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/shield.svg" alt="" width="18"> SHA256SUMS</a> ·
+  <a href="https://pypi.org/project/codemble/0.23.0/#files">PyPI files</a> ·
+  <a href="https://github.com/udhawan97/Codemble/releases/tag/v0.23.0"><img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/release.svg" alt="" width="18"> Release notes</a>
 </p>
 
-### Build the same v0.22.0 app from source
+### Build the same v0.23.0 app from source
 
 Use this route when you want an editable checkout:
 
 ```bash
-git clone --branch v0.22.0 --depth 1 https://github.com/udhawan97/Codemble.git
+git clone --branch v0.23.0 --depth 1 https://github.com/udhawan97/Codemble.git
 cd Codemble
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
@@ -101,13 +100,13 @@ the verification commands.
 
 | | Plain-English answer |
 | :---: | --- |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/compass.svg" width="24" height="24" alt=""> | **Choose your launch.** Explore freely in a fully visible, colourful galaxy, or take a guided First Flight from Home. Learning guidance may quiet unvisited context; free exploration keeps it alive. |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/map.svg" width="24" height="24" alt=""> | **Read a real solar system.** Each module becomes a system whose module anchor is its Sun. Named functions and classes orbit through parser-owned call placement, with language-shaped colour, terrain, bands, and motion. |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/compass.svg" width="24" height="24" alt=""> | **Follow the constellation.** A nearby-systems console names certain and possible inbound and outbound imports, keeps their certainty visible, and lets you continue directly into a connected solar system. |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/impact.svg" width="24" height="24" alt=""> | **Know what a change touches.** Impact traces what depends on a structure and what it depends on, with real file locations and certainty labels. |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/check.svg" width="24" height="24" alt=""> | **Prove what you understand.** Graph-derived checks—not a narrator—are the only way to light a system amber. |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/shield.svg" width="24" height="24" alt=""> | **Keep the project local.** Parsing, maps, source, Impact, checks, and progress stay on your machine. |
-| <img src="https://github.com/udhawan97/Codemble/raw/v0.22.0/docs-site/public/brand/icons/languages.svg" width="24" height="24" alt=""> | **Read mixed projects.** Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, and PHP share one graph and one honesty contract. |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/compass.svg" width="24" height="24" alt=""> | **Choose your launch.** Explore freely in a fully visible, colourful galaxy, or take a guided First Flight from Home. Learning guidance may quiet unvisited context; free exploration keeps it alive. |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/map.svg" width="24" height="24" alt=""> | **Read a real solar system.** Each module becomes a system whose module anchor is its Sun. Named functions and classes orbit through parser-owned call placement, with language-shaped colour, terrain, bands, and motion. |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/compass.svg" width="24" height="24" alt=""> | **Follow the constellation.** A nearby-systems console names certain and possible inbound and outbound imports, keeps their certainty visible, and lets you continue directly into a connected solar system. |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/impact.svg" width="24" height="24" alt=""> | **Know what a change touches.** Impact traces what depends on a structure and what it depends on, with real file locations and certainty labels. |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/check.svg" width="24" height="24" alt=""> | **Prove what you understand.** Graph-derived checks—not a narrator—are the only way to light a system amber. |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/shield.svg" width="24" height="24" alt=""> | **Keep the project local.** Parsing, maps, source, Impact, checks, and progress stay on your machine. |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/brand/icons/languages.svg" width="24" height="24" alt=""> | **Read mixed projects.** Python, JavaScript, TypeScript, Go, Java, Rust, C#, Ruby, and PHP share one graph and one honesty contract. |
 
 Codemble reads supported source. It does **not** run your app, package scripts,
 compilers, or tests.
@@ -116,12 +115,12 @@ compilers, or tests.
 
 | 01 · Explore | 02 · Map |
 | --- | --- |
-| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/galaxy.png" alt="Current Codemble source preview with a seeded spiral starfield, visible named modules, and selective import routes." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/map-architecture.png" alt="Current Codemble source preview of the canvas Architecture map with Home, connected modules, and complete bottom rows for modules without a proven import route." width="600"> |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/shots/galaxy.png" alt="Codemble v0.23.0 with a seeded spiral starfield, visible named modules, and selective import routes." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/shots/map-architecture.png" alt="Codemble v0.23.0 of the canvas Architecture map with Home, connected modules, and complete bottom rows for modules without a proven import route." width="600"> |
 | Choose free exploration or First Flight; guided stops can land directly into Study and checks. | Follow real imports from Home; unreachable modules are counted, not erased. |
 
 | 03 · Inspect | 04 · Prove |
 | --- | --- |
-| <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/study-panel.png" alt="Current Codemble source preview with the selected world beside the Study panel, Easy or Expert explanation control, and parser-owned connections." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/main/docs-site/public/shots/home-proved.png" alt="Current Codemble source preview of Home after its graph-derived checks were passed, with all four parser-proven structures glowing amber." width="600"> |
+| <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/shots/study-panel.png" alt="Codemble v0.23.0 with the selected world beside the Study panel, Easy or Expert explanation control, and parser-owned connections." width="600"> | <img src="https://github.com/udhawan97/Codemble/raw/v0.23.0/docs-site/public/shots/home-proved.png" alt="Codemble v0.23.0 of Home after its graph-derived checks were passed, with all four parser-proven structures glowing amber." width="600"> |
 | Land on a structure, change its explanation register in place, and follow its real connections. | Pass checks drawn from the graph; only then does the system turn amber. |
 
 ### One graph, two useful views

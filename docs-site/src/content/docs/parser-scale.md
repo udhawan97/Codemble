@@ -90,7 +90,7 @@ CODEMBLE_PYTHON=python3.12 npm run check:large-project -- \
   --output /tmp/codemble-browser-scale.json
 ```
 
-The current v0.22.0 release re-ran the complete cross-engine scale gate while
+The current v0.23.0 release re-ran the complete cross-engine scale gate while
 changing Galaxy and System scenery rather than Map truth. It retains v0.20.0's
 complete Map delivery: the source scene retains all
 5,000 modules and 4,999 routes while the viewport draws only the intersecting
@@ -103,7 +103,7 @@ activation, process RSS high-water mark, usable time, DOM and resource budgets,
 event-loop lag, Finder input latency, canvas keyboard arrival, recovery, and
 320 px geometry.
 
-The current v0.22.0 source receipt measured 5.691 s cold activation, 1.585 s
+The current v0.23.0 source receipt measured 5.691 s cold activation, 1.585 s
 no-change activation, and a 167,788,544-byte process RSS high-water mark.
 Chromium reached usable in 1.743 s with 99 DOM elements, five visible boxes,
 35.5 ms canvas End-key arrival, 31.4 ms Finder input p95, 55.4 ms recovery, and

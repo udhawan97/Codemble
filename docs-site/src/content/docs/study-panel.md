@@ -3,11 +3,10 @@ title: Study a feature
 description: Follow one parser-proven journey in Easy or Expert mode, then inspect source, impact, connections, and checks.
 ---
 
-:::note[Current source preview]
-Study now begins with a landing brief and one shared, parser-owned feature
-journey. Easy and Expert change the teaching depth, never the evidence or your
-place in the route. The verified download remains v0.22.0; the selected-world
-framing pictured here is from newer, unreleased source.
+:::note[v0.23.0 release]
+Study begins with a landing brief and one shared, parser-owned feature journey.
+Easy and Expert change the teaching depth, never the evidence or your place in
+the route. The selected-world framing pictured here ships in v0.23.0.
 :::
 
 ## Land first, then choose depth
@@ -78,9 +77,9 @@ record. Charting, checks, and understood state retain their existing meanings.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Study journey and Impact product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/study-impact.png" alt="The current source preview with the selected server app world beside the Expert Study panel, scrolled to its integrated Impact lists.">
+    <img src="/Codemble/shots/study-impact.png" alt="Codemble v0.23.0 with the selected server app world beside the Expert Study panel, scrolled to its integrated Impact lists.">
   </div>
-  <figcaption>Current source preview · one landing, one journey, with Impact and Connections integrated once.</figcaption>
+  <figcaption>Codemble v0.23.0 · one landing, one journey, with Impact and Connections integrated once.</figcaption>
 </figure>
 
 The journey's details disclosure contains graph facts about the **selected

@@ -1,6 +1,6 @@
 # Planetary expedition — design review candidate
 
-Status: implemented, verified and merged through PR #47; public release remains gated. Owner request (2026-09-10): full creative control for a lifelike, game-quality Galaxy, design council before implementation, validation, main cleanup, deployment and a new release.
+Status: implemented, verified and merged through PR #47; v0.23.0 release candidate authorized by the owner on 2026-09-25. Owner request (2026-09-10): full creative control for a lifelike, game-quality Galaxy, design council before implementation, validation, main cleanup, deployment and a new release.
 
 ## Direction
 
@@ -30,7 +30,7 @@ Primary files: celestialBodies.js (surfaces/atmosphere/Sun), galaxyMaterials.js 
 
 ## Delivery boundary
 
-Current main is 566624e; public stable is v0.22.0. Main contains M20 local share machinery with an explicit independent-node operational release gate. This design does not enable or deploy share delivery, weaken that gate, or claim independent infrastructure evidence. Finish graphics and all local gates first; prepare a concrete release candidate. Publication must satisfy the existing gate or obtain an explicit, narrowly scoped owner amendment after the candidate is reviewable. GitHub reads and SSH pushes work; PR #47 was created through the authenticated browser because connector writes are unavailable.
+The graphics work landed on main while v0.22.0 remained the public stable release. Main also contains M20 local share machinery with an explicit independent-node operational connection gate. This design does not enable or deploy share delivery, weaken that gate, or claim independent infrastructure evidence. The owner supplied the allowed narrowly scoped amendment on 2026-09-25: v0.23.0 may publish the graphics, local product, dependency updates, documentation, and dormant disconnected M20 foundations. Public-sharing connection and operational-erasure claims remain gated by the original receipts.
 
 Main cleanup inventories every local/remote branch and worktree, preserves the dirty high-end-galaxy worktree and two intentional root backup markers, integrates only independently verified unique relevant source, and removes only proven redundant refs after synchronization. The prior interrupted Codex task “Clean up Codemble branches” can be archived once its work is actually superseded; do not archive unrelated work or unresolved decisions. No false release-completion claim if authentication or existing operational gates remain blocked.
 
@@ -76,4 +76,4 @@ Baseline `566624e`; candidate PR [#47](https://github.com/udhawan97/Codemble/pul
 Implementation council completed two rounds with all four roles. Reviewers accepted the evidence-bounded candidate; coverage required the complete-Map, interrupted-travel and effective-zoom checks above. The coverage reviewer re-inspected the completed gates and approved local graphics acceptance; hosted checks then passed on the final candidate. M20 operational proof and any public-release exception remain separate, explicit gates.
 
 
-Promotion receipt: PR #47 squash-merged as `e1cf18f8ce0fecc17d9f02bc4d8e682dc05ee389`; candidate and merge share tree `263c2a8469f7d9b34f0ed90ea19ab822f416e0f8` and identical combined patches. Both owned worktrees and the local/remote planetary branch were removed after proof. The two superseded Codex tasks were archived. All 32 protected files retained their exact pre-merge hashes. Main's graph was refreshed and a scoped Study-resize query passed. This subsequent documentation-only receipt records completion without altering the verified application. Public stable remains v0.22.0; no release tag or provider deployment was created.
+Promotion receipt: PR #47 squash-merged as `e1cf18f8ce0fecc17d9f02bc4d8e682dc05ee389`; candidate and merge share tree `263c2a8469f7d9b34f0ed90ea19ab822f416e0f8` and identical combined patches. Both owned worktrees and the local/remote planetary branch were removed after proof. The two superseded Codex tasks were archived. All 32 protected files retained their exact pre-merge hashes. Main's graph was refreshed and a scoped Study-resize query passed. The owner authorized the v0.23.0 release candidate on 2026-09-25 under the narrow amendment above; no provider deployment or public-sharing connection is part of that release.
