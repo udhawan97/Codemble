@@ -47,7 +47,7 @@ const capabilities = [
   {
     icon: "impact",
     title: "Know what a change touches",
-    body: "Impact traces what depends on a structure and what it depends on, with real file locations and certainty labels—no model required.",
+    body: "Impact traces what the parser map found depending on a structure and what it depends on, with real file locations and certainty labels—no model required and no claim beyond the map.",
   },
   {
     icon: "check",
@@ -70,6 +70,7 @@ const contract = [
   "Nodes, routes, concepts, Home candidates, and application roles come from parsers—not generated prose.",
   "A feature journey stops where proof stops, before showing a visibly possible frontier.",
   "Impact and checks are graph-derived and work without any API key.",
+  "Study refuses changed source before old graph facts or narration can be mixed with new bytes.",
   "Narration may name only supplied identifiers and cite real source lines.",
   "Changing a file re-dims only the proof attached to that file.",
   "Unsupported or broken source is counted and named instead of silently omitted.",
@@ -207,10 +208,11 @@ const contract = [
 
       <section class="release-band" aria-label="Release status">
         <p>
-          <strong>These captures show Codemble v{VERSION}.</strong> The exact
-          wheel, source archive, and checksum ledger are linked below.
+          <strong>v{VERSION} keeps evidence coherent under change.</strong> Study
+          verifies one source snapshot, checks ask only parser-supported questions,
+          and overlapping saves or provider timeouts cannot silently rewrite truth.
         </p>
-        <a href="#download">Choose a route →</a>
+        <a href={RELEASE}>Read the release →</a>
       </section>
 
       <section class="workbench" id="tour">

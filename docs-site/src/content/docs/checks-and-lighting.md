@@ -3,9 +3,9 @@ title: Checks & lighting
 description: The game loop — prove you understand a region, light it up forever.
 ---
 
-:::note[v0.23.0 release]
+:::note[v0.24.0 release]
 The check-and-light loop, explorer trail, and capture below all ship in the
-verified v0.23.0 release.
+verified v0.24.0 release.
 :::
 
 ## Why checks exist
@@ -24,7 +24,7 @@ the other.
 Every check is generated from your code's real graph, so the answer is always
 verifiably correct:
 
-- *"Which function does `main()` call first?"* — from call edges
+- *"Which structures does `main()` call directly?"* — from certain call edges
 - *"Which files import `utils`?"* — from import edges
 - *"If you deleted `foo()`, what would break?"* — from its callers
 - *"Where does execution start?"* — from the entrypoint
@@ -32,7 +32,7 @@ verifiably correct:
 Questions and answers are deterministic in v1. The check service uses exactly
 four parser-owned evidence families:
 
-- first certain project call, ordered by real source line
+- every certain direct project call from one parser-owned structure
 - direct project imports
 - direct callers that depend on a structure
 - parser-ranked execution entrypoint
@@ -43,6 +43,14 @@ immutable generated option IDs. A **correct** answer is confirmed with the
 graph-owned answer and its real `file:line` evidence; a **wrong** one is not,
 so a second attempt cannot simply replay what the screen just showed. A check
 that cannot be derived with certainty is not offered.
+
+Call checks deliberately make no execution-order claim. A source line can hold
+nested calls, and textual order is not Python evaluation order. When the graph
+proves several direct targets, all of them are required answers; the question is
+omitted unless the graph also supplies a real non-answer. v0.24.0 gives this
+contract a new deterministic check schema, so stale question IDs are refused.
+Saved amber understanding remains keyed to file hashes and is not silently
+retested or erased.
 
 ## Lighting rules
 
@@ -67,6 +75,12 @@ is written only after every offered check in the region passes. Each region is
 bound to a deterministic signature of its current parser file hashes. On the
 next run, matching regions light and changed regions stay dim; no background
 watcher or network service is involved.
+
+Mutations are serialized across app threads and Codemble processes before the
+read/modify/replace sequence begins. Project mode and the learner-wide default
+are two files: ordinary second-write failures restore the project value, while
+an outcome that cannot confirm its own rollback is reported as uncertain and
+requires a reload. The pair is not claimed to be crash-atomic.
 
 ## Right answers say so — wrong ones send you back to the code
 

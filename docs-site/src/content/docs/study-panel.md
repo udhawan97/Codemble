@@ -3,10 +3,10 @@ title: Study a feature
 description: Follow one parser-proven journey in Easy or Expert mode, then inspect source, impact, connections, and checks.
 ---
 
-:::note[v0.23.0 release]
+:::note[v0.24.0 release]
 Study begins with a landing brief and one shared, parser-owned feature journey.
 Easy and Expert change the teaching depth, never the evidence or your place in
-the route. The selected-world framing pictured here ships in v0.23.0.
+the route. The selected-world framing pictured here ships in v0.24.0.
 :::
 
 ## Land first, then choose depth
@@ -77,9 +77,9 @@ record. Charting, checks, and understood state retain their existing meanings.
 
 <figure class="cm-product-shot">
   <div class="cm-product-shot__viewport" tabindex="0" aria-label="Study journey and Impact product screen. Scroll sideways to inspect it at a readable size.">
-    <img src="/Codemble/shots/study-impact.png" alt="Codemble v0.23.0 with the selected server app world beside the Expert Study panel, scrolled to its integrated Impact lists.">
+    <img src="/Codemble/shots/study-impact.png" alt="Codemble v0.24.0 with the selected server app world beside the Expert Study panel, scrolled to its integrated Impact lists.">
   </div>
-  <figcaption>Codemble v0.23.0 · one landing, one journey, with Impact and Connections integrated once.</figcaption>
+  <figcaption>Codemble v0.24.0 · one landing, one journey, with Impact and Connections integrated once.</figcaption>
 </figure>
 
 The journey's details disclosure contains graph facts about the **selected
@@ -98,6 +98,10 @@ radius. These are **verification candidates**, not proof that the test exercises
 the feature and never a claim that any test passed. Codemble does not run the
 project or invent a command.
 
+An empty Impact side is bounded too. “No dependents found in this parser map”
+means exactly that; it does not claim that reflection, dynamic imports, framework
+wiring, or runtime behavior cannot reach the structure.
+
 ## Source, Lens, narration, and checks
 
 The rest of Study stays available below the journey:
@@ -111,6 +115,14 @@ Every item except narration is local and model-free. Opening **Read source**
 takes you directly to the excerpt. Opening Study by any other route starts at
 the journey, with its position, current citation, and Back/Next controls kept
 reachable even at 320px reflow widths.
+
+Study reads one byte snapshot, verifies it against the parser's file hash, and
+decodes those same bytes. A changed, replaced, missing, or unsafe-to-decode file
+stops Study before cache or provider use and asks you to reopen the folder.
+Changing Easy/Expert remains optimistic for a responsive control, but a refused
+save reconciles to the server-confirmed register and stays visible beside the
+control. An unconfirmed two-file save asks for a reload rather than asserting
+which register reached disk.
 
 ## No key? Nothing important is missing
 

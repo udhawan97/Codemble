@@ -90,9 +90,10 @@ CODEMBLE_PYTHON=python3.12 npm run check:large-project -- \
   --output /tmp/codemble-browser-scale.json
 ```
 
-The current v0.23.0 release re-ran the complete cross-engine scale gate while
-changing Galaxy and System scenery rather than Map truth. It retains v0.20.0's
-complete Map delivery: the source scene retains all
+The v0.24.0 candidate re-ran the complete cross-engine scale gate after the
+cache-generation repair. That repair changes which completed render work may
+publish after invalidation; it does not change Map membership or scenery. The
+candidate retains v0.20.0's complete Map delivery: the source scene retains all
 5,000 modules and 4,999 routes while the viewport draws only the intersecting
 slice. Finder and End-key navigation both reach the final module directly;
 recovery restores a visible complete Map; and the compact page keeps zero
@@ -103,14 +104,18 @@ activation, process RSS high-water mark, usable time, DOM and resource budgets,
 event-loop lag, Finder input latency, canvas keyboard arrival, recovery, and
 320 px geometry.
 
-The current v0.23.0 source receipt measured 5.691 s cold activation, 1.585 s
-no-change activation, and a 167,788,544-byte process RSS high-water mark.
-Chromium reached usable in 1.743 s with 99 DOM elements, five visible boxes,
-35.5 ms canvas End-key arrival, 31.4 ms Finder input p95, 55.4 ms recovery, and
-zero compact overflow. WebKit reached usable in 2.387 s with the same 99 DOM
-elements, five visible boxes, 32.8 ms canvas arrival, 31.0 ms Finder input p95,
-735.5 ms recovery, and zero compact overflow. Both retained all 5,000 boxes and
-4,999 routes in the complete source scene.
+The current v0.24.0 source receipt used one fresh process per engine. The
+Chromium run measured 1.621 s cold activation, 0.810 s no-change activation,
+and a 185,942,016-byte process RSS high-water mark; it reached usable in 1.506 s
+with 100 DOM elements, five visible boxes, 39.2 ms canvas End-key arrival,
+31.1 ms Finder input p95, 56.5 ms recovery, and zero compact overflow. The
+WebKit run measured 1.757 s cold activation, 0.750 s no-change activation, and
+a 179,355,648-byte RSS high-water mark; it reached usable in 1.778 s with 100
+DOM elements, five visible boxes, 43.2 ms canvas arrival, 31.0 ms Finder input
+p95, 449.3 ms recovery, and zero compact overflow. Both retained all 5,000
+boxes and 4,999 routes in the complete source scene and stayed within the
+predeclared backend, responsiveness, resource, event-loop, recovery, and
+compact-geometry budgets.
 
 Above 5,000 supported files, the picker still asks for a smaller scope. That is
 an explicit verified limit, not a claim of unbounded rendering. Logical LOD

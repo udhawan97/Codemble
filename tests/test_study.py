@@ -6,10 +6,12 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
 from codemble.llm.providers import AnthropicProvider, OllamaProvider, OpenAIProvider
-from codemble.llm.study import StudyService
+from codemble.llm.study import StudyService, StudySourceError
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
 CONCEPT_FIXTURE = Path(__file__).parent / "fixtures" / "concepts_sample.py"
@@ -220,8 +222,9 @@ def test_validated_explanation_is_cached_by_node_and_file_hash(tmp_path: Path) -
         provider=changed_provider,
         cache_root=tmp_path,
     )
-    assert changed_service.explain("app.main")["cached"] is False  # type: ignore[index]
-    assert changed_provider.calls == 1
+    with pytest.raises(StudySourceError, match="[Rr]eopen"):
+        changed_service.explain("app.main")
+    assert changed_provider.calls == 0
 
 
 def test_provider_output_cannot_reference_an_unobserved_node(tmp_path: Path) -> None:
@@ -588,3 +591,149 @@ def test_file_scheme_ollama_host_is_refused_through_from_environment(tmp_path: P
 
     assert result["status"] == "no_key"
     assert "loopback" in result["message"]
+
+
+class IdentityProvider:
+    name = 'fake'
+    model = 'source-identity'
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def complete(self, prompt: str) -> str:
+        self.calls += 1
+        return json.dumps({'summary': 'Returns one.', 'walkthrough': [], 'relationships': []})
+
+
+@pytest.mark.parametrize('warm_cache', [False, True])
+@pytest.mark.parametrize('change', ['edit', 'truncate', 'replace', 'rename', 'missing'])
+def test_study_and_narration_refuse_changed_source_before_cache_or_provider(
+    tmp_path: Path, warm_cache: bool, change: str,
+) -> None:
+    source = tmp_path / 'app.py'
+    original = b'def main():\n    return 1\n'
+    source.write_bytes(original)
+    graph = PythonAstAdapter().parse(tmp_path)
+    provider = IdentityProvider()
+    service = StudyService(graph, provider=provider, cache_root=tmp_path / 'cache')
+    if warm_cache:
+        assert service.explain('app.main')['status'] == 'ready'
+    calls = provider.calls
+    if change == 'edit':
+        source.write_text('def changed():\n    return 999\n')
+    elif change == 'truncate':
+        source.write_bytes(b'')
+    elif change == 'replace':
+        replacement = tmp_path / 'replacement'
+        replacement.write_text('def replacement():\n    return 9\n')
+        replacement.replace(source)
+    elif change == 'rename':
+        source.rename(tmp_path / 'renamed.py')
+    else:
+        source.unlink()
+    for action in (service.study, service.explain):
+        with pytest.raises(StudySourceError, match='[Rr]eopen'):
+            action('app.main')
+    assert provider.calls == calls
+    source.write_bytes(original)
+    assert service.study('app.main')['source']['lines'][1]['text'] == '    return 1'
+    assert service.explain('app.main')['status'] == 'ready'
+    assert provider.calls == max(calls, 1)
+
+
+def test_source_identity_is_required_without_provider_or_known_hash(tmp_path: Path) -> None:
+    source = tmp_path / 'app.py'
+    source.write_text('def main():\n    return 1\n')
+    graph = PythonAstAdapter().parse(tmp_path)
+    for candidate in (replace(graph, file_hashes={}), graph):
+        service = StudyService(candidate, cache_root=tmp_path / 'cache')
+        if candidate is graph:
+            source.write_text('def main():\n    return 2\n')
+        for action in (service.study, service.explain):
+            with pytest.raises(StudySourceError, match='[Rr]eopen'):
+                action('app.main')
+
+
+def test_reparse_restores_coherent_source_and_new_cache_identity(tmp_path: Path) -> None:
+    source = tmp_path / 'app.py'
+    source.write_text('def main():\n    return 1\n')
+    provider = IdentityProvider()
+    service = StudyService(PythonAstAdapter().parse(tmp_path), provider=provider,
+                           cache_root=tmp_path / 'cache')
+    assert service.explain('app.main')['cached'] is False
+    source.write_text('def main():\n    return 2\n')
+    with pytest.raises(StudySourceError):
+        service.explain('app.main')
+    service.update_graph(PythonAstAdapter().parse(tmp_path))
+    assert service.study('app.main')['source']['lines'][1]['text'] == '    return 2'
+    assert service.explain('app.main')['cached'] is False
+    assert provider.calls == 2
+
+
+@pytest.mark.parametrize('raw, expected', [
+    (b'# coding: latin-1\ndef main():\n    return "caf\xe9"\n', '    return "café"'),
+    (b'\xef\xbb\xbfdef main():\r\n    return 1\r\n', '    return 1'),
+])
+def test_verified_source_bytes_keep_python_encoding_rules(
+    tmp_path: Path, raw: bytes, expected: str,
+) -> None:
+    (tmp_path / 'app.py').write_bytes(raw)
+    graph = PythonAstAdapter().parse(tmp_path)
+    service = StudyService(graph, cache_root=tmp_path / 'cache')
+    assert service.study('app.main')['source']['lines'][-1]['text'] == expected
+
+
+def test_source_is_read_once_and_that_snapshot_is_hashed_and_decoded(tmp_path, monkeypatch) -> None:
+    source = tmp_path / 'app.py'
+    original = b'def main():\n    return 1\n'
+    source.write_bytes(original)
+    service = StudyService(PythonAstAdapter().parse(tmp_path), cache_root=tmp_path / 'cache')
+    read = Path.read_bytes
+    reads = []
+
+    def replace_after_read(path):
+        content = read(path)
+        if path == source:
+            reads.append(content)
+            source.write_text('def changed():\n    return 999\n')
+        return content
+
+    monkeypatch.setattr(Path, 'read_bytes', replace_after_read)
+    assert service.study('app.main')['source']['lines'][1]['text'] == '    return 1'
+    assert reads == [original]
+    with pytest.raises(StudySourceError):
+        service.study('app.main')
+
+
+def test_partial_source_and_unsafe_decoding_still_require_identity(tmp_path: Path) -> None:
+    source = tmp_path / 'broken.py'
+    source.write_bytes(b'# coding: unknown-codec\ndef broken(:\n')
+    graph = PythonAstAdapter().parse(tmp_path)
+    service = StudyService(graph, cache_root=tmp_path / 'cache')
+    for action in (service.study, service.explain):
+        with pytest.raises(StudySourceError):
+            action('broken')
+    source.write_text('def broken(:\n')
+    service.update_graph(PythonAstAdapter().parse(tmp_path))
+    assert service.explain('broken')['status'] == 'partial'
+    source.write_text('def repaired():\n    pass\n')
+    with pytest.raises(StudySourceError):
+        service.explain('broken')
+
+
+def test_verified_non_python_bytes_keep_utf8_replacement_and_confinement(tmp_path: Path) -> None:
+    source = tmp_path / 'app.js'
+    source.write_bytes(b'export function main() { return "caf\xff"; }\n')
+    graph = JavaScriptTypeScriptAdapter().parse(tmp_path)
+    node = next(node for node in graph.nodes if node.kind == 'module')
+    service = StudyService(graph, cache_root=tmp_path / 'cache')
+    assert 'caf\ufffd' in service.study(node.id)['source']['lines'][0]['text']
+    outside = tmp_path.parent / f'{tmp_path.name}-outside.js'
+    outside.write_bytes(source.read_bytes())
+    source.unlink()
+    source.symlink_to(outside)
+    try:
+        with pytest.raises(StudySourceError):
+            service.study(node.id)
+    finally:
+        outside.unlink()

@@ -1122,6 +1122,124 @@ def test_a_mode_change_serves_the_same_cached_map(
     assert client.get("/api/map").json() == before
 
 
+def test_mode_refusal_after_project_write_restores_authoritative_preference(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    progress.set_mode("easy")
+    checks = CheckService(graph, progress)
+
+    def refuse(mode):
+        raise OSError("fictional second-file failure")
+
+    with TestClient(create_app(graph, tmp_path / "missing", check_service=checks),
+                    raise_server_exceptions=False) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(progress, "_write_learner_mode", refuse)
+            assert client.put("/api/mode", json={"mode": "expert"}).status_code == 500
+            assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
+        assert client.put("/api/mode", json={"mode": "expert"}).status_code == 200
+        assert client.get("/api/mode").json() == {"mode": "expert", "chosen": True}
+
+
+@pytest.mark.parametrize("rollback_replaced", [False, True])
+def test_failed_mode_rollback_reports_uncertain_outcome_and_allows_reconciliation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rollback_replaced: bool,
+) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    progress.set_mode("easy")
+    checks = CheckService(graph, progress)
+    write = progress._write
+    writes = 0
+
+    def failed_rollback(payload):
+        nonlocal writes
+        writes += 1
+        if writes == 1 or rollback_replaced:
+            write(payload)
+        if writes > 1:
+            raise OSError("private rollback failure detail")
+
+    def failed_learner(mode):
+        raise OSError("private learner failure detail")
+
+    with TestClient(create_app(graph, tmp_path / "missing", check_service=checks),
+                    raise_server_exceptions=False) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(progress, "_write", failed_rollback)
+            patch.setattr(progress, "_write_learner_mode", failed_learner)
+            response = client.put("/api/mode", json={"mode": "expert"})
+            assert response.status_code == 503
+            assert response.json() == {"detail": {
+                "reason": "mode_save_uncertain",
+                "message": (
+                    "The explanation choice could not be confirmed. "
+                    "Reload this project before choosing again."
+                ),
+            }}
+            assert "private" not in response.text
+            # Failure does not prove either old or requested mode survived.
+            expected = "easy" if rollback_replaced else "expert"
+            assert client.get("/api/mode").json() == {"mode": expected, "chosen": True}
+        assert client.put("/api/mode", json={"mode": "easy"}).status_code == 200
+        assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
+
+
+@pytest.mark.parametrize("storage_failure", ["unreadable", "malformed"])
+def test_mode_reconciliation_does_not_confirm_fallback_after_failed_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, storage_failure: str,
+) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    progress.set_mode("easy")
+    checks = CheckService(graph, progress)
+    write = progress._write
+    writes = 0
+
+    def refuse_rollback(payload):
+        nonlocal writes
+        writes += 1
+        if writes == 1:
+            write(payload)
+        else:
+            raise OSError("fictional rollback failure")
+
+    def refuse_learner(mode):
+        raise OSError("fictional learner failure")
+
+    read = Path.read_text
+
+    def bad_read(path, *args, **kwargs):
+        if path == progress.path:
+            if storage_failure == "unreadable":
+                raise PermissionError("private storage details")
+            return "malformed existing JSON"
+        return read(path, *args, **kwargs)
+
+    with TestClient(create_app(graph, tmp_path / "missing", check_service=checks)) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(progress, "_write", refuse_rollback)
+            patch.setattr(progress, "_write_learner_mode", refuse_learner)
+            assert client.put("/api/mode", json={"mode": "expert"}).json()["detail"]["reason"] == "mode_save_uncertain"
+        assert client.get("/api/mode?strict=true").json() == {"mode": "expert", "chosen": True}
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "read_text", bad_read)
+            assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
+            response = client.get("/api/mode?strict=true")
+            assert response.status_code == 503
+            assert response.json() == {"detail": {
+                "reason": "mode_read_uncertain",
+                "message": (
+                    "The saved explanation choice could not be read. "
+                    "Reload this project before choosing again."
+                ),
+            }}
+            assert "private" not in response.text
+        assert client.get("/api/mode?strict=true").json() == {"mode": "expert", "chosen": True}
+
+
 def test_graph_and_map_share_one_hydration_after_an_invalidation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -16,6 +16,13 @@ answer before submission, and no model participates in generation or scoring.
 Wrong answers leave progress untouched and return the real parser answer with
 its `file:line` evidence.
 
+:::note[v0.24.0 correction]
+This paragraph records the original M5 contract. Current releases replace the
+unsupported “first call” claim with all parser-certain direct-call targets.
+Wrong submissions withhold the answer and citations; a correct submission shows
+both. See [Checks & lighting](/Codemble/checks-and-lighting/) for current behavior.
+:::
+
 `ProgressStore` persists a project-keyed record under `~/.codemble/progress`
 only when the suite completes. Each region record contains a deterministic
 signature of its member file hashes. A restart rehydrates matching regions;

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -11,13 +13,83 @@ import pytest
 from codemble.adapters.base import Graph
 from codemble.adapters.project import ProjectParser
 from codemble.adapters.python_ast import PythonAstAdapter
+from codemble.checks import CheckService
+from codemble.progress import ProgressStore
 from codemble.server.project_activation import (
+    LiveProject,
     ProjectActivation,
     ProjectActivationBusy,
     ProjectUnavailable,
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+
+
+@pytest.mark.parametrize("stage", ["hydration", "graph", "map"])
+@pytest.mark.parametrize("mutation", ["understand", "clear", "home"])
+def test_invalidated_work_never_repopulates_live_views(tmp_path, monkeypatch, stage, mutation):
+    from codemble.server import project_activation as module
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    store = ProgressStore(graph, tmp_path / "progress")
+    if mutation == "clear":
+        store.mark_understood("app")
+    checks = CheckService(graph, progress=store)
+    live = LiveProject(graph, checks=checks)
+    live.invalidate_views()
+    entered = threading.Event()
+    release = threading.Event()
+    if stage == "hydration":
+        original = checks.graph
+    elif stage == "graph":
+        original = Graph.to_dict
+    else:
+        original = module.build_map
+
+    def paused(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if threading.current_thread().name.startswith("old-view"):
+            entered.set()
+            assert release.wait(timeout=5)
+        return result
+
+    if stage == "hydration":
+        monkeypatch.setattr(checks, "graph", paused)
+    elif stage == "graph":
+        monkeypatch.setattr(Graph, "to_dict", paused)
+    else:
+        monkeypatch.setattr(module, "build_map", paused)
+
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="old-view") as pool:
+        old = pool.submit(live.map_json if stage == "map" else live.graph_json)
+        try:
+            assert entered.wait(timeout=5)
+            if mutation == "understand":
+                store.mark_understood("app")
+            elif mutation == "clear":
+                checks.clear_progress()
+            else:
+                # Any valid node can be an explicit Home; choose another one.
+                checks.select_entrypoint("app.main")
+            live.invalidate_views()
+            live.invalidate_views()  # A second mutation boundary is also safe.
+        finally:
+            release.set()
+        old.result(timeout=5)
+
+    expected = checks.graph()
+    assert json.loads(live.graph_json()) == expected.to_dict()
+    assert json.loads(live.map_json()) == module.build_map(expected)
+    preview = live.create_share_preview(
+        lifetime_days=1, include_labels=False, include_understanding=True,
+    )
+    assert preview["exposure"]["understood_regions"] == sum(
+        region.understood for region in expected.regions
+    )
+    cached = live.graph_json()
+    monkeypatch.setattr(checks, "graph", lambda: pytest.fail("warm cache rehydrated"))
+    assert live.graph_json() is cached
+    live.map_json()
 
 
 def _inline_runner(work):  # type: ignore[no-untyped-def]

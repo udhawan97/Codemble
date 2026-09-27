@@ -1377,7 +1377,183 @@ assert.equal(
   "easy",
   "a refused mode write rolls back to the last server-confirmed value",
 );
+assert.match(modeFailureSession.getSnapshot().modeError, /not saved.*try again/i);
+assert.doesNotMatch(modeFailureSession.getSnapshot().modeError, /mode write refused/, "raw server details stay private");
 modeFailureSession.dispose();
+
+// Failure status belongs to the current mode request and project, never to
+// an obsolete or aborted save. Success clears the refusal at both UI callers.
+for (const settleOldFirst of [false, true]) {
+  const writes = [];
+  const modeErrors = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter({ graph, mode: "expert", modeChosen: true }),
+      saveMode: () => new Promise((resolve, reject) => writes.push({ resolve, reject })),
+    }, clock,
+  });
+  await modeErrors.start();
+  const old = modeErrors.dispatch({ type: "SET_MODE", mode: "easy" });
+  const latest = modeErrors.dispatch({ type: "SET_MODE", mode: "expert" });
+  if (settleOldFirst) { writes[0].reject(new Error("obsolete")); await old; }
+  writes[1].resolve({ mode: "expert", chosen: true });
+  await latest;
+  if (!settleOldFirst) { writes[0].reject(new Error("obsolete")); await old; }
+  assert.equal(modeErrors.getSnapshot().modeError, "");
+  assert.equal(modeErrors.getSnapshot().mode, "expert");
+  const fail = modeErrors.dispatch({ type: "SET_MODE", mode: "easy" });
+  writes[2].reject(new Error("refused"));
+  await fail;
+  assert.match(modeErrors.getSnapshot().modeError, /saved choice is shown/i);
+  const retry = modeErrors.dispatch({ type: "SET_MODE", mode: "easy" });
+  assert.equal(modeErrors.getSnapshot().modeError, "", "new attempt clears previous refusal");
+  writes[3].resolve({ mode: "easy", chosen: true });
+  await retry;
+  assert.equal(modeErrors.getSnapshot().modeError, "");
+  assert.equal(await modeErrors.dispatch({ type: "SET_MODE", mode: "easy" }), true);
+  assert.equal(writes.length, 4, "unchanged committed mode makes no write");
+  const abandoned = modeErrors.dispatch({ type: "SET_MODE", mode: "expert" });
+  modeErrors.dispose();
+  const before = modeErrors.getSnapshot();
+  writes[4].reject(new Error("disposed"));
+  await abandoned;
+  assert.equal(modeErrors.getSnapshot(), before, "disposed save emits no refusal or rollback");
+}
+
+// Consecutive refusals must reconcile with storage, never roll back to the
+// preceding optimistic choice. The older failure has no authority to commit.
+for (const oldFirst of [false, true]) {
+  const writes = [];
+  const durable = createInMemoryLearnerSessionAdapter({ graph, mode: "easy", modeChosen: true, map: mapPayload });
+  const subject = createLearnerSession({ adapter: {
+    ...durable,
+    saveMode: () => new Promise((resolve, reject) => writes.push({ resolve, reject })),
+  }, clock });
+  await subject.start();
+  const first = subject.dispatch({ type: "SET_MODE", mode: "expert" });
+  const second = subject.dispatch({ type: "SET_MODE", mode: "easy" });
+  let notifications = 0;
+  subject.subscribe(() => { notifications += 1; });
+  if (oldFirst) {
+    writes[0].reject(new Error("older refusal"));
+    await first;
+    assert.equal(notifications, 0, "obsolete refusal emits no rollback or error");
+  }
+  writes[1].reject(new Error("latest refusal"));
+  await second;
+  const accepted = subject.getSnapshot();
+  if (!oldFirst) {
+    const before = notifications;
+    writes[0].reject(new Error("older refusal"));
+    await first;
+    assert.equal(notifications, before, "late obsolete refusal emits no rollback or error");
+    assert.equal(subject.getSnapshot(), accepted);
+  }
+  assert.equal(subject.getSnapshot().mode, "easy", "both refusals retain persisted Easy");
+  assert.equal(subject.getSnapshot().modeChosen, true);
+  assert.equal(subject.getSnapshot().layer, "map", "rollback uses confirmed layer, not optimistic Expert layer");
+  assert.deepEqual(await durable.loadMode(), { mode: "easy", chosen: true });
+  subject.dispose();
+}
+
+// A failed write may have reached durable storage. Reconciliation owns the
+// displayed truth even when compensating rollback failed on the server.
+{
+  const durable = createInMemoryLearnerSessionAdapter({ graph, mode: "easy", modeChosen: true });
+  const subject = createLearnerSession({ adapter: {
+    ...durable,
+    async saveMode(mode) {
+      await durable.saveMode(mode);
+      throw new Error("mode_save_uncertain");
+    },
+  }, clock });
+  await subject.start();
+  assert.equal(await subject.dispatch({ type: "SET_MODE", mode: "expert" }), false);
+  assert.equal(subject.getSnapshot().mode, "expert", "GET confirms the mode really persisted");
+  assert.equal(subject.getSnapshot().layer, "galaxy");
+  assert.match(subject.getSnapshot().modeError, /saved choice is shown/);
+  subject.dispose();
+}
+
+for (const readResult of ["unreachable", "malformed"]) {
+  let failed = false;
+  const durable = createInMemoryLearnerSessionAdapter({ graph, mode: "easy", modeChosen: true });
+  const subject = createLearnerSession({ adapter: {
+    ...durable,
+    async saveMode() { failed = true; throw new Error("uncertain write"); },
+    async loadMode() {
+      if (!failed) return durable.loadMode();
+      if (readResult === "unreachable") throw new Error("private transport detail");
+      return { mode: "expert" };
+    },
+  }, clock });
+  await subject.start();
+  await subject.dispatch({ type: "SET_MODE", mode: "expert" });
+  assert.match(subject.getSnapshot().modeError, /could not be confirmed.*Reload this project/);
+  assert.doesNotMatch(subject.getSnapshot().modeError, /saved choice is shown|private transport/);
+  subject.dispose();
+}
+
+// A reconciliation GET is just as lifecycle-bound as its failed PUT.
+for (const dispose of [false, true]) {
+  let reconcile;
+  let readingFailure = false;
+  const durable = createInMemoryLearnerSessionAdapter({ graph, mode: "easy", modeChosen: true });
+  const subject = createLearnerSession({ adapter: {
+    ...durable,
+    async saveMode(mode) {
+      if (!readingFailure) { readingFailure = true; throw new Error("first save refused"); }
+      return durable.saveMode(mode);
+    },
+    loadMode: () => readingFailure
+      ? new Promise((resolve) => { reconcile = resolve; }) : durable.loadMode(),
+  }, clock });
+  await subject.start();
+  const old = subject.dispatch({ type: "SET_MODE", mode: "expert" });
+  await Promise.resolve();
+  assert.equal(typeof reconcile, "function");
+  if (dispose) subject.dispose();
+  else await subject.dispatch({ type: "SET_MODE", mode: "easy" });
+  const before = subject.getSnapshot();
+  reconcile({ mode: "expert", chosen: true });
+  await old;
+  assert.equal(subject.getSnapshot(), before, "obsolete reconciliation emits no rollback or error");
+  subject.dispose();
+}
+
+// A tolerant startup GET may default unreadable storage to Easy. That value
+// must never be used as proof after a failed write: reconciliation is strict.
+{
+  const requests = [];
+  let failedWrite = false;
+  const httpMode = createHttpLearnerSessionAdapter(async (url, options = {}) => {
+    requests.push({ url, options });
+    if (options.method === "PUT") {
+      failedWrite = true;
+      return { ok: false, status: 503, json: async () => ({ detail: {
+        reason: "mode_save_uncertain", message: "Preference write could not be confirmed.",
+      } }) };
+    }
+    if (url === "/api/mode?strict=true") {
+      return { ok: false, status: 503, json: async () => ({ detail: {
+        reason: "mode_read_uncertain", message: "Stored preference could not be read.",
+      } }) };
+    }
+    return { ok: true, json: async () => ({ mode: failedWrite ? "easy" : "expert", chosen: true }) };
+  });
+  const subject = createLearnerSession({ adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph }),
+    loadMode: httpMode.loadMode, saveMode: httpMode.saveMode,
+  }, clock });
+  await subject.start();
+  await subject.dispatch({ type: "SET_MODE", mode: "easy" });
+  assert.match(subject.getSnapshot().modeError, /could not be confirmed.*Reload this project/);
+  assert.doesNotMatch(subject.getSnapshot().modeError, /saved choice is shown/);
+  assert.deepEqual(requests.map(({ url }) => url), ["/api/mode", "/api/mode", "/api/mode?strict=true"]);
+  const strictRequest = requests.at(-1).options;
+  assert.equal("strict" in strictRequest, false, "strict is a URL contract, not a fetch option");
+  assert.ok(strictRequest.signal instanceof AbortSignal, "strict GET retains lifecycle cancellation");
+  subject.dispose();
+}
 
 // A failing status read must not blank the mode that loaded beside it.
 const statusFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "expert" });
@@ -2010,6 +2186,7 @@ assert.equal(
   "a superseded project cannot report its mode write as durable",
 );
 const modeRaceSnapshot = modeRaceSession.getSnapshot();
+assert.equal(modeRaceSnapshot.modeError, "", "released mode write emits no save failure");
 assert.equal(
   modeRaceSnapshot.mode,
   "expert",
@@ -2679,6 +2856,37 @@ assert.equal(
   1,
   "a clear that outlives its session must not refetch into the next one",
 );
+
+// An obsolete clear must not commit even once into a hydrated replacement.
+for (const refusal of [false, true]) {
+  let settleClear;
+  let replacement = false;
+  const oldClear = new Promise((resolve, reject) => {
+    settleClear = () => refusal ? reject(new Error("old clear refused")) : resolve({});
+  });
+  const isolated = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter({ graph }),
+      clearProgress: () => oldClear,
+      fetchVisited: async () => ({ visited: replacement ? ["b"] : ["a"] }),
+    },
+    clock,
+  });
+  await isolated.start();
+  const pending = isolated.dispatch({ type: "CLEAR_PROGRESS" });
+  replacement = true;
+  await isolated.start();
+  const before = isolated.getSnapshot();
+  let commits = 0;
+  const unsubscribe = isolated.subscribe(() => { commits += 1; });
+  settleClear();
+  await pending;
+  assert.equal(isolated.getSnapshot(), before, "obsolete clear leaves replacement snapshot untouched");
+  assert.deepEqual([...before.visitedRegionIds], ["b"]);
+  assert.equal(commits, 0, "obsolete clear emits no replacement notification");
+  unsubscribe();
+  isolated.dispose();
+}
 
 // HTTP adapter: exact URLs and the 202 mapping.
 const phaseCCalls = [];

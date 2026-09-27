@@ -72,6 +72,7 @@ export function createLearnerSession({
     sidebarOpen: false,
     legendOpen: false,
     mode: "easy",
+    modeError: "",
     // Three states, not two: null means hydration hasn't resolved yet
     // (unknown), false means the backend confirmed nobody has ever chosen,
     // true means chosen (by the learner, or resolved after a mode-fetch
@@ -81,6 +82,7 @@ export function createLearnerSession({
   });
   let lifecycle = 0;
   let modeLifecycle = 0;
+  let confirmedMode = null;
   let graphController = null;
   let studyController = null;
   let explanationController = null;
@@ -159,10 +161,11 @@ export function createLearnerSession({
   async function start() {
     lifecycle += 1;
     const requestLifecycle = lifecycle;
+    confirmedMode = null;
     abortController(graphController);
     graphController = new AbortController();
     const controller = graphController;
-    commit({ status: "loading", error: "" });
+    commit({ status: "loading", error: "", modeError: "" });
     let pickerState;
     try {
       pickerState = await adapter.loadPickerState({ signal: controller.signal });
@@ -235,6 +238,7 @@ export function createLearnerSession({
       const validMode = stored?.mode === "easy" || stored?.mode === "expert";
       if (validMode) {
         applyMode(stored.mode, stored.chosen === true);
+        confirmedMode = { mode: stored.mode, chosen: stored.chosen === true, layer: snapshot.layer };
       } else if (snapshot.modeChosen === null) {
         // Resolves the unknown (null) state when the response can't be
         // trusted — a thrown request, or a payload with a mode value the
@@ -257,7 +261,14 @@ export function createLearnerSession({
     // is a control failure the header shows inline, not a reason to blank the
     // galaxy the learner is still looking at.
     const requestLifecycle = lifecycle;
-    await adapter.clearProgress({});
+    try {
+      await adapter.clearProgress({});
+    } catch (requestError) {
+      if (requestLifecycle !== lifecycle) return snapshot;
+      throw requestError;
+    }
+    // Refuse obsolete work before its first commit, including trail clearing.
+    if (requestLifecycle !== lifecycle) return snapshot;
     // The server clears the trail with the understood set (one caller owns
     // both halves), so the local mirror follows or the sky would keep drawing
     // routes to places the store no longer remembers.
@@ -266,7 +277,6 @@ export function createLearnerSession({
     // project released or switched across that await owns the session now, and
     // reloading into it would either resurrect the old graph or, against an
     // unbound server, paint a 409 over the picker.
-    if (requestLifecycle !== lifecycle) return snapshot;
     lifecycle += 1;
     const nextLifecycle = lifecycle;
     abortController(graphController);
@@ -447,6 +457,7 @@ export function createLearnerSession({
       pendingDawnRegionId: null,
       languageFocus: "all",
       llmStatus: null,
+      modeError: "",
       picker: null,
       mapData: null,
       mapError: "",
@@ -778,8 +789,6 @@ export function createLearnerSession({
   async function setMode(mode, layerOverride) {
     if (mode !== "easy" && mode !== "expert") return false;
     const previous = snapshot.mode;
-    const previousChosen = snapshot.modeChosen;
-    const previousLayer = snapshot.layer;
     // Not a plain mode-equality check: confirming the current mode is exactly
     // how a first-run learner leaves the never-chosen state, so the choice
     // still has to be written when only modeChosen changes.
@@ -795,24 +804,47 @@ export function createLearnerSession({
     // settles, so the project generation has to be re-checked across the await
     // as well. Both sides below belong to the project that issued the write.
     const requestLifecycle = lifecycle;
+    commit({ modeError: "" });
     applyMode(mode, true, layerOverride);
     try {
       await adapter.saveMode(mode, { signal: controller.signal });
     } catch (requestError) {
-      // Rolled back rather than left optimistically committed: a snapshot that
-      // silently disagrees with disk is the undetectable kind of wrong. Rolling
-      // back into a *different* project would be worse still, hence the
-      // lifecycle re-check beside the controller identity one.
+      // A failed PUT may have partially persisted before its error. Re-read
+      // the server instead of trusting any preceding optimistic snapshot.
       if (
-        modeController === controller &&
-        requestLifecycle === lifecycle &&
-        !isAbortError(requestError)
+        modeController !== controller || requestLifecycle !== lifecycle ||
+        controller.signal.aborted || isAbortError(requestError)
+      ) return false;
+      let stored;
+      try {
+        stored = await adapter.loadMode({ strict: true, signal: controller.signal });
+      } catch {
+        // The uncertainty message below never claims a successful rollback.
+      }
+      if (
+        modeController !== controller || requestLifecycle !== lifecycle ||
+        controller.signal.aborted
+      ) return false;
+      if (
+        (stored?.mode === "easy" || stored?.mode === "expert") &&
+        typeof stored.chosen === "boolean"
       ) {
-        applyMode(previous, previousChosen, previousLayer);
+        const layer = snapshot.layerChosen ? snapshot.layer
+          : confirmedMode?.mode === stored.mode ? confirmedMode.layer : undefined;
+        applyMode(stored.mode, stored.chosen, layer);
+        confirmedMode = { mode: stored.mode, chosen: stored.chosen, layer: snapshot.layer };
+        commit({
+          modeError: stored.chosen
+            ? "Explanation save did not finish. Your saved choice is shown; choose again to retry."
+            : "Launch was not saved. Your choice is still here; try again.",
+        });
+      } else {
+        commit({ modeError: "The explanation choice could not be confirmed. Reload this project before choosing again." });
       }
       return false;
     }
     if (requestLifecycle !== lifecycle || controller.signal.aborted) return false;
+    confirmedMode = { mode, chosen: true, layer: snapshot.layer };
     // Lens, checks, and the Tier 0 summary already carry both voices and
     // switch locally from the existing payload -- only narration is generated
     // per mode, so only narration is worth a refetch here. It runs after the
@@ -1243,8 +1275,8 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ node_id: nodeId }),
       });
     },
-    loadMode(options = {}) {
-      return request("/api/mode", "Mode request", options);
+    loadMode({ strict = false, ...options } = {}) {
+      return request(strict ? "/api/mode?strict=true" : "/api/mode", "Mode request", options);
     },
     saveMode(mode, options = {}) {
       return request("/api/mode", "Mode update", {

@@ -392,13 +392,16 @@ input:focus-visible {
 .mode-toggle {
   grid-column: 1 / -1;
   grid-row: 4;
-  display: flex;
+  display: block;
   min-width: 0;
-  align-items: center;
-  gap: var(--cm-space-sm);
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.mode-toggle__error {
+  clear: both;
+  margin-block-start: var(--cm-space-xs);
 }
 
 /* Floated, because a <legend> renders above its fieldset no matter what the
@@ -3101,6 +3104,13 @@ input:focus-visible {
 
   .check-options {
     margin-block-start: var(--cm-space-md);
+  }
+
+  /* Direct-call checks can have four two-line answers at phone widths. Keep
+     their 44px input targets while spending less vertical padding, so the
+     question and every answer clear the sticky submit action at 320px. */
+  .check-options label {
+    padding-block: var(--cm-space-2xs);
   }
 }
 

@@ -3,8 +3,8 @@ title: Quickstart
 description: From one command to your first lit star system.
 ---
 
-:::note[v0.23.0 release]
-The commands below install the same verified nine-language v0.23.0 package shown
+:::note[v0.24.0 release]
+The commands below install the same verified nine-language v0.24.0 package shown
 in the product pictures. [Direct downloads are available too](/Codemble/download/#direct-artifacts).
 :::
 
@@ -22,12 +22,12 @@ No Homebrew? Use the official installer — `curl -LsSf
 https://astral.sh/uv/install.sh | sh` on macOS and Linux, or `powershell
 -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` on
 Windows. If you would rather install Codemble permanently, `pipx install
-codemble==0.23.0` needs no uv at all.
+codemble==0.24.0` needs no uv at all.
 
 ## 2. Point it at your project
 
 ```bash
-uvx --from codemble==0.23.0 codemble
+uvx --from codemble==0.24.0 codemble
 ```
 
 Codemble opens your browser to an in-app picker: browse your home folders or
@@ -36,7 +36,7 @@ TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixtures of those languages. To s
 picker, pass a path directly:
 
 ```bash
-uvx --from codemble==0.23.0 codemble ./my-project
+uvx --from codemble==0.24.0 codemble ./my-project
 ```
 
 Codemble parses locally, chooses a free localhost port, and opens the galaxy.
@@ -51,7 +51,7 @@ busiest-first subdirectories as buttons and accepts a typed path, right in the
 UI. From the CLI, select the scope yourself:
 
 ```bash
-uvx --from codemble==0.23.0 codemble --path ./my-project/src
+uvx --from codemble==0.24.0 codemble --path ./my-project/src
 ```
 
 ## 3. Find Home

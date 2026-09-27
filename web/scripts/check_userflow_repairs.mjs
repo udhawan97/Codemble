@@ -37,7 +37,15 @@ try {
   const project = await startCodemble({ project: repoRoot, dataRoot: dataRoots[0] });
   const picker = await startCodemble({ project: null, dataRoot: dataRoots[1] });
 
-  const engines = [["chromium", chromium], ["webkit", webkit]];
+  const engineCatalog = new Map([["chromium", chromium], ["webkit", webkit]]);
+  const requestedEngines = (process.env.CODEMBLE_BROWSER_ENGINES || "chromium,webkit")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (!requestedEngines.length || requestedEngines.some((engine) => !engineCatalog.has(engine))) {
+    throw new Error("CODEMBLE_BROWSER_ENGINES must contain chromium and/or webkit.");
+  }
+  const engines = requestedEngines.map((engine) => [engine, engineCatalog.get(engine)]);
   for (const [engine, browserType] of engines) {
     const launchDataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-${engine}-`));
     dataRoots.push(launchDataRoot);
@@ -50,6 +58,7 @@ try {
       await checkGuidedLaunchAndLanding(browser, engine, launch.url);
       await checkLaunchChoiceMatrix(browser, engine, launchProjects.ready);
       await checkRefusedLaunch(browser, engine, launchProjects.ready);
+      await checkBoundedImpact(browser, engine);
       await checkGuidedHomeCalibration(browser, engine, launchProjects);
       await checkHomeGeometry(browser, engine, project.url);
       await checkSystemNavigator(browser, engine, project.url);
@@ -141,6 +150,7 @@ async function checkGuidedLaunchAndLanding(browser, engine, url) {
       `${engine}: launch explanation choice did not reach the persistent register`,
     );
 
+    await checkModeSaveRefusal(page, page.locator(".mode-toggle"), "audience-mode", engine);
     await page.locator(".first-flight").getByRole("button", { name: "Land and learn" }).click();
     const study = page.locator(".study-preview");
     await study.waitFor();
@@ -150,6 +160,7 @@ async function checkGuidedLaunchAndLanding(browser, engine, url) {
       true,
       `${engine}: landing did not retain the expert explanation`,
     );
+    await checkModeSaveRefusal(page, study, "landing-register", engine);
     await study.locator('input[name="landing-register"][value="easy"]').check();
     assert.equal(
       await study.locator('input[name="landing-register"][value="easy"]').isChecked(),
@@ -172,6 +183,118 @@ async function checkGuidedLaunchAndLanding(browser, engine, url) {
     results.push(`${engine} guided launch and Easy/Expert landing`);
   } finally {
     await page.close();
+  }
+}
+
+async function checkModeSaveRefusal(page, surface, radioName, engine) {
+  const easy = surface.locator(`input[name="${radioName}"][value="easy"]`);
+  const expert = surface.locator(`input[name="${radioName}"][value="expert"]`);
+  const refuseMode = async (route) => {
+    if (route.request().method() === "PUT") {
+      await route.fulfill({ status: 503, body: "private backend detail" });
+    } else await route.continue();
+  };
+  await page.route("**/api/mode", refuseMode);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await easy.focus();
+    await easy.press("Space");
+    const alert = surface.getByRole("alert").filter({ hasText: "Explanation save did not finish" });
+    await alert.waitFor();
+    assert.match(await alert.innerText(), /retry/);
+    assert.doesNotMatch(await alert.innerText(), /private backend detail/);
+    assert.equal(await expert.isChecked(), true, "refusal restores committed register");
+    assert.equal(await easy.evaluate((input) => document.activeElement === input), true, "refusal does not steal focus");
+  }
+  await page.unroute("**/api/mode", refuseMode);
+  const saved = page.waitForResponse((response) => response.url().endsWith("/api/mode") && response.request().method() === "PUT");
+  await easy.press("Space");
+  assert.equal((await saved).ok(), true);
+  await waitFor(async () => await easy.isChecked());
+  assert.equal(await surface.getByRole("alert").filter({ hasText: "Explanation save did not finish" }).count(), 0);
+  const restore = page.waitForResponse((response) => response.url().endsWith("/api/mode") && response.request().method() === "PUT");
+  await expert.check();
+  await restore;
+  // An unreadable existing store rejects strict reconciliation. A tolerant
+  // startup default must not be announced as the saved preference.
+  let strictReads = 0;
+  const refuseStrictRead = async (route) => {
+    strictReads += 1;
+    await route.fulfill({ status: 503, json: { detail: {
+      reason: "mode_read_uncertain", message: "Stored preference could not be read.",
+    } } });
+  };
+  await page.route("**/api/mode", refuseMode);
+  await page.route("**/api/mode?strict=true", refuseStrictRead);
+  await easy.check();
+  const uncertain = surface.getByRole("alert").filter({ hasText: "could not be confirmed" });
+  await uncertain.waitFor();
+  assert.match(await uncertain.innerText(), /Reload this project/);
+  assert.doesNotMatch(await uncertain.innerText(), /saved choice is shown/);
+  assert.equal(strictReads, 1, "failed PUT uses the strict mode read");
+  await page.unroute("**/api/mode", refuseMode);
+  await page.unroute("**/api/mode?strict=true", refuseStrictRead);
+  const recovered = page.waitForResponse((response) => response.url().endsWith("/api/mode") && response.request().method() === "PUT");
+  await expert.check();
+  await recovered;
+  assert.equal(await uncertain.count(), 0);
+  results.push(`${engine} ${radioName} refusal, keyboard retry, focus, strict-read uncertainty and recovery`);
+}
+
+async function checkBoundedImpact(browser, engine) {
+  const project = mkdtempSync(path.join(tmpdir(), "codemble-impact-"));
+  sourceRoots.push(project);
+  writeFileSync(path.join(project, "main.py"), "import importlib\n\ndef main():\n    return importlib.import_module('leaf')\n\nif __name__ == '__main__':\n    main()\n");
+  writeFileSync(path.join(project, "leaf.py"), "import helper\n");
+  writeFileSync(path.join(project, "helper.py"), "import importlib\nVALUE = 42\nimportlib.import_module('main')\n");
+  const dataRoot = mkdtempSync(path.join(tmpdir(), "codemble-impact-data-"));
+  dataRoots.push(dataRoot);
+  const server = await startCodemble({ project, dataRoot });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+  page.setDefaultTimeout(20_000);
+  try {
+    await gotoApp(page, server.url);
+    await settleApp(page);
+    await page.getByRole("button", { name: "Diagram", exact: true }).click();
+    await page.setViewportSize({ width: 320, height: 900 });
+    const graphBefore = await page.evaluate(async () => fetch("/api/graph").then((response) => response.json()));
+    for (const [file, empty] of [["leaf.py", "No dependents found in this parser map."], ["helper.py", "No dependencies found in this parser map."]]) {
+      await page.keyboard.press("Meta+k");
+      const finder = page.locator(".module-finder[open]");
+      await finder.waitFor();
+      const search = finder.getByRole("searchbox", { name: "Find a module by name or path" });
+      await search.fill(file);
+      await search.press("Enter");
+      await finder.waitFor({ state: "detached" });
+      const read = page.getByRole("button", { name: "Read the source", exact: true });
+      await read.waitFor();
+      await read.click();
+      const study = page.locator(".study-preview");
+      await study.locator(".journey-support > summary").click();
+      await study.getByText(empty, { exact: true }).waitFor();
+      assert.doesNotMatch(await study.locator(".impact-widget").innerText(), /Nothing else in your code|does not rely on anything else/);
+      assert.equal(await study.evaluate((panel) => panel.scrollWidth <= panel.clientWidth + 1), true);
+      // 640 physical CSS pixels at 200% effective scale retains a 320px
+      // content width; keep the same visible claim and no horizontal clipping.
+      await page.setViewportSize({ width: 640, height: 900 });
+      await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
+      await study.getByText(empty, { exact: true }).waitFor();
+      assert.equal(await study.evaluate((panel) => panel.scrollWidth <= panel.clientWidth + 1), true);
+      await page.evaluate(() => { document.documentElement.style.zoom = ""; });
+      await page.setViewportSize({ width: 320, height: 900 });
+      const expert = study.locator('input[name="landing-register"][value="expert"]');
+      await expert.check();
+      await study.getByText(file === "leaf.py" ? "No parser-proven dependents." : "No parser-proven dependencies.", { exact: true }).waitFor();
+      await study.locator('input[name="landing-register"][value="easy"]').check();
+      await study.locator(".journey-support > summary").click();
+      await study.getByText(empty, { exact: true }).waitFor();
+      await closeStudy(page);
+    }
+    const graphAfter = await page.evaluate(async () => fetch("/api/graph").then((response) => response.json()));
+    assert.deepEqual(graphAfter, graphBefore, "wording and mode switches preserve parser graph");
+    results.push(`${engine} dynamic import and both one-sided impact states, no-key Study, 320px and mode switching`);
+  } finally {
+    await page.close();
+    await stopChild(server.child);
   }
 }
 
@@ -235,52 +358,93 @@ async function checkLaunchChoiceMatrix(browser, engine, project) {
 }
 
 async function checkRefusedLaunch(browser, engine, project) {
-  const dataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-refused-${engine}-`));
-  dataRoots.push(dataRoot);
-  const launch = await startCodemble({ project, dataRoot });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  page.setDefaultTimeout(20_000);
-  try {
-    await page.route("**/api/mode", async (route) => {
-      if (route.request().method() === "PUT") {
-        await route.fulfill({ status: 503, body: "mode write refused" });
-        return;
+  for (const width of [320, 1440]) {
+    for (const voyage of ["explore", "guided"]) {
+      for (const register of ["easy", "expert"]) {
+        const dataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-refused-${engine}-`));
+        dataRoots.push(dataRoot);
+        const launch = await startCodemble({ project, dataRoot });
+        const page = await browser.newPage({ viewport: { width, height: 900 } });
+        page.setDefaultTimeout(20_000);
+        let refuse = true;
+        let pending;
+        const payloads = [];
+        try {
+          await page.route("**/api/mode", async (route) => {
+            if (route.request().method() === "PUT") {
+              payloads.push(route.request().postDataJSON());
+              if (refuse) {
+                await new Promise((resolve) => { pending = resolve; });
+                await route.fulfill({ status: 503, body: "mode write refused" });
+                return;
+              }
+            }
+            await route.continue();
+          });
+          await gotoApp(page, launch.url);
+          const gate = page.locator(".mode-gate[open]");
+          await gate.waitFor();
+          await completeModeGate(gate, { voyage, register });
+          await waitFor(() => Boolean(pending));
+          assert.equal(await page.locator(".flight-hud").count(), 0, "flight must wait for save");
+          pending();
+          await gate.getByRole("alert").waitFor();
+          assert.match(await gate.getByRole("alert").innerText(), /Launch was not saved/);
+          const assertSelection = async (expectedVoyage, expectedRegister) => {
+            assert.equal(await gate.locator('input[name="first-voyage"]:checked').inputValue(), expectedVoyage);
+            assert.equal(await gate.locator('input[name="first-register"]:checked').inputValue(), expectedRegister);
+            assert.equal(await gate.getByRole("button", {
+              name: expectedVoyage === "guided" ? "Begin first flight" : "Open the galaxy", exact: true,
+            }).count(), 1);
+            assert.equal(await gate.evaluate((dialog) => dialog.contains(document.activeElement)), true);
+          };
+          await assertSelection(voyage, register);
+          assert.equal(await page.locator(".flight-hud").count(), 0);
+          assert.deepEqual(await page.evaluate(async () => fetch("/api/mode").then((response) => response.json())),
+            { mode: "easy", chosen: false });
+
+          // Retry without touching either radio. A delayed second refusal must
+          // preserve the same visible choices and the same submitted register.
+          pending = null;
+          await gate.getByRole("button", { name: voyage === "guided" ? "Begin first flight" : "Open the galaxy", exact: true }).press("Enter");
+          await waitFor(() => Boolean(pending));
+          pending();
+          await gate.getByRole("alert").waitFor();
+          await assertSelection(voyage, register);
+          assert.deepEqual(payloads.map((body) => body.mode), [register, register]);
+
+          refuse = false;
+          let finalVoyage = voyage;
+          let finalRegister = register;
+          if (width === 1440 && voyage === "explore" && register === "easy") {
+            finalVoyage = "guided";
+            finalRegister = "expert";
+            // Same-turn pointer activation: editing after refusal must update
+            // the payload before a React render can settle the action label.
+            await gate.evaluate((dialog) => {
+              dialog.querySelector('input[value="guided"]').click();
+              dialog.querySelector('input[value="expert"]').click();
+              dialog.querySelector(".mode-gate__launch").click();
+            });
+          } else {
+            await gate.getByRole("button", { name: voyage === "guided" ? "Begin first flight" : "Open the galaxy", exact: true }).click();
+          }
+          await gate.waitFor({ state: "detached" });
+          if (finalVoyage === "guided") await page.locator(".flight-hud").waitFor();
+          else assert.equal(await page.locator(".flight-hud").count(), 0);
+          await waitFor(async () => (await page.evaluate(async () => fetch("/api/mode").then((response) => response.json()))).chosen);
+          assert.deepEqual(payloads.map((body) => body.mode), [register, register, finalRegister]);
+          await page.reload();
+          await waitFor(async () => await page.locator(".app-shell").getAttribute("data-mode") === finalRegister);
+          assert.equal(await gate.count(), 0);
+          results.push(`${engine} ${width}px refused ${voyage}/${register}, repeated retry and reload`);
+        } finally {
+          pending?.();
+          await page.close();
+          await stopChild(launch.child);
+        }
       }
-      await route.continue();
-    });
-    await gotoApp(page, launch.url);
-    const gate = page.locator(".mode-gate[open]");
-    await gate.waitFor();
-    await completeModeGate(gate, { voyage: "guided", register: "expert" });
-    await gate.waitFor();
-    await gate.getByRole("alert").waitFor();
-    assert.match(
-      await gate.getByRole("alert").innerText(),
-      /Launch was not saved/,
-      `${engine}: refused launch did not explain the retry`,
-    );
-    assert.equal(
-      await page.locator(".flight-hud").count(),
-      0,
-      `${engine}: refused mode persistence still started First Flight`,
-    );
-    assert.equal(
-      await gate.evaluate((dialog) => dialog.contains(document.activeElement)),
-      true,
-      `${engine}: refused launch reopened without dialog-owned focus`,
-    );
-    assert.deepEqual(
-      await page.evaluate(async () => ({
-        mode: document.querySelector(".app-shell")?.getAttribute("data-mode"),
-        stored: await fetch("/api/mode").then((response) => response.json()),
-      })),
-      { mode: "easy", stored: { mode: "easy", chosen: false } },
-      `${engine}: refused launch did not roll back to server-confirmed state`,
-    );
-    results.push(`${engine} refused launch stays gated`);
-  } finally {
-    await page.close();
-    await stopChild(launch.child);
+    }
   }
 }
 
@@ -1241,6 +1405,14 @@ async function startCodemble({ project, dataRoot }) {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`Codemble did not become ready at ${url}:\n${output}`);
+}
+
+async function waitFor(predicate) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (await predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error("Timed out waiting for controlled userflow response");
 }
 
 function openPort() {

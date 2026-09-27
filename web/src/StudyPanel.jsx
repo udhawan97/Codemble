@@ -12,6 +12,7 @@ export function StudyPanel({
   study,
   error,
   mode,
+  modeError,
   explanation,
   explanationLoading,
   explanationError,
@@ -126,6 +127,7 @@ export function StudyPanel({
             ))}
           </fieldset>
         ) : null}
+        {modeError ? <p className="mode-gate__error" role="alert">{modeError}</p> : null}
       </header>
 
       {error ? (
@@ -448,7 +450,7 @@ function ImpactWidget({ impact, mode, onSelectNode }) {
           title={easy ? "Change this and these change too" : "Change this → affected"}
           empty={
             easy
-              ? "Nothing else in your code would notice if you changed this."
+              ? "No dependents found in this parser map."
               : "No parser-proven dependents."
           }
           items={affects}
@@ -459,7 +461,7 @@ function ImpactWidget({ impact, mode, onSelectNode }) {
           title={easy ? "This needs these to work" : "Depends on → breaks if changed"}
           empty={
             easy
-              ? "This does not rely on anything else in your code."
+              ? "No dependencies found in this parser map."
               : "No parser-proven dependencies."
           }
           items={depends}

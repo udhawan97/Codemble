@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codemble"
-version = "0.23.0"
+version = "0.24.0"
 description = "A learning game that turns the code AI wrote for you into a galaxy you light up by understanding it."
 readme = "README.md"
 license = "Apache-2.0"
@@ -25,12 +25,10 @@ classifiers = [
   "Topic :: Education",
 ]
 dependencies = [
-  # Direct, not transitive, and the floor is load-bearing. Narration runs on
-  # `anyio.to_thread.run_sync(..., abandon_on_cancel=True)`, and that keyword
-  # was named `cancellable` until anyio 4.1 -- so on any older resolution every
-  # /explanation request raises TypeError before it reaches a single `except`.
-  # Codemble only ever received anyio through Starlette, whose own constraint
-  # is `anyio>=3.6.2,<5` and therefore permits exactly that.
+  # Direct, not transitive, and the floor is load-bearing. Narration admission
+  # and deadlines use AnyIO cancellation checkpoints and fail-after scopes,
+  # while provider work runs in Codemble's bounded executor. Keep the runtime
+  # capability explicit instead of inheriting whatever Starlette resolves.
   "anyio>=4.1",
   # Persistent share snapshots use one reviewed AEAD implementation rather
   # than assembling encryption and authentication from lower-level primitives.

@@ -77,10 +77,16 @@ try {
       `no-change activation ${noChangeActivationMs.toFixed(1)}ms exceeds ${BUDGETS.noChangeActivationMs}ms`,
     );
 
-    for (const [engine, browserType] of [
-      ["chromium", chromium],
-      ["webkit", webkit],
-    ]) {
+    const engineCatalog = new Map([["chromium", chromium], ["webkit", webkit]]);
+    const requestedEngines = (process.env.CODEMBLE_BROWSER_ENGINES || "chromium,webkit")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (!requestedEngines.length || requestedEngines.some((engine) => !engineCatalog.has(engine))) {
+      throw new Error("CODEMBLE_BROWSER_ENGINES must contain chromium and/or webkit.");
+    }
+    for (const engine of requestedEngines) {
+      const browserType = engineCatalog.get(engine);
       currentEngine = engine;
       const browser = await browserType.launch({ headless: true });
       try {

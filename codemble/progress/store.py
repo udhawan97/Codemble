@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
+import tempfile
+import threading
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
+from weakref import WeakValueDictionary
 
 from codemble.adapters.base import Graph
 from codemble.paths import data_dir
@@ -17,10 +24,60 @@ _MODES = frozenset({"easy", "expert"})
 # once per data directory. Project payloads still win, which is what keeps the
 # header toggle a genuine per-project override.
 _LEARNER_FILE = "learner.json"
+_MUTATION_TIMEOUT_SECONDS = 5.0
+_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
+_LOCKS_GUARD = threading.Lock()
+
+
+def _root_lock(root: Path) -> threading.Lock:
+    key = os.path.normcase(str(root.resolve()))
+    with _LOCKS_GUARD:
+        lock = _LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _LOCKS[key] = lock
+        return lock
+
+
+def _file_lock(file, *, unlock: bool = False) -> None:
+    """Lock one stable file on supported POSIX/Windows hosts; never fall back."""
+    if os.name == "posix":
+        import fcntl
+
+        fcntl.flock(file.fileno(), fcntl.LOCK_UN if unlock else fcntl.LOCK_EX | fcntl.LOCK_NB)
+    elif os.name == "nt":
+        import msvcrt
+
+        file.seek(0)
+        msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK if unlock else msvcrt.LK_NBLCK, 1)
+    else:
+        raise OSError(errno.ENOSYS, "Progress locking is unavailable on this platform.")
 
 
 class UnknownRegionError(KeyError):
     """Raised when progress is requested for a region outside the graph."""
+
+
+class ModeSaveUncertainError(OSError):
+    """A failed compensating write leaves the selected mode unconfirmed."""
+
+
+class ModeReadUncertainError(OSError):
+    """Existing preference storage cannot establish a confirmed mode."""
+
+
+def _mode_document(path: Path) -> dict[str, object] | None:
+    """Missing initial storage is distinct from malformed/inaccessible storage."""
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        if path.is_symlink():
+            raise  # A broken existing storage link is not initial absence.
+        return None
+    payload = json.loads(raw)
+    if not isinstance(payload, dict):
+        raise TypeError("Preference storage is not an object.")
+    return payload
 
 
 class ProgressStore:
@@ -32,6 +89,7 @@ class ProgressStore:
         project_key = hashlib.sha256(graph.project_root.encode()).hexdigest()[:20]
         self.path = self._root / f"{project_key}.json"
         self._learner_path = self._root / _LEARNER_FILE
+        self._mutation_lock = _root_lock(self._root)
         self._signatures = _region_signatures(graph)
 
     def understood_regions(self) -> frozenset[str]:
@@ -53,14 +111,15 @@ class ProgressStore:
         signature = self._signatures.get(region_id)
         if signature is None:
             raise UnknownRegionError(region_id)
-        payload = self._read()
-        saved = payload.get("regions")
-        regions = saved if isinstance(saved, dict) else {}
-        regions[region_id] = {"signature": signature}
-        payload["schema_version"] = _SCHEMA_VERSION
-        payload["project_root"] = self._graph.project_root
-        payload["regions"] = dict(sorted(regions.items()))
-        self._write(payload)
+        with self._mutation():
+            payload = self._read()
+            saved = payload.get("regions")
+            regions = saved if isinstance(saved, dict) else {}
+            regions[region_id] = {"signature": signature}
+            payload["schema_version"] = _SCHEMA_VERSION
+            payload["project_root"] = self._graph.project_root
+            payload["regions"] = dict(sorted(regions.items()))
+            self._write(payload)
 
     def visited_regions(self) -> frozenset[str]:
         """Return the regions this learner has actually travelled to.
@@ -85,14 +144,15 @@ class ProgressStore:
 
         if region_id not in self._signatures:
             raise UnknownRegionError(region_id)
-        payload = self._read()
-        saved = payload.get("visited")
-        visited = set(saved) if isinstance(saved, list) else set()
-        visited.add(region_id)
-        payload["schema_version"] = _SCHEMA_VERSION
-        payload["project_root"] = self._graph.project_root
-        payload["visited"] = sorted(visited)
-        self._write(payload)
+        with self._mutation():
+            payload = self._read()
+            saved = payload.get("visited")
+            visited = set(saved) if isinstance(saved, list) else set()
+            visited.add(region_id)
+            payload["schema_version"] = _SCHEMA_VERSION
+            payload["project_root"] = self._graph.project_root
+            payload["visited"] = sorted(visited)
+            self._write(payload)
 
     def clear(self) -> None:
         """Forget this project's understood regions and trail, keeping preferences.
@@ -104,12 +164,13 @@ class ProgressStore:
         same two-owners-of-one-fact shape as the 2026-08-01 quiz defect.
         """
 
-        payload = self._read()
-        payload["schema_version"] = _SCHEMA_VERSION
-        payload["project_root"] = self._graph.project_root
-        payload["regions"] = {}
-        payload["visited"] = []
-        self._write(payload)
+        with self._mutation():
+            payload = self._read()
+            payload["schema_version"] = _SCHEMA_VERSION
+            payload["project_root"] = self._graph.project_root
+            payload["regions"] = {}
+            payload["visited"] = []
+            self._write(payload)
 
     def mode(self) -> str:
         """Return the learner's audience mode; this never affects progress."""
@@ -130,15 +191,61 @@ class ProgressStore:
 
         return self._read().get("mode") in _MODES or self._learner_mode() is not None
 
+    def confirmed_mode_state(self) -> dict[str, object]:
+        """Read a coherent recovery snapshot without tolerant startup defaults.
+
+        A project override wins without consulting the learner file. Otherwise
+        a missing learner file means first launch; an existing unreadable or
+        invalid file cannot truthfully confirm a default. The same root lock as
+        writers prevents a read between the project and learner replacements.
+        """
+        try:
+            with self._mutation():
+                project = _mode_document(self.path)
+                if project is not None:
+                    if (
+                        project.get("schema_version") != _SCHEMA_VERSION
+                        or project.get("project_root") != self._graph.project_root
+                        or not isinstance(project.get("regions"), dict)
+                    ):
+                        raise ValueError("Invalid project preference storage.")
+                    if "mode" in project:
+                        mode = project["mode"]
+                        if not isinstance(mode, str) or mode not in _MODES:
+                            raise ValueError("Invalid project explanation mode.")
+                        return {"mode": mode, "chosen": True}
+                learner = _mode_document(self._learner_path)
+                if learner is None:
+                    return {"mode": "easy", "chosen": False}
+                mode = learner.get("mode")
+                if not isinstance(mode, str) or mode not in _MODES:
+                    raise ValueError("Invalid learner explanation mode.")
+                return {"mode": mode, "chosen": True}
+        except (OSError, ValueError, TypeError) as error:
+            raise ModeReadUncertainError("Saved explanation choice could not be read.") from error
+
     def set_mode(self, mode: str) -> None:
         """Persist the audience mode beside progress without touching signatures."""
 
         if mode not in _MODES:
             raise ValueError("Mode must be 'easy' or 'expert'.")
-        payload = self._read()
-        payload["mode"] = mode
-        self._write(payload)
-        self._write_learner_mode(mode)
+        with self._mutation():
+            previous = self._read()
+            payload = {**previous, "mode": mode}
+            self._write(payload)
+            try:
+                self._write_learner_mode(mode)
+            except OSError:
+                # Ordinary second-write failure must not return refusal while
+                # leaving the new project mode persisted. This is compensating
+                # rollback, not crash-atomic storage across two JSON files.
+                try:
+                    self._write(previous)
+                except OSError as rollback_error:
+                    raise ModeSaveUncertainError(
+                        "Mode save and rollback failed; reload this project."
+                    ) from rollback_error
+                raise
 
     def _learner_mode(self) -> str | None:
         """Read the last audience answered on any project in this data dir."""
@@ -153,16 +260,7 @@ class ProgressStore:
         return value if value in _MODES else None
 
     def _write_learner_mode(self, mode: str) -> None:
-        self._root.mkdir(parents=True, exist_ok=True)
-        temporary = self._learner_path.with_suffix(f".{os.getpid()}.tmp")
-        try:
-            temporary.write_text(
-                json.dumps({"mode": mode}, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
-            temporary.replace(self._learner_path)
-        finally:
-            temporary.unlink(missing_ok=True)
+        self._write_json(self._learner_path, {"mode": mode})
 
     def selected_entrypoint(self) -> str | None:
         """Return the learner's persisted Home choice, if one was stored.
@@ -178,9 +276,10 @@ class ProgressStore:
     def set_selected_entrypoint(self, node_id: str) -> None:
         """Persist the learner's Home choice beside progress."""
 
-        payload = self._read()
-        payload["entrypoint"] = node_id
-        self._write(payload)
+        with self._mutation():
+            payload = self._read()
+            payload["entrypoint"] = node_id
+            self._write(payload)
 
     def hydrated_graph(self) -> Graph:
         """Project valid progress onto immutable render data."""
@@ -209,16 +308,57 @@ class ProgressStore:
         return payload
 
     def _write(self, payload: dict[str, object]) -> None:
+        self._write_json(self.path, payload)
+
+    def _write_json(self, path: Path, payload: dict[str, object]) -> None:
         self._root.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_suffix(f".{os.getpid()}.tmp")
+        temporary: Path | None = None
         try:
-            temporary.write_text(
-                json.dumps(payload, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
-            temporary.replace(self.path)
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=self._root,
+                prefix=f".{path.name}.", suffix=".tmp", delete=False,
+            ) as file:
+                temporary = Path(file.name)
+                file.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            temporary.replace(path)
         finally:
-            temporary.unlink(missing_ok=True)
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+
+    @contextmanager
+    def _mutation(self) -> Iterator[None]:
+        """Own read/modify/replace across stores and CLI processes.
+
+        One root lock includes learner defaults. Always acquire the thread lock
+        before the stable OS lock. Never unlink the lock file: existing waiters
+        must continue to name the same inode after the owner exits.
+        """
+        deadline = time.monotonic() + _MUTATION_TIMEOUT_SECONDS
+        if not self._mutation_lock.acquire(timeout=_MUTATION_TIMEOUT_SECONDS):
+            raise TimeoutError("Progress is busy; please retry.")
+        try:
+            self._root.mkdir(parents=True, exist_ok=True)
+            with (self._root / ".mutation.lock").open("a+b") as file:
+                if os.fstat(file.fileno()).st_size == 0:
+                    file.write(b"\0")  # Windows byte-range locks require one byte.
+                    file.flush()
+                while True:
+                    try:
+                        _file_lock(file)
+                        break
+                    except OSError as error:
+                        if error.errno not in (errno.EACCES, errno.EAGAIN):
+                            raise
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise TimeoutError("Progress is busy; please retry.") from error
+                        time.sleep(min(0.02, remaining))
+                try:
+                    yield
+                finally:
+                    _file_lock(file, unlock=True)
+        finally:
+            self._mutation_lock.release()
 
     def _empty_payload(self) -> dict[str, object]:
         return {
@@ -273,4 +413,7 @@ def list_recent_projects(limit: int = 8) -> list[dict[str, object]]:
     return [entry for _, entry in entries[:limit]]
 
 
-__all__ = ["ProgressStore", "UnknownRegionError", "list_recent_projects"]
+__all__ = [
+    "ModeReadUncertainError", "ModeSaveUncertainError", "ProgressStore",
+    "UnknownRegionError", "list_recent_projects",
+]

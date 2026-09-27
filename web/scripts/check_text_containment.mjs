@@ -9,16 +9,20 @@
 
 import assert from "node:assert/strict";
 
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 
 const url = process.env.CODEMBLE_URL;
 if (!url) {
   throw new Error("CODEMBLE_URL is required (e.g. http://127.0.0.1:8899).");
 }
 
-const browser = await chromium.launch({
+const engine = process.env.CODEMBLE_BROWSER_ENGINE || "chromium";
+if (!new Set(["chromium", "webkit"]).has(engine)) {
+  throw new Error("CODEMBLE_BROWSER_ENGINE must be 'chromium' or 'webkit'.");
+}
+const browser = await (engine === "webkit" ? webkit : chromium).launch({
   headless: true,
-  args: ["--use-angle=swiftshader", "--enable-webgl"],
+  ...(engine === "chromium" ? { args: ["--use-angle=swiftshader", "--enable-webgl"] } : {}),
 });
 
 try {

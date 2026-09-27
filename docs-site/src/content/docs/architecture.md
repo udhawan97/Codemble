@@ -3,7 +3,7 @@ title: Architecture
 description: The adapter seam, the render-ready graph, and why the LLM only narrates.
 ---
 
-:::note[v0.23.0 architecture]
+:::note[v0.24.0 architecture]
 This page describes the nine-language packaged app and current source tree.
 :::
 
@@ -33,6 +33,11 @@ so both are certain; a receiver known only by its type annotation resolves to
 that class but stays possible, because the runtime type may be a subclass that
 overrides it. A name no evidence narrows is still recorded as a possible
 relationship rather than dropped.
+
+For Python names, the adapter resolves the nearest lexical owner before it
+considers an import. Function parameters, writes, closures, comprehensions,
+lambdas, and definition-time expressions can all shadow that import. Ambiguous
+ownership is kept unresolved rather than promoted to a certain project call.
 
 ### 2. The graph is render-ready
 
@@ -129,11 +134,23 @@ uncertain when no fully proven route to it exists. No provider is involved, so
 the section renders identically with no key configured.
 
 Checks use another deep interface with no provider dependency. `CheckService`
-derives stable question suites from certain calls, project imports, direct
+derives stable question suites from all certain direct-call targets, project imports, direct
 callers, and entrypoint ranks, then validates exact option IDs against those
 generated answers. Only a completed suite asks `ProgressStore` to persist the
 region. The store projects valid file signatures onto immutable nodes and
 regions when graph JSON is requested; stale signatures simply remain dim.
+
+`ProgressStore` owns each mutation from read through atomic replacement under a
+process-local mutex and a stable advisory lock shared by Codemble processes.
+`LiveProject` gives progress-sensitive Graph and Map caches a generation; work
+that started before invalidation may finish its own coherent response but cannot
+publish into the new generation.
+
+Narration uses an app-owned bounded executor. Admission belongs to the submitted
+provider future until that blocking worker finishes, even if its HTTP request
+has already timed out or disconnected. Local Ollama transport bypasses ambient
+proxies after the endpoint passes the loopback-only validation. Parser, Map,
+Study, and check routes keep their separate worker capacity.
 
 ## Stack
 

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import threading
+from collections.abc import AsyncIterator, Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import Literal
 
 import anyio
-import anyio.to_thread
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -28,7 +30,7 @@ from codemble.adapters.project import (
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
-from codemble.progress import UnknownRegionError
+from codemble.progress import ModeReadUncertainError, ModeSaveUncertainError, UnknownRegionError
 from codemble.server.project_activation import (
     LiveProject,
     ProjectActivation,
@@ -43,27 +45,55 @@ from codemble.server.project_selection import (
 )
 from codemble.share import SharePreviewConfirmationError, UnknownSharePreviewError
 
-# Narration is the only handler that makes an outbound network call, and
-# ``urlopen`` cannot be cancelled: once a worker thread is inside it, that
-# thread is gone until the provider answers or its socket times out. Every
-# route here is a plain ``def``, so all of them share anyio's request
-# threadpool -- which meant enough in-flight explanations starved /api/graph,
-# /api/map, /study and /checks alike. That is the defect a learner reported as
-# "most of the stuff in that view doesn't load", and experts hit it first
-# because they click through structures fastest.
-#
-# The fix is a capacity limiter of Codemble's own. Passing one to
-# ``run_sync`` means the default limiter is never acquired, so narration draws
-# from a separate budget and the parser endpoints keep their full share no
-# matter how many explanations are stuck.
+# Provider calls may outlive the HTTP deadline: Python cannot kill a blocking
+# third-party thread. Own admission until the actual worker exits, with an
+# executor separate from the ordinary parser endpoint threadpool.
 _NARRATION_SLOTS = 4
-
-# The learner's ceiling, deliberately shorter than the providers' own socket
-# timeouts. Paired with ``abandon_on_cancel`` the request is answered on time
-# while the worker thread runs to completion in the background -- and because
-# that thread still writes the narration cache, a retry after a timeout is
-# usually served instantly from disk.
 NARRATION_DEADLINE_SECONDS = 45.0
+
+
+class _NarrationPool:
+    """At most four submitted/running calls; HTTP waiters own no worker slot."""
+
+    def __init__(self) -> None:
+        self._executor = ThreadPoolExecutor(
+            max_workers=_NARRATION_SLOTS, thread_name_prefix="codemble-narration"
+        )
+        self._slots = threading.BoundedSemaphore(_NARRATION_SLOTS)
+        self._lock = threading.Lock()
+        self._closed = False
+
+    async def run(self, work: Callable[[], dict[str, object]]) -> dict[str, object]:
+        while True:
+            # Observe cancellation before admission, including an immediately
+            # available slot. Waiting requests cannot queue orphan work.
+            await anyio.lowlevel.checkpoint()
+            with self._lock:
+                if self._closed:
+                    raise HTTPException(status_code=503, detail="Narration is shutting down.")
+                if self._slots.acquire(blocking=False):
+                    try:
+                        future = self._executor.submit(work)
+                    except BaseException:
+                        self._slots.release()
+                        raise
+                    future.add_done_callback(lambda _: self._slots.release())
+                    break
+            await anyio.sleep(0.01)
+        # Poll a stdlib Future so cancellation of a request never cancels the
+        # ownership callback, and separate TestClient event loops remain safe.
+        # Admission bounds the executor queue as well as running threads.
+        while not future.done():
+            await anyio.sleep(0.01)
+        return future.result()
+
+    def close(self) -> None:
+        with self._lock:
+            self._closed = True
+        # Pending tasks are cancelled (and release their lease); already running
+        # calls retain their lease until completion. Never block the ASGI loop
+        # on an uncancellable provider. All provider socket timeouts are finite.
+        self._executor.shutdown(wait=False, cancel_futures=True)
 
 
 class RegionVisit(BaseModel):
@@ -169,7 +199,19 @@ def create_app(
 
     if graph is None and picker is None:
         raise ValueError("create_app needs a parsed graph or a PickerConfig")
-    app = FastAPI(title="Codemble", version=__version__, docs_url=None, redoc_url=None)
+    narration_pool = _NarrationPool()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            narration_pool.close()
+
+    app = FastAPI(
+        title="Codemble", version=__version__, docs_url=None, redoc_url=None,
+        lifespan=lifespan,
+    )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
 
     @app.middleware("http")
@@ -186,7 +228,6 @@ def create_app(
 
     # Per app, not module-global: two apps in one test process must not share a
     # narration budget, or one test's stuck provider throttles another's.
-    narration_limiter = anyio.CapacityLimiter(_NARRATION_SLOTS)
     app.state.narration_deadline_seconds = NARRATION_DEADLINE_SECONDS
     activation = ProjectActivation(
         graph,
@@ -419,11 +460,7 @@ def create_app(
         _, studies = _services()
         try:
             with anyio.fail_after(app.state.narration_deadline_seconds):
-                return await anyio.to_thread.run_sync(
-                    partial(studies.explain, node_id, mode),
-                    abandon_on_cancel=True,
-                    limiter=narration_limiter,
-                )
+                return await narration_pool.run(partial(studies.explain, node_id, mode))
         except TimeoutError:
             return {
                 "status": "timeout",
@@ -443,14 +480,37 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/mode")
-    def get_mode() -> dict[str, object]:
+    def get_mode(strict: bool = False) -> dict[str, object]:
         checks, _ = _services()
+        if strict:
+            try:
+                return checks.progress.confirmed_mode_state()
+            except ModeReadUncertainError as error:
+                raise HTTPException(status_code=503, detail={
+                    "reason": "mode_read_uncertain",
+                    "message": (
+                        "The saved explanation choice could not be read. "
+                        "Reload this project before choosing again."
+                    ),
+                }) from error
         return {"mode": checks.progress.mode(), "chosen": checks.progress.mode_chosen()}
 
     @app.put("/api/mode")
     def set_mode(selection: ModeSelection) -> dict[str, object]:
         checks, _ = _services()
-        checks.progress.set_mode(selection.mode)
+        try:
+            checks.progress.set_mode(selection.mode)
+        except ModeSaveUncertainError as error:
+            # A failed rollback does not prove either value persisted. Give
+            # the caller a typed recovery state instead of inviting it to
+            # restore an assumed old mode or expose raw filesystem details.
+            raise HTTPException(status_code=503, detail={
+                "reason": "mode_save_uncertain",
+                "message": (
+                    "The explanation choice could not be confirmed. "
+                    "Reload this project before choosing again."
+                ),
+            }) from error
         return {"mode": selection.mode, "chosen": True}
 
     @app.delete("/api/progress")

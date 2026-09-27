@@ -7,18 +7,18 @@ The authoritative roadmap lives in the repo's
 [CLAUDE.md](https://github.com/udhawan97/Codemble/blob/main/CLAUDE.md) and moves
 only when milestones actually complete. The shape:
 
-## NOW — v0.23.0 and operational proof
+## NOW — v0.24.0 and operational proof
 
-Packaged v0.23.0 maps Python, JavaScript, TypeScript, Go,
+Packaged v0.24.0 maps Python, JavaScript, TypeScript, Go,
 Java, Rust, C#, Ruby, PHP, and mixed projects through one local parser-proven
-learning loop. v0.23.0 makes Explore fully luminous, gives every language its
+learning loop. v0.24.0 makes Explore fully luminous, gives every language its
 own world character, turns the module anchor into a system Sun, and exposes
 parser-owned neighbouring imports with certainty intact beside named call-orbit
 worlds. It retains
 the free-explore or First Flight launch, landing-to-check handoff, nine-language
 parser boundary, and v0.20.0's complete 5,000-file Map gate.
 
-v0.23.0 also includes M20's read-only-share foundations. It
+v0.24.0 also includes M20's read-only-share foundations. It
 contains the source-free artifact compiler and explicit disclosure preview,
 independent view and deletion capabilities, immutable encrypted persistence,
 expiry and revocation, token-safe HTTPS delivery, backup/restore and deletion
