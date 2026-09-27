@@ -390,6 +390,7 @@ input:focus-visible {
    crowding the rail-action button) so it never fights that button for
    space at 320px. */
 .mode-toggle {
+  flex-wrap: wrap;
   grid-column: 1 / -1;
   grid-row: 4;
   display: flex;
@@ -399,6 +400,10 @@ input:focus-visible {
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.mode-toggle__error {
+  flex-basis: 100%;
 }
 
 /* Floated, because a <legend> renders above its fieldset no matter what the

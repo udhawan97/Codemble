@@ -72,6 +72,7 @@ export function createLearnerSession({
     sidebarOpen: false,
     legendOpen: false,
     mode: "easy",
+    modeError: "",
     // Three states, not two: null means hydration hasn't resolved yet
     // (unknown), false means the backend confirmed nobody has ever chosen,
     // true means chosen (by the learner, or resolved after a mode-fetch
@@ -162,7 +163,7 @@ export function createLearnerSession({
     abortController(graphController);
     graphController = new AbortController();
     const controller = graphController;
-    commit({ status: "loading", error: "" });
+    commit({ status: "loading", error: "", modeError: "" });
     let pickerState;
     try {
       pickerState = await adapter.loadPickerState({ signal: controller.signal });
@@ -453,6 +454,7 @@ export function createLearnerSession({
       pendingDawnRegionId: null,
       languageFocus: "all",
       llmStatus: null,
+      modeError: "",
       picker: null,
       mapData: null,
       mapError: "",
@@ -801,6 +803,7 @@ export function createLearnerSession({
     // settles, so the project generation has to be re-checked across the await
     // as well. Both sides below belong to the project that issued the write.
     const requestLifecycle = lifecycle;
+    commit({ modeError: "" });
     applyMode(mode, true, layerOverride);
     try {
       await adapter.saveMode(mode, { signal: controller.signal });
@@ -812,9 +815,15 @@ export function createLearnerSession({
       if (
         modeController === controller &&
         requestLifecycle === lifecycle &&
+        !controller.signal.aborted &&
         !isAbortError(requestError)
       ) {
         applyMode(previous, previousChosen, previousLayer);
+        commit({
+          modeError: previousChosen
+            ? "Explanation choice was not saved. Choose it again to try again."
+            : "Launch was not saved. Your choice is still here; try again.",
+        });
       }
       return false;
     }

@@ -65,7 +65,6 @@ export function App() {
   const [firstFlightIndex, setFirstFlightIndex] = useState(null);
   const [pendingVoyage, setPendingVoyage] = useState(null);
   const [freeLaunchFocusPending, setFreeLaunchFocusPending] = useState(false);
-  const [launchError, setLaunchError] = useState("");
   const mapViewportStore = useMemo(() => createMapViewportStore(), []);
   const session = useMemo(
     () => createLearnerSession({ adapter: createHttpLearnerSessionAdapter() }),
@@ -86,7 +85,6 @@ export function App() {
       setFirstFlightIndex(null);
       setPendingVoyage(null);
       setFreeLaunchFocusPending(false);
-      setLaunchError("");
       mapViewportStore.clear();
     }
   }, [mapViewportStore, state.status]);
@@ -197,6 +195,7 @@ export function App() {
     mapTab,
     mode,
     modeChosen,
+    modeError,
     moduleIndex,
     parseProgress,
     pendingDawnRegionId,
@@ -812,7 +811,7 @@ export function App() {
               <ModeControl
                 mode={mode}
                 modeChosen={modeChosen}
-                error={launchError}
+                error={level === LEVELS.STUDY ? "" : modeError}
                 onChoose={async (nextMode, voyage) => {
                   // The voyage starts only after its explanation register is
                   // durably accepted. Otherwise the guided GO_TO_REGION commit
@@ -823,13 +822,7 @@ export function App() {
                     mode: nextMode,
                     layer: voyage ? "galaxy" : undefined,
                   });
-                  if (!saved) {
-                    if (voyage) {
-                      setLaunchError("Launch was not saved. Your choice is still here; try again.");
-                    }
-                    return false;
-                  }
-                  setLaunchError("");
+                  if (!saved) return false;
                   if (!voyage) return true;
                   // This explicit voyage replaces the older generic coach marks:
                   // free explorers asked to be left in control, while guided
@@ -1176,6 +1169,7 @@ export function App() {
             node={selectedNode}
             study={studyData}
             error={studyError}
+            modeError={modeError}
             mode={mode}
             explanation={explanation}
             explanationLoading={explanationLoading}

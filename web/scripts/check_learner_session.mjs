@@ -1377,7 +1377,47 @@ assert.equal(
   "easy",
   "a refused mode write rolls back to the last server-confirmed value",
 );
+assert.match(modeFailureSession.getSnapshot().modeError, /not saved.*try again/i);
+assert.doesNotMatch(modeFailureSession.getSnapshot().modeError, /mode write refused/, "raw server details stay private");
 modeFailureSession.dispose();
+
+// Failure status belongs to the current mode request and project, never to
+// an obsolete or aborted save. Success clears the refusal at both UI callers.
+for (const settleOldFirst of [false, true]) {
+  const writes = [];
+  const modeErrors = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter({ graph, mode: "expert", modeChosen: true }),
+      saveMode: () => new Promise((resolve, reject) => writes.push({ resolve, reject })),
+    }, clock,
+  });
+  await modeErrors.start();
+  const old = modeErrors.dispatch({ type: "SET_MODE", mode: "easy" });
+  const latest = modeErrors.dispatch({ type: "SET_MODE", mode: "expert" });
+  if (settleOldFirst) { writes[0].reject(new Error("obsolete")); await old; }
+  writes[1].resolve({ mode: "expert", chosen: true });
+  await latest;
+  if (!settleOldFirst) { writes[0].reject(new Error("obsolete")); await old; }
+  assert.equal(modeErrors.getSnapshot().modeError, "");
+  assert.equal(modeErrors.getSnapshot().mode, "expert");
+  const fail = modeErrors.dispatch({ type: "SET_MODE", mode: "easy" });
+  writes[2].reject(new Error("refused"));
+  await fail;
+  assert.match(modeErrors.getSnapshot().modeError, /not saved/i);
+  const retry = modeErrors.dispatch({ type: "SET_MODE", mode: "easy" });
+  assert.equal(modeErrors.getSnapshot().modeError, "", "new attempt clears previous refusal");
+  writes[3].resolve({ mode: "easy", chosen: true });
+  await retry;
+  assert.equal(modeErrors.getSnapshot().modeError, "");
+  assert.equal(await modeErrors.dispatch({ type: "SET_MODE", mode: "easy" }), true);
+  assert.equal(writes.length, 4, "unchanged committed mode makes no write");
+  const abandoned = modeErrors.dispatch({ type: "SET_MODE", mode: "expert" });
+  modeErrors.dispose();
+  const before = modeErrors.getSnapshot();
+  writes[4].reject(new Error("disposed"));
+  await abandoned;
+  assert.equal(modeErrors.getSnapshot(), before, "disposed save emits no refusal or rollback");
+}
 
 // A failing status read must not blank the mode that loaded beside it.
 const statusFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "expert" });
@@ -2010,6 +2050,7 @@ assert.equal(
   "a superseded project cannot report its mode write as durable",
 );
 const modeRaceSnapshot = modeRaceSession.getSnapshot();
+assert.equal(modeRaceSnapshot.modeError, "", "released mode write emits no save failure");
 assert.equal(
   modeRaceSnapshot.mode,
   "expert",

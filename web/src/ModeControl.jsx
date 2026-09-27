@@ -44,6 +44,7 @@ const VOYAGE_CHOICES = [
 export function ModeControl({ mode, modeChosen, error, onChoose }) {
   const dialogRef = useRef(null);
   const [voyage, setVoyage] = useState("explore");
+  const [register, setRegister] = useState(null);
   const launchSelectionRef = useRef({
     mode,
     voyage: "explore",
@@ -65,10 +66,9 @@ export function ModeControl({ mode, modeChosen, error, onChoose }) {
   }
 
   function launch() {
-    // The first-run radios are intentionally uncontrolled: the browser owns
-    // their immediate checked state, while the ref makes every input event
-    // observable before React's next render. Read both at the action boundary
-    // so rapid keyboard and pointer activations cannot submit an older render.
+    // State retains the visible selection across a refused launch remount.
+    // The ref also captures immediate input before React's next render, so
+    // rapid keyboard and pointer activation submits that same choice.
     const dialog = dialogRef.current;
     const checkedMode = dialog?.querySelector('input[name="first-register"]:checked')?.value;
     const checkedVoyage = dialog?.querySelector('input[name="first-voyage"]:checked')?.value;
@@ -116,10 +116,11 @@ export function ModeControl({ mode, modeChosen, error, onChoose }) {
                 type="radio"
                 name="first-voyage"
                 value={choice.id}
-                defaultChecked={choice.id === "explore"}
+                checked={choice.id === voyage}
                 onClick={() => {
                   launchSelectionRef.current.voyage = choice.id;
                   launchSelectionRef.current.voyageTouched = true;
+                  setVoyage(choice.id);
                 }}
                 onChange={() => {
                   launchSelectionRef.current.voyage = choice.id;
@@ -142,14 +143,16 @@ export function ModeControl({ mode, modeChosen, error, onChoose }) {
                 type="radio"
                 name="first-register"
                 value={choice.mode}
-                defaultChecked={mode === choice.mode}
+                checked={(register ?? mode) === choice.mode}
                 onClick={() => {
                   launchSelectionRef.current.mode = choice.mode;
                   launchSelectionRef.current.modeTouched = true;
+                  setRegister(choice.mode);
                 }}
                 onChange={() => {
                   launchSelectionRef.current.mode = choice.mode;
                   launchSelectionRef.current.modeTouched = true;
+                  setRegister(choice.mode);
                 }}
               />
               <span>{choice.label}</span>
@@ -186,6 +189,7 @@ export function ModeControl({ mode, modeChosen, error, onChoose }) {
           </label>
         ))}
       </div>
+      {error ? <p className="mode-gate__error mode-toggle__error" role="alert">{error}</p> : null}
     </fieldset>
   );
 }

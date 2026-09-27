@@ -41,7 +41,7 @@ assert.match(
 );
 assert.match(
   appSource,
-  /if \(!saved\)[\s\S]*?Launch was not saved/,
+  /if \(!saved\) return false/,
   "a refused register write must reopen the launch gate instead of starting a voyage",
 );
 assert.match(
