@@ -104,7 +104,7 @@ activation, process RSS high-water mark, usable time, DOM and resource budgets,
 event-loop lag, Finder input latency, canvas keyboard arrival, recovery, and
 320 px geometry.
 
-The final v0.24.0 candidate receipts used one fresh process per engine. The
+The current v0.24.0 source receipt used one fresh process per engine. The
 Chromium run measured 1.621 s cold activation, 0.810 s no-change activation,
 and a 185,942,016-byte process RSS high-water mark; it reached usable in 1.506 s
 with 100 DOM elements, five visible boxes, 39.2 ms canvas End-key arrival,
