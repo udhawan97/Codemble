@@ -1122,6 +1122,27 @@ def test_a_mode_change_serves_the_same_cached_map(
     assert client.get("/api/map").json() == before
 
 
+def test_mode_refusal_after_project_write_restores_authoritative_preference(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    progress.set_mode("easy")
+    checks = CheckService(graph, progress)
+
+    def refuse(mode):
+        raise OSError("fictional second-file failure")
+
+    with TestClient(create_app(graph, tmp_path / "missing", check_service=checks),
+                    raise_server_exceptions=False) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(progress, "_write_learner_mode", refuse)
+            assert client.put("/api/mode", json={"mode": "expert"}).status_code == 500
+            assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
+        assert client.put("/api/mode", json={"mode": "expert"}).status_code == 200
+        assert client.get("/api/mode").json() == {"mode": "expert", "chosen": True}
+
+
 def test_graph_and_map_share_one_hydration_after_an_invalidation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
