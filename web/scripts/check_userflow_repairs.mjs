@@ -206,7 +206,30 @@ async function checkModeSaveRefusal(page, surface, radioName, engine) {
   const restore = page.waitForResponse((response) => response.url().endsWith("/api/mode") && response.request().method() === "PUT");
   await expert.check();
   await restore;
-  results.push(`${engine} ${radioName} refusal, repeated keyboard retry, rollback, focus and recovery`);
+  // An unreadable existing store rejects strict reconciliation. A tolerant
+  // startup default must not be announced as the saved preference.
+  let strictReads = 0;
+  const refuseStrictRead = async (route) => {
+    strictReads += 1;
+    await route.fulfill({ status: 503, json: { detail: {
+      reason: "mode_read_uncertain", message: "Stored preference could not be read.",
+    } } });
+  };
+  await page.route("**/api/mode", refuseMode);
+  await page.route("**/api/mode?strict=true", refuseStrictRead);
+  await easy.check();
+  const uncertain = surface.getByRole("alert").filter({ hasText: "could not be confirmed" });
+  await uncertain.waitFor();
+  assert.match(await uncertain.innerText(), /Reload this project/);
+  assert.doesNotMatch(await uncertain.innerText(), /saved choice is shown/);
+  assert.equal(strictReads, 1, "failed PUT uses the strict mode read");
+  await page.unroute("**/api/mode", refuseMode);
+  await page.unroute("**/api/mode?strict=true", refuseStrictRead);
+  const recovered = page.waitForResponse((response) => response.url().endsWith("/api/mode") && response.request().method() === "PUT");
+  await expert.check();
+  await recovered;
+  assert.equal(await uncertain.count(), 0);
+  results.push(`${engine} ${radioName} refusal, keyboard retry, focus, strict-read uncertainty and recovery`);
 }
 
 async function checkBoundedImpact(browser, engine) {

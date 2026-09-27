@@ -1520,6 +1520,41 @@ for (const dispose of [false, true]) {
   subject.dispose();
 }
 
+// A tolerant startup GET may default unreadable storage to Easy. That value
+// must never be used as proof after a failed write: reconciliation is strict.
+{
+  const requests = [];
+  let failedWrite = false;
+  const httpMode = createHttpLearnerSessionAdapter(async (url, options = {}) => {
+    requests.push({ url, options });
+    if (options.method === "PUT") {
+      failedWrite = true;
+      return { ok: false, status: 503, json: async () => ({ detail: {
+        reason: "mode_save_uncertain", message: "Preference write could not be confirmed.",
+      } }) };
+    }
+    if (url === "/api/mode?strict=true") {
+      return { ok: false, status: 503, json: async () => ({ detail: {
+        reason: "mode_read_uncertain", message: "Stored preference could not be read.",
+      } }) };
+    }
+    return { ok: true, json: async () => ({ mode: failedWrite ? "easy" : "expert", chosen: true }) };
+  });
+  const subject = createLearnerSession({ adapter: {
+    ...createInMemoryLearnerSessionAdapter({ graph }),
+    loadMode: httpMode.loadMode, saveMode: httpMode.saveMode,
+  }, clock });
+  await subject.start();
+  await subject.dispatch({ type: "SET_MODE", mode: "easy" });
+  assert.match(subject.getSnapshot().modeError, /could not be confirmed.*Reload this project/);
+  assert.doesNotMatch(subject.getSnapshot().modeError, /saved choice is shown/);
+  assert.deepEqual(requests.map(({ url }) => url), ["/api/mode", "/api/mode", "/api/mode?strict=true"]);
+  const strictRequest = requests.at(-1).options;
+  assert.equal("strict" in strictRequest, false, "strict is a URL contract, not a fetch option");
+  assert.ok(strictRequest.signal instanceof AbortSignal, "strict GET retains lifecycle cancellation");
+  subject.dispose();
+}
+
 // A failing status read must not blank the mode that loaded beside it.
 const statusFailureAdapter = createInMemoryLearnerSessionAdapter({ graph, mode: "expert" });
 const statusFailureSession = createLearnerSession({

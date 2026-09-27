@@ -817,7 +817,7 @@ export function createLearnerSession({
       ) return false;
       let stored;
       try {
-        stored = await adapter.loadMode({ signal: controller.signal });
+        stored = await adapter.loadMode({ strict: true, signal: controller.signal });
       } catch {
         // The uncertainty message below never claims a successful rollback.
       }
@@ -1275,8 +1275,8 @@ export function createHttpLearnerSessionAdapter(fetchImplementation = globalThis
         body: JSON.stringify({ node_id: nodeId }),
       });
     },
-    loadMode(options = {}) {
-      return request("/api/mode", "Mode request", options);
+    loadMode({ strict = false, ...options } = {}) {
+      return request(strict ? "/api/mode?strict=true" : "/api/mode", "Mode request", options);
     },
     saveMode(mode, options = {}) {
       return request("/api/mode", "Mode update", {
