@@ -938,14 +938,26 @@ class _CallBindings(ast.NodeVisitor):
     def visit_Nonlocal(self, node: ast.Nonlocal) -> None:
         self.nonlocals.update(node.names)
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        return
+    def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        # Defining a nested function evaluates its signature/decorators in
+        # this scope. Only its body and parameter names belong to the child.
+        for decorator in node.decorator_list:
+            self.visit(decorator)
+        self.visit(node.args)
+        if node.returns is not None:
+            self.visit(node.returns)
 
     visit_AsyncFunctionDef = visit_FunctionDef
-    visit_ClassDef = visit_FunctionDef
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        for expression in (*node.decorator_list, *node.bases):
+            self.visit(expression)
+        for keyword in node.keywords:
+            self.visit(keyword.value)
 
     def visit_Lambda(self, node: ast.Lambda) -> None:
-        return
+        # Defaults run now, even though the lambda body runs in its own scope.
+        self.visit(node.args)
 
     def visit_comprehension(self, node: ast.comprehension) -> None:
         # Iteration targets belong to the comprehension, not this scope.

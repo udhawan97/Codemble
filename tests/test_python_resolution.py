@@ -467,3 +467,48 @@ def test_shadowed_import_cannot_supply_journey_or_quiz_proof(tmp_path: Path) -> 
         for question in generate_checks(graph, 'app')
         if question.kind in {'first-call', 'direct-call'}
     )
+
+
+@pytest.mark.parametrize('definition', [
+    '    callback = lambda value=(work := replacement): value\n',
+    '    callback = lambda *, value=(work := replacement): value\n',
+    '    def callback(value=(work := replacement)):\n        pass\n',
+    '    async def callback(*, value=(work := replacement)):\n        pass\n',
+    '    @(work := replacement)\n    def callback():\n        pass\n',
+    '    def callback(value: (work := replacement)):\n        pass\n',
+    '    def callback(*values: (work := replacement)):\n        pass\n',
+    '    def callback(**values: (work := replacement)):\n        pass\n',
+    '    def callback() -> (work := replacement):\n        pass\n',
+    '    class Local((work := replacement)):\n        pass\n',
+    '    class Local(metaclass=(work := replacement)):\n        pass\n',
+    '    @(work := replacement)\n    class Local:\n        pass\n',
+])
+def test_definition_time_bindings_belong_to_the_enclosing_scope(
+    tmp_path: Path, definition: str,
+) -> None:
+    (tmp_path / 'lib.py').write_text('def work():\n    return 1\n')
+    (tmp_path / 'app.py').write_text(
+        'from lib import work\ndef main(replacement):\n' + definition + '    return work()\n'
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    assert not graph.partial_files
+    calls = _calls(graph, 'app.main')
+    assert calls
+    assert not any(edge.certain and edge.dst == 'lib.work' for edge in calls)
+
+
+@pytest.mark.parametrize('definition', [
+    '    callback = lambda: (work := replacement)\n',
+    '    def callback():\n        work = replacement\n',
+    '    async def callback():\n        work = replacement\n',
+    '    class Local:\n        work = replacement\n',
+])
+def test_nested_body_bindings_do_not_shadow_the_enclosing_scope(
+    tmp_path: Path, definition: str,
+) -> None:
+    (tmp_path / 'lib.py').write_text('def work():\n    return 1\n')
+    (tmp_path / 'app.py').write_text(
+        'from lib import work\ndef main(replacement):\n' + definition + '    return work()\n'
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    assert any(edge.certain and edge.dst == 'lib.work' for edge in _calls(graph, 'app.main'))
