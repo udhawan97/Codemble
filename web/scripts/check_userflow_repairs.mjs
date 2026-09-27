@@ -249,7 +249,11 @@ async function checkBoundedImpact(browser, engine) {
   const dataRoot = mkdtempSync(path.join(tmpdir(), "codemble-impact-data-"));
   dataRoots.push(dataRoot);
   const server = await startCodemble({ project, dataRoot });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+  const page = await browser.newPage({
+    viewport: { width: 1440, height: 900 },
+    deviceScaleFactor: 2,
+    reducedMotion: "reduce",
+  });
   page.setDefaultTimeout(20_000);
   try {
     await gotoApp(page, server.url);
@@ -272,15 +276,11 @@ async function checkBoundedImpact(browser, engine) {
       await study.locator(".journey-support > summary").click();
       await study.getByText(empty, { exact: true }).waitFor();
       assert.doesNotMatch(await study.locator(".impact-widget").innerText(), /Nothing else in your code|does not rely on anything else/);
+      // A 320px CSS viewport at DPR 2 represents 640 physical pixels with the
+      // same reflow boundary as 200% browser zoom. Root CSS `zoom` is not an
+      // equivalent: media queries still see 640px and can select desktop
+      // layout even though the painted content is only 320px wide.
       assert.equal(await study.evaluate((panel) => panel.scrollWidth <= panel.clientWidth + 1), true);
-      // 640 physical CSS pixels at 200% effective scale retains a 320px
-      // content width; keep the same visible claim and no horizontal clipping.
-      await page.setViewportSize({ width: 640, height: 900 });
-      await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
-      await study.getByText(empty, { exact: true }).waitFor();
-      assert.equal(await study.evaluate((panel) => panel.scrollWidth <= panel.clientWidth + 1), true);
-      await page.evaluate(() => { document.documentElement.style.zoom = ""; });
-      await page.setViewportSize({ width: 320, height: 900 });
       const expert = study.locator('input[name="landing-register"][value="expert"]');
       await expert.check();
       await study.getByText(file === "leaf.py" ? "No parser-proven dependents." : "No parser-proven dependencies.", { exact: true }).waitFor();
