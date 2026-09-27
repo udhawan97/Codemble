@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from codemble.adapters.python_ast import PythonAstAdapter
 from codemble.adapters.typescript_tree_sitter import JavaScriptTypeScriptAdapter
 from codemble.checks import CheckService, generate_checks
+from codemble.checks.service import UnknownCheckError
 from codemble.progress import ProgressStore
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
@@ -82,7 +86,7 @@ def test_home_region_has_all_four_graph_derived_check_types() -> None:
     checks = generate_checks(graph, "app")
 
     assert {check.kind for check in checks} == {
-        "first-call",
+        "direct-call",
         "direct-importer",
         "removal-impact",
         "entrypoint",
@@ -290,11 +294,11 @@ def test_easy_wording_keeps_the_qualifiers_expert_wording_relies_on() -> None:
     )
     assert "directly" in importer.prompt["easy"]
 
-    first_call = next(
-        check for check in generate_checks(graph, "app") if check.kind == "first-call"
+    direct_call = next(
+        check for check in generate_checks(graph, "app") if check.kind == "direct-call"
     )
-    assert "call" in first_call.prompt["easy"]
-    assert "run" not in first_call.prompt["easy"]
+    assert "call" in direct_call.prompt["easy"]
+    assert "run" not in direct_call.prompt["easy"]
 
 
 def test_check_is_hashable_and_prompt_still_affects_equality() -> None:
@@ -410,3 +414,60 @@ def test_check_generation_walks_every_edge_once(tmp_path: Path) -> None:
 
     assert len(graph.regions) > 1
     assert passes == 1
+
+
+@pytest.mark.parametrize('body', [
+    '    return a_outer(z_inner())\n',
+    '    z_inner(); a_outer()\n',
+    '    if flag:\n        a_outer()\n    z_inner()\n',
+    '    print("external")\n    mystery()\n    a_outer()\n    z_inner()\n',
+    '    a_outer()\n    a_outer()\n    z_inner()\n',
+])
+def test_direct_call_question_scores_all_certain_members_not_execution_order(tmp_path, body) -> None:
+    (tmp_path / 'app.py').write_text(
+        'def main(flag=True, mystery=None):\n' + body
+        + 'def a_outer(value=None):\n    return value\n'
+        + 'def z_inner():\n    return 1\n'
+        + 'def unrelated():\n    return 2\n'
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    question = next(check for check in generate_checks(graph, 'app')
+                    if check.kind == 'direct-call')
+    assert question.answer_ids == ('app.a_outer', 'app.z_inner')
+    assert question.public(passed=False)['multiple'] is True
+    assert not any('first' in text for text in question.prompt.values())
+    assert set(question.answer_ids) < {option.id for option in question.options}
+    expected_lines = {f'app.py:{edge.lineno}' for edge in graph.edges
+                      if edge.kind == 'call' and edge.src == 'app.main' and edge.certain}
+    assert set(question.evidence) == expected_lines
+    assert question == next(check for check in generate_checks(graph, 'app')
+                            if check.kind == 'direct-call')
+    service = CheckService(graph, ProgressStore(graph, tmp_path / 'progress'))
+    partial = service.submit('app', question.id, ['app.a_outer'])
+    assert partial['correct'] is False
+    assert not {'answer_ids', 'answer_labels', 'evidence'} & partial.keys()
+    assert service.submit('app', question.id, list(question.answer_ids))['correct'] is True
+    legacy_id = hashlib.sha256(b'6|app|first-call|app.main').hexdigest()[:16]
+    with pytest.raises(UnknownCheckError):
+        service.submit('app', legacy_id, ['app.a_outer'])
+
+
+def test_direct_call_question_is_omitted_without_certain_targets_or_distractor(tmp_path) -> None:
+    (tmp_path / 'app.py').write_text('def main():\n    main()\n')
+    parsed = PythonAstAdapter().parse(tmp_path)
+    # Only the self-calling structure is offered; every option would be right.
+    graph = replace(parsed, nodes=tuple(node for node in parsed.nodes if node.kind == 'function'))
+    assert not any(check.kind == 'direct-call' for check in generate_checks(graph, 'app'))
+    uncertain = replace(graph, edges=(replace(graph.edges[0], certain=False),))
+    assert not any(check.kind == 'direct-call' for check in generate_checks(uncertain, 'app'))
+
+
+def test_new_question_contract_preserves_existing_file_hash_scoped_understanding(tmp_path) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / 'progress')
+    progress.mark_understood('app')
+    service = CheckService(graph, ProgressStore(graph, tmp_path / 'progress'))
+    suite = service.for_region('app')
+    assert suite['region_understood'] is True
+    assert all(question['passed'] for question in suite['checks'])
+    assert any(question['kind'] == 'direct-call' for question in suite['checks'])

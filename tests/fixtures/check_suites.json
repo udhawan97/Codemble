@@ -6,10 +6,11 @@
           "helpers.log"
         ],
         "evidence": [
-          "alpha.py:5"
+          "alpha.py:5",
+          "alpha.py:6"
         ],
-        "id": "2ca0df1bd1abde11",
-        "kind": "first-call",
+        "id": "4086e2185022cee3",
+        "kind": "direct-call",
         "options": [
           {
             "id": "helpers.log",
@@ -29,8 +30,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does alpha.go call first?",
-          "expert": "Which structure does alpha.go call first?"
+          "easy": "Which pieces of code does the parser confirm alpha.go calls directly?",
+          "expert": "Which structures have certain direct call edges from alpha.go?"
         }
       },
       {
@@ -40,7 +41,7 @@
         "evidence": [
           "alpha.py:1"
         ],
-        "id": "f6c5b31ac1314267",
+        "id": "c4c25f86201e6b3b",
         "kind": "direct-importer",
         "options": [
           {
@@ -74,8 +75,8 @@
         "evidence": [
           "beta.py:5"
         ],
-        "id": "7c249bc7f98bf131",
-        "kind": "first-call",
+        "id": "b512998e02db2d3c",
+        "kind": "direct-call",
         "options": [
           {
             "id": "helpers.log",
@@ -95,8 +96,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does beta.go call first?",
-          "expert": "Which structure does beta.go call first?"
+          "easy": "Which pieces of code does the parser confirm beta.go calls directly?",
+          "expert": "Which structures have certain direct call edges from beta.go?"
         }
       },
       {
@@ -106,7 +107,7 @@
         "evidence": [
           "beta.py:1"
         ],
-        "id": "90b992372cc72841",
+        "id": "bf7d7435db8a89e8",
         "kind": "direct-importer",
         "options": [
           {
@@ -140,8 +141,8 @@
         "evidence": [
           "gamma.py:5"
         ],
-        "id": "d81e66db6f0074de",
-        "kind": "first-call",
+        "id": "46d001a1107bdc30",
+        "kind": "direct-call",
         "options": [
           {
             "id": "helpers.log",
@@ -161,8 +162,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does gamma.go call first?",
-          "expert": "Which structure does gamma.go call first?"
+          "easy": "Which pieces of code does the parser confirm gamma.go calls directly?",
+          "expert": "Which structures have certain direct call edges from gamma.go?"
         }
       },
       {
@@ -172,7 +173,7 @@
         "evidence": [
           "gamma.py:1"
         ],
-        "id": "e66da84f8f4d6d2d",
+        "id": "304eb0bd995e0b76",
         "kind": "direct-importer",
         "options": [
           {
@@ -212,7 +213,7 @@
           "gamma.py:1",
           "noisy.py:1"
         ],
-        "id": "38de4e2d0ec0c566",
+        "id": "e21534ec1d9b2a26",
         "kind": "direct-importer",
         "options": [
           {
@@ -253,7 +254,7 @@
           "beta.py:5",
           "gamma.py:5"
         ],
-        "id": "4aa077e44addbc46",
+        "id": "6903f4f6b852957e",
         "kind": "removal-impact",
         "options": [
           {
@@ -289,10 +290,14 @@
           "helpers.cache_key"
         ],
         "evidence": [
-          "noisy.py:5"
+          "noisy.py:5",
+          "noisy.py:6",
+          "noisy.py:7",
+          "noisy.py:8",
+          "noisy.py:9"
         ],
-        "id": "dd70df05daf43ea2",
-        "kind": "first-call",
+        "id": "caf8841e0824578c",
+        "kind": "direct-call",
         "options": [
           {
             "id": "helpers.cache_key",
@@ -312,8 +317,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does noisy.spam call first?",
-          "expert": "Which structure does noisy.spam call first?"
+          "easy": "Which pieces of code does the parser confirm noisy.spam calls directly?",
+          "expert": "Which structures have certain direct call edges from noisy.spam?"
         }
       },
       {
@@ -323,7 +328,7 @@
         "evidence": [
           "noisy.py:1"
         ],
-        "id": "065976a2299a9bb2",
+        "id": "ee2f542f99f8e459",
         "kind": "direct-importer",
         "options": [
           {
@@ -359,8 +364,8 @@
         "evidence": [
           "src/legacy.js:4"
         ],
-        "id": "2934fd7440302a86",
-        "kind": "first-call",
+        "id": "90b799f327054777",
+        "kind": "direct-call",
         "options": [
           {
             "id": "javascript:src/local.js::legacyHelper",
@@ -380,8 +385,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does javascript:src/legacy.js::run call first?",
-          "expert": "Which structure does javascript:src/legacy.js::run call first?"
+          "easy": "Which pieces of code does the parser confirm javascript:src/legacy.js::run calls directly?",
+          "expert": "Which structures have certain direct call edges from javascript:src/legacy.js::run?"
         }
       },
       {
@@ -391,7 +396,7 @@
         "evidence": [
           "src/legacy.js:1"
         ],
-        "id": "2d55071eb91d0ad3",
+        "id": "115907eea45ac4dc",
         "kind": "direct-importer",
         "options": [
           {
@@ -425,7 +430,7 @@
         "evidence": [
           "src/legacy.js:1"
         ],
-        "id": "472d85739f3feec3",
+        "id": "dcf88cf5b201c5f8",
         "kind": "direct-importer",
         "options": [
           {
@@ -457,7 +462,7 @@
         "evidence": [
           "src/legacy.js:4"
         ],
-        "id": "f4aef1b240035b7d",
+        "id": "2a0d7aabd4d2054d",
         "kind": "removal-impact",
         "options": [
           {
@@ -492,7 +497,7 @@
         "evidence": [
           "src/main.ts:1"
         ],
-        "id": "e8622ac84a4f35d1",
+        "id": "a24596f6ef4f43b6",
         "kind": "entrypoint",
         "options": [
           {
@@ -527,8 +532,8 @@
         "evidence": [
           "src/util.ts:23"
         ],
-        "id": "5c49cc0243ba82a6",
-        "kind": "first-call",
+        "id": "84b85027b72c01bf",
+        "kind": "direct-call",
         "options": [
           {
             "id": "typescript:src/util.ts::normalize",
@@ -548,8 +553,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does typescript:src/util.ts::Formatter.format call first?",
-          "expert": "Which structure does typescript:src/util.ts::Formatter.format call first?"
+          "easy": "Which pieces of code does the parser confirm typescript:src/util.ts::Formatter.format calls directly?",
+          "expert": "Which structures have certain direct call edges from typescript:src/util.ts::Formatter.format?"
         }
       },
       {
@@ -561,7 +566,7 @@
           "src/util.ts:23",
           "src/util.ts:18"
         ],
-        "id": "2c6347692e224316",
+        "id": "e134ed4cdca4b368",
         "kind": "removal-impact",
         "options": [
           {
@@ -595,17 +600,29 @@
     "app": [
       {
         "answer_ids": [
-          "pkg.service.Service"
+          "pkg.helpers.log",
+          "pkg.service.Service",
+          "pkg.util.greet"
         ],
         "evidence": [
-          "app.py:9"
+          "app.py:9",
+          "app.py:10",
+          "app.py:11"
         ],
-        "id": "e50b7f54a12e0343",
-        "kind": "first-call",
+        "id": "956f3c9121fe8ce0",
+        "kind": "direct-call",
         "options": [
+          {
+            "id": "pkg.helpers.log",
+            "label": "pkg.helpers.log"
+          },
           {
             "id": "pkg.service.Service",
             "label": "pkg.service.Service"
+          },
+          {
+            "id": "pkg.util.greet",
+            "label": "pkg.util.greet"
           },
           {
             "id": "ambiguous.invoke",
@@ -614,15 +631,11 @@
           {
             "id": "app.main",
             "label": "app.main"
-          },
-          {
-            "id": "cli.launch",
-            "label": "cli.launch"
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does app.main call first?",
-          "expert": "Which structure does app.main call first?"
+          "easy": "Which pieces of code does the parser confirm app.main calls directly?",
+          "expert": "Which structures have certain direct call edges from app.main?"
         }
       },
       {
@@ -632,7 +645,7 @@
         "evidence": [
           "cli.py:1"
         ],
-        "id": "27fb2d2f035ebee0",
+        "id": "a794e36767a24f6a",
         "kind": "direct-importer",
         "options": [
           {
@@ -664,7 +677,7 @@
         "evidence": [
           "cli.py:5"
         ],
-        "id": "9ec6ed877e785b1b",
+        "id": "b1942640ef026f5f",
         "kind": "removal-impact",
         "options": [
           {
@@ -696,7 +709,7 @@
         "evidence": [
           "app.py:1"
         ],
-        "id": "53c024f22938f74b",
+        "id": "adeca9bceaa5641a",
         "kind": "entrypoint",
         "options": [
           {
@@ -731,8 +744,8 @@
         "evidence": [
           "cli.py:5"
         ],
-        "id": "4bdcb3f88830355d",
-        "kind": "first-call",
+        "id": "4744dfbdd35ec30f",
+        "kind": "direct-call",
         "options": [
           {
             "id": "app.main",
@@ -752,8 +765,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does cli.launch call first?",
-          "expert": "Which structure does cli.launch call first?"
+          "easy": "Which pieces of code does the parser confirm cli.launch calls directly?",
+          "expert": "Which structures have certain direct call edges from cli.launch?"
         }
       },
       {
@@ -763,7 +776,7 @@
         "evidence": [
           "cli.py:1"
         ],
-        "id": "b61ffcddc8cb4ccd",
+        "id": "8ac868b5b71d1c1d",
         "kind": "direct-importer",
         "options": [
           {
@@ -797,7 +810,7 @@
         "evidence": [
           "pkg/__init__.py:1"
         ],
-        "id": "1387b37b81e6f558",
+        "id": "88dee27d5f1abc3e",
         "kind": "direct-importer",
         "options": [
           {
@@ -831,8 +844,8 @@
         "evidence": [
           "pkg/helpers.py:5"
         ],
-        "id": "77743c94de27659b",
-        "kind": "first-call",
+        "id": "86e03f7735691024",
+        "kind": "direct-call",
         "options": [
           {
             "id": "pkg.util.normalize",
@@ -852,8 +865,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does pkg.helpers.log call first?",
-          "expert": "Which structure does pkg.helpers.log call first?"
+          "easy": "Which pieces of code does the parser confirm pkg.helpers.log calls directly?",
+          "expert": "Which structures have certain direct call edges from pkg.helpers.log?"
         }
       },
       {
@@ -863,7 +876,7 @@
         "evidence": [
           "app.py:3"
         ],
-        "id": "17e8b311379abe45",
+        "id": "e3f3037b83e25558",
         "kind": "direct-importer",
         "options": [
           {
@@ -895,7 +908,7 @@
         "evidence": [
           "app.py:11"
         ],
-        "id": "d1c69eb9aa02eab9",
+        "id": "037583d0478f60f2",
         "kind": "removal-impact",
         "options": [
           {
@@ -924,17 +937,29 @@
     "pkg.service": [
       {
         "answer_ids": [
-          "pkg.util.normalize"
+          "pkg.service.Service.finish",
+          "pkg.util.normalize",
+          "shared.duplicate"
         ],
         "evidence": [
-          "pkg/service.py:8"
+          "pkg/service.py:8",
+          "pkg/service.py:9",
+          "pkg/service.py:10"
         ],
-        "id": "0b858120bf0321ec",
-        "kind": "first-call",
+        "id": "45f654863a1118e7",
+        "kind": "direct-call",
         "options": [
+          {
+            "id": "pkg.service.Service.finish",
+            "label": "pkg.service.Service.finish"
+          },
           {
             "id": "pkg.util.normalize",
             "label": "pkg.util.normalize"
+          },
+          {
+            "id": "shared.duplicate",
+            "label": "shared.duplicate"
           },
           {
             "id": "ambiguous.invoke",
@@ -943,15 +968,11 @@
           {
             "id": "app.main",
             "label": "app.main"
-          },
-          {
-            "id": "cli.launch",
-            "label": "cli.launch"
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does pkg.service.Service.run call first?",
-          "expert": "Which structure does pkg.service.Service.run call first?"
+          "easy": "Which pieces of code does the parser confirm pkg.service.Service.run calls directly?",
+          "expert": "Which structures have certain direct call edges from pkg.service.Service.run?"
         }
       },
       {
@@ -963,7 +984,7 @@
           "app.py:4",
           "pkg/__init__.py:1"
         ],
-        "id": "4b7d9686a55b672c",
+        "id": "91c7692d409253c8",
         "kind": "direct-importer",
         "options": [
           {
@@ -995,7 +1016,7 @@
         "evidence": [
           "app.py:9"
         ],
-        "id": "52eecfbeb7602981",
+        "id": "947879b90f0d4caa",
         "kind": "removal-impact",
         "options": [
           {
@@ -1029,8 +1050,8 @@
         "evidence": [
           "pkg/util.py:2"
         ],
-        "id": "be873fa1d83c56cc",
-        "kind": "first-call",
+        "id": "d784e11602e30b83",
+        "kind": "direct-call",
         "options": [
           {
             "id": "pkg.util.normalize",
@@ -1050,8 +1071,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does pkg.util.greet call first?",
-          "expert": "Which structure does pkg.util.greet call first?"
+          "easy": "Which pieces of code does the parser confirm pkg.util.greet calls directly?",
+          "expert": "Which structures have certain direct call edges from pkg.util.greet?"
         }
       },
       {
@@ -1065,7 +1086,7 @@
           "pkg/helpers.py:1",
           "pkg/service.py:3"
         ],
-        "id": "ba20b541e5f948ad",
+        "id": "f4aec19ceb667c70",
         "kind": "direct-importer",
         "options": [
           {
@@ -1105,7 +1126,7 @@
           "pkg/service.py:8",
           "pkg/util.py:2"
         ],
-        "id": "e42c35eef092236e",
+        "id": "9ae1f60afb825b6d",
         "kind": "removal-impact",
         "options": [
           {
@@ -1144,8 +1165,8 @@
         "evidence": [
           "shared.py:6"
         ],
-        "id": "0a4d9f58f31f660d",
-        "kind": "first-call",
+        "id": "0dc132126be28e5a",
+        "kind": "direct-call",
         "options": [
           {
             "id": "shared.duplicate",
@@ -1165,8 +1186,8 @@
           }
         ],
         "prompt": {
-          "easy": "Which piece of code does shared.choose call first?",
-          "expert": "Which structure does shared.choose call first?"
+          "easy": "Which pieces of code does the parser confirm shared.choose calls directly?",
+          "expert": "Which structures have certain direct call edges from shared.choose?"
         }
       },
       {
@@ -1176,7 +1197,7 @@
         "evidence": [
           "pkg/service.py:1"
         ],
-        "id": "6f88f11898471d35",
+        "id": "a8918f6fde0db1cc",
         "kind": "direct-importer",
         "options": [
           {
@@ -1210,7 +1231,7 @@
           "pkg/service.py:9",
           "shared.py:6"
         ],
-        "id": "d8effc0628cb0965",
+        "id": "e76e96a6c8a1c409",
         "kind": "removal-impact",
         "options": [
           {

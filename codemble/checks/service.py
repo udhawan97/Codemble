@@ -10,14 +10,14 @@ from codemble.adapters.base import Edge, Graph, Node
 from codemble.graph.layout import with_entrypoint
 from codemble.progress import ProgressStore
 
-CheckKind = Literal["first-call", "direct-importer", "removal-impact", "entrypoint"]
+CheckKind = Literal["direct-call", "direct-importer", "removal-impact", "entrypoint"]
 
 # Wrong options a check offers beyond its answers, when the graph holds that many.
 _MINIMUM_DISTRACTORS = 2
 # Check IDs are persisted learner-flow identity, not render-schema identity.
 # Keep this seed stable across additive graph fields and bump it only when the
 # check contract itself intentionally changes.
-_CHECK_SCHEMA_VERSION = 6
+_CHECK_SCHEMA_VERSION = 7
 
 
 class UnknownCheckError(KeyError):
@@ -264,7 +264,7 @@ def _region_checks(index: _CheckIndex, region_id: str) -> tuple[Check, ...]:
     if region_id not in index.region_ids:
         raise UnknownCheckError(region_id)
     checks: list[Check] = []
-    for build in (_first_call_check, _importer_check, _impact_check, _entrypoint_check):
+    for build in (_direct_call_check, _importer_check, _impact_check, _entrypoint_check):
         check = build(index, region_id)
         if check:
             checks.append(check)
@@ -277,25 +277,25 @@ def _proves_understanding(check: Check) -> bool:
     return bool({option.id for option in check.options} - set(check.answer_ids))
 
 
-def _first_call_check(index: _CheckIndex, region_id: str) -> Check | None:
+def _direct_call_check(index: _CheckIndex, region_id: str) -> Check | None:
     calls_by_source = index.calls_out_by_region.get(region_id)
     if not calls_by_source:
         return None
     source_id = min(calls_by_source)
-    edge = min(calls_by_source[source_id], key=lambda item: (item.lineno, item.dst))
-    answers = (edge.dst,)
+    calls = sorted(calls_by_source[source_id], key=lambda item: (item.lineno, item.dst))
+    answers = tuple(sorted({edge.dst for edge in calls}))
     return _check(
         index,
         region_id,
-        "first-call",
+        "direct-call",
         source_id,
         {
-            "easy": f"Which piece of code does {source_id} call first?",
-            "expert": f"Which structure does {source_id} call first?",
+            "easy": f"Which pieces of code does the parser confirm {source_id} calls directly?",
+            "expert": f"Which structures have certain direct call edges from {source_id}?",
         },
         answers,
         _node_options(index, answers, kind="function"),
-        (f"{index.nodes[source_id].file}:{edge.lineno}",),
+        tuple(dict.fromkeys(f"{index.nodes[source_id].file}:{edge.lineno}" for edge in calls)),
     )
 
 
