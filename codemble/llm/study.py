@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from codemble.adapters.base import ConceptAnnotation, Edge, Graph, Node
-from codemble.adapters.source_text import read_source_text
+from codemble.adapters.source_text import decode_source_bytes
 from codemble.graph.impact import BlastRadiusIndex
 from codemble.graph.learning import LearningJourneyIndex
 from codemble.lens import lens_notes
@@ -221,6 +221,7 @@ class StudyService:
             node = self._nodes.get(node_id)
             if node is None:
                 raise UnknownNodeError(node_id)
+            source, neighbors, lens = self._prepare(node)
             if node.partial:
                 return {
                     "status": "partial",
@@ -230,8 +231,7 @@ class StudyService:
                     ),
                     "cached": False,
                 }
-            source, neighbors, lens = self._prepare(node)
-            file_hash = self._graph.file_hashes.get(node.file, "")
+            file_hash = self._graph.file_hashes[node.file]
         return self._explain(node, source, neighbors, lens, mode, file_hash)
 
     def _prepare(
@@ -252,13 +252,25 @@ class StudyService:
         return source, neighbors, lens
 
     def _read_source(self, node: Node) -> dict[str, object]:
-        source_path = (self._project_root / node.file).resolve()
-        if not source_path.is_relative_to(self._project_root) or not source_path.is_file():
-            raise StudySourceError("The parser-proven source file is no longer available.")
+        recovery = "Reopen this folder to parse its current source."
         try:
-            all_lines = read_source_text(source_path, node.language).splitlines()
-        except (OSError, SyntaxError, UnicodeDecodeError) as error:
-            raise StudySourceError("The parser-proven source could not be decoded safely.") from error
+            source_path = (self._project_root / node.file).resolve()
+            if not source_path.is_relative_to(self._project_root) or not source_path.is_file():
+                raise StudySourceError(f"The parser-proven source is no longer available. {recovery}")
+            raw = source_path.read_bytes()
+        except (OSError, RuntimeError) as error:
+            raise StudySourceError(
+                f"The parser-proven source is no longer available. {recovery}"
+            ) from error
+        expected = self._graph.file_hashes.get(node.file)
+        if not expected or hashlib.sha256(raw).hexdigest() != expected:
+            raise StudySourceError(f"The source changed since this folder was parsed. {recovery}")
+        try:
+            all_lines = decode_source_bytes(raw, node.language).splitlines()
+        except (SyntaxError, UnicodeError, LookupError) as error:
+            raise StudySourceError(
+                f"The parser-proven source could not be decoded safely. {recovery}"
+            ) from error
         start = max(1, node.lineno)
         end = min(max(start, node.end_lineno), len(all_lines))
         return {

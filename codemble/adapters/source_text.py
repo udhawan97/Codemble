@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import tokenize
 from pathlib import Path
 
@@ -19,10 +20,17 @@ _DECLARED_ENCODING_LANGUAGES = frozenset({"python"})
 def read_source_text(path: Path, language: str) -> str:
     """Return ``path`` decoded as ``language`` says it should be."""
 
+    return decode_source_bytes(path.read_bytes(), language)
+
+
+def decode_source_bytes(raw: bytes, language: str) -> str:
+    """Decode one already-read snapshot using the language's source rules."""
+
     if language in _DECLARED_ENCODING_LANGUAGES:
-        with tokenize.open(path) as source_file:
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
+        with io.TextIOWrapper(io.BytesIO(raw), encoding=encoding) as source_file:
             return source_file.read()
-    return path.read_bytes().decode("utf-8", errors="replace")
+    return raw.decode("utf-8", errors="replace")
 
 
-__all__ = ["read_source_text"]
+__all__ = ["decode_source_bytes", "read_source_text"]
