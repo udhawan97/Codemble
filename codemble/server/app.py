@@ -30,7 +30,7 @@ from codemble.adapters.project import (
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
-from codemble.progress import UnknownRegionError
+from codemble.progress import ModeSaveUncertainError, UnknownRegionError
 from codemble.server.project_activation import (
     LiveProject,
     ProjectActivation,
@@ -487,7 +487,19 @@ def create_app(
     @app.put("/api/mode")
     def set_mode(selection: ModeSelection) -> dict[str, object]:
         checks, _ = _services()
-        checks.progress.set_mode(selection.mode)
+        try:
+            checks.progress.set_mode(selection.mode)
+        except ModeSaveUncertainError as error:
+            # A failed rollback does not prove either value persisted. Give
+            # the caller a typed recovery state instead of inviting it to
+            # restore an assumed old mode or expose raw filesystem details.
+            raise HTTPException(status_code=503, detail={
+                "reason": "mode_save_uncertain",
+                "message": (
+                    "The explanation choice could not be confirmed. "
+                    "Reload this project before choosing again."
+                ),
+            }) from error
         return {"mode": selection.mode, "chosen": True}
 
     @app.delete("/api/progress")

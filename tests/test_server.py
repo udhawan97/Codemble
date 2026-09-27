@@ -1143,6 +1143,50 @@ def test_mode_refusal_after_project_write_restores_authoritative_preference(
         assert client.get("/api/mode").json() == {"mode": "expert", "chosen": True}
 
 
+@pytest.mark.parametrize("rollback_replaced", [False, True])
+def test_failed_mode_rollback_reports_uncertain_outcome_and_allows_reconciliation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rollback_replaced: bool,
+) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    progress.set_mode("easy")
+    checks = CheckService(graph, progress)
+    write = progress._write
+    writes = 0
+
+    def failed_rollback(payload):
+        nonlocal writes
+        writes += 1
+        if writes == 1 or rollback_replaced:
+            write(payload)
+        if writes > 1:
+            raise OSError("private rollback failure detail")
+
+    def failed_learner(mode):
+        raise OSError("private learner failure detail")
+
+    with TestClient(create_app(graph, tmp_path / "missing", check_service=checks),
+                    raise_server_exceptions=False) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(progress, "_write", failed_rollback)
+            patch.setattr(progress, "_write_learner_mode", failed_learner)
+            response = client.put("/api/mode", json={"mode": "expert"})
+            assert response.status_code == 503
+            assert response.json() == {"detail": {
+                "reason": "mode_save_uncertain",
+                "message": (
+                    "The explanation choice could not be confirmed. "
+                    "Reload this project before choosing again."
+                ),
+            }}
+            assert "private" not in response.text
+            # Failure does not prove either old or requested mode survived.
+            expected = "easy" if rollback_replaced else "expert"
+            assert client.get("/api/mode").json() == {"mode": expected, "chosen": True}
+        assert client.put("/api/mode", json={"mode": "easy"}).status_code == 200
+        assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
+
+
 def test_graph_and_map_share_one_hydration_after_an_invalidation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -58,6 +58,10 @@ class UnknownRegionError(KeyError):
     """Raised when progress is requested for a region outside the graph."""
 
 
+class ModeSaveUncertainError(OSError):
+    """A failed compensating write leaves the selected mode unconfirmed."""
+
+
 class ProgressStore:
     """Persist understood regions without letting stale source stay lit."""
 
@@ -187,7 +191,9 @@ class ProgressStore:
                 try:
                     self._write(previous)
                 except OSError as rollback_error:
-                    raise OSError("Mode save and rollback failed; reload this project.") from rollback_error
+                    raise ModeSaveUncertainError(
+                        "Mode save and rollback failed; reload this project."
+                    ) from rollback_error
                 raise
 
     def _learner_mode(self) -> str | None:
@@ -356,4 +362,4 @@ def list_recent_projects(limit: int = 8) -> list[dict[str, object]]:
     return [entry for _, entry in entries[:limit]]
 
 
-__all__ = ["ProgressStore", "UnknownRegionError", "list_recent_projects"]
+__all__ = ["ModeSaveUncertainError", "ProgressStore", "UnknownRegionError", "list_recent_projects"]
