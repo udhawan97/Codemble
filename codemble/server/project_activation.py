@@ -49,6 +49,7 @@ class LiveProject:
         initial_graph = self.checks.graph()
         self.studies.update_graph(initial_graph)
         self._lock = threading.Lock()
+        self._generation = 0
         # Reuse the same hydration for the first graph/map response. Startup
         # synchronization must not make a cold request pay the progress walk
         # twice.
@@ -61,13 +62,15 @@ class LiveProject:
 
         with self._lock:
             cached = self._graph_json
+            generation = self._generation
         if cached is not None:
             return cached
         payload = json.dumps(
             self._hydrated().to_dict(), separators=(",", ":"), ensure_ascii=False
         )
         with self._lock:
-            self._graph_json = payload
+            if generation == self._generation:
+                self._graph_json = payload
         return payload
 
     def map_json(self) -> str:
@@ -75,19 +78,22 @@ class LiveProject:
 
         with self._lock:
             cached = self._map_json
+            generation = self._generation
         if cached is not None:
             return cached
         payload = json.dumps(
             build_map(self._hydrated()), separators=(",", ":"), ensure_ascii=False
         )
         with self._lock:
-            self._map_json = payload
+            if generation == self._generation:
+                self._map_json = payload
         return payload
 
     def invalidate_views(self) -> None:
         """Drop all views derived from progress-sensitive graph state."""
 
         with self._lock:
+            self._generation += 1
             self._graph = None
             self._graph_json = None
             self._map_json = None
@@ -116,11 +122,16 @@ class LiveProject:
     def _hydrated(self) -> Graph:
         with self._lock:
             cached = self._graph
+            generation = self._generation
         if cached is not None:
             return cached
         hydrated = self.checks.graph()
         with self._lock:
-            self._graph = hydrated
+            # Old in-flight callers may finish their coherent snapshot, but
+            # cannot republish it for readers after the invalidation. No retry
+            # loop: continuous mutations cannot trap a request here.
+            if generation == self._generation:
+                self._graph = hydrated
         return hydrated
 
 
