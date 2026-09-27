@@ -5,6 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-09-27
+
+### Fixed
+- Keep Python call edges conservative when parameters, assignments, closures,
+  comprehensions, lambdas, nested definition expressions, `global`, or
+  `nonlocal` bindings shadow an imported name.
+- Bind every Study response to one parser-verified source snapshot. Changed,
+  missing, replaced, or undecodable source now refuses Study and narration with
+  a clear instruction to reopen the folder.
+- Replace the unsupported “first call” quiz with a multi-answer question over
+  every parser-certain direct call target, and invalidate stale question IDs
+  without erasing saved file-hash-based understanding.
+- Bypass ambient proxies for validated loopback narration, retain narration
+  admission until blocking workers actually finish, and keep parser routes
+  responsive under repeated provider timeouts.
+- Serialize progress mutations across threads and processes, prevent invalidated
+  graph and Map work from republishing stale caches, and report uncertain
+  multi-file mode saves without pretending that a rollback succeeded.
+- Refuse obsolete progress clears before their first client commit. First-run
+  launch retries now preserve the visible voyage and explanation choices, while
+  returning mode-save failures stay visible beside the control that failed.
+- Bound empty Impact copy to the parser map instead of claiming that no runtime
+  dependency or dependent exists.
+
+### Documentation
+- Synchronize the README, public site, captures, correctness and architecture
+  guides, release notes, artifact ledger, and installation paths with v0.24.0.
+
 ## [0.23.0] - 2026-09-25
 
 ### Documentation

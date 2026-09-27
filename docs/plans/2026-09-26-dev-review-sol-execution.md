@@ -583,18 +583,18 @@ unaccepted slice in the isolated candidate, never unrelated work.
 Track actual execution here or in an explicitly linked continuation document;
 the private ledger remains the authority for audit selection/review receipts:
 
-- [ ] G0 — authority, contained current-source environment, green baseline
-- [ ] S01 — proxy boundary
-- [ ] S02 — Python binding certainty
-- [ ] S03 — coherent Study bytes/hash
-- [ ] S04 — graph-supported call checks and compatibility note
-- [ ] S05 — progress transaction ownership
-- [ ] S06 — cache generation ownership
-- [ ] S07 — narration admission lifetime
-- [ ] S08 — obsolete clear refusal
-- [ ] S09 — launch retry consistency
-- [ ] S10 — returning save refusal feedback
-- [ ] S11 — evidence-bounded impact wording
+- [x] G0 — authority, contained current-source environment, green baseline
+- [x] S01 — proxy boundary
+- [x] S02 — Python binding certainty
+- [x] S03 — coherent Study bytes/hash
+- [x] S04 — graph-supported call checks and compatibility note
+- [x] S05 — progress transaction ownership
+- [x] S06 — cache generation ownership
+- [x] S07 — narration admission lifetime
+- [x] S08 — obsolete clear refusal
+- [x] S09 — launch retry consistency
+- [x] S10 — returning save refusal feedback
+- [x] S11 — evidence-bounded impact wording
 - [ ] G1 — combined runtime/package/docs/graph gates, exact-tree reviews and council
 
 Deferred research remains deferred: unaided learner acceptance, actual external

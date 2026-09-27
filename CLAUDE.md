@@ -284,16 +284,30 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**Audit repair planning (2026-09-26):** The owner requested an execution plan
-for Sol after dev-review run `20260927T022919Z-85c822af`. See
-`docs/plans/2026-09-26-dev-review-sol-execution.md`: eleven bounded repair slices,
-dependencies, file ownership, regression baselines, compatibility decisions,
-runtime/package gates, and the execution prompt. Planning only; the audit
-findings remain Open/unselected, no application repair is implemented, and no
-commit, merge, push, release or public-sharing connection is authorized.
+**v0.24.0 audit-repair candidate (2026-09-26):** The owner selected all eleven
+findings from dev-review run `20260927T022919Z-85c822af` and authorized their
+implementation, documentation, merge, push, and a new release. The isolated
+candidate now closes the proxy, Python lexical-binding, Study source-identity,
+direct-call check, progress serialization, cache-generation, narration-capacity,
+obsolete-clear, launch-retry, mode-persistence, and Impact-copy findings. Three
+independent implementation streams and cross-peer review also corrected
+definition-time Python ownership, optimistic mode rollback, strict recovery of
+uncertain two-file preference writes, and a flaky proxy fixture. The Python
+suite passes 794 tests; Ruff, the production web build, the complete WebKit
+interaction/scale/space/Escape/text matrix, Astro checks/build, and fresh
+product captures pass. Chromium cannot start its GPU process inside the
+contained host, so that contained Chromium run is recorded as unavailable
+rather than passed; the maintained default cross-engine scripts are unchanged.
+The release artifacts, final Graphify refresh, public-site acceptance, exact-tree
+council, hosted CI, registry checks, and stable-release record remain before
+publication. Public sharing remains disconnected, and paired preference files
+recover strictly after uncertain writes but are not crash-atomic.
 
 - [x] Prepare the eleven-finding Sol execution plan.
-- [ ] Select repair scope and execute its verified implementation gates.
+- [x] Select all eleven findings and implement their bounded repairs.
+- [x] Complete independent implementation and cross-peer correction cycles.
+- [ ] Complete artifacts, public-site proof, exact-tree council, hosted CI, and
+  release verification.
 
 **v0.23.0 release (2026-09-25):** The owner explicitly authorized a
 narrow release-gate amendment for the graphics, local learning experience,
@@ -2133,6 +2147,9 @@ implemented and evidenced.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-09-26 | v0.24.0 direct-call checks use schema 7 and ask for every parser-proven direct call without claiming source order; legacy file-hash-scoped understanding remains illuminated | The earlier first-call question could hide additional valid answers and teach an ordering the graph never proved. Replacing new checks corrects the learner contract. Silently clearing historical progress would manufacture a new invalidation rule, so existing saved understanding remains compatible and is not represented as retroactively re-proved. |
+| 2026-09-26 | Easy/Expert preference writes remain two ordinary local files with serialized mutation, rollback after ordinary refusal, and strict reload after uncertain rollback | The mode and progress files already have distinct responsibilities. A process crash can still interrupt the pair, so recovery must inspect persisted truth and show a refusal instead of presenting optimistic state as saved. This closes the current learner-visible inconsistency without claiming multi-file crash atomicity. |
+| 2026-09-26 | The owner-authorized v0.24.0 release may publish the eleven audit repairs, synchronized docs, and refreshed product captures while the public-sharing connection remains blocked | The selected work changes local correctness, recovery, concurrency, and truthful learner copy. It adds no upload route, provider, account, cloud authority, or operational-erasure claim and does not relax any remaining M20 deployment gate. |
 | 2026-09-25 | v0.23.0 is stable at exact release commit `67440a6`; evidence-only follow-ups must never move its tag | Two complete release-council rounds approved the candidate after correcting the local-preview/public-delivery boundary. PR #48 CI `36215990548`, trusted publish `36216559119`, main CI `36216656833`, and Pages `36216656834` passed. Fresh GitHub/PyPI assets and `SHA256SUMS.txt` agree on wheel `56c5e17c…513b1` and sdist `1246a071…76b0`; a cold Python 3.12 install reports 0.23.0, and Obscura plus the maintained responsive-site gate verify the deployed 245-system public surface. M20 public-sharing connection and operational-erasure evidence remain separate open gates. |
 | 2026-09-25 | v0.23.0 may publish the graphics, local learning experience, dependency updates, documentation, and dormant disconnected M20 foundations while the public-sharing connection remains blocked | After the candidate became concrete and reviewable, the owner repeatedly and explicitly requested a new release. This is the narrowly scoped amendment allowed by the Planetary Expedition delivery boundary. It does not connect preview to delivery, add upload/provider/account/cloud authority, claim independent infrastructure evidence, or relax any timer, alert, restore, deletion, key-retirement, or media-erasure receipt required before public sharing is enabled. |
 | 2026-08-30 | Scheduled writer, operator, and append-only receiver failures enter one root-owned `ShareFailureAlertRelay`: it accepts only those three units, persists one canonical token-free event before invoking an absolute digest-pinned local notifier, retains the same pending event across failure, and moves it to delivered history only after a zero exit. systemd retries every five minutes through one template unit; the notifier receives the event on stdin and owns channel-specific delivery plus event-ID deduplication | The operations reference required alerts but its services had no executable failure path, so a failed hourly sweep or daily full-data check could remain only in a local journal. Keeping the relay provider-neutral avoids adding an account or choosing email, webhook, or paging infrastructure. Persist-before-notify prevents a transient channel failure from erasing the incident; the stable ID makes at-least-once retry deduplicable; a closed schema excludes capabilities, request targets, artifacts, repository credentials, IPs, and free-form text. The source and local tests prove the handoff contract only. M20 still requires a deliberate failure on every intended node, external channel acknowledgement, timer history, and token-free operator receipts before alerting is operational evidence. |

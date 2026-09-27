@@ -46,7 +46,7 @@ optional extra: bring your own Claude or OpenAI key, or run a local model
 through Ollama and send nothing anywhere.
 
 :::note[Status]
-Codemble **v0.23.0** is published on PyPI and maps Python, JavaScript,
+Codemble **v0.24.0** is published on PyPI and maps Python, JavaScript,
 TypeScript, Go, Java, Rust, C#, Ruby, PHP, and mixed projects. First run offers
 free exploration or a guided First Flight. Every module opens as a solar system
 with its module anchor as the Sun, named language-styled worlds in parser-owned
@@ -56,7 +56,7 @@ journey follows proven evidence only as far as it reaches, then exposes the
 proof break; guided stops continue from landing into the existing graph-derived
 checks.
 Impact, dependencies, and verification candidates are selected-feature facts,
-not claims about every route step. The downloadable package, product captures, and guides all describe v0.23.0. The original
+not claims about every route step. The downloadable package, product captures, and guides all describe v0.24.0. The original
 unaided learner-acceptance issue remains open; technical completion does not
 substitute for human evidence. [Choose a run or download route](/Codemble/download/).
 :::

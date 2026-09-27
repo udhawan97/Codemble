@@ -25,6 +25,16 @@ worse than no tool. So these rules outrank every feature request:
 7. **Check answers come from the graph, never the model.**
 8. **Approximate call edges are labeled "possible call"** — never stated as fact.
 
+Lexical ownership is part of rule 8. An imported call target is not certain when
+a parameter, assignment, closure, comprehension, lambda, `global`/`nonlocal`
+declaration, decorator, annotation, default, or class base can own that name.
+Codemble prefers an unresolved or possible edge to teaching a false import call.
+
+The same identity rule governs Study: the source bytes shown, their parser hash,
+relationships, cache key, and optional narration must describe one snapshot. A
+file changed after parsing is a recoverable refusal, never permission to combine
+old graph facts with new source.
+
 Rule 8 travels. When the study panel traces what a change would reach, a chain
 that passes through one unproven relationship is labelled possible for its whole
 length — an uncertain first step cannot be laundered into a certain third one.
@@ -99,8 +109,8 @@ gaps:
 - **Files it could not read.** A source file with a syntax error is counted and
   attributed to the directory it came from, so you know the error is in that
   file and not in your understanding.
-- **Languages it does not speak.** Codemble reads seven: Python, JavaScript,
-  TypeScript, Go, Java, Rust, and C#. If your project has Kotlin, Ruby, or Swift
+- **Languages it does not speak.** Codemble reads nine: Python, JavaScript,
+  TypeScript, Go, Java, Rust, C#, Ruby, and PHP. If your project has Kotlin or Swift
   beside them, the count and the language are stated on the Galaxy and Map
   layers. Nothing about those files is guessed — they contribute no box, no
   star, and no connection — but you are told they exist. Shipping an adapter
