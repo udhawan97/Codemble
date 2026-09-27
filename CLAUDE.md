@@ -284,6 +284,17 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**Audit repair planning (2026-09-26):** The owner requested an execution plan
+for Sol after dev-review run `20260927T022919Z-85c822af`. See
+`docs/plans/2026-09-26-dev-review-sol-execution.md`: eleven bounded repair slices,
+dependencies, file ownership, regression baselines, compatibility decisions,
+runtime/package gates, and the execution prompt. Planning only; the audit
+findings remain Open/unselected, no application repair is implemented, and no
+commit, merge, push, release or public-sharing connection is authorized.
+
+- [x] Prepare the eleven-finding Sol execution plan.
+- [ ] Select repair scope and execute its verified implementation gates.
+
 **v0.23.0 release (2026-09-25):** The owner explicitly authorized a
 narrow release-gate amendment for the graphics, local learning experience,
 dependency updates, documentation, local-only preview, and disconnected M20
@@ -2364,7 +2375,7 @@ implemented and evidenced.
 | 2026-09-25 | Product captures parse a Git-filtered current-source snapshot named `Codemble` and normalize the displayed graph root to `/capture/Codemble` before the UI renders | The previous workflow depended on naming a checkout `Codemble`; arbitrary clone/worktree names could leak into the public header, and ignored build output could alter product counts. The disposable snapshot includes tracked and non-ignored working-tree source, excludes ignored artifacts, and is removed with the server. The UI still exercises the real current source, while one capture-only response field makes the visible identity path-independent and a safety check pins that contract. |
 | 2026-09-11 | Accept cryptography 50, tree-sitter-go 0.25, tree-sitter-rust 0.24, and JetBrains Mono 5.3 together; keep tree-sitter core below 0.26 and align the app and docs font package | Cryptography 50.0.1 preserves the AES-GCM storage/delivery contract across the focused suite; the Go and Rust grammar wheels pass the nine-language semantic oracle and parse 910-node upstream Go plus 162-, 2,380-, and 56-node real Rust corpora with no partial files on core 0.25.2. Fontsource 5.3 adds package typing metadata and produces the same committed app bundle. The JavaScript/core 0.26 crash boundary is unchanged. |
 | 2026-09-11 | Cleanup preserves unique or dirty user work and integrates only the four verified Dependabot heads; release publication stays blocked | Branch age and CI alone do not prove redundancy. The planning ref remains unique, the historical graphics worktree contains uncommitted differences, and the dependency refs become removable only after their exact heads reach verified `main`. Local and hosted checks cannot substitute for the independent operational receipts required by M20, so no version bump, tag, or release is created from this pass unless that evidence appears. |
-
+| 2026-09-26 | Prepare an execution-ready Sol plan for all eleven findings from dev-review run `20260927T022919Z-85c822af`; keep implementation selection separate | The owner asked “plan it so sol can execute.” The plan binds the audited revision and stable IDs, orders repairs around shared files, specifies behavior-level regression and runtime gates, preserves legacy file-hash-scoped understanding rather than silently resetting it, and carries a copyable future execution instruction. This planning request changes no application behavior, roadmap phase, release authority or disconnected M20 boundary. |
 
 ## Non-Goals — do NOT build (point here when asked)
 
