@@ -20,7 +20,7 @@
 
 import assert from "node:assert/strict";
 
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 
 const url = process.env.CODEMBLE_URL;
 if (!url) {
@@ -72,11 +72,17 @@ const KEY_VIEWPORTS = [
   { width: 320, height: 640, deviceScaleFactor: 1, label: "320px reflow" },
 ];
 
-const browser = await chromium.launch({
-  channel: "chrome",
-  headless: true,
-  args: ["--use-angle=swiftshader", "--enable-webgl"],
-});
+const engine = process.env.CODEMBLE_BROWSER_ENGINE || "chrome";
+if (!new Set(["chrome", "webkit"]).has(engine)) {
+  throw new Error("CODEMBLE_BROWSER_ENGINE must be 'chrome' or 'webkit'.");
+}
+const browser = engine === "webkit"
+  ? await webkit.launch({ headless: true })
+  : await chromium.launch({
+      channel: "chrome",
+      headless: true,
+      args: ["--use-angle=swiftshader", "--enable-webgl"],
+    });
 
 let failures = 0;
 const report = [];

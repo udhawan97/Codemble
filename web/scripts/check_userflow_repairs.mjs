@@ -37,7 +37,15 @@ try {
   const project = await startCodemble({ project: repoRoot, dataRoot: dataRoots[0] });
   const picker = await startCodemble({ project: null, dataRoot: dataRoots[1] });
 
-  const engines = [["chromium", chromium], ["webkit", webkit]];
+  const engineCatalog = new Map([["chromium", chromium], ["webkit", webkit]]);
+  const requestedEngines = (process.env.CODEMBLE_BROWSER_ENGINES || "chromium,webkit")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (!requestedEngines.length || requestedEngines.some((engine) => !engineCatalog.has(engine))) {
+    throw new Error("CODEMBLE_BROWSER_ENGINES must contain chromium and/or webkit.");
+  }
+  const engines = requestedEngines.map((engine) => [engine, engineCatalog.get(engine)]);
   for (const [engine, browserType] of engines) {
     const launchDataRoot = mkdtempSync(path.join(tmpdir(), `codemble-launch-${engine}-`));
     dataRoots.push(launchDataRoot);

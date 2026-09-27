@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 
 import {
   canonicalCaptureGraph,
@@ -14,6 +14,11 @@ if (process.env.CODEMBLE_CAPTURE_URL) {
   throw new Error(
     "CODEMBLE_CAPTURE_URL is no longer accepted: capture:docs starts its own disposable, provider-free server.",
   );
+}
+
+const captureEngine = process.env.CODEMBLE_CAPTURE_ENGINE || "chrome";
+if (!new Set(["chrome", "webkit"]).has(captureEngine)) {
+  throw new Error("CODEMBLE_CAPTURE_ENGINE must be 'chrome' or 'webkit'.");
 }
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -39,11 +44,13 @@ const baseUrl = captureServer.url;
 
 await mkdir(outputDirectory, { recursive: true });
 
-browser = await chromium.launch({
-  channel: "chrome",
-  headless: true,
-  args: ["--use-angle=swiftshader", "--enable-webgl"],
-});
+browser = captureEngine === "webkit"
+  ? await webkit.launch({ headless: true })
+  : await chromium.launch({
+      channel: "chrome",
+      headless: true,
+      args: ["--use-angle=swiftshader", "--enable-webgl"],
+    });
 const page = await browser.newPage({
   viewport: { width: 1440, height: 720 },
   deviceScaleFactor: 1,
