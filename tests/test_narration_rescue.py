@@ -16,11 +16,13 @@ The contract these tests must NOT relax: invented structure stays fatal. See
 
 from __future__ import annotations
 
+import asyncio
 import json
 import threading
 import time
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -33,9 +35,169 @@ from codemble.llm.providers import (
 )
 from codemble.llm.structural import structural_summary
 from codemble.llm.study import StudyService
-from codemble.server.app import _NARRATION_SLOTS, create_app
+from codemble.server.app import _NARRATION_SLOTS, PickerConfig, create_app
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sampleproj"
+
+
+def test_deadlines_and_cancellations_do_not_release_running_provider_capacity(tmp_path):
+    """One ASGI loop; admission follows worker lifetime, including abandoned work."""
+    release = threading.Event()
+    lock = threading.Lock()
+    active = calls = peak = 0
+
+    class BlockedProvider:
+        name = "fictional"
+        model = "blocked"
+
+        def complete(self, prompt):
+            nonlocal active, calls, peak
+            with lock:
+                calls += 1
+                active += 1
+                peak = max(peak, active)
+            try:
+                assert release.wait(timeout=5)
+                return json.dumps(_payload())
+            finally:
+                with lock:
+                    active -= 1
+
+    graph = _graph()
+    studies = StudyService(graph, provider=BlockedProvider(), cache_root=tmp_path / "cache")
+    app = create_app(graph, tmp_path / "missing", studies, picker=PickerConfig(FIXTURE))
+    app.state.narration_deadline_seconds = 0.1
+
+    async def exercise():
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(transport=httpx.ASGITransport(app),
+                              base_url="http://testserver") as client,
+        ):
+            try:
+                for _ in range(3):
+                    async with asyncio.timeout(2):
+                        responses = await asyncio.gather(*[
+                            client.get("/api/node/app.main/explanation") for _ in range(4)
+                        ])
+                    assert all(response.json()["status"] == "timeout" for response in responses)
+                assert peak == _NARRATION_SLOTS
+                assert calls == _NARRATION_SLOTS
+                async with asyncio.timeout(2):
+                    for path in ("/api/graph", "/api/map", "/api/node/app.main/study",
+                                 "/api/regions/app/checks"):
+                        assert (await client.get(path)).status_code == 200
+                # Waiters cancelled while all slots are held must never
+                # become orphan provider calls when the workers finish.
+                pending = asyncio.create_task(client.get("/api/node/app.main/explanation"))
+                await asyncio.sleep(0.02)
+                pending.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await pending
+            finally:
+                release.set()
+            async with asyncio.timeout(2):
+                while active:
+                    await asyncio.sleep(0.01)
+            # Completion includes cache publication after provider return.
+            async with asyncio.timeout(2):
+                while True:
+                    result = (await client.get("/api/node/app.main/explanation")).json()
+                    if result["status"] == "ready":
+                        break
+                    await asyncio.sleep(0.01)
+            assert result["cached"] is True
+            assert calls == _NARRATION_SLOTS
+
+    asyncio.run(exercise())
+
+
+def test_cancelled_running_narration_survives_project_release_and_shutdown(tmp_path):
+    release = threading.Event()
+    active = 0
+    calls = 0
+    lock = threading.Lock()
+
+    class BlockedProvider:
+        name = "fictional"
+        model = "cancelled"
+
+        def complete(self, prompt):
+            nonlocal active, calls
+            with lock:
+                active += 1
+                calls += 1
+            try:
+                assert release.wait(timeout=5)
+                return json.dumps(_payload())
+            finally:
+                with lock:
+                    active -= 1
+
+    graph = _graph()
+    studies = StudyService(graph, provider=BlockedProvider(), cache_root=tmp_path / "old")
+    app = create_app(graph, tmp_path / "missing", studies, picker=PickerConfig(FIXTURE))
+    app.state.narration_deadline_seconds = 0.1
+
+    async def exercise():
+        try:
+            async with (
+                app.router.lifespan_context(app),
+                httpx.AsyncClient(transport=httpx.ASGITransport(app),
+                                  base_url="http://testserver") as client,
+            ):
+                tasks = [asyncio.create_task(client.get("/api/node/app.main/explanation"))
+                         for _ in range(_NARRATION_SLOTS)]
+                async with asyncio.timeout(2):
+                    while active != _NARRATION_SLOTS:
+                        await asyncio.sleep(0.001)
+                for task in tasks:
+                    task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                assert (await client.get("/api/node/app.main/explanation")).json()["status"] == "timeout"
+                assert calls == _NARRATION_SLOTS
+                response = await client.post("/api/picker/reset", json={"confirmed": True})
+                assert response.status_code == 200
+                assert (await client.get("/api/node/app.main/explanation")).status_code == 409
+            # Lifespan cleanup returns while workers remain bounded and alive.
+            assert active == _NARRATION_SLOTS
+            fresh = create_app(graph, tmp_path / "missing", StudyService(
+                graph, provider=_Provider(_payload()), cache_root=tmp_path / "fresh",
+            ))
+            async with (
+                fresh.router.lifespan_context(fresh),
+                httpx.AsyncClient(transport=httpx.ASGITransport(fresh),
+                                  base_url="http://testserver") as client,
+            ):
+                async with asyncio.timeout(2):
+                    assert (await client.get("/api/node/app.main/explanation")).json()["status"] == "ready"
+        finally:
+            release.set()
+        async with asyncio.timeout(2):
+            while active:
+                await asyncio.sleep(0.01)
+
+    asyncio.run(exercise())
+
+
+def test_narration_worker_exceptions_return_admission_for_later_requests(tmp_path):
+    class FailingOnceProvider(_Provider):
+        def complete(self, prompt):
+            if self.calls == 0:
+                self.calls += 1
+                raise RuntimeError("fictional unexpected worker failure")
+            return super().complete(prompt)
+
+    graph = _graph()
+    app = create_app(graph, tmp_path / "missing", StudyService(
+        graph, provider=FailingOnceProvider(_payload()), cache_root=tmp_path / "cache",
+    ))
+    with TestClient(app, raise_server_exceptions=False) as client:
+        assert client.get("/api/node/app.main/explanation").status_code == 500
+        for _ in range(_NARRATION_SLOTS + 1):
+            assert client.get("/api/node/not-a-node/explanation").status_code == 404
+        response = client.get("/api/node/app.main/explanation")
+        assert response.json()["status"] == "ready"
 
 
 def _graph():
