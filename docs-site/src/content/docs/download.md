@@ -60,7 +60,7 @@ ledger, and PyPI metadata:
 
 ```text
 88e78eedf590b5fbe90fae5edd5bd3e76eb9c3c95fbb43c6cbdad639388e0566  codemble-0.24.0-py3-none-any.whl
-79df3594dc07380ff0094fbfd4adf611e639972dcd10680bdd16375125e9feaf  codemble-0.24.0.tar.gz
+933d52287ed3f0fcf884a4d984a1a412ac380bd27280f5d82523ed0adf3fb2f0  codemble-0.24.0.tar.gz
 ```
 
 To check the wheel on macOS or Linux:
