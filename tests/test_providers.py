@@ -1,4 +1,4 @@
-"""Provider transports are exercised through injection; no test touches a network."""
+"""Provider transports use injected responses and disposable loopback listeners."""
 
 import json
 import os
@@ -17,7 +17,7 @@ from codemble.llm.providers import OllamaProvider, ProviderError
 @pytest.mark.parametrize("proxy_variable", ["http_proxy", "HTTP_PROXY"])
 def test_local_transport_ignores_ambient_proxy_before_import(proxy_variable):
     """Both local endpoints bypass an ambient proxy, including on failure."""
-    requests = {"local": [], "proxy": []}
+    requests = {"local": [], "unavailable": [], "proxy": []}
 
     def handler(destination):
         class Listener(BaseHTTPRequestHandler):
@@ -31,7 +31,7 @@ def test_local_transport_ignores_ambient_proxy_before_import(proxy_variable):
                 body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
                 requests[destination].append((self.path, body))
                 payload = json.dumps({"response": "fictional text", "models": []}).encode()
-                self.send_response(200)
+                self.send_response(503 if destination == "unavailable" else 200)
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
@@ -45,45 +45,49 @@ def test_local_transport_ignores_ambient_proxy_before_import(proxy_variable):
         ThreadingHTTPServer(("127.0.0.1", 0), handler(destination))
         for destination in requests
     ]
-    threads = [threading.Thread(target=server.serve_forever) for server in servers]
+    threads = [
+        threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
+        for server in servers
+    ]
     for thread in threads:
         thread.start()
-    local, proxy = [f"http://127.0.0.1:{server.server_port}" for server in servers]
-    # Bound but not listening: guarantees connection refusal without racing
-    # another process to an allegedly unused port.
-    with socket.socket() as absent:
-        absent.bind(("127.0.0.1", 0))
-        unavailable = f"http://127.0.0.1:{absent.getsockname()[1]}"
-        env = {key: value for key, value in os.environ.items() if "proxy" not in key.lower()}
-        env.update({proxy_variable: proxy, "no_proxy": "", "NO_PROXY": ""})
-        env.pop("REQUEST_METHOD", None)
-        try:
-            result = subprocess.run(
-                [sys.executable, "-c", """
+    local, unavailable, proxy = [
+        f"http://127.0.0.1:{server.server_port}" for server in servers
+    ]
+    # A controlled HTTP failure completes immediately on every platform.
+    # A bound-but-not-listening socket can instead wait for network timeouts.
+    env = {key: value for key, value in os.environ.items() if "proxy" not in key.lower()}
+    env.update({proxy_variable: proxy, "no_proxy": "", "NO_PROXY": ""})
+    env.pop("REQUEST_METHOD", None)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", """
 import sys
-from codemble.llm.providers import OllamaProvider, ProviderUnavailableError
+from codemble.llm.providers import OllamaProvider, ProviderRejectedError
 from codemble.llm.local_status import ollama_status
 assert OllamaProvider(host=sys.argv[1]).complete('fictional prompt') == 'fictional text'
 assert ollama_status(host=sys.argv[1])['running'] is True
 assert ollama_status(host=sys.argv[2])['running'] is False
 try:
     OllamaProvider(host=sys.argv[2]).complete('fictional prompt')
-except ProviderUnavailableError:
-    pass
+except ProviderRejectedError as error:
+    assert error.status == 503
 else:
-    raise AssertionError('absent local model must fail locally')
+    raise AssertionError('unavailable local model must fail locally')
 """, local, unavailable],
-                env=env, capture_output=True, timeout=10, text=True, check=False,
-            )
-            assert result.returncode == 0, result.stderr
-        finally:
-            for server in servers:
-                server.shutdown()
-                server.server_close()
-            for thread in threads:
-                thread.join(timeout=5)
+            env=env, capture_output=True, timeout=10, text=True, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+    finally:
+        for server in servers:
+            server.shutdown()
+            server.server_close()
+        for thread in threads:
+            thread.join(timeout=5)
     assert [path for path, _ in requests["local"]] == ["/api/generate", "/api/tags"]
     assert json.loads(requests["local"][0][1])["prompt"] == "fictional prompt"
+    assert [path for path, _ in requests["unavailable"]] == ["/api/tags", "/api/generate"]
+    assert json.loads(requests["unavailable"][1][1])["prompt"] == "fictional prompt"
     assert requests["proxy"] == []
 
 
