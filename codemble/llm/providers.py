@@ -145,8 +145,9 @@ class _NoRedirectHandler(request.HTTPRedirectHandler):
 # loopback port could answer "302 -> http://other-host/" and send the
 # request (and its response) off loopback. Every local-only request shares
 # this opener so a redirect always fails closed as an HTTPError instead of
-# silently leaving loopback.
-_LOOPBACK_OPENER = request.build_opener(_NoRedirectHandler)
+# silently leaving loopback. Disable ambient proxies too: a validated local
+# URL does not constrain the transport when urllib inserts ProxyHandler.
+_LOOPBACK_OPENER = request.build_opener(request.ProxyHandler({}), _NoRedirectHandler)
 
 
 # The canonical Ollama model names: defined once here and imported everywhere
