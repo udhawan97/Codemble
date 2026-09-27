@@ -298,17 +298,20 @@ interaction/scale/space/Escape/text matrix, Astro checks/build, and fresh
 product captures pass. The full bundled-Chromium user-flow matrix (36 receipts)
 and 5,000-module scale gate also pass with external network denied and writes
 confined; the browser required ordinary runtime read access for its GPU helper.
-The maintained default cross-engine scripts are unchanged. The release
-artifacts, final Graphify refresh, public-site acceptance, exact-tree council,
-hosted CI, registry checks, and stable-release record remain before publication.
-Public sharing remains disconnected, and paired preference files recover
-strictly after uncertain writes but are not crash-atomic.
+The maintained default cross-engine scripts are unchanged. The reproducible
+release artifacts, exact-head Graphify refresh, Safari docs render, maintained
+responsive public-site gate, and fresh package install pass. The exact-tree
+council, hosted CI, registry checks, live Pages proof, and stable-release record
+remain before publication. Public sharing remains disconnected, and paired
+preference files recover strictly after uncertain writes but are not
+crash-atomic.
 
 - [x] Prepare the eleven-finding Sol execution plan.
 - [x] Select all eleven findings and implement their bounded repairs.
 - [x] Complete independent implementation and cross-peer correction cycles.
-- [ ] Complete artifacts, public-site proof, exact-tree council, hosted CI, and
-  release verification.
+- [x] Complete artifacts, public-site proof, package install, and graph refresh.
+- [ ] Complete exact-tree council, hosted CI, publication, and live release
+  verification.
 
 **v0.23.0 release (2026-09-25):** The owner explicitly authorized a
 narrow release-gate amendment for the graphics, local learning experience,
