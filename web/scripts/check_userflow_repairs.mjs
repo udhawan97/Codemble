@@ -190,9 +190,9 @@ async function checkModeSaveRefusal(page, surface, radioName, engine) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     await easy.focus();
     await easy.press("Space");
-    const alert = surface.getByRole("alert").filter({ hasText: "Explanation choice was not saved" });
+    const alert = surface.getByRole("alert").filter({ hasText: "Explanation save did not finish" });
     await alert.waitFor();
-    assert.match(await alert.innerText(), /try again/);
+    assert.match(await alert.innerText(), /retry/);
     assert.doesNotMatch(await alert.innerText(), /private backend detail/);
     assert.equal(await expert.isChecked(), true, "refusal restores committed register");
     assert.equal(await easy.evaluate((input) => document.activeElement === input), true, "refusal does not steal focus");
@@ -202,7 +202,7 @@ async function checkModeSaveRefusal(page, surface, radioName, engine) {
   await easy.press("Space");
   assert.equal((await saved).ok(), true);
   await waitFor(async () => await easy.isChecked());
-  assert.equal(await surface.getByRole("alert").filter({ hasText: "Explanation choice was not saved" }).count(), 0);
+  assert.equal(await surface.getByRole("alert").filter({ hasText: "Explanation save did not finish" }).count(), 0);
   const restore = page.waitForResponse((response) => response.url().endsWith("/api/mode") && response.request().method() === "PUT");
   await expert.check();
   await restore;

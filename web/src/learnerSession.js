@@ -82,6 +82,7 @@ export function createLearnerSession({
   });
   let lifecycle = 0;
   let modeLifecycle = 0;
+  let confirmedMode = null;
   let graphController = null;
   let studyController = null;
   let explanationController = null;
@@ -160,6 +161,7 @@ export function createLearnerSession({
   async function start() {
     lifecycle += 1;
     const requestLifecycle = lifecycle;
+    confirmedMode = null;
     abortController(graphController);
     graphController = new AbortController();
     const controller = graphController;
@@ -236,6 +238,7 @@ export function createLearnerSession({
       const validMode = stored?.mode === "easy" || stored?.mode === "expert";
       if (validMode) {
         applyMode(stored.mode, stored.chosen === true);
+        confirmedMode = { mode: stored.mode, chosen: stored.chosen === true, layer: snapshot.layer };
       } else if (snapshot.modeChosen === null) {
         // Resolves the unknown (null) state when the response can't be
         // trusted — a thrown request, or a payload with a mode value the
@@ -786,8 +789,6 @@ export function createLearnerSession({
   async function setMode(mode, layerOverride) {
     if (mode !== "easy" && mode !== "expert") return false;
     const previous = snapshot.mode;
-    const previousChosen = snapshot.modeChosen;
-    const previousLayer = snapshot.layer;
     // Not a plain mode-equality check: confirming the current mode is exactly
     // how a first-run learner leaves the never-chosen state, so the choice
     // still has to be written when only modeChosen changes.
@@ -808,26 +809,42 @@ export function createLearnerSession({
     try {
       await adapter.saveMode(mode, { signal: controller.signal });
     } catch (requestError) {
-      // Rolled back rather than left optimistically committed: a snapshot that
-      // silently disagrees with disk is the undetectable kind of wrong. Rolling
-      // back into a *different* project would be worse still, hence the
-      // lifecycle re-check beside the controller identity one.
+      // A failed PUT may have partially persisted before its error. Re-read
+      // the server instead of trusting any preceding optimistic snapshot.
       if (
-        modeController === controller &&
-        requestLifecycle === lifecycle &&
-        !controller.signal.aborted &&
-        !isAbortError(requestError)
+        modeController !== controller || requestLifecycle !== lifecycle ||
+        controller.signal.aborted || isAbortError(requestError)
+      ) return false;
+      let stored;
+      try {
+        stored = await adapter.loadMode({ signal: controller.signal });
+      } catch {
+        // The uncertainty message below never claims a successful rollback.
+      }
+      if (
+        modeController !== controller || requestLifecycle !== lifecycle ||
+        controller.signal.aborted
+      ) return false;
+      if (
+        (stored?.mode === "easy" || stored?.mode === "expert") &&
+        typeof stored.chosen === "boolean"
       ) {
-        applyMode(previous, previousChosen, previousLayer);
+        const layer = snapshot.layerChosen ? snapshot.layer
+          : confirmedMode?.mode === stored.mode ? confirmedMode.layer : undefined;
+        applyMode(stored.mode, stored.chosen, layer);
+        confirmedMode = { mode: stored.mode, chosen: stored.chosen, layer: snapshot.layer };
         commit({
-          modeError: previousChosen
-            ? "Explanation choice was not saved. Choose it again to try again."
+          modeError: stored.chosen
+            ? "Explanation save did not finish. Your saved choice is shown; choose again to retry."
             : "Launch was not saved. Your choice is still here; try again.",
         });
+      } else {
+        commit({ modeError: "The explanation choice could not be confirmed. Reload this project before choosing again." });
       }
       return false;
     }
     if (requestLifecycle !== lifecycle || controller.signal.aborted) return false;
+    confirmedMode = { mode, chosen: true, layer: snapshot.layer };
     // Lens, checks, and the Tier 0 summary already carry both voices and
     // switch locally from the existing payload -- only narration is generated
     // per mode, so only narration is worth a refetch here. It runs after the
