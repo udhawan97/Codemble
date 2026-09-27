@@ -160,6 +160,8 @@ class _ScopeFacts(ast.NodeVisitor):
     def __init__(self) -> None:
         self.imports: list[ast.Import | ast.ImportFrom] = []
         self.calls: list[ast.Call] = []
+        self.call_shadows: dict[int, set[str]] = {}
+        self._expression_shadows: set[str] = set()
 
     def visit_Import(self, syntax: ast.Import) -> None:
         self.imports.append(syntax)
@@ -169,6 +171,7 @@ class _ScopeFacts(ast.NodeVisitor):
 
     def visit_Call(self, syntax: ast.Call) -> None:
         self.calls.append(syntax)
+        self.call_shadows[id(syntax)] = set(self._expression_shadows)
         self.generic_visit(syntax)
 
     def visit_ClassDef(self, syntax: ast.ClassDef) -> None:
@@ -179,6 +182,45 @@ class _ScopeFacts(ast.NodeVisitor):
 
     def visit_AsyncFunctionDef(self, syntax: ast.AsyncFunctionDef) -> None:
         return
+
+    def visit_Lambda(self, syntax: ast.Lambda) -> None:
+        for default in (*syntax.args.defaults, *syntax.args.kw_defaults):
+            if default is not None:
+                self.visit(default)
+        previous = self._expression_shadows
+        self._expression_shadows = previous | _CallBindings(
+            [ast.Expr(value=syntax.body)], [], [], syntax.args,
+        ).values.keys()
+        self.visit(syntax.body)
+        self._expression_shadows = previous
+
+    def _visit_comprehension(
+        self, syntax: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
+    ) -> None:
+        # The first iterable is evaluated in the enclosing scope. Targets are
+        # local to the comprehension, including references in its later clauses.
+        self.visit(syntax.generators[0].iter)
+        previous = self._expression_shadows
+        self._expression_shadows = previous | {
+            node.id for generator in syntax.generators
+            for node in ast.walk(generator.target) if isinstance(node, ast.Name)
+        }
+        for index, generator in enumerate(syntax.generators):
+            if index:
+                self.visit(generator.iter)
+            for condition in generator.ifs:
+                self.visit(condition)
+        if isinstance(syntax, ast.DictComp):
+            self.visit(syntax.key)
+            self.visit(syntax.value)
+        else:
+            self.visit(syntax.elt)
+        self._expression_shadows = previous
+
+    visit_ListComp = _visit_comprehension
+    visit_SetComp = _visit_comprehension
+    visit_DictComp = _visit_comprehension
+    visit_GeneratorExp = _visit_comprehension
 
     def collect(self, statements: list[ast.stmt]) -> _ScopeFacts:
         for statement in statements:
@@ -478,14 +520,28 @@ class PythonAstAdapter:
             if resolved:
                 bases_by_class[definition.node_id] = tuple(resolved)
 
+        lexical_scopes: dict[str, _CallBindings] = {}
+        for parsed in parsed_files:
+            if parsed.tree is not None:
+                lexical_scopes[parsed.module] = _CallBindings(
+                    parsed.tree.body, module_bindings[parsed.module],
+                    children_by_parent[parsed.module],
+                )
+        for definition in definitions:
+            lexical_scopes[definition.node_id] = _CallBindings(
+                definition.syntax.body, scope_bindings[definition.node_id],
+                children_by_parent[definition.node_id],
+                definition.syntax.args
+                if isinstance(definition.syntax, (ast.FunctionDef, ast.AsyncFunctionDef))
+                else None,
+            )
+
         for definition in definitions:
             module = _module_from_node_id(definition.node_id, modules)
             facts = _ScopeFacts().collect(definition.syntax.body)
-            bindings = list(module_bindings[module])
-            for ancestor_id in definition.function_ancestors:
-                bindings.extend(scope_bindings[ancestor_id])
-            bindings.extend(scope_bindings[definition.node_id])
-            binding_map = {binding.local_name: binding for binding in bindings}
+            binding_map, shadowed = _visible_call_bindings(
+                definition, module, lexical_scopes,
+            )
             annotated_types = _annotated_types(definition.syntax)
             for call in facts.calls:
                 call_edges.extend(
@@ -499,6 +555,7 @@ class PythonAstAdapter:
                         children_by_parent,
                         bases_by_class,
                         annotated_types,
+                        shadowed | facts.call_shadows[id(call)],
                     )
                 )
 
@@ -824,6 +881,113 @@ class _PythonFunctionBindings(ast.NodeVisitor):
         self.external.update(node.names)
 
 
+class _CallBindings(ast.NodeVisitor):
+    """A lexical owner, with unknown values kept distinct from absent names.
+
+    Assignment anywhere in a function makes the name local, even before that
+    statement executes. We prove stable imports/definitions only; mixed writes
+    stay unknown rather than attempting control-flow or callback inference.
+    """
+
+    def __init__(
+        self, body: list[ast.stmt], imports: list[_ImportBinding],
+        children: list[Node], arguments: ast.arguments | None = None,
+    ) -> None:
+        self.values: dict[str, _ImportBinding | None] = {}
+        self.assigned = _python_parameter_names(arguments) if arguments else set()
+        self.globals: set[str] = set()
+        self.nonlocals: set[str] = set()
+        for binding in imports:
+            if binding.local_name in self.values and self.values[binding.local_name] != binding:
+                self.assigned.add(binding.local_name)
+            self.values[binding.local_name] = binding
+        for child in children:
+            if child.name in self.values:
+                self.assigned.add(child.name)
+            self.values[child.name] = _ImportBinding(child.name, child.id, False)
+        for statement in body:
+            self.visit(statement)
+        self.values.update(dict.fromkeys(self.assigned))
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, (ast.Store, ast.Del)):
+            self.assigned.add(node.id)
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+        if node.name:
+            self.assigned.add(node.name)
+        self.generic_visit(node)
+
+    def visit_MatchAs(self, node: ast.MatchAs) -> None:
+        if node.name:
+            self.assigned.add(node.name)
+        self.generic_visit(node)
+
+    def visit_MatchStar(self, node: ast.MatchStar) -> None:
+        if node.name:
+            self.assigned.add(node.name)
+
+    def visit_MatchMapping(self, node: ast.MatchMapping) -> None:
+        if node.rest:
+            self.assigned.add(node.rest)
+        self.generic_visit(node)
+
+    def visit_Global(self, node: ast.Global) -> None:
+        self.globals.update(node.names)
+
+    def visit_Nonlocal(self, node: ast.Nonlocal) -> None:
+        self.nonlocals.update(node.names)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        return
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+    visit_ClassDef = visit_FunctionDef
+
+    def visit_Lambda(self, node: ast.Lambda) -> None:
+        return
+
+    def visit_comprehension(self, node: ast.comprehension) -> None:
+        # Iteration targets belong to the comprehension, not this scope.
+        self.visit(node.iter)
+        for condition in node.ifs:
+            self.visit(condition)
+
+
+def _visible_call_bindings(
+    definition: _Definition, module: str, scopes: dict[str, _CallBindings],
+) -> tuple[dict[str, _ImportBinding], set[str]]:
+    owners = [scopes[definition.node_id]]
+    owners.extend(scopes[key] for key in reversed(definition.function_ancestors))
+    owners.append(scopes[module])
+    names = set().union(*(scope.values.keys() | scope.globals | scope.nonlocals for scope in owners))
+    known: dict[str, _ImportBinding] = {}
+    unknown: set[str] = set()
+    for name in names:
+        value = None
+        for index, scope in enumerate(owners):
+            if name in scope.assigned:
+                break
+            if name in scope.globals:
+                value = scope.values.get(name, owners[-1].values.get(name))
+                break
+            if name in scope.nonlocals:
+                # Nonlocal cannot resolve to module scope.
+                value = scope.values.get(name, next(
+                    (owner.values[name] for owner in owners[index + 1:-1]
+                     if name in owner.values), None,
+                ))
+                break
+            if name in scope.values:
+                value = scope.values[name]
+                break
+        if value is None:
+            unknown.add(name)
+        else:
+            known[name] = value
+    return known, unknown
+
+
 def _discover_python_files(requested: Path) -> tuple[Path, tuple[Path, ...]]:
     normalized = requested.expanduser().resolve()
     try:
@@ -1135,6 +1299,7 @@ def _resolve_call(
     children_by_parent: dict[str, list[Node]],
     bases_by_class: dict[str, tuple[str, ...]],
     annotations: dict[str, str],
+    shadowed: set[str],
 ) -> list[Edge]:
     dotted = _dotted_name(syntax.func)
     name = _call_leaf_name(syntax.func)
@@ -1151,7 +1316,11 @@ def _resolve_call(
         ]
 
     root = dotted.split(".", 1)[0] if dotted else name
-    binding = bindings.get(root)
+    binding = bindings.get(root) if root not in shadowed else None
+    if isinstance(syntax.func, ast.Name) and root in shadowed:
+        return [_call_edge(
+            definition.node_id, f"unresolved:{root}", syntax.lineno, False, False,
+        )]
     if binding is not None:
         suffix = dotted.split(".", 1)[1] if dotted and "." in dotted else ""
         target = f"{binding.target}.{suffix}" if suffix else binding.target
@@ -1207,7 +1376,10 @@ def _resolve_call(
         and isinstance(syntax.func.value, ast.Call)
         and (constructed := _dotted_name(syntax.func.value.func)) is not None
     ):
-        class_id = _resolve_type_name(constructed, module, bindings, node_by_id)
+        class_id = (
+            _resolve_type_name(constructed, module, bindings, node_by_id)
+            if constructed.split(".", 1)[0] not in shadowed else None
+        )
         if class_id is not None:
             members = _members_in_hierarchy(
                 class_id, name, bases_by_class, children_by_parent
