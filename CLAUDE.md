@@ -295,13 +295,14 @@ definition-time Python ownership, optimistic mode rollback, strict recovery of
 uncertain two-file preference writes, and a flaky proxy fixture. The Python
 suite passes 794 tests; Ruff, the production web build, the complete WebKit
 interaction/scale/space/Escape/text matrix, Astro checks/build, and fresh
-product captures pass. Chromium cannot start its GPU process inside the
-contained host, so that contained Chromium run is recorded as unavailable
-rather than passed; the maintained default cross-engine scripts are unchanged.
-The release artifacts, final Graphify refresh, public-site acceptance, exact-tree
-council, hosted CI, registry checks, and stable-release record remain before
-publication. Public sharing remains disconnected, and paired preference files
-recover strictly after uncertain writes but are not crash-atomic.
+product captures pass. The full bundled-Chromium user-flow matrix (36 receipts)
+and 5,000-module scale gate also pass with external network denied and writes
+confined; the browser required ordinary runtime read access for its GPU helper.
+The maintained default cross-engine scripts are unchanged. The release
+artifacts, final Graphify refresh, public-site acceptance, exact-tree council,
+hosted CI, registry checks, and stable-release record remain before publication.
+Public sharing remains disconnected, and paired preference files recover
+strictly after uncertain writes but are not crash-atomic.
 
 - [x] Prepare the eleven-finding Sol execution plan.
 - [x] Select all eleven findings and implement their bounded repairs.
