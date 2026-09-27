@@ -2680,6 +2680,37 @@ assert.equal(
   "a clear that outlives its session must not refetch into the next one",
 );
 
+// An obsolete clear must not commit even once into a hydrated replacement.
+for (const refusal of [false, true]) {
+  let settleClear;
+  let replacement = false;
+  const oldClear = new Promise((resolve, reject) => {
+    settleClear = () => refusal ? reject(new Error("old clear refused")) : resolve({});
+  });
+  const isolated = createLearnerSession({
+    adapter: {
+      ...createInMemoryLearnerSessionAdapter({ graph }),
+      clearProgress: () => oldClear,
+      fetchVisited: async () => ({ visited: replacement ? ["b"] : ["a"] }),
+    },
+    clock,
+  });
+  await isolated.start();
+  const pending = isolated.dispatch({ type: "CLEAR_PROGRESS" });
+  replacement = true;
+  await isolated.start();
+  const before = isolated.getSnapshot();
+  let commits = 0;
+  const unsubscribe = isolated.subscribe(() => { commits += 1; });
+  settleClear();
+  await pending;
+  assert.equal(isolated.getSnapshot(), before, "obsolete clear leaves replacement snapshot untouched");
+  assert.deepEqual([...before.visitedRegionIds], ["b"]);
+  assert.equal(commits, 0, "obsolete clear emits no replacement notification");
+  unsubscribe();
+  isolated.dispose();
+}
+
 // HTTP adapter: exact URLs and the 202 mapping.
 const phaseCCalls = [];
 const phaseCHttp = createHttpLearnerSessionAdapter(async (url, options = {}) => {

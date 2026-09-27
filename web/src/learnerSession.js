@@ -257,7 +257,14 @@ export function createLearnerSession({
     // is a control failure the header shows inline, not a reason to blank the
     // galaxy the learner is still looking at.
     const requestLifecycle = lifecycle;
-    await adapter.clearProgress({});
+    try {
+      await adapter.clearProgress({});
+    } catch (requestError) {
+      if (requestLifecycle !== lifecycle) return snapshot;
+      throw requestError;
+    }
+    // Refuse obsolete work before its first commit, including trail clearing.
+    if (requestLifecycle !== lifecycle) return snapshot;
     // The server clears the trail with the understood set (one caller owns
     // both halves), so the local mirror follows or the sky would keep drawing
     // routes to places the store no longer remembers.
@@ -266,7 +273,6 @@ export function createLearnerSession({
     // project released or switched across that await owns the session now, and
     // reloading into it would either resurrect the old graph or, against an
     // unbound server, paint a 409 over the picker.
-    if (requestLifecycle !== lifecycle) return snapshot;
     lifecycle += 1;
     const nextLifecycle = lifecycle;
     abortController(graphController);
