@@ -298,13 +298,18 @@ interaction/scale/space/Escape/text matrix, Astro checks/build, and fresh
 product captures pass. The full bundled-Chromium user-flow matrix (36 receipts)
 and 5,000-module scale gate also pass with external network denied and writes
 confined; the browser required ordinary runtime read access for its GPU helper.
-The maintained default cross-engine scripts are unchanged. The reproducible
-release artifacts, exact-head Graphify refresh, Safari docs render, maintained
-responsive public-site gate, and fresh package install pass. The exact-tree
-council, hosted CI, registry checks, live Pages proof, and stable-release record
-remain before publication. Public sharing remains disconnected, and paired
-preference files recover strictly after uncertain writes but are not
-crash-atomic.
+The maintained default cross-engine scripts now model a 640-physical-pixel
+display at 200% with a 320-CSS-pixel viewport and DPR 2; root CSS `zoom` was
+discarded because it left media queries at 640px and produced a false desktop
+layout in Linux CI. Both 36-receipt matrices pass that corrected gate locally.
+The reproducible release artifacts, exact-head Graphify refresh, Safari docs
+render, maintained responsive public-site gate, and fresh package install pass.
+The first exact-tree council approved its candidate; PR #49 run `36298108502`
+then passed test/docs/web/package and exposed the false zoom simulation in the
+browser job. Final exact-tree rebind, hosted CI retry, registry checks, live
+Pages proof, and the stable-release record remain before publication. Public
+sharing remains disconnected, and paired preference files recover strictly
+after uncertain writes but are not crash-atomic.
 
 - [x] Prepare the eleven-finding Sol execution plan.
 - [x] Select all eleven findings and implement their bounded repairs.
@@ -2151,6 +2156,7 @@ implemented and evidenced.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-09-27 | The 200% bounded-impact browser gate uses a 320 CSS-pixel viewport at device-pixel ratio 2; it does not set root CSS `zoom` on a 640px viewport | Browser zoom reduces the layout viewport, so responsive media queries must evaluate at 320px. Root CSS `zoom` only scales paint/layout inside the document while the queries still select the 640px desktop Study panel; Linux Chromium correctly exposed that mismatch. The corrected Chromium and WebKit gates each pass all 36 receipts and retain the 320px no-horizontal-overflow assertion. |
 | 2026-09-26 | v0.24.0 direct-call checks use schema 7 and ask for every parser-proven direct call without claiming source order; legacy file-hash-scoped understanding remains illuminated | The earlier first-call question could hide additional valid answers and teach an ordering the graph never proved. Replacing new checks corrects the learner contract. Silently clearing historical progress would manufacture a new invalidation rule, so existing saved understanding remains compatible and is not represented as retroactively re-proved. |
 | 2026-09-26 | Easy/Expert preference writes remain two ordinary local files with serialized mutation, rollback after ordinary refusal, and strict reload after uncertain rollback | The mode and progress files already have distinct responsibilities. A process crash can still interrupt the pair, so recovery must inspect persisted truth and show a refusal instead of presenting optimistic state as saved. This closes the current learner-visible inconsistency without claiming multi-file crash atomicity. |
 | 2026-09-26 | The owner-authorized v0.24.0 release may publish the eleven audit repairs, synchronized docs, and refreshed product captures while the public-sharing connection remains blocked | The selected work changes local correctness, recovery, concurrency, and truthful learner copy. It adds no upload route, provider, account, cloud authority, or operational-erasure claim and does not relax any remaining M20 deployment gate. |
