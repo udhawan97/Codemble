@@ -1187,6 +1187,59 @@ def test_failed_mode_rollback_reports_uncertain_outcome_and_allows_reconciliatio
         assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
 
 
+@pytest.mark.parametrize("storage_failure", ["unreadable", "malformed"])
+def test_mode_reconciliation_does_not_confirm_fallback_after_failed_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, storage_failure: str,
+) -> None:
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    progress.set_mode("easy")
+    checks = CheckService(graph, progress)
+    write = progress._write
+    writes = 0
+
+    def refuse_rollback(payload):
+        nonlocal writes
+        writes += 1
+        if writes == 1:
+            write(payload)
+        else:
+            raise OSError("fictional rollback failure")
+
+    def refuse_learner(mode):
+        raise OSError("fictional learner failure")
+
+    read = Path.read_text
+
+    def bad_read(path, *args, **kwargs):
+        if path == progress.path:
+            if storage_failure == "unreadable":
+                raise PermissionError("private storage details")
+            return "malformed existing JSON"
+        return read(path, *args, **kwargs)
+
+    with TestClient(create_app(graph, tmp_path / "missing", check_service=checks)) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(progress, "_write", refuse_rollback)
+            patch.setattr(progress, "_write_learner_mode", refuse_learner)
+            assert client.put("/api/mode", json={"mode": "expert"}).json()["detail"]["reason"] == "mode_save_uncertain"
+        assert client.get("/api/mode?strict=true").json() == {"mode": "expert", "chosen": True}
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "read_text", bad_read)
+            assert client.get("/api/mode").json() == {"mode": "easy", "chosen": True}
+            response = client.get("/api/mode?strict=true")
+            assert response.status_code == 503
+            assert response.json() == {"detail": {
+                "reason": "mode_read_uncertain",
+                "message": (
+                    "The saved explanation choice could not be read. "
+                    "Reload this project before choosing again."
+                ),
+            }}
+            assert "private" not in response.text
+        assert client.get("/api/mode?strict=true").json() == {"mode": "expert", "chosen": True}
+
+
 def test_graph_and_map_share_one_hydration_after_an_invalidation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -62,6 +62,24 @@ class ModeSaveUncertainError(OSError):
     """A failed compensating write leaves the selected mode unconfirmed."""
 
 
+class ModeReadUncertainError(OSError):
+    """Existing preference storage cannot establish a confirmed mode."""
+
+
+def _mode_document(path: Path) -> dict[str, object] | None:
+    """Missing initial storage is distinct from malformed/inaccessible storage."""
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        if path.is_symlink():
+            raise  # A broken existing storage link is not initial absence.
+        return None
+    payload = json.loads(raw)
+    if not isinstance(payload, dict):
+        raise TypeError("Preference storage is not an object.")
+    return payload
+
+
 class ProgressStore:
     """Persist understood regions without letting stale source stay lit."""
 
@@ -172,6 +190,39 @@ class ProgressStore:
         """
 
         return self._read().get("mode") in _MODES or self._learner_mode() is not None
+
+    def confirmed_mode_state(self) -> dict[str, object]:
+        """Read a coherent recovery snapshot without tolerant startup defaults.
+
+        A project override wins without consulting the learner file. Otherwise
+        a missing learner file means first launch; an existing unreadable or
+        invalid file cannot truthfully confirm a default. The same root lock as
+        writers prevents a read between the project and learner replacements.
+        """
+        try:
+            with self._mutation():
+                project = _mode_document(self.path)
+                if project is not None:
+                    if (
+                        project.get("schema_version") != _SCHEMA_VERSION
+                        or project.get("project_root") != self._graph.project_root
+                        or not isinstance(project.get("regions"), dict)
+                    ):
+                        raise ValueError("Invalid project preference storage.")
+                    if "mode" in project:
+                        mode = project["mode"]
+                        if not isinstance(mode, str) or mode not in _MODES:
+                            raise ValueError("Invalid project explanation mode.")
+                        return {"mode": mode, "chosen": True}
+                learner = _mode_document(self._learner_path)
+                if learner is None:
+                    return {"mode": "easy", "chosen": False}
+                mode = learner.get("mode")
+                if not isinstance(mode, str) or mode not in _MODES:
+                    raise ValueError("Invalid learner explanation mode.")
+                return {"mode": mode, "chosen": True}
+        except (OSError, ValueError, TypeError) as error:
+            raise ModeReadUncertainError("Saved explanation choice could not be read.") from error
 
     def set_mode(self, mode: str) -> None:
         """Persist the audience mode beside progress without touching signatures."""
@@ -362,4 +413,7 @@ def list_recent_projects(limit: int = 8) -> list[dict[str, object]]:
     return [entry for _, entry in entries[:limit]]
 
 
-__all__ = ["ModeSaveUncertainError", "ProgressStore", "UnknownRegionError", "list_recent_projects"]
+__all__ = [
+    "ModeReadUncertainError", "ModeSaveUncertainError", "ProgressStore",
+    "UnknownRegionError", "list_recent_projects",
+]

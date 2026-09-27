@@ -30,7 +30,7 @@ from codemble.adapters.project import (
 from codemble.checks import CheckService, InvalidCheckSubmission, UnknownCheckError
 from codemble.llm.local_status import ollama_status
 from codemble.llm.study import StudyService, StudySourceError, UnknownNodeError
-from codemble.progress import ModeSaveUncertainError, UnknownRegionError
+from codemble.progress import ModeReadUncertainError, ModeSaveUncertainError, UnknownRegionError
 from codemble.server.project_activation import (
     LiveProject,
     ProjectActivation,
@@ -480,8 +480,19 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/mode")
-    def get_mode() -> dict[str, object]:
+    def get_mode(strict: bool = False) -> dict[str, object]:
         checks, _ = _services()
+        if strict:
+            try:
+                return checks.progress.confirmed_mode_state()
+            except ModeReadUncertainError as error:
+                raise HTTPException(status_code=503, detail={
+                    "reason": "mode_read_uncertain",
+                    "message": (
+                        "The saved explanation choice could not be read. "
+                        "Reload this project before choosing again."
+                    ),
+                }) from error
         return {"mode": checks.progress.mode(), "chosen": checks.progress.mode_chosen()}
 
     @app.put("/api/mode")

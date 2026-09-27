@@ -219,6 +219,75 @@ def test_projects_share_learner_transaction_but_keep_their_overrides(tmp_path, m
     assert _store(tmp_path, "third").mode() == "easy"
 
 
+def test_confirmed_mode_distinguishes_initial_absence_from_saved_preferences(tmp_path):
+    store = _store(tmp_path)
+    assert store.confirmed_mode_state() == {"mode": "easy", "chosen": False}
+    store.mark_visited("a")
+    assert store.confirmed_mode_state() == {"mode": "easy", "chosen": False}
+    store._learner_path.write_text('{"mode":"expert"}')
+    assert store.confirmed_mode_state() == {"mode": "expert", "chosen": True}
+    store.set_mode("easy")
+    store._learner_path.write_text("malformed unrelated default")
+    assert store.confirmed_mode_state() == {"mode": "easy", "chosen": True}
+
+
+@pytest.mark.parametrize("document", ["project", "learner"])
+@pytest.mark.parametrize("content", ["not JSON", "[]", "{}", '{"mode":[]}'])
+def test_confirmed_mode_refuses_malformed_existing_storage(tmp_path, document, content):
+    from codemble.progress import ModeReadUncertainError
+
+    store = _store(tmp_path)
+    store._root.mkdir()
+    target = store.path if document == "project" else store._learner_path
+    target.write_text(content)
+    with pytest.raises(ModeReadUncertainError):
+        store.confirmed_mode_state()
+
+
+@pytest.mark.parametrize("document", ["project", "learner"])
+def test_confirmed_mode_refuses_unreadable_existing_storage(tmp_path, monkeypatch, document):
+    from codemble.progress import ModeReadUncertainError
+
+    store = _store(tmp_path)
+    target = store.path if document == "project" else store._learner_path
+    original = Path.read_text
+
+    def refuse(path, *args, **kwargs):
+        if path == target:
+            raise PermissionError("fictional read refusal")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", refuse)
+    with pytest.raises(ModeReadUncertainError):
+        store.confirmed_mode_state()
+
+
+def test_confirmed_mode_waits_for_the_complete_two_file_mutation(tmp_path, monkeypatch):
+    store = _store(tmp_path)
+    store.set_mode("easy")
+    entered = threading.Event()
+    release = threading.Event()
+    write = store._write_learner_mode
+
+    def paused(mode):
+        entered.set()
+        assert release.wait(timeout=5)
+        write(mode)
+
+    monkeypatch.setattr(store, "_write_learner_mode", paused)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        mutation = pool.submit(store.set_mode, "expert")
+        try:
+            assert entered.wait(timeout=5)
+            recovery = pool.submit(store.confirmed_mode_state)
+            with pytest.raises(TimeoutError):
+                recovery.result(timeout=0.1)
+        finally:
+            release.set()
+        mutation.result(timeout=5)
+        assert recovery.result(timeout=5) == {"mode": "expert", "chosen": True}
+
+
 def _write_progress(root: Path, name: str, payload: object, mtime: float) -> None:
     path = root / "progress" / f"{name}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
