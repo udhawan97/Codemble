@@ -159,23 +159,23 @@ The audience cannot detect when the tool is wrong. Therefore:
   temporary `CODEMBLE_DATA_DIR`, strips provider configuration, exercises the
   real first-run UI and graph checks, then removes both server and data. It
   refuses an external capture URL.
-- **Public release truth:** **v0.23.0 is the verified stable release.** Annotated
-  tag `v0.23.0` (`11ec0e0`) peels to exact release commit `67440a6`. Candidate
-  PR #48 CI run `36215990548`, trusted publish run `36216559119`, main CI run
-  `36216656833`, and Pages run `36216656834` passed. Fresh GitHub and PyPI bytes
+- **Public release truth:** **v0.24.0 is the verified stable release.** Annotated
+  tag `v0.24.0` (`bcb9338`) peels to exact release commit `5463749`. Candidate
+  PR #49 CI run `37662386905`, trusted publish run `37665305680`, main CI run
+  `37665496029`, and Pages run `37665496011` passed. Fresh GitHub and PyPI bytes
   plus `SHA256SUMS.txt` agree on wheel
-  (`56c5e17c34beb0907fa275d6a5fa33e17a295a63d6ae6bba430ceeee238513b1`)
-  and sdist (`1246a071c688409e43359dbbfa1fe9d0d5e551fd68d5bb796e810dc19cce76b0`).
+  (`88e78eedf590b5fbe90fae5edd5bd3e76eb9c3c95fbb43c6cbdad639388e0566`)
+  and sdist (`1ff335eb14d36f0a8a496a574cbcd12548d0e554a3d515f3d5f5bedb08e4bbed`).
   `check:release:live` reconciled both registries and fresh downloaded bytes; a
-  cold Python 3.12 `uvx --refresh` install reported `codemble 0.23.0` and carried
-  `index-C2MgA6Qs.js` plus `index--XyLmFn3.css`. Obscura rendered the deployed
-  245-system Pages surface with every image loaded and zero horizontal overflow,
-  and the maintained public-site gate passed 320, 375, 414, 768, 1280, and
-  1440 px, 200% reflow, reduced motion, docs routes, images, and console checks.
-  The unchanged packaged graphics retain their implementation-stage native
-  Safari receipt; Chromium/WebKit own the repeated release interaction matrix.
-  Issue #13's unaided-learner gate and M20's public-sharing operational evidence
-  remain open. A later tag is not stable until it repeats this release sequence.
+  cold `uvx --refresh` install reported `codemble 0.24.0`. Obscura rendered the
+  deployed 245-system Pages surface with every image loaded, zero horizontal
+  overflow, no console errors, and successful asset requests. The maintained
+  public-site gate passed 320, 375, 414, 768, 1280, and 1440 px, 200% reflow,
+  reduced motion, and docs routes. Chromium/WebKit own the repeated release
+  interaction matrix; this release adds no new installed-Chrome or native-Safari
+  app-flow claim. Issue #13's unaided-learner gate and M20's public-sharing
+  operational evidence remain open. A later tag is not stable until it repeats
+  this release sequence.
 - **Digests are taken from the tree you are about to tag, never earlier.**
   `readme = "README.md"` embeds the README in the wheel's own METADATA, so a
   dist/ built before a README edit describes a wheel that no longer exists —
@@ -284,7 +284,7 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
-**v0.24.0 audit-repair candidate (2026-09-26):** The owner selected all eleven
+**v0.24.0 audit-repair release (2026-10-07):** The owner selected all eleven
 findings from dev-review run `20260927T022919Z-85c822af` and authorized their
 implementation, documentation, merge, push, and a new release. The isolated
 candidate now closes the proxy, Python lexical-binding, Study source-identity,
@@ -306,23 +306,27 @@ The reproducible release artifacts, exact-head Graphify refresh, Safari docs
 render, maintained responsive public-site gate, and fresh package install pass.
 The first exact-tree council approved its candidate; PR #49 run `36298108502`
 then passed test/docs/web/package and exposed the false zoom simulation in the
-browser job. Final exact-tree rebind, hosted CI retry, registry checks, live
-Pages proof, and the stable-release record remain before publication. Public
-sharing remains disconnected, and paired preference files recover strictly
-after uncertain writes but are not crash-atomic.
+browser job. The corrected exact candidate passed all five jobs in PR run
+`37662386905`; both final council rounds approved the exact commit, archive, and
+private report. Trusted publish run `37665305680`, main CI `37665496029`, and
+Pages `37665496011` are green. GitHub, PyPI, and `SHA256SUMS.txt` agree on the
+manifest-owned wheel and sdist, a cold registry install reports 0.24.0, and live
+Obscura plus the maintained public-site matrix pass. Public sharing remains
+disconnected, and paired preference files recover strictly after uncertain
+writes but are not crash-atomic.
 
-The first final-report council pass then caught a stale v0.23.0 wheel digest in
+The first final-report council pass caught a stale v0.23.0 wheel digest in
 the v0.24.0 download guide's copy-paste verification command. The guide now
 uses the current wheel digest, and the release-facts gate rejects every stale
 or unknown 64-character digest in that guide and separately binds the wheel
 verification block to the manifest-owned wheel hash. Exact-candidate artifacts,
-report bindings, and both council rounds must be resealed after that correction.
+report bindings, and both council rounds were resealed after that correction.
 
 - [x] Prepare the eleven-finding Sol execution plan.
 - [x] Select all eleven findings and implement their bounded repairs.
 - [x] Complete independent implementation and cross-peer correction cycles.
 - [x] Complete artifacts, public-site proof, package install, and graph refresh.
-- [ ] Complete exact-tree council, hosted CI, publication, and live release
+- [x] Complete exact-tree council, hosted CI, publication, and live release
   verification.
 
 **v0.23.0 release (2026-09-25):** The owner explicitly authorized a
@@ -2411,6 +2415,7 @@ implemented and evidenced.
 | 2026-09-11 | Accept cryptography 50, tree-sitter-go 0.25, tree-sitter-rust 0.24, and JetBrains Mono 5.3 together; keep tree-sitter core below 0.26 and align the app and docs font package | Cryptography 50.0.1 preserves the AES-GCM storage/delivery contract across the focused suite; the Go and Rust grammar wheels pass the nine-language semantic oracle and parse 910-node upstream Go plus 162-, 2,380-, and 56-node real Rust corpora with no partial files on core 0.25.2. Fontsource 5.3 adds package typing metadata and produces the same committed app bundle. The JavaScript/core 0.26 crash boundary is unchanged. |
 | 2026-09-11 | Cleanup preserves unique or dirty user work and integrates only the four verified Dependabot heads; release publication stays blocked | Branch age and CI alone do not prove redundancy. The planning ref remains unique, the historical graphics worktree contains uncommitted differences, and the dependency refs become removable only after their exact heads reach verified `main`. Local and hosted checks cannot substitute for the independent operational receipts required by M20, so no version bump, tag, or release is created from this pass unless that evidence appears. |
 | 2026-09-26 | Prepare an execution-ready Sol plan for all eleven findings from dev-review run `20260927T022919Z-85c822af`; keep implementation selection separate | The owner asked “plan it so sol can execute.” The plan binds the audited revision and stable IDs, orders repairs around shared files, specifies behavior-level regression and runtime gates, preserves legacy file-hash-scoped understanding rather than silently resetting it, and carries a copyable future execution instruction. This planning request changes no application behavior, roadmap phase, release authority or disconnected M20 boundary. |
+| 2026-10-07 | v0.24.0 becomes stable only after the eleven selected repairs, synchronized documentation, exact-tree council, candidate CI, trusted publication, main CI, Pages, and outside-in checks agree | Annotated tag `v0.24.0` (`bcb9338`) peels to release commit `5463749`; candidate PR CI `37662386905`, trusted publish `37665305680`, main CI `37665496029`, and Pages `37665496011` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `88e78eed…e0566` and sdist `1ff335eb…4bbed`; a cold install reports 0.24.0. Obscura and the maintained public-site matrix verify the deployed v0.24.0 surface. Public sharing remains disconnected, the preference pair remains non-crash-atomic, and installed-Chrome/native-Safari app flows are not newly claimed. This follow-up changes only operating truth and must never move the release tag. |
 
 ## Non-Goals — do NOT build (point here when asked)
 
