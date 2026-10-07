@@ -13,7 +13,7 @@
     "check": "npm run check:release && astro check"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.41.3",
+    "@astrojs/starlight": "^0.42.4",
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/shippori-mincho": "5.3.0",
     "@fontsource/zen-kaku-gothic-new": "5.3.0",
