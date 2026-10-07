@@ -60,14 +60,14 @@ ledger, and PyPI metadata:
 
 ```text
 88e78eedf590b5fbe90fae5edd5bd3e76eb9c3c95fbb43c6cbdad639388e0566  codemble-0.24.0-py3-none-any.whl
-9fe846df001a35addba9869772ec1eaa348d0cebeef860c3127480b88058c49c  codemble-0.24.0.tar.gz
+1ff335eb14d36f0a8a496a574cbcd12548d0e554a3d515f3d5f5bedb08e4bbed  codemble-0.24.0.tar.gz
 ```
 
 To check the wheel on macOS or Linux:
 
 ```bash
 printf '%s  %s\n' \
-  56c5e17c34beb0907fa275d6a5fa33e17a295a63d6ae6bba430ceeee238513b1 \
+  88e78eedf590b5fbe90fae5edd5bd3e76eb9c3c95fbb43c6cbdad639388e0566 \
   codemble-0.24.0-py3-none-any.whl | shasum -a 256 -c -
 ```
 

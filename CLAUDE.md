@@ -311,6 +311,13 @@ Pages proof, and the stable-release record remain before publication. Public
 sharing remains disconnected, and paired preference files recover strictly
 after uncertain writes but are not crash-atomic.
 
+The first final-report council pass then caught a stale v0.23.0 wheel digest in
+the v0.24.0 download guide's copy-paste verification command. The guide now
+uses the current wheel digest, and the release-facts gate rejects every stale
+or unknown 64-character digest in that guide and separately binds the wheel
+verification block to the manifest-owned wheel hash. Exact-candidate artifacts,
+report bindings, and both council rounds must be resealed after that correction.
+
 - [x] Prepare the eleven-finding Sol execution plan.
 - [x] Select all eleven findings and implement their bounded repairs.
 - [x] Complete independent implementation and cross-peer correction cycles.
@@ -2156,6 +2163,7 @@ implemented and evidenced.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 2026-10-07 | The public download guide's executable checksum command is manifest-bound, and every 64-character artifact digest in that guide must be one of the current release manifest's wheel or sdist hashes | The final-report council found that the v0.24.0 ledger displayed the new wheel hash while its copy-paste `shasum` command still used the v0.23.0 digest. A presence-only check let both coexist. Binding the command's section to the current wheel digest and rejecting stale or unknown digest literals prevents correct release bytes from being rejected by an outdated public command. |
 | 2026-09-27 | The 200% bounded-impact browser gate uses a 320 CSS-pixel viewport at device-pixel ratio 2; it does not set root CSS `zoom` on a 640px viewport | Browser zoom reduces the layout viewport, so responsive media queries must evaluate at 320px. Root CSS `zoom` only scales paint/layout inside the document while the queries still select the 640px desktop Study panel; Linux Chromium correctly exposed that mismatch. The corrected Chromium and WebKit gates each pass all 36 receipts and retain the 320px no-horizontal-overflow assertion. |
 | 2026-09-26 | v0.24.0 direct-call checks use schema 7 and ask for every parser-proven direct call without claiming source order; legacy file-hash-scoped understanding remains illuminated | The earlier first-call question could hide additional valid answers and teach an ordering the graph never proved. Replacing new checks corrects the learner contract. Silently clearing historical progress would manufacture a new invalidation rule, so existing saved understanding remains compatible and is not represented as retroactively re-proved. |
 | 2026-09-26 | Easy/Expert preference writes remain two ordinary local files with serialized mutation, rollback after ordinary refusal, and strict reload after uncertain rollback | The mode and progress files already have distinct responsibilities. A process crash can still interrupt the pair, so recovery must inspect persisted truth and show a refusal instead of presenting optimistic state as saved. This closes the current learner-visible inconsistency without claiming multi-file crash atomicity. |

@@ -94,6 +94,22 @@ for (const [surface, text, values] of [
   }
 }
 
+const currentArtifactDigests = new Set([release.wheel.sha256, release.sdist.sha256]);
+for (const digest of downloadGuide.matchAll(/\b[a-f0-9]{64}\b/g)) {
+  assert(
+    currentArtifactDigests.has(digest[0]),
+    `download guide contains a stale or unknown artifact digest: ${digest[0]}`,
+  );
+}
+const wheelVerification = downloadGuide.slice(
+  downloadGuide.indexOf("To check the wheel on macOS or Linux:"),
+  downloadGuide.indexOf("Then install it into an isolated app environment:"),
+);
+assert(
+  wheelVerification.includes(release.wheel.sha256),
+  "download guide wheel verification command must use the current wheel digest",
+);
+
 const pinnedRunCommand = `uvx --from codemble==${release.version} codemble`;
 const pinnedNoOpenCommand = `${pinnedRunCommand} --no-open`;
 for (const [surface, text] of [
