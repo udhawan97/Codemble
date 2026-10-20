@@ -10,8 +10,10 @@ council review for scheduled implementation. That authorizes preparing this
 queue and routing existing scheduled runs to it; it does not promote NEXT or
 LATER, provision infrastructure, contact testers, or enable public sharing.
 
-The useful next step is **P1.1a: correct the learner intake**, followed by
-**P1.1b: rehearse it in native Safari**.
+P1.1a is implemented, locally verified and council-reviewed. If its candidate
+has not landed, finish its integration gates before starting another. The next
+packet is **P1.1b: rehearse the intake in native Safari**; P2 may proceed
+independently when P1.1b has an unchanged external HOLD.
 Then make M20's remaining operational evidence collectable and reviewable.
 Do not rebuild the completed sharing foundations or replace missing real-world
 evidence with additional unit tests.
@@ -61,9 +63,9 @@ authorized run may start after preflight and its current plan council.
 `WAITING` means a dependency is missing. `DECISION` requires a specific owner
 decision. `HOLD` means a required verification failed or is unavailable.
 
-| Phase | Outcome | Initial status | Dependency | Expected packet size |
+| Phase | Outcome | Current status | Dependency | Expected packet size |
 | --- | --- | --- | --- | --- |
-| P1 | Accurate learner intake and evidence-driven repairs | P1.1a READY; P1.1b follows; human results WAITING | None | One docs packet, one rehearsal, then one reproduced defect per packet |
+| P1 | Accurate learner intake and evidence-driven repairs | P1.1a implementation DONE; integration checked in its PR; P1.1b follows; human results WAITING | None | One docs packet, one rehearsal, then one reproduced defect per packet |
 | P2 | Offline operational evidence index and fail-closed completeness checker | READY after P1.1a or an explicit priority decision | Existing M20 contract; P1.1b may remain HOLD | Three small source/tooling packets |
 | P3 | Disposable operational rehearsal through existing interfaces | WAITING | P2 schema and checker | Two or more bounded scenario packets |
 | P4 | Independent deployment, restore, deletion, and alert acceptance | DECISION | P2/P3 plus named infrastructure and operator authority | Several real observation windows |
@@ -571,6 +573,7 @@ private. The review record contains the public aggregate council outcome.
 | Date | Packet | Base and candidate | Result and evidence | Next action |
 | --- | --- | --- | --- | --- |
 | 2026-10-20 | Planning | `de0debe`; candidate is the commit introducing this queue | [Two-round council completed](2026-10-20-scheduled-phases-review.md); 14 focused operations/alert tests passed; weekly CAPO routing saved and reread with settings and existing routes preserved; no product implementation | P1.1a intake correction, then P1.1b rehearsal; P2 may proceed if P1.1b has an unchanged external HOLD |
+| 2026-10-20 | P1.1a | Base `ae2e240`; branch `docs/p11a-learner-intake`; candidate is the commit containing the linked receipt; PR owns exact CI/integrated SHA | [Intake receipt](2026-10-20-p11a-intake-review.md): two plan and two implementation council rounds accepted; static intake checks, 794 Python tests and Ruff pass; exact hosted checks must pass before merge | Verify integration in the branch's PR, then P1.1b; human acceptance remains open |
 
 Future record fields: run/claim owner; branch/worktree/PR; starting SHA; plan
 digest; council outcomes; test command exits and private receipt references;
