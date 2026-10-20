@@ -42,8 +42,9 @@ the branch, and is merged to `main` before the next wave starts.
 - Mixed JavaScript/TypeScript imports resolve inside one adapter so the graph
   above the seam does not learn Node resolution rules.
 - `node_modules`, generated hidden directories, and `.gitignore` matches stay
-  outside discovery. The existing 300-source-file cap applies across all
-  supported languages combined.
+  outside discovery. At the v0.2.0 release recorded here, the cap was 300 source
+  files across all supported languages combined. The current ordinary supported
+  cap is 5,000; see [the current tester guide](../../TESTING.md) for trial scope.
 
 ## Interface decision
 

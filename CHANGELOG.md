@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Documentation
+- Distinguish the 5,000-file supported cap from the small-project tester
+  recommendation, preserve the historical Phase 1 cap, and collect launch,
+  explanation depth, assistance and restart outcomes in privacy-conscious
+  first-run reports, including unfinished trials.
+
 ## [0.24.0] - 2026-09-27
 
 ### Fixed

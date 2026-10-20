@@ -284,6 +284,19 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**P1.1a learner intake (2026-10-20):** The owner authorized immediate
+implementation, council review, verification and integration after checks pass.
+The tester guide now distinguishes a small trial from the ordinary 5,000-file
+cap; the report form retains existing field IDs while recording launch,
+explanation depth, assistance, illumination and restart independently, including
+unfinished trials. The Phase 1 record labels its original 300-file cap as
+historical. Two plan-council and two implementation-council rounds accepted
+the bounded intake changes. Static form/source/link checks,
+794 Python tests and Ruff pass in an isolated candidate environment. The
+exact-candidate hosted CI gates integration; see
+`docs/plans/2026-10-20-p11a-intake-review.md` for the candidate receipt.
+P1.1b native Safari rehearsal and issue #13's human acceptance remain open.
+
 **Scheduled phase planning (2026-10-20):** The owner requested detailed next
 phases with council review for scheduled implementation. The canonical queue is
 `docs/plans/2026-10-20-scheduled-phases.md`: accurate learner intake, operational
@@ -300,7 +313,8 @@ gates remain open.
   phases passed confirmation with no remaining material blockers.
 - [x] Route the existing weekly CAPO run to the canonical queue; saved prompt
   reread verified cadence/settings and existing PalDawn/FolioOrb routing.
-- [ ] Implement and verify P1.1a in a subsequent authorized run.
+- [x] Implement and locally verify P1.1a with both council gates; integrate
+  only after the exact-candidate hosted checks pass.
 - [ ] Complete P1.1b native Safari rehearsal separately; an external HOLD
   does not block independent P2 work after P1.1a.
 
@@ -2442,6 +2456,8 @@ implemented and evidenced.
 | 2026-10-07 | v0.24.0 becomes stable only after the eleven selected repairs, synchronized documentation, exact-tree council, candidate CI, trusted publication, main CI, Pages, and outside-in checks agree | Annotated tag `v0.24.0` (`bcb9338`) peels to release commit `5463749`; candidate PR CI `37662386905`, trusted publish `37665305680`, main CI `37665496029`, and Pages `37665496011` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `88e78eed…e0566` and sdist `1ff335eb…4bbed`; a cold install reports 0.24.0. Obscura and the maintained public-site matrix verify the deployed v0.24.0 surface. Public sharing remains disconnected, the preference pair remains non-crash-atomic, and installed-Chrome/native-Safari app flows are not newly claimed. This follow-up changes only operating truth and must never move the release tag. |
 
 | 2026-10-20 | Prepare a canonical, council-reviewed scheduled implementation queue for the existing roadmap and connect the weekly CAPO handoff | The owner asked for detailed next phases for scheduled runs to implement carefully. Each packet requires refreshed plan review, behavior verification and implementation review before integration. The queue does not promote NEXT/LATER, authorize infrastructure or media erasure, contact testers, or connect public sharing before its independent operational evidence and explicit handoff decision. |
+
+| 2026-10-20 | Implement P1.1a learner-intake corrections, with current plan/implementation councils and verification before merge and push | The owner explicitly requested this packet now. Existing report fields are retained, assistance is separated from illumination, incomplete trials remain reportable, and the guide's ordinary cap agrees with parser source. Historical release facts remain historical; native Safari rehearsal, human acceptance, public sharing and release publication are separate gates. |
 
 ## Non-Goals — do NOT build (point here when asked)
 
