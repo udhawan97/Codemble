@@ -284,6 +284,30 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**Scheduled phase planning (2026-10-20):** The owner requested detailed next
+phases with council review for scheduled implementation. The canonical queue is
+`docs/plans/2026-10-20-scheduled-phases.md`: accurate learner intake, operational
+evidence tooling, disposable rehearsal, gated independent-host acceptance,
+gated delivery connection, and qualified release verification. The first
+packet, P1.1a, corrects the tester guide's obsolete cap statement; P1.1b
+separately rehearses the existing learner path. This planning task changes no application behavior and
+promotes no roadmap phase. The independent operational and unaided learner
+gates remain open.
+
+- [x] Prepare detailed scheduled packets with dependencies, verification,
+  authority boundaries, rollback and resumption rules.
+- [x] Complete the initial two-round, four-role phase-plan council; all six
+  phases passed confirmation with no remaining material blockers.
+- [x] Route the existing weekly CAPO run to the canonical queue; saved prompt
+  reread verified cadence/settings and existing PalDawn/FolioOrb routing.
+- [ ] Implement and verify P1.1a in a subsequent authorized run.
+- [ ] Complete P1.1b native Safari rehearsal separately; an external HOLD
+  does not block independent P2 work after P1.1a.
+
+Council scope and material corrections:
+`docs/plans/2026-10-20-scheduled-phases-review.md`. No scheduled execution of the
+new queue is claimed by the routing update.
+
 **v0.24.0 audit-repair release (2026-10-07):** The owner selected all eleven
 findings from dev-review run `20260927T022919Z-85c822af` and authorized their
 implementation, documentation, merge, push, and a new release. The isolated
@@ -2416,6 +2440,8 @@ implemented and evidenced.
 | 2026-09-11 | Cleanup preserves unique or dirty user work and integrates only the four verified Dependabot heads; release publication stays blocked | Branch age and CI alone do not prove redundancy. The planning ref remains unique, the historical graphics worktree contains uncommitted differences, and the dependency refs become removable only after their exact heads reach verified `main`. Local and hosted checks cannot substitute for the independent operational receipts required by M20, so no version bump, tag, or release is created from this pass unless that evidence appears. |
 | 2026-09-26 | Prepare an execution-ready Sol plan for all eleven findings from dev-review run `20260927T022919Z-85c822af`; keep implementation selection separate | The owner asked “plan it so sol can execute.” The plan binds the audited revision and stable IDs, orders repairs around shared files, specifies behavior-level regression and runtime gates, preserves legacy file-hash-scoped understanding rather than silently resetting it, and carries a copyable future execution instruction. This planning request changes no application behavior, roadmap phase, release authority or disconnected M20 boundary. |
 | 2026-10-07 | v0.24.0 becomes stable only after the eleven selected repairs, synchronized documentation, exact-tree council, candidate CI, trusted publication, main CI, Pages, and outside-in checks agree | Annotated tag `v0.24.0` (`bcb9338`) peels to release commit `5463749`; candidate PR CI `37662386905`, trusted publish `37665305680`, main CI `37665496029`, and Pages `37665496011` are green. Fresh GitHub bytes, PyPI, and `SHA256SUMS.txt` agree on wheel `88e78eed…e0566` and sdist `1ff335eb…4bbed`; a cold install reports 0.24.0. Obscura and the maintained public-site matrix verify the deployed v0.24.0 surface. Public sharing remains disconnected, the preference pair remains non-crash-atomic, and installed-Chrome/native-Safari app flows are not newly claimed. This follow-up changes only operating truth and must never move the release tag. |
+
+| 2026-10-20 | Prepare a canonical, council-reviewed scheduled implementation queue for the existing roadmap and connect the weekly CAPO handoff | The owner asked for detailed next phases for scheduled runs to implement carefully. Each packet requires refreshed plan review, behavior verification and implementation review before integration. The queue does not promote NEXT/LATER, authorize infrastructure or media erasure, contact testers, or connect public sharing before its independent operational evidence and explicit handoff decision. |
 
 ## Non-Goals — do NOT build (point here when asked)
 
