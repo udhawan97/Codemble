@@ -284,6 +284,23 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**Branch consolidation (2026-10-21):** The owner requested main cleanup.
+All nine candidate branches and six original worktrees were inventoried.
+P1.1a's squash-merged branch has the same tree as `2334a05`; all fifteen
+architecture/product/production audit commits are patch-equivalent on main.
+Their four local branches, the P1.1a remote branch, and the three clean audit
+worktrees were removed after immediate ref/status checks. The dirty galaxy
+worktree, unique historical pause note, and audit-repairs worktree (including
+ignored graph/environment artifacts) remain preserved.
+
+- [x] Consolidate proven-integrated refs without importing stale or dirty work.
+- [ ] Hatchling #50: two reproducible builds include the required payload, but
+  the new wheel differs from the immutable release ledger (`WHEEL`/`RECORD`
+  only); the existing `--dist` gate rejects it. Hold for a reviewed future
+  release/toolchain transition; keep the published v0.24.0 ledger unchanged.
+- [ ] Starlight #51: preserve pending the recorded owner stack decision and
+  compatibility gates required by the scheduled queue.
+
 **P1.1a learner intake (2026-10-20):** The owner authorized immediate
 implementation, council review, verification and integration after checks pass.
 The tester guide now distinguishes a small trial from the ordinary 5,000-file
@@ -2458,6 +2475,8 @@ implemented and evidenced.
 | 2026-10-20 | Prepare a canonical, council-reviewed scheduled implementation queue for the existing roadmap and connect the weekly CAPO handoff | The owner asked for detailed next phases for scheduled runs to implement carefully. Each packet requires refreshed plan review, behavior verification and implementation review before integration. The queue does not promote NEXT/LATER, authorize infrastructure or media erasure, contact testers, or connect public sharing before its independent operational evidence and explicit handoff decision. |
 
 | 2026-10-20 | Implement P1.1a learner-intake corrections, with current plan/implementation councils and verification before merge and push | The owner explicitly requested this packet now. Existing report fields are retained, assistance is separated from illumination, incomplete trials remain reportable, and the guide's ordinary cap agrees with parser source. Historical release facts remain historical; native Safari rehearsal, human acceptance, public sharing and release publication are separate gates. |
+
+| 2026-10-21 | Owner-requested main cleanup removes only refs proven integrated by patch/range-diff and source/tree comparison; unique, dirty, and ignored audit artifacts remain preserved | All nine candidates were assessed. The reproducible Hatchling update changes wheel metadata and fails the immutable release-digest gate, so PR #50 stays held under the canonical queue. Starlight #51 still needs the recorded owner stack decision. Cleanup does not reseal published artifacts, promote a phase, or authorize release/public delivery. |
 
 ## Non-Goals — do NOT build (point here when asked)
 
