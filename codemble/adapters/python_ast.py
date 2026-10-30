@@ -68,6 +68,18 @@ class _ImportBinding:
     external: bool
 
 
+def _duplicate_definition_names(body: list[ast.stmt]) -> set[str]:
+    counts: dict[str, int] = defaultdict(int)
+    pending: list[ast.AST] = list(body)
+    while pending:
+        syntax = pending.pop()
+        if isinstance(syntax, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            counts[syntax.name] += 1
+        else:
+            pending.extend(ast.iter_child_nodes(syntax))
+    return {name for name, count in counts.items() if count > 1}
+
+
 class _DefinitionCollector(ast.NodeVisitor):
     """Collect definitions while retaining their lexical ownership."""
 
@@ -75,13 +87,13 @@ class _DefinitionCollector(ast.NodeVisitor):
         self.parsed = parsed
         self.nodes: list[Node] = []
         self.definitions: list[_Definition] = []
-        self._qualname: list[str] = []
         self._scope_ids: list[str] = [parsed.module]
+        self._duplicates = [_duplicate_definition_names(parsed.tree.body) if parsed.tree else set()]
         self._class_ids: list[str] = []
         self._function_ids: list[str] = []
 
     def visit_ClassDef(self, syntax: ast.ClassDef) -> None:
-        node_id = self._node_id(syntax.name)
+        node_id = self._node_id(syntax)
         self.nodes.append(self._node(syntax, node_id, "class"))
         self.definitions.append(
             _Definition(
@@ -97,13 +109,13 @@ class _DefinitionCollector(ast.NodeVisitor):
                 ),
             )
         )
-        self._qualname.append(syntax.name)
         self._scope_ids.append(node_id)
+        self._duplicates.append(_duplicate_definition_names(syntax.body))
         self._class_ids.append(node_id)
         self.generic_visit(syntax)
         self._class_ids.pop()
         self._scope_ids.pop()
-        self._qualname.pop()
+        self._duplicates.pop()
 
     def visit_FunctionDef(self, syntax: ast.FunctionDef) -> None:
         self._visit_function(syntax)
@@ -112,7 +124,7 @@ class _DefinitionCollector(ast.NodeVisitor):
         self._visit_function(syntax)
 
     def _visit_function(self, syntax: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
-        node_id = self._node_id(syntax.name)
+        node_id = self._node_id(syntax)
         self.nodes.append(self._node(syntax, node_id, "function"))
         self.definitions.append(
             _Definition(
@@ -123,16 +135,18 @@ class _DefinitionCollector(ast.NodeVisitor):
                 function_ancestors=tuple(self._function_ids),
             )
         )
-        self._qualname.append(syntax.name)
         self._scope_ids.append(node_id)
+        self._duplicates.append(_duplicate_definition_names(syntax.body))
         self._function_ids.append(node_id)
         self.generic_visit(syntax)
         self._function_ids.pop()
         self._scope_ids.pop()
-        self._qualname.pop()
+        self._duplicates.pop()
 
-    def _node_id(self, name: str) -> str:
-        return ".".join((self.parsed.module, *self._qualname, name))
+    def _node_id(self, syntax: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+        node_id = f"{self._scope_ids[-1]}.{syntax.name}"
+        # A repeated spelling is several declarations, never one borrowed span.
+        return f"{node_id}@{syntax.lineno}" if syntax.name in self._duplicates[-1] else node_id
 
     def _node(
         self,
@@ -542,6 +556,10 @@ class PythonAstAdapter:
             binding_map, shadowed = _visible_call_bindings(
                 definition, module, lexical_scopes,
             )
+            receiver_mutations = set().union(*(
+                lexical_scopes[owner].mutated
+                for owner in (definition.node_id, *definition.function_ancestors)
+            ))
             annotated_types = _annotated_types(definition.syntax)
             for call in facts.calls:
                 call_edges.extend(
@@ -556,6 +574,7 @@ class PythonAstAdapter:
                         bases_by_class,
                         annotated_types,
                         shadowed | facts.call_shadows[id(call)],
+                        receiver_mutations | facts.call_shadows[id(call)],
                     )
                 )
 
@@ -754,37 +773,32 @@ def _python_route_receivers(
                         if root in _ROUTE_FACTORY_MODULES:
                             module_aliases[local_name] = root
 
-                target: ast.expr | None = None
+                targets: list[ast.expr] = []
                 value: ast.expr | None = None
-                if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
-                    target, value = statement.targets[0], statement.value
+                if isinstance(statement, ast.Assign):
+                    targets, value = statement.targets, statement.value
                 elif isinstance(statement, ast.AnnAssign):
-                    target, value = statement.target, statement.value
-                if isinstance(target, ast.Name):
-                    # A proven receiver is a binding fact, not a permanent
-                    # property of a spelling. Any later assignment revokes it
-                    # before a framework factory may prove the new value.
-                    receivers.discard(target.id)
-                    factory_aliases.discard(target.id)
-                    module_aliases.pop(target.id, None)
-                    if isinstance(value, ast.Call):
-                        factory = value.func
-                        proven = (
-                            isinstance(factory, ast.Name)
-                            and factory.id in factory_aliases
+                    targets, value = [statement.target], statement.value
+                proven = False
+                if isinstance(value, ast.Call):
+                    factory = value.func
+                    proven = isinstance(factory, ast.Name) and factory.id in factory_aliases
+                    if isinstance(factory, ast.Attribute) and isinstance(factory.value, ast.Name):
+                        root = module_aliases.get(factory.value.id)
+                        proven = bool(
+                            root and factory.attr in _ROUTE_FACTORY_MODULES.get(root, frozenset())
                         )
-                        if isinstance(factory, ast.Attribute) and isinstance(
-                            factory.value,
-                            ast.Name,
-                        ):
-                            root = module_aliases.get(factory.value.id)
-                            proven = bool(
-                                root
-                                and factory.attr
-                                in _ROUTE_FACTORY_MODULES.get(root, frozenset())
-                            )
-                        if proven:
-                            receivers.add(target.id)
+                if not isinstance(statement, (ast.Import, ast.ImportFrom)):
+                    writes = _python_direct_bound_names([statement])
+                    if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                        # The declared name is bound after decorators run.
+                        writes.discard(statement.name)
+                    receivers.difference_update(writes)
+                    factory_aliases.difference_update(writes)
+                    for name in writes:
+                        module_aliases.pop(name, None)
+                    if proven:
+                        receivers.update(target.id for target in targets if isinstance(target, ast.Name))
 
                 if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     by_definition[(relative_path, id(statement))] = frozenset(receivers)
@@ -851,28 +865,75 @@ class _PythonFunctionBindings(ast.NodeVisitor):
 
     def __init__(self) -> None:
         self.bound: set[str] = set()
+        self.mutated: set[str] = set()
         self.external: set[str] = set()
+
+    def _bind(self, name: str) -> None:
+        self.bound.add(name)
+        self.mutated.add(name)
 
     def visit_Name(self, node: ast.Name) -> None:
         if isinstance(node.ctx, (ast.Store, ast.Del)):
-            self.bound.add(node.id)
+            self._bind(node.id)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        if node.value is None and isinstance(node.target, ast.Name):
+            self.bound.add(node.target.id)
+            self.visit(node.annotation)
+        else:
+            self.generic_visit(node)
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
-            self.bound.add(alias.asname or alias.name.split(".", 1)[0])
+            self._bind(alias.asname or alias.name.split(".", 1)[0])
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         for alias in node.names:
-            self.bound.add(alias.asname or alias.name)
+            self._bind(alias.asname or alias.name)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        self.bound.add(node.name)
+        self._bind(node.name)
+        for decorator in node.decorator_list:
+            self.visit(decorator)
+        self.visit(node.args)
+        if node.returns is not None:
+            self.visit(node.returns)
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        self.bound.add(node.name)
+    visit_AsyncFunctionDef = visit_FunctionDef
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        self.bound.add(node.name)
+        self._bind(node.name)
+        for expression in (*node.decorator_list, *node.bases):
+            self.visit(expression)
+        for keyword in node.keywords:
+            self.visit(keyword.value)
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+        if node.name:
+            self._bind(node.name)
+        self.generic_visit(node)
+
+    def visit_MatchAs(self, node: ast.MatchAs) -> None:
+        if node.name:
+            self._bind(node.name)
+        self.generic_visit(node)
+
+    def visit_MatchStar(self, node: ast.MatchStar) -> None:
+        if node.name:
+            self._bind(node.name)
+
+    def visit_MatchMapping(self, node: ast.MatchMapping) -> None:
+        if node.rest:
+            self._bind(node.rest)
+        self.generic_visit(node)
+
+    def visit_Lambda(self, node: ast.Lambda) -> None:
+        self.visit(node.args)
+
+    def visit_comprehension(self, node: ast.comprehension) -> None:
+        self.visit(node.iter)
+        for condition in node.ifs:
+            self.visit(condition)
 
     def visit_Global(self, node: ast.Global) -> None:
         self.external.update(node.names)
@@ -881,7 +942,7 @@ class _PythonFunctionBindings(ast.NodeVisitor):
         self.external.update(node.names)
 
 
-class _CallBindings(ast.NodeVisitor):
+class _CallBindings(_PythonFunctionBindings):
     """A lexical owner, with unknown values kept distinct from absent names.
 
     Assignment anywhere in a function makes the name local, even before that
@@ -893,8 +954,9 @@ class _CallBindings(ast.NodeVisitor):
         self, body: list[ast.stmt], imports: list[_ImportBinding],
         children: list[Node], arguments: ast.arguments | None = None,
     ) -> None:
+        super().__init__()
         self.values: dict[str, _ImportBinding | None] = {}
-        self.assigned = _python_parameter_names(arguments) if arguments else set()
+        self.assigned = self.bound
         self.globals: set[str] = set()
         self.nonlocals: set[str] = set()
         for binding in imports:
@@ -907,30 +969,14 @@ class _CallBindings(ast.NodeVisitor):
             self.values[child.name] = _ImportBinding(child.name, child.id, False)
         for statement in body:
             self.visit(statement)
+        self.assigned.update(_python_parameter_names(arguments) if arguments else set())
         self.values.update(dict.fromkeys(self.assigned))
 
-    def visit_Name(self, node: ast.Name) -> None:
-        if isinstance(node.ctx, (ast.Store, ast.Del)):
-            self.assigned.add(node.id)
+    def visit_Import(self, node: ast.Import) -> None:
+        self.mutated.update(alias.asname or alias.name.split(".", 1)[0] for alias in node.names)
 
-    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
-        if node.name:
-            self.assigned.add(node.name)
-        self.generic_visit(node)
-
-    def visit_MatchAs(self, node: ast.MatchAs) -> None:
-        if node.name:
-            self.assigned.add(node.name)
-        self.generic_visit(node)
-
-    def visit_MatchStar(self, node: ast.MatchStar) -> None:
-        if node.name:
-            self.assigned.add(node.name)
-
-    def visit_MatchMapping(self, node: ast.MatchMapping) -> None:
-        if node.rest:
-            self.assigned.add(node.rest)
-        self.generic_visit(node)
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        self.mutated.update(alias.asname or alias.name for alias in node.names)
 
     def visit_Global(self, node: ast.Global) -> None:
         self.globals.update(node.names)
@@ -941,6 +987,7 @@ class _CallBindings(ast.NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         # Defining a nested function evaluates its signature/decorators in
         # this scope. Only its body and parameter names belong to the child.
+        self.mutated.add(node.name)
         for decorator in node.decorator_list:
             self.visit(decorator)
         self.visit(node.args)
@@ -950,6 +997,7 @@ class _CallBindings(ast.NodeVisitor):
     visit_AsyncFunctionDef = visit_FunctionDef
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.mutated.add(node.name)
         for expression in (*node.decorator_list, *node.bases):
             self.visit(expression)
         for keyword in node.keywords:
@@ -1312,6 +1360,7 @@ def _resolve_call(
     bases_by_class: dict[str, tuple[str, ...]],
     annotations: dict[str, str],
     shadowed: set[str],
+    receiver_mutations: set[str],
 ) -> list[Edge]:
     dotted = _dotted_name(syntax.func)
     name = _call_leaf_name(syntax.func)
@@ -1358,6 +1407,7 @@ def _resolve_call(
         isinstance(syntax.func, ast.Attribute)
         and isinstance(syntax.func.value, ast.Name)
         and syntax.func.value.id in {"self", "cls"}
+        and syntax.func.value.id not in receiver_mutations
         and definition.enclosing_class_id
     ):
         # Searched up the base chain, not only this class's own members. An

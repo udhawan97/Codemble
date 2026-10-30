@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed
+- Revoke false Python framework and method-call proof after receiver bindings
+  change; retain duplicate declarations with their own spans and uncertain dispatch.
+- Invalidate narration cache entries when supplied graph context or project changes.
+- Refuse foreign-origin narration before provider work while preserving deliberate
+  local API clients.
+- Recover safely from malformed explanation-mode values without weakening strict
+  uncertain-save recovery.
+- Handle Study Escape through one owner in both Galaxy and Map, preserving
+  overlay precedence and one-level retreat.
+
 ### Documentation
 - Distinguish the 5,000-file supported cap from the small-project tester
   recommendation, preserve the historical Phase 1 cap, and collect launch,

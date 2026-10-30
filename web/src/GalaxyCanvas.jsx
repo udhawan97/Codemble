@@ -159,11 +159,9 @@ export function GalaxyCanvas({
     } else if (event.key === "Enter" && focusedNode) {
       event.preventDefault();
       advanceRef.current(focusedNode);
-    } else if (event.key === "Escape" || event.key === "Backspace") {
-      // First Flight is a dismissible surface in the one Escape arbiter. Let
-      // its Escape bubble there instead of retreating here first; otherwise
-      // one key would leave the system and then close the tour on top of it.
-      if (event.key === "Escape" && firstFlightActive) return;
+    } else if (event.key === "Backspace") {
+      // Escape bubbles to the window arbiter, including from the Study panel
+      // outside this frame; handling it here too would retreat twice.
       event.preventDefault();
       retreatRef.current();
     }

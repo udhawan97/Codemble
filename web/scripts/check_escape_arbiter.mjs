@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { ESCAPE_OWNERS, escapeAction, escapeOwner } from "../src/escapeArbiter.js";
+import { LEVELS } from "../src/graphData.js";
 
 // Escape precedence used to be an eleven-term disjunction inside App.jsx, plus
 // a second shorter copy on the chart stage. `check_focus_handoffs.mjs` could
@@ -135,5 +137,71 @@ assert.deepEqual(
   { kind: "retreat" },
   "an unknown fact is not silently treated as an open surface",
 );
+
+// Execute the real DOM fact shim and both event handlers: pure arbiter tests
+// alone missed a Galaxy Study heading outside the canvas keyboard subtree.
+const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+const canvas = readFileSync(new URL("../src/GalaxyCanvas.jsx", import.meta.url), "utf8");
+const factsSource = app.slice(app.indexOf("function escapeFacts("), app.indexOf("function isEditableTarget("));
+const fieldSource = app.slice(app.indexOf("function isEditableTarget("), app.indexOf("function LoadingScreen("));
+const windowSource = app.slice(app.indexOf("    function onEscape("), app.indexOf('    window.addEventListener("keydown", onEscape)'));
+const canvasSource = canvas.slice(canvas.indexOf("  function handleKeyDown("), canvas.indexOf("  if (renderError)"));
+for (const layer of ["galaxy", "map"]) {
+  for (const focus of ["study", "frame"]) {
+    let snapshot;
+    const events = [];
+    const doc = { activeElement: { tagName: "H1" }, querySelector: () => null };
+    const escapeFacts = new Function("LEVELS", "document", `${factsSource}${fieldSource}; return escapeFacts;`)(LEVELS, doc);
+    const session = {
+      getSnapshot: () => snapshot,
+      dispatch(event) {
+        events.push(event.type);
+        if (event.type === "RETREAT") snapshot = { ...snapshot, level: snapshot.level === LEVELS.STUDY ? LEVELS.SYSTEM : LEVELS.GALAXY };
+      },
+    };
+    const dismiss = Object.fromEntries(dismissed.map(([, surface]) => [surface, () => events.push(surface)]));
+    const onEscape = new Function("escapeAction", "escapeFacts", "session", "firstFlightActiveRef", "DISMISS", `${windowSource}; return onEscape;`)(escapeAction, escapeFacts, session, { current: false }, dismiss);
+    const onCanvasKey = new Function("firstFlightActive", "retreatRef", `${canvasSource}; return handleKeyDown;`)(false, { current: () => session.dispatch({ type: "RETREAT" }) });
+    const press = (key) => {
+      const event = { key, preventDefault() {} };
+      if (focus === "frame" && layer === "galaxy") onCanvasKey(event);
+      onEscape(event);
+    };
+    snapshot = { status: "ready", layer, level: LEVELS.STUDY };
+    press("Escape");
+    assert.deepEqual(events.splice(0), ["RETREAT"], `${layer} ${focus}: Study Escape retreats exactly once`);
+    assert.equal(snapshot.level, LEVELS.SYSTEM, `${layer} ${focus}: Study Escape retains its System`);
+    press("Escape");
+    assert.deepEqual(events.splice(0), ["RETREAT"], `${layer} ${focus}: System Escape retreats exactly once`);
+    assert.equal(snapshot.level, LEVELS.GALAXY);
+    press("Escape");
+    assert.deepEqual(events.splice(0), [], `${layer} ${focus}: Galaxy has nowhere to retreat`);
+    for (const [fact, surface] of dismissed) {
+      snapshot = { status: "ready", layer, level: LEVELS.STUDY, [fact]: true };
+      doc.querySelector = (selector) => fact === "railDisclosureOpen" && selector.startsWith(".rail-overflow") ? {} : null;
+      // First Flight is view-local rather than a session field.
+      const handler = new Function("escapeAction", "escapeFacts", "session", "firstFlightActiveRef", "DISMISS", `${windowSource}; return onEscape;`)(escapeAction, escapeFacts, session, { current: fact === "firstFlightOpen" }, dismiss);
+      const event = { key: "Escape", preventDefault() {} };
+      if (focus === "frame" && layer === "galaxy") onCanvasKey(event);
+      handler(event);
+      assert.deepEqual(events.splice(0), [surface], `${layer} ${focus}: ${surface} closes without retreat`);
+      assert.equal(snapshot.level, LEVELS.STUDY);
+    }
+    for (const fact of standDown) {
+      snapshot = { status: "ready", layer, level: LEVELS.STUDY, [fact]: true };
+      doc.activeElement = { tagName: fact === "editableFocus" ? "INPUT" : "H1" };
+      doc.querySelector = (selector) => fact === "nativeDialogOpen" && selector === "dialog[open]" ? {} : null;
+      press("Escape");
+      assert.deepEqual(events.splice(0), [], `${layer} ${focus}: ${fact} retains Escape`);
+      assert.equal(snapshot.level, LEVELS.STUDY);
+    }
+    if (layer === "galaxy" && focus === "frame") {
+      snapshot = { status: "ready", layer, level: LEVELS.STUDY };
+      press("Backspace");
+      assert.deepEqual(events, ["RETREAT"], "canvas Backspace retains its one-level retreat");
+      assert.equal(snapshot.level, LEVELS.SYSTEM);
+    }
+  }
+}
 
 console.log("escape-arbiter contracts passed");

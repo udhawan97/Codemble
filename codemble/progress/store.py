@@ -176,7 +176,7 @@ class ProgressStore:
         """Return the learner's audience mode; this never affects progress."""
 
         value = self._read().get("mode")
-        if value in _MODES:
+        if isinstance(value, str) and value in _MODES:
             return value
         return self._learner_mode() or "easy"
 
@@ -189,7 +189,8 @@ class ProgressStore:
         any single project.
         """
 
-        return self._read().get("mode") in _MODES or self._learner_mode() is not None
+        value = self._read().get("mode")
+        return (isinstance(value, str) and value in _MODES) or self._learner_mode() is not None
 
     def confirmed_mode_state(self) -> dict[str, object]:
         """Read a coherent recovery snapshot without tolerant startup defaults.
@@ -257,7 +258,7 @@ class ProgressStore:
         if not isinstance(payload, dict):
             return None
         value = payload.get("mode")
-        return value if value in _MODES else None
+        return value if isinstance(value, str) and value in _MODES else None
 
     def _write_learner_mode(self, mode: str) -> None:
         self._write_json(self._learner_path, {"mode": mode})

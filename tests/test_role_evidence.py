@@ -174,6 +174,48 @@ def test_python_receiver_shadowing_inside_a_compound_statement_is_lexical(
     assert not [item for item in graph.role_evidence if item.role == "route-handler"]
 
 
+@pytest.mark.parametrize("rebinding", [
+    "app = other = object()\n",
+    "app, other = replacements\n",
+    "app += replacement\n",
+    "del app\n",
+    "(app := replacement)\n",
+    "for app in replacements:\n    pass\n",
+    "with replacement as app:\n    pass\n",
+    "try:\n    pass\nexcept Exception as app:\n    pass\n",
+    "match replacement:\n    case {'app': app}:\n        pass\n",
+])
+def test_python_all_receiver_writes_revoke_route_provenance(
+    tmp_path: Path, rebinding: str,
+) -> None:
+    (tmp_path / "api.py").write_text(
+        "from fastapi import FastAPI\napp = FastAPI()\n" + rebinding
+        + "@app.get('/fake')\ndef fake():\n    pass\n",
+        encoding="utf-8",
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    assert not [item for item in graph.role_evidence if item.role == "route-handler"]
+
+
+@pytest.mark.parametrize("capture", [
+    "case {'app': app}:\n            pass",
+    "case [*app]:\n            pass",
+    "case {'key': value, **app}:\n            pass",
+])
+def test_python_match_capture_is_local_to_the_enclosing_factory(
+    tmp_path: Path, capture: str,
+) -> None:
+    (tmp_path / "api.py").write_text(
+        "from fastapi import FastAPI\napp = FastAPI()\n"
+        "def register(value):\n"
+        "    @app.get('/fake')\n    def fake():\n        pass\n"
+        "    match value:\n        " + capture + "\n",
+        encoding="utf-8",
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    assert not [item for item in graph.role_evidence if item.role == "route-handler"]
+
+
 def test_javascript_cross_file_route_keeps_registration_and_declaration_separate(
     tmp_path: Path,
 ) -> None:

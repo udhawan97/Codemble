@@ -111,12 +111,9 @@ export function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [session]);
-  // Escape steps back one level on the Map from anywhere, matching what the
-  // galaxy canvas has always done from its own frame. Bound on the window
-  // because the most common Easy path -- following the guidance chip into the
-  // study panel -- leaves focus on <body>, and a container keydown never hears
-  // that Escape: the documented recovery silently did nothing. Fresh state is
-  // read from the session at event time, so the listener binds once.
+  // Escape has one owner in both layers: Study receives focus outside the
+  // galaxy's keyboard frame. Fresh session state keeps every focus position
+  // under the same surface precedence and permits only one retreat per key.
   // What "dismiss this surface" means, one entry per dismissible owner in
   // `ESCAPE_OWNERS`. Each returns focus to the control that opened it.
   const DISMISS = {
@@ -1323,13 +1320,12 @@ const STAGE_ORDER = PARSE_STAGES.map(({ id }) => id);
  * document's own business. Reading them here keeps the arbiter a pure function
  * of stated facts rather than a second thing that queries the DOM.
  *
- * `canRetreat` is where "the Map is the layer with a documented way back, and
- * the galaxy level is already the outermost place there is" is stated once.
+ * Both layers share the same levels; Galaxy is already the outermost one.
  */
 function escapeFacts(snapshot, { firstFlightOpen = false } = {}) {
   return {
     ready: snapshot.status === "ready",
-    canRetreat: snapshot.layer === "map" && snapshot.level !== LEVELS.GALAXY,
+    canRetreat: snapshot.level !== LEVELS.GALAXY,
     showChart: snapshot.showChart,
     finderOpen: snapshot.finderOpen,
     sidebarOpen: snapshot.sidebarOpen,
