@@ -78,7 +78,7 @@ dev = [
   # default rule set -- which each minor release redefines. An open range
   # therefore changes what CI enforces by calendar date rather than by a
   # reviewed change. Raise this deliberately, with the findings triaged.
-  "ruff>=0.16,<0.17",
+  "ruff>=0.16,<0.18",
   "httpx>=0.27",
 ]
 
