@@ -67,7 +67,7 @@ dependencies = [
   # entering the default registry. Keep the grammar minors bounded until their
   # next releases pass the parser-evidence oracle and realistic scale corpus.
   "tree-sitter-ruby>=0.23,<0.24",
-  "tree-sitter-php>=0.24,<0.25",
+  "tree-sitter-php>=0.24,<0.26",
   "uvicorn>=0.30",
 ]
 
