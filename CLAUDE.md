@@ -284,6 +284,41 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**CAPO unfinished-verification repair (2026-11-01):** PR #53 remains the
+canonical candidate for the six selected repairs. Its hosted Chromium Close
+focus failure reproduced locally, including a bounded wait for the exact
+visible System destination. Study Close now uses the existing deferred focus
+handoff after retreat; the maintained gate checks that destination in both
+layers, both supported engines and desktop/320px. Both refreshed plan council
+rounds completed with four independent roles each. Candidate verification and
+the fresh implementation councils govern integration; source, main CI, native
+qualification and publication remain separate. The previous private Dev Review
+report is preserved. See the scheduled queue run record for exact evidence.
+
+**Selected Dev Review repairs (2026-10-30):** The owner selected all six
+findings from run `20261029T204523Z-fbfb473a`. An isolated candidate repairs
+Python binding provenance and duplicate-declaration identity, narration-context
+cache keys, foreign-origin narration admission, malformed mode recovery, and
+Galaxy Study Escape. Duplicate declarations retain distinct source spans while
+active dispatch stays explicitly uncertain; single declarations keep their IDs.
+The baseline passes 794 Python tests after a task-owned offline installation;
+the candidate passes 864, Ruff and frontend contracts/build. Focused WebKit
+keyboard checks and native Safari semantic Study Escape pass. Docs checks/build,
+the maintained public-site Chrome gate and a fresh isolated wheel-import smoke
+also pass. Broader browser and release gates, plus the exact-candidate
+report council, are recorded separately in the private review ledger. No hosted,
+physical-keyboard, screen-reader or release acceptance is inferred from those
+local results. Existing progress and public sharing boundaries remain unchanged.
+At this review checkpoint the fixes are not integrated or published. The owner
+has authorized commit and integration to main after final council and required
+checks; publication remains a separate action. Exact integration receipts are
+tracked in the private review ledger.
+
+- [x] Implement the six selected bounded repairs with regression tests.
+- [x] Complete worker and independent peer source reviews.
+- [x] Complete scoped candidate verification; retain named qualification gaps.
+- Final report council and exact artifact receipts are tracked in the private ledger.
+
 **Branch consolidation (2026-10-21):** The owner requested main cleanup.
 All nine candidate branches and six original worktrees were inventoried.
 P1.1a's squash-merged branch has the same tree as `2334a05`; all fifteen
@@ -2477,6 +2512,8 @@ implemented and evidenced.
 | 2026-10-20 | Implement P1.1a learner-intake corrections, with current plan/implementation councils and verification before merge and push | The owner explicitly requested this packet now. Existing report fields are retained, assistance is separated from illumination, incomplete trials remain reportable, and the guide's ordinary cap agrees with parser source. Historical release facts remain historical; native Safari rehearsal, human acceptance, public sharing and release publication are separate gates. |
 
 | 2026-10-21 | Owner-requested main cleanup removes only refs proven integrated by patch/range-diff and source/tree comparison; unique, dirty, and ignored audit artifacts remain preserved | All nine candidates were assessed. The reproducible Hatchling update changes wheel metadata and fails the immutable release-digest gate, so PR #50 stays held under the canonical queue. Starlight #51 still needs the recorded owner stack decision. Cleanup does not reseal published artifacts, promote a phase, or authorize release/public delivery. |
+
+| 2026-10-30 | Repair the six selected Dev Review findings without changing the adapter interface, progression or public-sharing authority | Repeated Python declarations keep their own parser spans and uncertain dispatch instead of borrowing an obsolete declaration. Narration cache identity covers its complete supplied context and project; foreign browser origins are refused before narration work while explicit no-Origin local clients remain supported. Tolerant preference reads validate types while strict uncertain recovery remains unchanged. One window Escape owner covers both layers. Existing file-hash-scoped understanding is preserved; it is not retroactively claimed as re-proved. Commit, integration and publication remain separate owner actions. |
 
 ## Non-Goals — do NOT build (point here when asked)
 

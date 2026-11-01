@@ -80,6 +80,48 @@ def _calls(graph, src: str) -> list:
     return [edge for edge in graph.edges if edge.kind == "call" and edge.src == src]
 
 
+@pytest.mark.parametrize("receiver", ["self", "cls"])
+@pytest.mark.parametrize("write", [
+    "{receiver} = replacement\n",
+    "{receiver} = other = replacement\n",
+    "({receiver} := replacement)\n",
+    "match replacement:\n            case {{'receiver': {receiver}}}:\n                pass\n",
+    "def {receiver}():\n            pass\n",
+    "class {receiver}:\n            pass\n",
+])
+def test_rebound_method_receivers_cannot_prove_the_original_member(
+    tmp_path: Path, receiver: str, write: str,
+) -> None:
+    (tmp_path / "app.py").write_text(
+        "class Worker:\n    def work(self):\n        pass\n"
+        f"    def run({receiver}, replacement):\n        "
+        + write.format(receiver=receiver)
+        + f"        return {receiver}.work()\n",
+        encoding="utf-8",
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    calls = _calls(graph, "app.Worker.run")
+    assert calls
+    assert not any(edge.dst == "app.Worker.work" and edge.certain for edge in calls)
+
+
+@pytest.mark.parametrize("receiver", ["self", "cls"])
+def test_an_annotation_without_a_value_does_not_rebind_the_method_receiver(
+    tmp_path: Path, receiver: str,
+) -> None:
+    (tmp_path / "app.py").write_text(
+        "class Worker:\n    def work(self):\n        pass\n"
+        f"    def run({receiver}):\n        {receiver}: Worker\n"
+        f"        return {receiver}.work()\n",
+        encoding="utf-8",
+    )
+    graph = PythonAstAdapter().parse(tmp_path)
+    assert any(
+        edge.dst == "app.Worker.work" and edge.certain
+        for edge in _calls(graph, "app.Worker.run")
+    )
+
+
 def test_dotted_imports_preserve_namespace_bindings_and_external_prefixes(tmp_path: Path) -> None:
     namespace = tmp_path / "space" / "deep"
     namespace.mkdir(parents=True)

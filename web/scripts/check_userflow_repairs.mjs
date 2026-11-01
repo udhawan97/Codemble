@@ -56,6 +56,7 @@ try {
     const browser = await browserType.launch({ headless: true });
     try {
       await checkGuidedLaunchAndLanding(browser, engine, launch.url);
+      await checkStudyEscape(browser, engine, launch.url);
       await checkLaunchChoiceMatrix(browser, engine, launchProjects.ready);
       await checkRefusedLaunch(browser, engine, launchProjects.ready);
       await checkBoundedImpact(browser, engine);
@@ -183,6 +184,119 @@ async function checkGuidedLaunchAndLanding(browser, engine, url) {
     results.push(`${engine} guided launch and Easy/Expert landing`);
   } finally {
     await page.close();
+  }
+}
+
+async function checkStudyEscape(browser, engine, url) {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 320, height: 640 }]) {
+    const page = await browser.newPage({ viewport, reducedMotion: "reduce" });
+    page.setDefaultTimeout(15_000);
+    try {
+      await gotoApp(page, url);
+      await settleApp(page);
+      const rail = async (name) => {
+        const button = page.getByRole("button", { name, exact: typeof name === "string" });
+        if (!(await button.isVisible())) await page.getByRole("button", { name: /^(Menu|More)$/ }).click();
+        await button.click();
+      };
+      const land = async (layer) => {
+        await page.getByRole("button", { name: /First Flight/ }).click();
+        await page.getByRole("button", { name: "Land and learn", exact: true }).click();
+        await page.locator(".study-preview h1").waitFor();
+        if (layer === "map") await rail(/^(Map|Diagram)$/);
+        // Landing/layer selection must finish relinquishing Escape before
+        // this assertion tests Study navigation rather than dismissing them.
+        await page.waitForFunction(() => !document.querySelector(
+          "[data-first-flight='active'], .rail-overflow[data-open], dialog[open]",
+        ));
+        const heading = page.locator(".study-preview h1");
+        await heading.focus();
+        assert.equal(await heading.evaluate((node) => document.activeElement === node), true);
+      };
+      const system = async (label) => {
+        await page.locator(".study-preview").waitFor({ state: "detached" });
+        assert.equal(await page.locator(".orientation-copy--system").count(), 1, `${label}: Escape skipped System`);
+      };
+      for (const layer of ["galaxy", "map"]) {
+        const label = `${engine} ${viewport.width}px ${layer}`;
+        await rail("Galaxy");
+        await land(layer);
+        await page.keyboard.press("Escape");
+        await system(label);
+
+        // The canvas event bubbles to the window. One physical key must not
+        // first leave Study locally and then leave System in the arbiter.
+        if (layer === "galaxy") {
+          await land(layer);
+          await page.locator(".galaxy-frame").focus();
+          await page.keyboard.press("Escape");
+          await system(`${label} canvas`);
+        }
+        await land(layer);
+        await page.locator(".study-preview").getByRole("button", { name: "Close", exact: true }).click();
+        await system(`${label} Close`);
+        await page.waitForFunction(() => {
+          const active = document.activeElement;
+          return active === document.querySelector(".orientation-copy--system")
+            && active?.isConnected && active.getClientRects().length > 0;
+        }, null, { timeout: 1500 });
+        results.push(`${label} focused Study Escape, one-level retreat and usable Close`);
+      }
+      await rail("Galaxy");
+      const frameEscape = async () => {
+        await page.locator(".galaxy-frame").focus();
+        await page.keyboard.press("Escape");
+      };
+      const label = `${engine} ${viewport.width}px Galaxy precedence`;
+      for (const [opener, surface] of [["Modules", ".index-sidebar"], ["Star chart", ".chart-stage"]]) {
+        await rail(opener);
+        await page.locator(surface).waitFor();
+        if (opener === "Modules") await frameEscape();
+        else await page.keyboard.press("Escape");
+        await page.locator(surface).waitFor({ state: "detached" });
+        await system(label);
+      }
+      const prove = page.getByRole("button", { name: /^(Prove understanding|Review understanding)$/ }).first();
+      await prove.focus();
+      await prove.press("Enter");
+      await page.locator(".check-panel").waitFor();
+      await frameEscape();
+      await page.locator(".check-panel").waitFor({ state: "detached" });
+      await system(label);
+      const menu = page.getByRole("button", { name: /^(Menu|More)$/ });
+      await menu.click();
+      await frameEscape();
+      await page.waitForFunction(() => !document.querySelector(".rail-overflow[data-open]"));
+      await system(label);
+      await page.getByRole("button", { name: /First Flight/ }).click();
+      await page.locator(".first-flight").waitFor();
+      await frameEscape();
+      await page.locator(".first-flight").waitFor({ state: "detached" });
+      await system(label);
+      for (const focus of ["input", "option"]) {
+        await rail(/^Find/);
+        const finder = page.locator(".module-finder[open]");
+        await finder.waitFor();
+        await finder.locator(focus === "input" ? "input" : "[role='option']").first().focus();
+        await page.keyboard.press("Escape");
+        await finder.waitFor({ state: "detached" });
+        await system(label);
+      }
+      // Isolate the document-owned facts with real editable/native controls,
+      // independent of Finder's own Escape handler and session flags.
+      await page.locator(".galaxy-frame").evaluate((frame) => {
+        const input = document.createElement("input");
+        input.id = "escape-field-fixture";
+        frame.append(input);
+        input.focus();
+      });
+      await page.keyboard.press("Escape");
+      await system(label);
+      await page.locator("#escape-field-fixture").evaluate((input) => input.remove());
+      results.push(`${label} checks, Modules, chart, menu, First Flight, native dialog and editable field`);
+    } finally {
+      await page.close();
+    }
   }
 }
 

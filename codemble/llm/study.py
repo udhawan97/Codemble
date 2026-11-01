@@ -231,8 +231,15 @@ class StudyService:
                     ),
                     "cached": False,
                 }
-            file_hash = self._graph.file_hashes[node.file]
-        return self._explain(node, source, neighbors, lens, mode, file_hash)
+            evidence = {
+                "project_root": self._graph.project_root,
+                "node": asdict(node),
+                "file_hash": self._graph.file_hashes[node.file],
+                "source": source,
+                "neighbors": neighbors,
+                "lens": lens,
+            }
+        return self._explain(node, source, neighbors, lens, mode, evidence)
 
     def _prepare(
         self, node: Node
@@ -322,7 +329,7 @@ class StudyService:
         neighbors: list[dict[str, object]],
         lens: list[dict[str, object]],
         mode: str,
-        file_hash: str,
+        evidence: dict[str, object],
     ) -> dict[str, object]:
         if self._provider is None:
             return {
@@ -331,7 +338,7 @@ class StudyService:
                 "cached": False,
             }
 
-        cache_key = _cache_key(self._provider, node, file_hash, mode)
+        cache_key = _cache_key(self._provider, mode, evidence)
         cached = self._read_cache(cache_key)
         if cached is not None:
             return {**cached, "cached": True}
@@ -445,12 +452,13 @@ def _edges_by_node(graph: Graph) -> dict[str, tuple[Edge, ...]]:
 
 
 def _cache_key(
-    provider: NarrationProvider, node: Node, file_hash: str, mode: str
+    provider: NarrationProvider, mode: str, evidence: dict[str, object]
 ) -> str:
-    # join names the NUL separator once; an f-string would repeat it five times
-    # in a value that keys the on-disk narration cache.
-    material = "\0".join(  # noqa: FLY002
-        (PROMPT_VERSION, provider.name, provider.model, node.id, file_hash, mode)
+    # Neighbor citations and certainty can change while the selected file does not.
+    material = json.dumps(
+        (PROMPT_VERSION, provider.name, provider.model, mode, evidence),
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode()
     return hashlib.sha256(material).hexdigest()
 

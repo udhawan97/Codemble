@@ -133,10 +133,10 @@ assert.match(
   /Land and learn/,
   "every flight stop exposes the learner-controlled route into landing and checks",
 );
-assert.match(
+assert.doesNotMatch(
   canvasSource,
-  /event\.key === "Escape" && firstFlightActive/,
-  "the canvas yields a tour Escape to the single arbiter instead of retreating first",
+  /event\.key === "Escape"/,
+  "every canvas Escape reaches the window arbiter, which owns First Flight precedence",
 );
 assert.match(
   canvasSource,

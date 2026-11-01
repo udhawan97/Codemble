@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 import anyio
 from fastapi import FastAPI, HTTPException, Response
@@ -50,6 +51,32 @@ from codemble.share import SharePreviewConfirmationError, UnknownSharePreviewErr
 # executor separate from the ordinary parser endpoint threadpool.
 _NARRATION_SLOTS = 4
 NARRATION_DEADLINE_SECONDS = 45.0
+
+
+def _narration_request_allowed(request: Request) -> bool:
+    if request.headers.get("sec-fetch-site") in {"cross-site", "same-site"}:
+        return False
+    origins = request.headers.getlist("origin")
+    # Local CLI/API clients deliberately have no browser Origin header.
+    if not origins:
+        return True
+    if len(origins) != 1:
+        return False
+    try:
+        origin = urlsplit(origins[0])
+        default_port = {"http": 80, "https": 443}.get(origin.scheme)
+        return (
+            default_port is not None
+            and origin.scheme == request.url.scheme
+            and origin.hostname == request.url.hostname
+            and (origin.port if origin.port is not None else default_port)
+            == (request.url.port if request.url.port is not None else default_port)
+            and origin.username is None
+            and origin.password is None
+            and not (origin.path or origin.query or origin.fragment)
+        )
+    except ValueError:
+        return False
 
 
 class _NarrationPool:
@@ -453,10 +480,12 @@ def create_app(
 
     @app.get("/api/node/{node_id:path}/explanation")
     async def get_node_explanation(
-        node_id: str, mode: Literal["easy", "expert"] = "easy"
+        request: Request, node_id: str, mode: Literal["easy", "expert"] = "easy"
     ) -> dict[str, object]:
         # Async on purpose: see _NARRATION_SLOTS. This is the one handler
         # allowed to be slow, and it must be slow entirely on its own budget.
+        if not _narration_request_allowed(request):
+            raise HTTPException(status_code=403, detail="Narration requires a same-origin request.")
         _, studies = _services()
         try:
             with anyio.fail_after(app.state.narration_deadline_seconds):

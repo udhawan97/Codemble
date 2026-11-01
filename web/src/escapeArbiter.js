@@ -66,9 +66,8 @@ export function escapeOwner(facts) {
  * - `null` -- do nothing: either a surface is handling the key itself, or
  *   retreating is not meaningful here.
  *
- * Retreat is deliberately narrow. It is the Map's documented way back; the
- * Galaxy has its own canvas-level handler, and the galaxy level is already the
- * outermost place there is.
+ * Both layers share this owner, including Study outside the Galaxy keyboard
+ * frame. The galaxy level is already the outermost place there is.
  */
 export function escapeAction(facts = {}) {
   if (facts.ready !== true) return null;
