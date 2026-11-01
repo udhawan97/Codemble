@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   uncertain-save recovery.
 - Handle Study Escape through one owner in both Galaxy and Map, preserving
   overlay precedence and one-level retreat.
+- Return focus to the visible System context after closing Study in either layer.
 
 ### Documentation
 - Distinguish the 5,000-file supported cap from the small-project tester

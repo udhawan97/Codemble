@@ -1197,6 +1197,7 @@ export function App() {
             onClose={() => {
               setRevealSource(false);
               session.dispatch({ type: "RETREAT" });
+              restoreRailFocus(systemCopyRef);
             }}
           />
         ) : null}

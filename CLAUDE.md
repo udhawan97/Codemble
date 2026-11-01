@@ -284,6 +284,17 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**CAPO unfinished-verification repair (2026-11-01):** PR #53 remains the
+canonical candidate for the six selected repairs. Its hosted Chromium Close
+focus failure reproduced locally, including a bounded wait for the exact
+visible System destination. Study Close now uses the existing deferred focus
+handoff after retreat; the maintained gate checks that destination in both
+layers, both supported engines and desktop/320px. Both refreshed plan council
+rounds completed with four independent roles each. Candidate verification and
+the fresh implementation councils govern integration; source, main CI, native
+qualification and publication remain separate. The previous private Dev Review
+report is preserved. See the scheduled queue run record for exact evidence.
+
 **Selected Dev Review repairs (2026-10-30):** The owner selected all six
 findings from run `20261029T204523Z-fbfb473a`. An isolated candidate repairs
 Python binding provenance and duplicate-declaration identity, narration-context

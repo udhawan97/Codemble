@@ -579,3 +579,41 @@ Future record fields: run/claim owner; branch/worktree/PR; starting SHA; plan
 digest; council outcomes; test command exits and private receipt references;
 candidate/integrated SHA; CI status; retained blockers; next packet. A passing
 test on the pre-change base cannot close a changed candidate.
+
+### CAPO 2026-11-01 claim — PR 53 verification repair
+
+Run `capo-2026-11-01` resumes [PR #53](https://github.com/udhawan97/Codemble/pull/53)
+at `697b77f8b3ec0cdf324f483be977c3e53f9c9dce`, base
+`0628fe60efc7b46f24aeb3a86654786188697e30`. Owner: CAPO, isolated
+`fix/capo-study-close-focus` worktree. Status: both plan council rounds complete;
+scoped implementation and verification in progress. Exact-head hosted and fresh disposable local Chromium gates reproduce
+Study Close losing usable focus. Scope is the demonstrated Close handoff and
+its existing regression gate, then exact whole-candidate verification. Preserve
+the original review worktree/report, learner acceptance and publication holds.
+Do not claim this packet concurrently; remote/queue readback gates each write.
+
+Plan receipt: two complete rounds, four independent roles each, no remaining
+blockers; plan SHA256 `90acaa0696e4b4dc0fdf90cefde5d1d61fd411fdf8b1e0926bfe27a8fcd6a443`.
+The strengthened unchanged-App check also failed after its bounded 1.5-second
+wait for the exact visible System destination. The repair reuses the existing
+task-deferred focus helper; it does not alter navigation or persistence.
+
+### CAPO local candidate verification checkpoint — November1
+
+The one-line Close repair and stronger exact-System-focus check pass the full
+84-receipt Chromium/WebKit userflow gate. Python864tests, Ruff, the10-case
+nine-language semantic oracle and the complete5,000-module backend/Chromium/
+WebKit gate passed. Frontend contracts/build and a second byte-stable SPA
+build pass; wheel13SPA members match the built source bytes. Docs check/build
+passes28pages; share-delivery passes4TLS/browser receipts. A disposable
+Safari26.5.2 two-file project verifies Close reaches System from bothlayers;
+background-tab activefocus and physical keyboard/VoiceOver were not qualified.
+Existing native learner/performance/install/recovery/publication Holds remain.
+Graphifycode refresh/query passed with7zero-node warnings and stale semantic
+labels; documentation semantic refresh is not claimed. Initial docs npmci
+without a lock and missingpip build attempts were corrected to the repository
+workflow in task-owned environments; neither failed attempt counts aspass.
+Remaining integration gates: shellspace/Escape/text completion, two fresh
+implementation council rounds, exact final-head hostedCI, normal expected-head
+merge and post-main verification. The PR owns final commit/integration identities.
+This checkpoint does not claim committed, merged, released or deployed work.

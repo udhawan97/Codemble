@@ -235,10 +235,11 @@ async function checkStudyEscape(browser, engine, url) {
         await land(layer);
         await page.locator(".study-preview").getByRole("button", { name: "Close", exact: true }).click();
         await system(`${label} Close`);
-        assert.equal(await page.evaluate(() => {
+        await page.waitForFunction(() => {
           const active = document.activeElement;
-          return active !== document.body && active?.isConnected && active.getClientRects().length > 0;
-        }), true, `${label}: Close lost usable focus`);
+          return active === document.querySelector(".orientation-copy--system")
+            && active?.isConnected && active.getClientRects().length > 0;
+        }, null, { timeout: 1500 });
         results.push(`${label} focused Study Escape, one-level retreat and usable Close`);
       }
       await rail("Galaxy");
