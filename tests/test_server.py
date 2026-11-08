@@ -1411,6 +1411,127 @@ def test_cleared_progress_hands_back_answerable_checks(
     ], "the same proof must be able to light the region a second time"
 
 
+@pytest.mark.parametrize("first", ["submit", "reset"])
+def test_final_check_and_reset_serialize_the_complete_flow(tmp_path, monkeypatch, first):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    checks = CheckService(graph, progress)
+    client = TestClient(create_app(
+        graph, tmp_path / "missing",
+        StudyService(graph, cache_root=tmp_path / "cache"), checks,
+    ))
+    suite = generate_checks(graph, "app")
+    assert len(suite) > 1
+    for check in suite[:-1]:
+        checks.submit("app", check.id, list(check.answer_ids))
+    final = suite[-1]
+    entered, release, attempted = threading.Event(), threading.Event(), threading.Event()
+    method = "mark_understood" if first == "submit" else "clear"
+    original = getattr(progress, method)
+
+    def paused(*args):
+        entered.set()
+        assert release.wait(timeout=5)
+        return original(*args)
+
+    monkeypatch.setattr(progress, method, paused)
+
+    def submit():
+        return client.post(f"/api/regions/app/checks/{final.id}",
+                           json={"selected_ids": list(final.answer_ids)})
+
+    def reset():
+        return client.delete("/api/progress")
+
+    earlier, later = (submit, reset) if first == "submit" else (reset, submit)
+
+    later_method = "clear_progress" if first == "submit" else "submit"
+    original_later = getattr(checks, later_method)
+
+    def attempt_later(*args):
+        attempted.set()
+        return original_later(*args)
+
+    monkeypatch.setattr(checks, later_method, attempt_later)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        before = pool.submit(earlier)
+        try:
+            assert entered.wait(timeout=5)
+            after = pool.submit(later)
+            assert attempted.wait(timeout=5)
+            with pytest.raises(TimeoutError):
+                after.result(timeout=0.1)
+        finally:
+            release.set()
+        assert before.result(timeout=5).status_code == 200
+        assert after.result(timeout=5).status_code == 200
+
+    expected = [False] * len(suite)
+    if first == "reset":
+        expected[-1] = True
+    current = client.get("/api/regions/app/checks").json()
+    assert current["region_understood"] is False
+    assert [check["passed"] for check in current["checks"]] == expected
+    assert not next(r for r in client.get("/api/graph").json()["regions"]
+                    if r["id"] == "app")["understood"]
+    assert not next(b for b in client.get("/api/map").json()["architecture"]["boxes"]
+                    if b["id"] == "app")["understood"]
+    restarted = CheckService(graph, ProgressStore(graph, tmp_path / "progress"))
+    assert restarted.for_region("app")["region_understood"] is False
+    for check in suite:
+        checks.submit("app", check.id, list(check.answer_ids))
+    assert checks.for_region("app")["region_understood"] is True
+
+
+def test_region_read_waits_for_both_halves_of_progress_reset(tmp_path, monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path / "progress")
+    checks = CheckService(graph, progress)
+    client = TestClient(create_app(
+        graph, tmp_path / "missing",
+        StudyService(graph, cache_root=tmp_path / "cache"), checks,
+    ))
+    for check in generate_checks(graph, "app"):
+        checks.submit("app", check.id, list(check.answer_ids))
+    disk_cleared, release, reading = threading.Event(), threading.Event(), threading.Event()
+    clear = progress.clear
+
+    def paused_clear():
+        clear()
+        disk_cleared.set()
+        assert release.wait(timeout=5)
+
+    for_region = checks.for_region
+
+    def read(region):
+        reading.set()
+        return for_region(region)
+
+    monkeypatch.setattr(progress, "clear", paused_clear)
+    monkeypatch.setattr(checks, "for_region", read)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        reset = pool.submit(client.delete, "/api/progress")
+        try:
+            assert disk_cleared.wait(timeout=5)
+            result = pool.submit(client.get, "/api/regions/app/checks")
+            assert reading.wait(timeout=5)
+            with pytest.raises(TimeoutError):
+                result.result(timeout=0.1)
+        finally:
+            release.set()
+        assert reset.result(timeout=5).status_code == 200
+        suite = result.result(timeout=5).json()
+    assert suite["region_understood"] is False
+    assert not any(check["passed"] for check in suite["checks"])
+
+
 def test_clearing_progress_requires_a_bound_project(tmp_path: Path) -> None:
     from codemble.server.app import PickerConfig
 

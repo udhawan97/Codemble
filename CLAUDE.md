@@ -284,6 +284,34 @@ lit-galaxy GIF as hero).
 
 ## Current State **[AGENT-MAINTAINED]**
 
+**Selected Dev Review truth repairs (2026-11-08):** The owner selected P1
+findings `DR-433333bc-001`–`003` from run `20261108T081429Z-433333bc`,
+plus investigation of `004`, verification, council review and main delivery.
+The previous six repairs and Close-focus follow-up are already integrated at
+`2aad858f`; this work preserves their accepted contracts.
+
+- [x] Virtual Python method receivers retain possible targets rather than
+  borrowing certainty from their lexical class. Unsupported multiple,
+  unresolved, rebound, dynamic or cyclic bases do not prove member dispatch;
+  complete single-inheritance constructor calls and exact functions remain
+  supported. Dynamic base references must preserve their entire name chain.
+- [x] One `CheckService` owner coordinates completion, reset and coherent
+  reads. A refused completing write leaves the last question retryable.
+  Existing cross-process **disk mutation** locking remains intact; separate
+  services' in-memory partial proof has no new reset-generation guarantee.
+- [x] Investigation `004` distinguishes an early capture/scroll effect from
+  stale Map viewport publication. No viewport source repair was selected or
+  implemented. The next bounded repair would publish dimensions independently
+  of recentering, after a separate selection.
+- [ ] Visible native Map qualification, full install/upgrade/recovery and
+  publication remain separate gates. Independent learners and M20 operations
+  are not established by these source repairs.
+
+Focused and combined verification, distinct peer review, final council,
+source-to-main correspondence and remaining gates are recorded in the private
+review ledger. This note does not claim a new release, native visual pass or
+public-sharing activation.
+
 **CAPO unfinished-verification repair (2026-11-01):** PR #53 remains the
 canonical candidate for the six selected repairs. Its hosted Chromium Close
 focus failure reproduced locally, including a bounded wait for the exact
@@ -2514,6 +2542,7 @@ implemented and evidenced.
 | 2026-10-21 | Owner-requested main cleanup removes only refs proven integrated by patch/range-diff and source/tree comparison; unique, dirty, and ignored audit artifacts remain preserved | All nine candidates were assessed. The reproducible Hatchling update changes wheel metadata and fails the immutable release-digest gate, so PR #50 stays held under the canonical queue. Starlight #51 still needs the recorded owner stack decision. Cleanup does not reseal published artifacts, promote a phase, or authorize release/public delivery. |
 
 | 2026-10-30 | Repair the six selected Dev Review findings without changing the adapter interface, progression or public-sharing authority | Repeated Python declarations keep their own parser spans and uncertain dispatch instead of borrowing an obsolete declaration. Narration cache identity covers its complete supplied context and project; foreign browser origins are refused before narration work while explicit no-Origin local clients remain supported. Tolerant preference reads validate types while strict uncertain recovery remains unchanged. One window Escape owner covers both layers. Existing file-hash-scoped understanding is preserved; it is not retroactively claimed as re-proved. Commit, integration and publication remain separate owner actions. |
+| 2026-11-08 | Selected Dev Review repairs keep Python virtual receivers and unsupported inheritance explicitly possible, require a complete static name chain for base proof, and coordinate check completion/reset/reads under one service owner with failed-write-safe pass publication | The selected runtime probes demonstrated false certain method targets and a completion decision that could outlive reset. Conservative parser evidence preserves graph-only answers and proof breaks without introducing a partial C3 resolver. The service owns its in-memory proof together with its persisted completion decision, while existing store locks continue to protect disk mutations across processes. This does not introduce a persisted cross-service reset epoch. Investigation004 identifies stale viewport publication but authorizes no source repair, release, deployment or milestone promotion. |
 
 ## Non-Goals — do NOT build (point here when asked)
 

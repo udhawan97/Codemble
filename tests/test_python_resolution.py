@@ -112,14 +112,13 @@ def test_an_annotation_without_a_value_does_not_rebind_the_method_receiver(
     (tmp_path / "app.py").write_text(
         "class Worker:\n    def work(self):\n        pass\n"
         f"    def run({receiver}):\n        {receiver}: Worker\n"
-        f"        return {receiver}.work()\n",
+        f"        return {receiver}.work()\n"
+        "class Other:\n    def work(self):\n        pass\n",
         encoding="utf-8",
     )
     graph = PythonAstAdapter().parse(tmp_path)
-    assert any(
-        edge.dst == "app.Worker.work" and edge.certain
-        for edge in _calls(graph, "app.Worker.run")
-    )
+    calls = _calls(graph, "app.Worker.run")
+    assert [(edge.dst, edge.certain) for edge in calls] == [("app.Worker.work", False)]
 
 
 def test_dotted_imports_preserve_namespace_bindings_and_external_prefixes(tmp_path: Path) -> None:
@@ -155,7 +154,7 @@ def test_an_inherited_method_resolves_through_the_base_class(project: Path) -> N
     edges = _calls(graph, "child.Child.run")
 
     assert [edge.dst for edge in edges] == ["base.Adapter.shared"]
-    assert edges[0].certain is True, "the base class is in the project and declares it once"
+    assert edges[0].certain is False, "an overriding runtime receiver remains possible"
 
 
 def test_an_annotated_parameter_names_one_target_not_every_namesake(

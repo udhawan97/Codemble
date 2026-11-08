@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 ## [Unreleased]
 
 ### Fixed
+- Keep virtual Python receivers and unsupported inheritance explicitly possible
+  instead of teaching a false certain target. Preserve unknown dynamic base
+  qualifiers and exact function/single-inheritance constructor calls.
+- Serialize check completion, progress reset and coherent reads within one
+  running check service; retain a retryable last question after write refusal.
 - Revoke false Python framework and method-call proof after receiver bindings
   change; retain duplicate declarations with their own spans and uncertain dispatch.
 - Invalidate narration cache entries when supplied graph context or project changes.

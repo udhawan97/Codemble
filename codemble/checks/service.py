@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -67,6 +68,8 @@ class CheckService:
         self._graph = _restored_entrypoint(graph, self._progress)
         self._checks = _suites(self._graph)
         self._passed: dict[str, set[str]] = {}
+        # Own proof/reset before entering the progress store transaction.
+        self._lock = threading.RLock()
 
     @property
     def progress(self) -> ProgressStore:
@@ -84,85 +87,92 @@ class CheckService:
         Both halves are one fact, so one caller clears both.
         """
 
-        self._progress.clear()
-        self._passed.clear()
+        with self._lock:
+            self._progress.clear()
+            self._passed.clear()
 
     def graph(self) -> Graph:
         """Return render data hydrated from currently valid local progress."""
 
-        hydrated = self._progress.hydrated_graph()
-        return (
-            with_entrypoint(hydrated, self._graph.selected_entrypoint)
-            if self._graph.selected_entrypoint
-            else hydrated
-        )
+        with self._lock:
+            hydrated = self._progress.hydrated_graph()
+            return (
+                with_entrypoint(hydrated, self._graph.selected_entrypoint)
+                if self._graph.selected_entrypoint
+                else hydrated
+            )
 
     def select_entrypoint(self, node_id: str) -> Graph:
         """Apply an explicit parser-ranked Home choice to graph and check suites."""
 
-        self._graph = with_entrypoint(self._graph, node_id)
-        self._progress.set_selected_entrypoint(node_id)
-        self._checks = _suites(self._graph)
-        return self.graph()
+        with self._lock:
+            self._graph = with_entrypoint(self._graph, node_id)
+            self._progress.set_selected_entrypoint(node_id)
+            self._checks = _suites(self._graph)
+            return self.graph()
 
     def for_region(self, region_id: str) -> dict[str, object]:
         """Return a region suite with answer values withheld."""
 
-        checks = self._region_checks(region_id)
-        understood = region_id in self._progress.understood_regions()
-        passed = self._passed.get(region_id, set())
-        return {
-            "region_id": region_id,
-            "region_understood": understood,
-            "checks": [
-                check.public(passed=understood or check.id in passed) for check in checks
-            ],
-        }
+        with self._lock:
+            checks = self._region_checks(region_id)
+            understood = region_id in self._progress.understood_regions()
+            passed = self._passed.get(region_id, set())
+            return {
+                "region_id": region_id,
+                "region_understood": understood,
+                "checks": [
+                    check.public(passed=understood or check.id in passed) for check in checks
+                ],
+            }
 
     def submit(
         self, region_id: str, check_id: str, selected_ids: list[str]
     ) -> dict[str, object]:
         """Score exact option IDs against the immutable generated answer."""
 
-        checks = self._region_checks(region_id)
-        check = next((candidate for candidate in checks if candidate.id == check_id), None)
-        if check is None:
-            raise UnknownCheckError(check_id)
-        offered = {option.id for option in check.options}
-        selected = set(selected_ids)
-        if not selected or not selected <= offered:
-            raise InvalidCheckSubmission("Select one or more offered answers.")
+        with self._lock:
+            checks = self._region_checks(region_id)
+            check = next((candidate for candidate in checks if candidate.id == check_id), None)
+            if check is None:
+                raise UnknownCheckError(check_id)
+            offered = {option.id for option in check.options}
+            selected = set(selected_ids)
+            if not selected or not selected <= offered:
+                raise InvalidCheckSubmission("Select one or more offered answers.")
 
-        correct = selected == set(check.answer_ids)
-        if correct:
-            self._passed.setdefault(region_id, set()).add(check.id)
-        passed = self._passed.get(region_id, set())
-        complete = bool(checks) and all(candidate.id in passed for candidate in checks)
-        if complete:
-            self._progress.mark_understood(region_id)
+            correct = selected == set(check.answer_ids)
+            passed = self._passed.get(region_id, set()).copy()
+            if correct:
+                passed.add(check.id)
+            complete = bool(checks) and all(candidate.id in passed for candidate in checks)
+            if complete:
+                self._progress.mark_understood(region_id)
+            if correct:
+                self._passed[region_id] = passed
 
-        result: dict[str, object] = {
-            "correct": correct,
-            "check_id": check.id,
-            "message": (
-                "Correct. That answer is fixed by the parser graph."
-                if correct
-                else "Not yet. Re-read the relationship in your own code and try again."
-            ),
-            "region_understood": complete,
-        }
-        if not correct:
-            # A miss returns no answer and no citations. An importer check
-            # cites the very files that are its answer, so handing either back
-            # let the next submission replay what the screen had just shown --
-            # and a region lit that way proves nothing.
+            result: dict[str, object] = {
+                "correct": correct,
+                "check_id": check.id,
+                "message": (
+                    "Correct. That answer is fixed by the parser graph."
+                    if correct
+                    else "Not yet. Re-read the relationship in your own code and try again."
+                ),
+                "region_understood": complete,
+            }
+            if not correct:
+                # A miss returns no answer and no citations. An importer check
+                # cites the very files that are its answer, so handing either back
+                # let the next submission replay what the screen had just shown --
+                # and a region lit that way proves nothing.
+                return result
+            result["answer_ids"] = list(check.answer_ids)
+            result["answer_labels"] = [
+                option.label for option in check.options if option.id in check.answer_ids
+            ]
+            result["evidence"] = list(check.evidence)
             return result
-        result["answer_ids"] = list(check.answer_ids)
-        result["answer_labels"] = [
-            option.label for option in check.options if option.id in check.answer_ids
-        ]
-        result["evidence"] = list(check.evidence)
-        return result
 
     def _region_checks(self, region_id: str) -> tuple[Check, ...]:
         if region_id not in self._checks:

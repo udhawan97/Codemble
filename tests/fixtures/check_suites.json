@@ -937,22 +937,16 @@
     "pkg.service": [
       {
         "answer_ids": [
-          "pkg.service.Service.finish",
           "pkg.util.normalize",
           "shared.duplicate"
         ],
         "evidence": [
           "pkg/service.py:8",
-          "pkg/service.py:9",
-          "pkg/service.py:10"
+          "pkg/service.py:9"
         ],
         "id": "45f654863a1118e7",
         "kind": "direct-call",
         "options": [
-          {
-            "id": "pkg.service.Service.finish",
-            "label": "pkg.service.Service.finish"
-          },
           {
             "id": "pkg.util.normalize",
             "label": "pkg.util.normalize"

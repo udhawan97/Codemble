@@ -58,7 +58,7 @@ class _Definition:
     # Base classes exactly as written (`Adapter`, `base.Adapter`), unresolved.
     # Resolution needs the whole project's node table, which does not exist
     # while one file is being walked.
-    bases: tuple[str, ...] = ()
+    bases: tuple[str | None, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,11 +102,7 @@ class _DefinitionCollector(ast.NodeVisitor):
                 parent_id=self._scope_ids[-1],
                 enclosing_class_id=self._class_ids[-1] if self._class_ids else None,
                 function_ancestors=tuple(self._function_ids),
-                bases=tuple(
-                    name
-                    for name in (_dotted_name(base) for base in syntax.bases)
-                    if name is not None
-                ),
+                bases=tuple(_base_name(base) for base in syntax.bases),
             )
         )
         self._scope_ids.append(node_id)
@@ -505,35 +501,6 @@ class PythonAstAdapter:
             if node.kind != "module":
                 nodes_by_name[node.name].append(node)
 
-        # Built once the whole project's node table exists, because a base
-        # class is very often imported from another file. Only in-project bases
-        # are recorded: `class Adapter(Protocol)` inherits from something
-        # Codemble never parsed, and inventing an edge into it would be a claim
-        # about code it has not read.
-        bases_by_class: dict[str, tuple[str, ...]] = {}
-        for definition in definitions:
-            if not definition.bases:
-                continue
-            owner = _module_from_node_id(definition.node_id, modules)
-            resolved = [
-                base_id
-                for base_id in (
-                    _resolve_type_name(
-                        written,
-                        owner,
-                        {
-                            binding.local_name: binding
-                            for binding in module_bindings[owner]
-                        },
-                        node_by_id,
-                    )
-                    for written in definition.bases
-                )
-                if base_id is not None
-            ]
-            if resolved:
-                bases_by_class[definition.node_id] = tuple(resolved)
-
         lexical_scopes: dict[str, _CallBindings] = {}
         for parsed in parsed_files:
             if parsed.tree is not None:
@@ -549,6 +516,35 @@ class PythonAstAdapter:
                 if isinstance(definition.syntax, (ast.FunctionDef, ast.AsyncFunctionDef))
                 else None,
             )
+
+        # Keep unresolved bases: dropping one can turn an incomplete hierarchy
+        # into a falsely proven single-inheritance chain.
+        bases_by_class: dict[str, tuple[str | None, ...]] = {}
+        for definition in definitions:
+            if not definition.bases:
+                continue
+            owner = _module_from_node_id(definition.node_id, modules)
+            bases_by_class[definition.node_id] = tuple(
+                _resolve_type_name(
+                    written,
+                    owner,
+                    {
+                        binding.local_name: binding
+                        for binding in module_bindings[owner]
+                    },
+                    node_by_id,
+                )
+                if written is not None
+                and written.split(".", 1)[0] not in lexical_scopes[owner].assigned
+                else None
+                for written in definition.bases
+            )
+
+        subclasses_by_class: dict[str, list[str]] = defaultdict(list)
+        for child, bases in bases_by_class.items():
+            for base in bases:
+                if base is not None:
+                    subclasses_by_class[base].append(child)
 
         for definition in definitions:
             module = _module_from_node_id(definition.node_id, modules)
@@ -572,6 +568,7 @@ class PythonAstAdapter:
                         nodes_by_name,
                         children_by_parent,
                         bases_by_class,
+                        subclasses_by_class,
                         annotated_types,
                         shadowed | facts.call_shadows[id(call)],
                         receiver_mutations | facts.call_shadows[id(call)],
@@ -1318,35 +1315,35 @@ def _annotated_types(
 def _members_in_hierarchy(
     class_id: str,
     name: str,
-    bases_by_class: dict[str, tuple[str, ...]],
+    bases_by_class: dict[str, tuple[str | None, ...]],
     children_by_parent: dict[str, list[Node]],
-) -> list[Node]:
-    """Members called ``name``, searched up the in-project base chain.
-
-    Breadth-first from the class itself, stopping at the first level that
-    declares the name -- which is what Python's own lookup does closely enough
-    for a call to be attributed to the definition that would actually run.
-    ``seen`` is not defensive tidiness: a file mid-edit can describe a cyclic
-    hierarchy, and this walks whatever the parser was handed.
-    """
+) -> tuple[list[Node], bool]:
+    """Prove a single base chain, or retain candidates without inventing MRO."""
 
     seen: set[str] = set()
-    frontier = [class_id]
-    while frontier:
-        matches: list[Node] = []
-        following: list[str] = []
-        for current in frontier:
-            if current in seen:
-                continue
-            seen.add(current)
-            matches.extend(
-                node for node in children_by_parent.get(current, []) if node.name == name
-            )
-            following.extend(bases_by_class.get(current, ()))
-        if matches:
-            return sorted(matches, key=lambda node: node.id)
-        frontier = following
-    return []
+    pending = [class_id]
+    first: list[Node] = []
+    candidates: dict[str, Node] = {}
+    certain = True
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            certain = False
+            continue
+        seen.add(current)
+        matches = [node for node in children_by_parent.get(current, []) if node.name == name]
+        if matches and not first:
+            first = matches
+        candidates.update((node.id, node) for node in matches)
+        bases = bases_by_class.get(current, ())
+        if len(bases) > 1 or None in bases:
+            certain = False
+        pending.extend(base for base in bases if base is not None)
+    if certain:
+        return sorted(first, key=lambda node: node.id), len(first) == 1
+    # shortcut: multiple/unresolved/cyclic bases stay possible; use C3 only if
+    # a later requirement needs exact ordered multiple-inheritance evidence.
+    return sorted(candidates.values(), key=lambda node: node.id), False
 
 
 def _resolve_call(
@@ -1357,7 +1354,8 @@ def _resolve_call(
     node_by_id: dict[str, Node],
     nodes_by_name: dict[str, list[Node]],
     children_by_parent: dict[str, list[Node]],
-    bases_by_class: dict[str, tuple[str, ...]],
+    bases_by_class: dict[str, tuple[str | None, ...]],
+    subclasses_by_class: dict[str, list[str]],
     annotations: dict[str, str],
     shadowed: set[str],
     receiver_mutations: set[str],
@@ -1409,30 +1407,39 @@ def _resolve_call(
         and syntax.func.value.id in {"self", "cls"}
         and syntax.func.value.id not in receiver_mutations
         and definition.enclosing_class_id
-    ):
-        # Searched up the base chain, not only this class's own members. An
-        # inherited method used to miss here and fall through to the
-        # project-wide name match, which answered with every namesake in the
-        # project -- the exact fan-out this work exists to remove.
-        class_matches = _members_in_hierarchy(
-            definition.enclosing_class_id, name, bases_by_class, children_by_parent
+        and definition.parent_id == definition.enclosing_class_id
+        and isinstance(definition.syntax, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and (parameters := [*definition.syntax.args.posonlyargs, *definition.syntax.args.args])
+        and parameters[0].arg == syntax.func.value.id
+        and all(
+            _dotted_name(decorator) == "classmethod"
+            for decorator in definition.syntax.decorator_list
         )
-        if len(class_matches) == 1:
+    ):
+        # An inherited method can receive an overriding subclass, never an
+        # exact receiver merely because its first parameter is named self/cls.
+        members: dict[str, Node] = {}
+        pending = [definition.enclosing_class_id]
+        seen: set[str] = set()
+        while pending:
+            class_id = pending.pop()
+            if class_id in seen:
+                continue
+            seen.add(class_id)
+            class_members, _ = _members_in_hierarchy(
+                class_id, name, bases_by_class, children_by_parent
+            )
+            for member in class_members:
+                members[member.id] = member
+            pending.extend(subclasses_by_class.get(class_id, ()))
+        if members:
             return [
-                _call_edge(definition.node_id, class_matches[0].id, syntax.lineno, True, False)
+                _call_edge(definition.node_id, member.id, syntax.lineno, False, False)
+                for member in sorted(members.values(), key=lambda node: node.id)
             ]
 
-    # A receiver constructed on the spot: `PythonAstAdapter().parse(path)`. The
-    # constructor names the class outright, so the method that runs is the one
-    # that class resolves -- this is the most statically determined dispatch
-    # Python offers, and it is CERTAIN. (A `__new__` returning a different type
-    # would break it; that is invisible to any parser and vanishingly rare, and
-    # the alternative was the fan-out below naming every class in the project
-    # that happens to share the method name.)
-    #
-    # Measured here before this branch existed: `.parse()` alone emitted 237
-    # edges to each of nine unrelated adapter classes, and the overwhelmingly
-    # common shape producing them was exactly this one.
+    # A constructed receiver names its class. Only a complete single base
+    # chain proves member lookup; unsupported hierarchies retain candidates.
     if (
         isinstance(syntax.func, ast.Attribute)
         and isinstance(syntax.func.value, ast.Call)
@@ -1443,12 +1450,13 @@ def _resolve_call(
             if constructed.split(".", 1)[0] not in shadowed else None
         )
         if class_id is not None:
-            members = _members_in_hierarchy(
+            members, certain = _members_in_hierarchy(
                 class_id, name, bases_by_class, children_by_parent
             )
-            if len(members) == 1:
+            if members:
                 return [
-                    _call_edge(definition.node_id, members[0].id, syntax.lineno, True, False)
+                    _call_edge(definition.node_id, member.id, syntax.lineno, certain, False)
+                    for member in members
                 ]
 
     # A receiver the author annotated. `adapter: Adapter` then `adapter.parse()`
@@ -1466,7 +1474,7 @@ def _resolve_call(
             annotations[syntax.func.value.id], module, bindings, node_by_id
         )
         if annotated is not None:
-            members = _members_in_hierarchy(
+            members, _ = _members_in_hierarchy(
                 annotated, name, bases_by_class, children_by_parent
             )
             if members:
@@ -1509,6 +1517,15 @@ def _resolve_call(
 
 def _call_edge(src: str, dst: str, lineno: int, certain: bool, external: bool) -> Edge:
     return Edge(src, dst, "call", certain=certain, lineno=lineno, external=external)
+
+
+def _base_name(expression: ast.expr) -> str | None:
+    """A base reference must be a complete name chain, never a dynamic suffix."""
+
+    root = expression
+    while isinstance(root, ast.Attribute):
+        root = root.value
+    return _dotted_name(expression) if isinstance(root, ast.Name) else None
 
 
 def _dotted_name(expression: ast.expr) -> str | None:

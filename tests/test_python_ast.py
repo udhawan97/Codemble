@@ -91,19 +91,19 @@ def test_call_resolution_is_exact_or_explicitly_uncertain(graph) -> None:  # typ
         Edge("pkg.helpers.log", "pkg.util.normalize", "call", True, 5, False),
         Edge("pkg.service.Service.run", "pkg.util.normalize", "call", True, 8, False),
         Edge("pkg.service.Service.run", "shared.duplicate", "call", True, 9, False),
-        Edge(
-            "pkg.service.Service.run",
-            "pkg.service.Service.finish",
-            "call",
-            True,
-            10,
-            False,
-        ),
         Edge("pkg.util.greet", "pkg.util.normalize", "call", True, 2, False),
         Edge("shared.choose", "shared.duplicate", "call", True, 6, False),
     }
     expected_possible = {
         Edge("app.main", "pkg.service.Service.run", "call", False, 13, False),
+        Edge(
+            "pkg.service.Service.run",
+            "pkg.service.Service.finish",
+            "call",
+            False,
+            10,
+            False,
+        ),
     }
     expected_external = {
         Edge("app.main", "external:builtins.print", "call", False, 12, True),
@@ -273,13 +273,13 @@ def test_layout_is_render_ready_and_deterministic(graph) -> None:  # type: ignor
     assert nodes["app.main"].system_orbit is not None
     assert nodes["app.main"].system_orbit.kind == "call-root"
     assert nodes["app.main"].system_orbit.call_depth == 1
-    # Service.run calls Service.finish, so finish orbits one ring further out.
+    # A virtual self.finish call cannot prove a deeper orbit for finish.
     assert orbit_radius("pkg.service.Service") == 34.0
     assert orbit_radius("pkg.service.Service.run") == 34.0
-    assert orbit_radius("pkg.service.Service.finish") == 58.0
+    assert orbit_radius("pkg.service.Service.finish") == 34.0
     assert nodes["pkg.service.Service.finish"].system_orbit is not None
-    assert nodes["pkg.service.Service.finish"].system_orbit.kind == "certain-call"
-    assert nodes["pkg.service.Service.finish"].system_orbit.call_depth == 2
+    assert nodes["pkg.service.Service.finish"].system_orbit.kind == "call-root"
+    assert nodes["pkg.service.Service.finish"].system_orbit.call_depth == 1
     # greet -> normalize, and duplicate is called by nobody in the region.
     assert orbit_radius("pkg.util.greet") == 34.0
     assert orbit_radius("pkg.util.duplicate") == 34.0

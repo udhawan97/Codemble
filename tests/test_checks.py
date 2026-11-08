@@ -122,6 +122,63 @@ def test_only_the_complete_exact_suite_lights_a_region(tmp_path: Path) -> None:
     assert restarted.for_region("app")["region_understood"] is True
 
 
+def test_failed_completion_keeps_final_question_retryable(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path)
+    progress.set_mode("expert")
+    progress.mark_visited("app")
+    before = progress.path.read_bytes()
+    service = CheckService(graph, progress)
+    suite = generate_checks(graph, "app")
+    for check in suite[:-1]:
+        service.submit("app", check.id, list(check.answer_ids))
+    final = suite[-1]
+
+    def refuse(payload):
+        raise OSError("fictional proof write refusal")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(progress, "_write", refuse)
+        with pytest.raises(OSError, match="fictional"):
+            service.submit("app", final.id, list(final.answer_ids))
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        current = pool.submit(service.for_region, "app").result(timeout=5)
+    assert current["region_understood"] is False
+    assert [check["passed"] for check in current["checks"]] == [True] * (len(suite) - 1) + [False]
+    assert progress.path.read_bytes() == before
+    assert progress.mode() == "expert"
+    assert progress.visited_regions() == {"app"}
+    assert service.submit("app", final.id, list(final.answer_ids))["region_understood"] is True
+
+
+def test_failed_reset_preserves_proof_and_releases_flow_ownership(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    graph = PythonAstAdapter().parse(FIXTURE)
+    progress = ProgressStore(graph, tmp_path)
+    service = CheckService(graph, progress)
+    for check in generate_checks(graph, "app"):
+        service.submit("app", check.id, list(check.answer_ids))
+    before = progress.path.read_bytes()
+
+    def refuse(payload):
+        raise OSError("fictional reset write refusal")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(progress, "_write", refuse)
+        with pytest.raises(OSError, match="fictional"):
+            service.clear_progress()
+    assert progress.path.read_bytes() == before
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        current = pool.submit(service.for_region, "app").result(timeout=5)
+        assert current["region_understood"] is True
+        assert all(check["passed"] for check in current["checks"])
+        pool.submit(service.clear_progress).result(timeout=5)
+    assert service.for_region("app")["region_understood"] is False
+
+
 def test_a_missed_check_never_hands_back_its_own_answer(tmp_path: Path) -> None:
     """Revealing the answer on a miss lets a resubmission light a region.
 
